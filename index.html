@@ -59,7 +59,8 @@ async function sbLoadAll(){
     const cfgIa  = (rows.find(r=>r.id==='__config_ia__')||{}).data || null;
     const cfgSuc = (rows.find(r=>r.id==='__config_suc__')||{}).data || null;
     const cfgUsr = (rows.find(r=>r.id==='__config_usuarios__')||{}).data || null;
-    return { eventos, confs:(cf.data||[]).map(r=>r.data), cfgIa, cfgSuc, cfgUsr };
+    const cfgTem = (rows.find(r=>r.id==='__config_tematicas__')||{}).data || null;
+    return { eventos, confs:(cf.data||[]).map(r=>r.data), cfgIa, cfgSuc, cfgUsr, cfgTem };
   }catch(e){ return null; }
 }
 function sbUpsertEvento(ev){ if(SB&&ev&&ev.id){ try{ SB.from('eventos').upsert({id:ev.id,data:ev}).then(function(){},function(){}); }catch(e){} } }
@@ -155,7 +156,7 @@ function App() {
   function loadLS(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch(e){return def;}}
   const [sucursales,  setSucursales]  = useState(()=>loadLS('fz_sucursales',SUCURSALES0));
   const [usuarios,    setUsuarios]    = useState(()=>loadLS('fz_usuarios',USUARIOS0));
-  const [tematicas,   setTematicas]   = useState(TEMATICAS0);
+  const [tematicas,   setTematicas]   = useState(()=>loadLS('fz_tematicas',TEMATICAS0));
   const [eventos,     setEventos]     = useState(()=>{
     const base=loadLS('fz_eventos',EVENTOS0);
     let result=[...base];
@@ -227,6 +228,7 @@ function App() {
         });
         setConfs(d.confs);
         if(d.cfgIa)  setIaConfig(prev=>({...prev,...d.cfgIa}));
+        if(d.cfgTem && d.cfgTem.length) setTematicas(d.cfgTem);
         if(d.cfgSuc && d.cfgSuc.length) setSucursales(d.cfgSuc);
         if(d.cfgUsr) setUsuarios(d.cfgUsr);
         // Link corto del papá: ?papa=<id> → entra directo al panel
@@ -241,6 +243,7 @@ function App() {
   // Auto-save: localStorage (respaldo) + base de datos central
   React.useEffect(()=>{try{localStorage.setItem('fz_eventos',JSON.stringify(eventos));}catch(e){}; if(dbReady){eventos.forEach(sbUpsertEvento);}},[eventos]);
   React.useEffect(()=>{try{localStorage.setItem('fz_confs',JSON.stringify(confs));}catch(e){}; if(dbReady){confs.forEach(sbUpsertConf);}},[confs]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_tematicas',JSON.stringify(tematicas));}catch(e){}; if(dbReady){sbUpsertConfig('__config_tematicas__',tematicas);}},[tematicas]);
   React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){}; if(dbReady){sbUpsertConfig('__config_suc__',sucursales);}},[sucursales]);
   React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){}; if(dbReady){sbUpsertConfig('__config_ia__',iaConfig);}},[iaConfig]);
   React.useEffect(()=>{try{localStorage.setItem('fz_usuarios',JSON.stringify(usuarios));}catch(e){}; if(dbReady){sbUpsertConfig('__config_usuarios__',usuarios);}},[usuarios]);
@@ -926,7 +929,7 @@ function AdminRemarketing({setVista,evsLocal,sucAct}){
 /* ── ADMIN USUARIOS ──────────────────────────────────────── */
 function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales}){
   const eu={nombre:'',usuario:'',clave:'',rol:'encargada',sucursalId:''};
-  const es={nombre:'',emoji:'🎪',direccion:'',color:'#06b6d4'};
+  const es={nombre:'',emoji:'🎪',direccion:'',color:'#06b6d4',web:'',tel:'',instagram:'',logo:'',portadaFrase:'Recibiste una Invitacion Digital',fotos:['','','','']};
   const [fu,setFu]=useState(eu);const [fs,setFs]=useState(es);
   const [mu,setMu]=useState('');const [ms,setMs]=useState('');
   const [editUid,setEditUid]=useState(null);const [showClave,setShowClave]=useState(false);const [reveal,setReveal]=useState({});
@@ -1000,8 +1003,19 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
               <label key={k}><span style={S.label}>{l}</span><input value={fs[k]} onChange={e=>setFs({...fs,[k]:e.target.value})} style={S.input} required/></label>
             ))}
             <div style={{display:'flex',gap:10}}>
-              <label style={{flex:1}}><span style={S.label}>Icono</span><input value={fs.emoji} onChange={e=>setFs({...fs,emoji:e.target.value})} maxLength={2} style={{...S.input,width:56,fontSize:22,textAlign:'center'}}/></label>
+              <label style={{flex:1}}><span style={S.label}>Icono (emoji)</span><input value={fs.emoji} onChange={e=>setFs({...fs,emoji:e.target.value})} maxLength={2} style={{...S.input,width:56,fontSize:22,textAlign:'center'}}/></label>
               <label style={{flex:1}}><span style={S.label}>Color</span><input type="color" value={fs.color} onChange={e=>setFs({...fs,color:e.target.value})} style={{height:42,width:'100%',border:'none',borderRadius:10,cursor:'pointer'}}/></label>
+            </div>
+            <div>
+              <span style={S.label}>Logo / Icono (imagen)</span>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                {fs.logo?<img src={fs.logo} alt="" style={{width:48,height:48,objectFit:'cover',borderRadius:'50%',border:'2px solid #e2e8f0',flexShrink:0}}/>:<div style={{width:48,height:48,borderRadius:'50%',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{fs.emoji||'🎪'}</div>}
+                <label style={{...S.btn,background:'#ede9fe',color:'#7c3aed',padding:'8px 12px',fontSize:12,cursor:'pointer'}}>
+                  📷 Subir imagen
+                  <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,400,data=>setFs(prev=>({...prev,logo:data})));}}/>
+                </label>
+                {fs.logo&&<button type="button" onClick={()=>setFs(prev=>({...prev,logo:''}))} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:16}}>🗑</button>}
+              </div>
             </div>
             <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',padding:'10px'}}>+ Crear Sucursal</button>
           </form>
