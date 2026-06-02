@@ -967,7 +967,7 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
               <label key={k}><span style={S.label}>{l}</span><input value={fs[k]} onChange={e=>setFs({...fs,[k]:e.target.value})} style={S.input} required/></label>
             ))}
             <div style={{display:'flex',gap:10}}>
-              <label style={{flex:1}}><span style={S.label}>Emoji</span><input value={fs.emoji} onChange={e=>setFs({...fs,emoji:e.target.value})} maxLength={2} style={{...S.input,width:56,fontSize:22,textAlign:'center'}}/></label>
+              <label style={{flex:1}}><span style={S.label}>Icono</span><input value={fs.emoji} onChange={e=>setFs({...fs,emoji:e.target.value})} maxLength={2} style={{...S.input,width:56,fontSize:22,textAlign:'center'}}/></label>
               <label style={{flex:1}}><span style={S.label}>Color</span><input type="color" value={fs.color} onChange={e=>setFs({...fs,color:e.target.value})} style={{height:42,width:'100%',border:'none',borderRadius:10,cursor:'pointer'}}/></label>
             </div>
             <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',padding:'10px'}}>+ Crear Sucursal</button>
@@ -996,11 +996,21 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
                     {/* Datos generales */}
                     <div style={{background:'white',borderRadius:10,padding:12,marginBottom:12,border:'1px solid #e2e8f0'}}>
                       <div style={{fontWeight:800,fontSize:11,color:'#64748b',marginBottom:10,textTransform:'uppercase'}}>Datos del salon</div>
-                      {[['Nombre','nombre'],['Direccion','direccion'],['Sitio web','web'],['Instagram (link o @usuario)','instagram'],['Telefono WhatsApp','tel'],['Logo URL (imagen circular)','logo']].map(([l,k])=>(
+                      {[['Nombre','nombre'],['Direccion','direccion'],['Sitio web','web'],['Instagram (link o @usuario)','instagram'],['Telefono WhatsApp','tel']].map(([l,k])=>(
                         <label key={k} style={{display:'block',marginBottom:6}}><span style={S.label}>{l}</span><input value={ed[k]||''} onChange={e=>setEd({...ed,[k]:e.target.value})} style={S.input}/></label>
                       ))}
-                      <div style={{display:'flex',gap:8}}>
-                        <label style={{flex:1}}><span style={S.label}>Emoji</span><input value={ed.emoji||''} onChange={e=>setEd({...ed,emoji:e.target.value})} maxLength={2} style={{...S.input,fontSize:22,textAlign:'center'}}/></label>
+                      <div style={{display:'flex',gap:10,alignItems:'flex-end',marginTop:4}}>
+                        <label style={{width:84}}><span style={S.label}>Icono</span><input value={ed.emoji||''} onChange={e=>setEd({...ed,emoji:e.target.value})} maxLength={2} style={{...S.input,fontSize:22,textAlign:'center'}}/></label>
+                        <div style={{flex:1}}>
+                          <span style={S.label}>Logo (imagen)</span>
+                          <div style={{display:'flex',alignItems:'center',gap:8}}>
+                            {ed.logo?<img src={ed.logo} alt="" style={{width:42,height:42,objectFit:'cover',borderRadius:'50%',border:'2px solid #e2e8f0',flexShrink:0}}/>:<div style={{width:42,height:42,borderRadius:'50%',background:'#f1f5f9',flexShrink:0}}></div>}
+                            <label style={{...S.btn,background:'#0f172a',color:'white',padding:'8px 12px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>📷 Subir
+                              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,400,data=>setEd(prev=>({...prev,logo:data})));}}/>
+                            </label>
+                            {ed.logo&&<button type="button" onClick={()=>setEd(prev=>({...prev,logo:''}))} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:16}}>🗑</button>}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
