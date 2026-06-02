@@ -355,8 +355,8 @@ function App() {
         {vista==='admin-formatos'    && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId}/>}
         {vista==='papa-creador'      && papaSesion&&<PapaCreador setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs}/>}
-        {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas}/>}
-        {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs}/>}
+        {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
+        {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
       </main>
 
       {vista!=='invitado-portada'&&vista!=='invitado-web'&&(
@@ -2269,7 +2269,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
 
 /* ── INVITADO PORTADA ────────────────────────────────────── */
-function InvPortada({setVista,eventos,invEvId,sucursales}){
+function InvPortada({setVista,eventos,invEvId,sucursales,volverInv}){
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
   const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
   const col=suc.color||'#f97316';
@@ -2290,6 +2290,7 @@ function InvPortada({setVista,eventos,invEvId,sucursales}){
   },[]);
   return(
     <div style={{minHeight:'100vh',background:col,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,textAlign:'center',position:'relative',overflow:'hidden'}}>
+      {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.55)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>← Volver al panel</button>}
       <div id="confetti-container" style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:0}}></div>
       <div style={{position:'absolute',top:'10%',left:'10%',width:200,height:200,borderRadius:'50%',background:'rgba(255,255,255,.12)',filter:'blur(40px)'}}></div>
       <div style={{position:'absolute',bottom:'15%',right:'5%',width:160,height:160,borderRadius:'50%',background:'rgba(255,255,255,.10)',filter:'blur(30px)'}}></div>
@@ -2308,7 +2309,7 @@ function InvPortada({setVista,eventos,invEvId,sucursales}){
 }
 
 /* ── INVITADO WEB ─────────────────────────────────────────── */
-function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs}){
+function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,volverInv}){
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
   const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
   const tem=tematicas.find(t=>t.id===ev?.temId)||tematicas[0];
@@ -2375,6 +2376,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs}){
 
   return(
     <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto'}}>
+      {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>← Volver al panel</button>}
 
       {/* 1. IMAGEN TEMATICA FULL */}
       <div style={{position:'relative',width:'100%'}}>
