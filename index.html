@@ -235,9 +235,22 @@ function App() {
   const esSA     = adminSesion?.rol==='superadmin';
   const evsLocal = eventos.filter(e=>e.sucId===sucActId);
 
-  function loginAdmin(u,p){
-    const usr=usuarios.find(x=>x.usuario.toLowerCase()===u.toLowerCase()&&x.clave===p);
-    if(!usr) return 'Usuario o contraseña incorrectos.';
+  async function loginAdmin(u,p){
+    // 1) Login profesional con Supabase Auth (si es un email)
+    if(SB && (u||'').includes('@')){
+      try{
+        const {data,error}=await SB.auth.signInWithPassword({email:(u||'').trim(),password:p});
+        if(!error && data && data.user){
+          setAdminSesion({rol:'superadmin',nombre:'Administrador',usuario:u});
+          setVista('admin-dashboard');
+          return null;
+        }
+        if(error && /confirm/i.test(error.message||'')) return 'Tu usuario no está confirmado en Supabase.';
+      }catch(e){}
+    }
+    // 2) Respaldo: usuarios internos (admin / encargadas)
+    const usr=usuarios.find(x=>x.usuario.toLowerCase()===(u||'').toLowerCase()&&x.clave===p);
+    if(!usr) return 'Email o contraseña incorrectos.';
     setAdminSesion(usr);
     if(usr.rol==='encargada') setSucActId(usr.sucursalId);
     setVista('admin-dashboard');
@@ -357,8 +370,8 @@ function App() {
 
 /* ── ADMIN LOGIN ─────────────────────────────────────────── */
 function AdminLogin({onLogin}){
-  const [u,setU]=useState(''); const [p,setP]=useState(''); const [err,setErr]=useState(''); const [showP,setShowP]=useState(false);
-  function sub(e){e.preventDefault();const r=onLogin(u,p);if(r)setErr(r);}
+  const [u,setU]=useState(''); const [p,setP]=useState(''); const [err,setErr]=useState(''); const [showP,setShowP]=useState(false); const [cargando,setCargando]=useState(false);
+  async function sub(e){e.preventDefault();setCargando(true);const r=await onLogin(u,p);setCargando(false);if(r)setErr(r);}
   return(
     <div style={{display:'flex',justifyContent:'center',alignItems:'center',minHeight:'80vh',padding:16}}>
       <div className="fade-in" style={{...S.card,maxWidth:360,width:'100%',padding:32,boxShadow:'0 8px 32px rgba(0,0,0,0.10)'}}>
@@ -368,14 +381,14 @@ function AdminLogin({onLogin}){
         </div>
         {err&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#dc2626',padding:'10px 14px',borderRadius:12,fontSize:12,marginBottom:14}}>{err}</div>}
         <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
-          <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Usuario" autoComplete="username" required/>
+          <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Email" autoComplete="username" required/>
           <div style={{position:'relative'}}>
             <input style={{...S.input,paddingRight:44}} type={showP?'text':'password'} value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="Contraseña" autoComplete="current-password" required/>
             <button type="button" onClick={()=>setShowP(!showP)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:18,color:'#94a3b8'}}>
               {showP?'🙈':'👁️'}
             </button>
           </div>
-          <button style={{...S.btn,background:'linear-gradient(135deg,#06b6d4,#7c3aed)',color:'white',padding:'13px',fontSize:14}}>Ingresar al Sistema</button>
+          <button disabled={cargando} style={{...S.btn,background:cargando?'#94a3b8':'linear-gradient(135deg,#06b6d4,#7c3aed)',color:'white',padding:'13px',fontSize:14}}>{cargando?'Ingresando...':'Ingresar al Sistema'}</button>
         </form>
       </div>
     </div>
