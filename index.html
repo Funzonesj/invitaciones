@@ -401,7 +401,7 @@ function AdminLogin({onLogin}){
         </div>
         {err&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#dc2626',padding:'10px 14px',borderRadius:12,fontSize:12,marginBottom:14}}>{err}</div>}
         <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
-          <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Email" autoComplete="username" required/>
+          <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Email (dueña) o usuario (encargada)" autoComplete="username" required/>
           <div style={{position:'relative'}}>
             <input style={{...S.input,paddingRight:44}} type={showP?'text':'password'} value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="Contraseña" autoComplete="current-password" required/>
             <button type="button" onClick={()=>setShowP(!showP)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:18,color:'#94a3b8'}}>
@@ -410,6 +410,7 @@ function AdminLogin({onLogin}){
           </div>
           <button disabled={cargando} style={{...S.btn,background:cargando?'#94a3b8':'linear-gradient(135deg,#06b6d4,#7c3aed)',color:'white',padding:'13px',fontSize:14}}>{cargando?'Ingresando...':'Ingresar al Sistema'}</button>
         </form>
+        <p style={{color:'#94a3b8',fontSize:11,marginTop:14,lineHeight:1.5,textAlign:'center'}}>👑 <b>Dueña:</b> entrá con tu <b>email</b> y contraseña.<br/>🧑‍💼 <b>Encargada:</b> entra con el <b>usuario</b> que le creó la dueña.</p>
       </div>
     </div>
   );
