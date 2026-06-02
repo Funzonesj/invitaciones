@@ -54,11 +54,16 @@ async function sbLoadAll(){
   try{
     const ev = await SB.from('eventos').select('id,data');
     const cf = await SB.from('confs').select('id,data');
-    return { eventos:(ev.data||[]).map(r=>r.data), confs:(cf.data||[]).map(r=>r.data) };
+    const rows = ev.data||[];
+    const eventos = rows.filter(r=>!String(r.id).startsWith('__')).map(r=>r.data);
+    const cfgIa  = (rows.find(r=>r.id==='__config_ia__')||{}).data || null;
+    const cfgSuc = (rows.find(r=>r.id==='__config_suc__')||{}).data || null;
+    return { eventos, confs:(cf.data||[]).map(r=>r.data), cfgIa, cfgSuc };
   }catch(e){ return null; }
 }
 function sbUpsertEvento(ev){ if(SB&&ev&&ev.id){ try{ SB.from('eventos').upsert({id:ev.id,data:ev}).then(function(){},function(){}); }catch(e){} } }
 function sbUpsertConf(c){ if(SB&&c&&c.id){ try{ SB.from('confs').upsert({id:c.id,data:c}).then(function(){},function(){}); }catch(e){} } }
+function sbUpsertConfig(key,data){ if(SB){ try{ SB.from('eventos').upsert({id:key,data:data}).then(function(){},function(){}); }catch(e){} } }
 
 /* ── HELPERS ─────────────────────────────────────────────── */
 function genUser(nombre) {
@@ -86,11 +91,19 @@ function fmtTipo(tipo, iaConfig){
   return t ? {fmtEdad:!!t.edad, fmtTitulo:t.titulo||'', fmtDirigido:t.dirigido||''}
            : {fmtEdad:true, fmtTitulo:'', fmtDirigido:''};
 }
+// Redimensiona/comprime una imagen subida a un data URL liviano
+function resizeImg(file, maxW, cb){
+  const r=new FileReader();
+  r.onload=ev=>{const img=new Image();img.onload=()=>{const sc=Math.min(1,maxW/img.width);const c=document.createElement('canvas');c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);try{cb(c.toDataURL('image/jpeg',0.82));}catch(e){cb(ev.target.result);}};img.onerror=()=>cb(ev.target.result);img.src=ev.target.result;};
+  r.readAsDataURL(file);
+}
+// Normaliza un dato de Instagram (link o @usuario) a una URL
+function igUrl(v){v=(v||'').trim();if(!v)return '#';if(/^https?:/i.test(v))return v;return 'https://instagram.com/'+v.replace(/^@/,'');}
 
 /* ── DATOS INICIALES ─────────────────────────────────────── */
 const SUCURSALES0 = [
-  {id:'sz-1',nombre:'Fun Zone',emoji:'🎪',color:'#f97316',tel:'2646135515',web:'',direccion:'Av San Martin 1515, Ramos Mejia, Bs As',logo:'',portadaFrase:'Recibiste una Invitacion Digital',fotos:['','','','']},
-  {id:'sz-2',nombre:'Play Point',emoji:'🎯',color:'#7c3aed',tel:'2646135515',web:'',direccion:'Av. Rivadavia 14200, Ramos Mejia, Bs As',logo:'',portadaFrase:'Recibiste una Invitacion Digital',fotos:['','','','']},
+  {id:'sz-1',nombre:'Fun Zone',emoji:'🎪',color:'#f97316',tel:'2646135515',web:'',instagram:'',direccion:'Av San Martin 1515, Ramos Mejia, Bs As',logo:'',portadaFrase:'Recibiste una Invitacion Digital',fotos:['','','','']},
+  {id:'sz-2',nombre:'Play Point',emoji:'🎯',color:'#7c3aed',tel:'2646135515',web:'',instagram:'',direccion:'Av. Rivadavia 14200, Ramos Mejia, Bs As',logo:'',portadaFrase:'Recibiste una Invitacion Digital',fotos:['','','','']},
 ];
 const USUARIOS0 = [
   {id:'ua-0',usuario:'admin',      clave:'admin123', rol:'superadmin', sucursalId:null,  nombre:'Administrador'},
@@ -216,6 +229,8 @@ function App() {
           return [...d.eventos, ...extra];
         });
         setConfs(d.confs);
+        if(d.cfgIa)  setIaConfig(prev=>({...prev,...d.cfgIa}));
+        if(d.cfgSuc && d.cfgSuc.length) setSucursales(d.cfgSuc);
         // Link corto del papá: ?papa=<id> → entra directo al panel
         if(_PAPA_PARAM && !_PAPA_DATA){
           const ev=d.eventos.find(e=>e.id===_PAPA_PARAM);
@@ -228,8 +243,8 @@ function App() {
   // Auto-save: localStorage (respaldo) + base de datos central
   React.useEffect(()=>{try{localStorage.setItem('fz_eventos',JSON.stringify(eventos));}catch(e){}; if(dbReady){eventos.forEach(sbUpsertEvento);}},[eventos]);
   React.useEffect(()=>{try{localStorage.setItem('fz_confs',JSON.stringify(confs));}catch(e){}; if(dbReady){confs.forEach(sbUpsertConf);}},[confs]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){};},[sucursales]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){};},[iaConfig]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){}; if(dbReady){sbUpsertConfig('__config_suc__',sucursales);}},[sucursales]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){}; if(dbReady){sbUpsertConfig('__config_ia__',iaConfig);}},[iaConfig]);
 
   const sucAct   = sucursales.find(s=>s.id===sucActId)||sucursales[0];
   const esSA     = adminSesion?.rol==='superadmin';
@@ -258,7 +273,7 @@ function App() {
   }
   function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
 
-  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-ia','admin-config'].includes(vista);
+  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-descargables','admin-ia','admin-config'].includes(vista);
   const isPapa  = ['papa-login','papa-creador'].includes(vista);
 
   // Mientras carga la base de datos en links de invitación/papá, mostrar cargando
@@ -353,6 +368,7 @@ function App() {
         {vista==='admin-config'      && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-menu'        && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-formatos'    && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-descargables'&& <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId}/>}
         {vista==='papa-creador'      && papaSesion&&<PapaCreador setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs}/>}
         {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
@@ -406,6 +422,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas}){
     {e:'⚙️',t:'Usuarios & Sucursales',s:'Cuentas y salones',           v:'admin-usuarios',   bdr:'#94a3b8'},
     {e:'🍽️',t:'Menú Interactivo',      s:'Prompt y comidas',            v:'admin-menu',       bdr:'#f59e0b'},
     {e:'🎟️',t:'Formatos de Tarjeta',   s:'Por tipo de evento',          v:'admin-formatos',   bdr:'#ec4899'},
+    {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a'},
     {e:'🤖',t:'IA & Precios',          s:'Prompts y API keys',          v:'admin-ia',         bdr:'#8b5cf6'},
     {e:'🛠️',t:'Configuración',         s:'Año vigente y sitio',          v:'admin-config',     bdr:'#0ea5e9'},
   ];
@@ -986,7 +1003,7 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
                     {/* Datos generales */}
                     <div style={{background:'white',borderRadius:10,padding:12,marginBottom:12,border:'1px solid #e2e8f0'}}>
                       <div style={{fontWeight:800,fontSize:11,color:'#64748b',marginBottom:10,textTransform:'uppercase'}}>Datos del salon</div>
-                      {[['Nombre','nombre'],['Direccion','direccion'],['Sitio web / Instagram','web'],['Telefono WA','tel'],['Logo URL (imagen circular)','logo']].map(([l,k])=>(
+                      {[['Nombre','nombre'],['Direccion','direccion'],['Sitio web','web'],['Instagram (link o @usuario)','instagram'],['Telefono WhatsApp','tel'],['Logo URL (imagen circular)','logo']].map(([l,k])=>(
                         <label key={k} style={{display:'block',marginBottom:6}}><span style={S.label}>{l}</span><input value={ed[k]||''} onChange={e=>setEd({...ed,[k]:e.target.value})} style={S.input}/></label>
                       ))}
                       <div style={{display:'flex',gap:8}}>
@@ -1023,9 +1040,18 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
                     {/* Fotos */}
                     <div style={{background:'white',borderRadius:10,padding:12,marginBottom:12,border:'1px solid #e2e8f0'}}>
                       <div style={{fontWeight:800,fontSize:11,color:'#64748b',marginBottom:10,textTransform:'uppercase'}}>Fotos del salon (hasta 4)</div>
-                      {[0,1,2,3].map(i=>(
-                        <input key={i} value={(ed.fotos||['','','',''])[i]||''} onChange={e=>{const f=[...(ed.fotos||['','','',''])];f[i]=e.target.value;setEd({...ed,fotos:f});}} style={{...S.input,marginBottom:6}} placeholder={'Foto '+(i+1)+' - URL de imagen'}/>
-                      ))}
+                      {[0,1,2,3].map(i=>{
+                        const foto=(ed.fotos||['','','',''])[i]||'';
+                        return(
+                        <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                          {foto?<img src={foto} alt="" style={{width:46,height:46,objectFit:'cover',borderRadius:8,flexShrink:0}}/>:<div style={{width:46,height:46,borderRadius:8,background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,color:'#94a3b8',flexShrink:0}}>{i+1}</div>}
+                          <label style={{...S.btn,background:'#0f172a',color:'white',padding:'8px 12px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>📷 {foto?'Cambiar':'Subir'}
+                            <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,900,data=>{const f=[...(ed.fotos||['','','',''])];f[i]=data;setEd({...ed,fotos:f});});}}/>
+                          </label>
+                          {foto&&<button type="button" onClick={()=>{const f=[...(ed.fotos||['','','',''])];f[i]='';setEd({...ed,fotos:f});}} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:16}}>🗑</button>}
+                        </div>
+                        );
+                      })}
                     </div>
 
                     <div style={{display:'flex',gap:8}}>
@@ -1133,6 +1159,46 @@ function AdminConfig({setVista,iaConfig,setIaConfig}){
       </div>
 
       <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#0ea5e9,#06b6d4)',color:'white',padding:'13px 28px',fontSize:14}}>✓ Guardar configuración</button>
+    </div>
+  );
+}
+
+/* ── ADMIN DESCARGABLES ──────────────────────────────────── */
+function AdminDescargables({setVista,iaConfig,setIaConfig}){
+  const [items,setItems]=useState(()=>(iaConfig.descargablesLinks||[]).map(x=>({...x})));
+  const [msg,setMsg]=useState('');
+  function upd(i,k,v){setItems(a=>a.map((it,idx)=>idx===i?{...it,[k]:v}:it));}
+  function quitar(i){setItems(a=>a.filter((_,idx)=>idx!==i));}
+  function agregar(){setItems(a=>[...a,{id:'dl-'+Math.floor(Math.random()*1e6),nombre:'',url:'',emoji:'📄'}]);}
+  function guardar(){setIaConfig(c=>({...c,descargablesLinks:items}));setMsg('✓ Descargables guardados');setTimeout(()=>setMsg(''),2500);}
+  return(
+    <div className="fade-in" style={{maxWidth:700,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>📦 Descargables</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:16}}>Recursos que verán los papás en su panel (sección "Recursos"). Pegá el link de Google Drive de cada archivo.</p>
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msg}</div>}
+
+      {items.length===0&&<p style={{fontSize:12,color:'#94a3b8',marginBottom:12}}>Todavía no hay recursos. Agregá el primero. 👇</p>}
+      {items.map((it,i)=>(
+        <div key={it.id||i} style={{...S.card,marginBottom:12,borderLeft:'4px solid #16a34a'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+            <span style={{fontSize:11,fontWeight:900,color:'#16a34a',textTransform:'uppercase'}}>Recurso #{i+1}</span>
+            <button onClick={()=>quitar(i)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:12,fontWeight:700}}>🗑 Quitar</button>
+          </div>
+          <div style={{display:'flex',gap:8,marginBottom:10}}>
+            <label style={{width:70}}><span style={S.label}>Ícono</span><input value={it.emoji||''} onChange={e=>upd(i,'emoji',e.target.value)} maxLength={2} style={{...S.input,textAlign:'center',fontSize:18}}/></label>
+            <label style={{flex:1}}><span style={S.label}>Nombre</span><input value={it.nombre||''} onChange={e=>upd(i,'nombre',e.target.value)} style={S.input} placeholder="Ej: Lista de regalos"/></label>
+          </div>
+          <label style={{display:'block'}}><span style={S.label}>Link de Google Drive</span>
+            <input value={it.url||''} onChange={e=>upd(i,'url',e.target.value)} style={S.input} placeholder="https://drive.google.com/..."/>
+          </label>
+        </div>
+      ))}
+
+      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+        <button onClick={agregar} style={{...S.btn,background:'#f1f5f9',color:'#1e293b'}}>+ Agregar recurso</button>
+        <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#16a34a,#15803d)',color:'white',padding:'12px 28px'}}>✓ Guardar descargables</button>
+      </div>
     </div>
   );
 }
@@ -2545,6 +2611,14 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
           Compartir por WhatsApp
         </button>
       </div>
+
+      {/* 14b. REDES (Instagram / WhatsApp del salón) */}
+      {(suc.instagram||suc.tel)&&(
+        <div style={{display:'flex',justifyContent:'center',gap:18,padding:'20px 16px 4px'}}>
+          {suc.instagram&&<a href={igUrl(suc.instagram)} target="_blank" title="Instagram" style={{width:54,height:54,borderRadius:'50%',background:'linear-gradient(45deg,#feda75,#fa7e1e,#d62976,#962fbf,#4f5bd5)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,textDecoration:'none',boxShadow:'0 3px 10px rgba(0,0,0,.18)'}}>📷</a>}
+          {suc.tel&&<a href={'https://wa.me/'+waNum(suc.tel)} target="_blank" title="WhatsApp" style={{width:54,height:54,borderRadius:'50%',background:'#25d366',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,textDecoration:'none',boxShadow:'0 3px 10px rgba(0,0,0,.18)'}}>💬</a>}
+        </div>
+      )}
 
       {/* 15. FOOTER */}
       <div style={{background:col,color:'white',padding:'20px 16px',textAlign:'center'}}>
