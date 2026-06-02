@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:#f7f9fc;color:#1e293b}
@@ -43,6 +44,21 @@ input,select,textarea,button{font-family:inherit;outline:none}
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useRef, useEffect } = React;
+
+/* ── SUPABASE (base de datos central) ────────────────────── */
+const SB_URL = 'https://tnubhbtihssubnfpwuvu.supabase.co';
+const SB_KEY = 'sb_publishable_ZLLncEbfaSqZz15N6-MrXQ_g4K_ndB-';
+const SB = (window.supabase && SB_URL && SB_KEY) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+async function sbLoadAll(){
+  if(!SB) return null;
+  try{
+    const ev = await SB.from('eventos').select('id,data');
+    const cf = await SB.from('confs').select('id,data');
+    return { eventos:(ev.data||[]).map(r=>r.data), confs:(cf.data||[]).map(r=>r.data) };
+  }catch(e){ return null; }
+}
+function sbUpsertEvento(ev){ if(SB&&ev&&ev.id){ try{ SB.from('eventos').upsert({id:ev.id,data:ev}).then(function(){},function(){}); }catch(e){} } }
+function sbUpsertConf(c){ if(SB&&c&&c.id){ try{ SB.from('confs').upsert({id:c.id,data:c}).then(function(){},function(){}); }catch(e){} } }
 
 /* ── HELPERS ─────────────────────────────────────────────── */
 function genUser(nombre) {
@@ -83,15 +99,8 @@ const TEMATICAS0 = [
   {id:'t-5',nombre:'Dragón Caballeros', cats:['TODOS','ANIME','NENES'],                img:'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&fit=crop',emoji:'🐉'},
   {id:'t-6',nombre:'Patos La Película', cats:['TODOS','CARTELERA','INFANTILES'],       img:'https://images.unsplash.com/photo-1555685812-4b943f1cb0eb?w=400&fit=crop',emoji:'🦆'},
 ];
-const EVENTOS0 = [
-  {id:'ev-1',sucId:'sz-1',user:'alison2026',pass:'alison123',nombre:'Alison', tipo:'Cumpleaños',edad:'5',dia:'31',mes:'05',anio:'2026',hIni:'17:00',hFin:'22:00',celPapa:'2646135515',nomPapa:'Lorena Sánchez',temId:'t-3'},
-  {id:'ev-2',sucId:'sz-2',user:'kiara2026', pass:'kiara123', nombre:'Kiara',  tipo:'Cumpleaños',edad:'6',dia:'31',mes:'05',anio:'2026',hIni:'17:00',hFin:'22:00',celPapa:'2646135515',nomPapa:'Mariana Gómez', temId:'t-2'},
-];
-const CONFS0 = [
-  {id:'c-1',evId:'ev-1',invitado:'Benjamín Gómez',    adultos:1,ninos:1,cel:'1123456781'},
-  {id:'c-2',evId:'ev-1',invitado:'Martina Rodríguez', adultos:2,ninos:1,cel:'1123456782'},
-  {id:'c-3',evId:'ev-1',invitado:'Mateo Fernández',   adultos:1,ninos:2,cel:'1123456783'},
-];
+const EVENTOS0 = [];
+const CONFS0 = [];
 const CATS = ['TODOS','ANIME','CARTELERA','SERIES','INFANTILES','NENES','NENAS','PRINCESAS','VIDEOJUEGOS','SUPERHEROES','DEPORTES','FANTASÍA'];
 const MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
@@ -176,15 +185,37 @@ function App() {
   const [invEvId,     setInvEvId]     = useState(INIT_INV_ID);
   const [vista,       setVista]       = useState(INIT_VISTA);
   const [menuOpen,    setMenuOpen]    = useState(false);
+  const [dbReady,     setDbReady]     = useState(!SB);
 
   // Detect ?inv= param after mount as reliable fallback
   React.useEffect(()=>{
     const inv=new URLSearchParams(window.location.search).get('inv');
     if(inv){setInvEvId(inv);setVista('invitado-portada');}
   },[]);
-  // Auto-save to localStorage
-  React.useEffect(()=>{try{localStorage.setItem('fz_eventos',JSON.stringify(eventos));}catch(e){};},[eventos]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_confs',JSON.stringify(confs));}catch(e){};},[confs]);
+  // Cargar eventos y confirmaciones desde la base de datos central (Supabase)
+  React.useEffect(()=>{
+    if(!SB){return;}
+    (async()=>{
+      const d=await sbLoadAll();
+      if(d){
+        setEventos(prev=>{
+          const ids=new Set(d.eventos.map(e=>e.id));
+          const extra=prev.filter(e=>!ids.has(e.id) && ((_INV_EV_DATA&&e.id===_INV_EV_DATA.id)||(_PAPA_DATA&&e.id===_PAPA_DATA.id)));
+          return [...d.eventos, ...extra];
+        });
+        setConfs(d.confs);
+        // Link corto del papá: ?papa=<id> → entra directo al panel
+        if(_PAPA_PARAM && !_PAPA_DATA){
+          const ev=d.eventos.find(e=>e.id===_PAPA_PARAM);
+          if(ev){setPapaSesion(ev);setInvEvId(ev.id);setVista('papa-creador');}
+        }
+      }
+      setDbReady(true);
+    })();
+  },[]);
+  // Auto-save: localStorage (respaldo) + base de datos central
+  React.useEffect(()=>{try{localStorage.setItem('fz_eventos',JSON.stringify(eventos));}catch(e){}; if(dbReady){eventos.forEach(sbUpsertEvento);}},[eventos]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_confs',JSON.stringify(confs));}catch(e){}; if(dbReady){confs.forEach(sbUpsertConf);}},[confs]);
   React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){};},[sucursales]);
   React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){};},[iaConfig]);
 
@@ -204,6 +235,16 @@ function App() {
 
   const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-ia','admin-config'].includes(vista);
   const isPapa  = ['papa-login','papa-creador'].includes(vista);
+
+  // Mientras carga la base de datos en links de invitación/papá, mostrar cargando
+  if(SB && !dbReady && (_INV_PARAM || _PAPA_PARAM)){
+    return (
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:14,background:'#0f172a',color:'white'}}>
+        <div className="bounce" style={{fontSize:46}}>🎈</div>
+        <div style={{fontWeight:800,fontSize:15}}>Cargando invitación...</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:'#f7f9fc'}}>
@@ -372,8 +413,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   function enviarCredsWA(ev){
     const salon=sucAct.nombre;
     const base=window.location.href.split('?')[0];
-    const papaData=btoa(JSON.stringify({id:ev.id,sucId:ev.sucId,nombre:ev.nombre,tipo:ev.tipo||'Cumpleanos',edad:ev.edad,dia:ev.dia,mes:ev.mes,anio:ev.anio,hIni:ev.hIni,hFin:ev.hFin,celPapa:ev.celPapa,nomPapa:ev.nomPapa,temId:ev.temId,user:ev.user,pass:ev.pass}));
-    const loginLink=base+'?papa='+papaData;
+    const loginLink=base+'?papa='+ev.id;
     const lineas=[
       'Hola '+ev.nomPapa+'!',
       '',
@@ -426,7 +466,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     else{setEventos(prev=>[...prev,{...form,id:'ev-'+Date.now().toString(16),sucId:sucAct.id}]);}
     setForm(ef);setOpen(false);
   }
-  function copiarLink(id){navigator.clipboard?.writeText(window.location.href+'?inv='+id);alert('¡Enlace copiado!');}
+  function copiarLink(id){navigator.clipboard?.writeText(window.location.href.split('?')[0]+'?inv='+id);alert('¡Enlace copiado!');}
 
   return(
     <div className="fade-in" style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
@@ -1475,37 +1515,13 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [seccion,setSeccion]=useState('tarjeta');
   const [kidActivo,setKidActivo]=useState(1);
   const [shortLinkLoading,setShortLinkLoading]=useState(false);
-  async function acortarYCompartir(longUrl,nombre,fecha,salon){
-    setShortLinkLoading(true);
-    let finalUrl=longUrl;
-    // Generar alias personalizado: invitacion-nombre (sin espacios ni caracteres especiales)
-    const alias='invitacion-'+nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'').slice(0,20);
-    try{
-      // Intentar con alias personalizado
-      const res1=await fetch('https://is.gd/create.php?format=simple&shorturl='+alias+'&url='+encodeURIComponent(longUrl));
-      if(res1.ok){
-        const t1=await res1.text();
-        if(t1.startsWith('https://is.gd/')){finalUrl=t1.trim();}
-        else{
-          // Alias tomado, intentar con nombre+anio
-          const alias2=alias+new Date().getFullYear().toString().slice(-2);
-          const res2=await fetch('https://is.gd/create.php?format=simple&shorturl='+alias2+'&url='+encodeURIComponent(longUrl));
-          if(res2.ok){const t2=await res2.text();if(t2.startsWith('https://'))finalUrl=t2.trim();}
-          else{
-            // Fallback: auto
-            const res3=await fetch('https://is.gd/create.php?format=simple&url='+encodeURIComponent(longUrl));
-            if(res3.ok){const t3=await res3.text();if(t3.startsWith('https://'))finalUrl=t3.trim();}
-          }
-        }
-      }
-    }catch(e){}
-    setShortLinkLoading(false);
+  function acortarYCompartir(longUrl,nombre,fecha,salon){
     const lineas=[
       '*'+nombre+' te invita!*',
       'El dia '+fecha+' en '+salon,
       '',
       'Abri la invitacion:',
-      finalUrl,
+      longUrl,
     ];
     window.open('https://wa.me/?text='+encodeURIComponent(lineas.join('\n')),'_blank');
   }
@@ -1743,7 +1759,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   const fecha=papaSesion.dia+' de '+(meses[(+papaSesion.mes)-1]||'')+' de '+papaSesion.anio;
                   const baseUrl=window.location.href.split('?')[0];
                   const evData={id:papaSesion.id,sucId:papaSesion.sucId,nombre:form.nombre||papaSesion.nombre,tipo:form.tipo||'Cumpleanos',edad:form.edad||papaSesion.edad,dia:papaSesion.dia,mes:papaSesion.mes,anio:papaSesion.anio,hIni:papaSesion.hIni,hFin:papaSesion.hFin,celPapa:papaSesion.celPapa,nomPapa:papaSesion.nomPapa,temId:form.temId||papaSesion.temId};
-                  const longUrl=baseUrl+'?inv='+btoa(JSON.stringify(evData));
+                  const longUrl=baseUrl+'?inv='+papaSesion.id;
                   acortarYCompartir(longUrl,evData.nombre,fecha,suc.nombre);
                 }} style={{...S.btn,flex:1,background:shortLinkLoading?'#94a3b8':'#25d366',color:'white',padding:'11px',fontSize:13,fontWeight:800}}>
                   {shortLinkLoading?'Generando link...':'Enviar por WhatsApp'}
@@ -2424,7 +2440,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs}){
         <button onClick={()=>{
           const baseUrl2=(window.location.href.split('?')[0]);
           const evData2={id:ev.id,sucId:ev.sucId,nombre:ev.nombre,tipo:ev.tipo||'Cumpleanos',edad:ev.edad,dia:ev.dia,mes:ev.mes,anio:ev.anio,hIni:ev.hIni,hFin:ev.hFin,celPapa:ev.celPapa,nomPapa:ev.nomPapa,temId:ev.temId};
-          const link=baseUrl2+'?inv='+btoa(JSON.stringify(evData2));
+          const link=baseUrl2+'?inv='+ev.id;
           const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
           const fecha=ev.dia+' de '+(meses[(+ev.mes)-1]||'')+' de '+ev.anio;
           const lineas=[ev.nombre+' te invita a su '+ev.tipo,'El dia '+fecha,'en '+suc.nombre,'','Abri la invitacion:',link];
