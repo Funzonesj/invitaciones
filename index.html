@@ -58,7 +58,8 @@ async function sbLoadAll(){
     const eventos = rows.filter(r=>!String(r.id).startsWith('__')).map(r=>r.data);
     const cfgIa  = (rows.find(r=>r.id==='__config_ia__')||{}).data || null;
     const cfgSuc = (rows.find(r=>r.id==='__config_suc__')||{}).data || null;
-    return { eventos, confs:(cf.data||[]).map(r=>r.data), cfgIa, cfgSuc };
+    const cfgUsr = (rows.find(r=>r.id==='__config_usuarios__')||{}).data || null;
+    return { eventos, confs:(cf.data||[]).map(r=>r.data), cfgIa, cfgSuc, cfgUsr };
   }catch(e){ return null; }
 }
 function sbUpsertEvento(ev){ if(SB&&ev&&ev.id){ try{ SB.from('eventos').upsert({id:ev.id,data:ev}).then(function(){},function(){}); }catch(e){} } }
@@ -105,11 +106,7 @@ const SUCURSALES0 = [
   {id:'sz-1',nombre:'Fun Zone',emoji:'🎪',color:'#f97316',tel:'2646135515',web:'',instagram:'',direccion:'Av San Martin 1515, Ramos Mejia, Bs As',logo:'',portadaFrase:'Recibiste una Invitacion Digital',fotos:['','','','']},
   {id:'sz-2',nombre:'Play Point',emoji:'🎯',color:'#7c3aed',tel:'2646135515',web:'',instagram:'',direccion:'Av. Rivadavia 14200, Ramos Mejia, Bs As',logo:'',portadaFrase:'Recibiste una Invitacion Digital',fotos:['','','','']},
 ];
-const USUARIOS0 = [
-  {id:'ua-0',usuario:'admin',      clave:'admin123', rol:'superadmin', sucursalId:null,  nombre:'Administrador'},
-  {id:'ua-1',usuario:'encargada1', clave:'1234',     rol:'encargada',  sucursalId:'sz-1',nombre:'Encargada Fun Zone'},
-  {id:'ua-2',usuario:'encargada2', clave:'1234',     rol:'encargada',  sucursalId:'sz-2',nombre:'Encargada Play Point'},
-];
+const USUARIOS0 = [];
 const TEMATICAS0 = [
   {id:'t-1',nombre:'Lionel Messi',      cats:['TODOS','DEPORTES','NENES'],            img:'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=400&fit=crop',emoji:'⚽'},
   {id:'t-2',nombre:'Princesa Rosalina', cats:['TODOS','PRINCESAS','NENAS'],            img:'https://images.unsplash.com/photo-1566577134770-3d85bb3a9cc4?w=400&fit=crop',emoji:'⭐'},
@@ -157,7 +154,7 @@ const INIT_VISTA = _INV_PARAM ? 'invitado-portada' : (_PAPA_DATA ? 'papa-creador
 function App() {
   function loadLS(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch(e){return def;}}
   const [sucursales,  setSucursales]  = useState(()=>loadLS('fz_sucursales',SUCURSALES0));
-  const [usuarios,    setUsuarios]    = useState(USUARIOS0);
+  const [usuarios,    setUsuarios]    = useState(()=>loadLS('fz_usuarios',USUARIOS0));
   const [tematicas,   setTematicas]   = useState(TEMATICAS0);
   const [eventos,     setEventos]     = useState(()=>{
     const base=loadLS('fz_eventos',EVENTOS0);
@@ -231,6 +228,7 @@ function App() {
         setConfs(d.confs);
         if(d.cfgIa)  setIaConfig(prev=>({...prev,...d.cfgIa}));
         if(d.cfgSuc && d.cfgSuc.length) setSucursales(d.cfgSuc);
+        if(d.cfgUsr) setUsuarios(d.cfgUsr);
         // Link corto del papá: ?papa=<id> → entra directo al panel
         if(_PAPA_PARAM && !_PAPA_DATA){
           const ev=d.eventos.find(e=>e.id===_PAPA_PARAM);
@@ -245,23 +243,33 @@ function App() {
   React.useEffect(()=>{try{localStorage.setItem('fz_confs',JSON.stringify(confs));}catch(e){}; if(dbReady){confs.forEach(sbUpsertConf);}},[confs]);
   React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){}; if(dbReady){sbUpsertConfig('__config_suc__',sucursales);}},[sucursales]);
   React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){}; if(dbReady){sbUpsertConfig('__config_ia__',iaConfig);}},[iaConfig]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_usuarios',JSON.stringify(usuarios));}catch(e){}; if(dbReady){sbUpsertConfig('__config_usuarios__',usuarios);}},[usuarios]);
 
   const sucAct   = sucursales.find(s=>s.id===sucActId)||sucursales[0];
   const esSA     = adminSesion?.rol==='superadmin';
   const evsLocal = eventos.filter(e=>e.sucId===sucActId);
 
   async function loginAdmin(u,p){
-    // Login profesional con Supabase Auth (email + contraseña verificados en servidor)
-    if(!SB) return 'No hay conexión con el servidor. Revisá tu internet e intentá de nuevo.';
-    try{
-      const {data,error}=await SB.auth.signInWithPassword({email:(u||'').trim(),password:p});
-      if(!error && data && data.user){
-        setAdminSesion({rol:'superadmin',nombre:'Administrador',usuario:u});
-        setVista('admin-dashboard');
-        return null;
-      }
-      if(error && /confirm/i.test(error.message||'')) return 'Tu usuario no está confirmado en Supabase.';
-    }catch(e){}
+    // 1) Dueña: login seguro con Supabase Auth (email + contraseña verificados en servidor)
+    if(SB){
+      try{
+        const {data,error}=await SB.auth.signInWithPassword({email:(u||'').trim(),password:p});
+        if(!error && data && data.user){
+          setAdminSesion({rol:'superadmin',nombre:'Administrador',usuario:u});
+          setVista('admin-dashboard');
+          return null;
+        }
+        if(error && /confirm/i.test(error.message||'')) return 'Tu usuario no está confirmado en Supabase.';
+      }catch(e){}
+    }
+    // 2) Encargadas: login simple (usuario + clave de la lista). Solo rol encargada (sin puerta trasera de dueña).
+    const usr=usuarios.find(x=>x.rol==='encargada' && x.usuario && x.usuario.toLowerCase()===(u||'').trim().toLowerCase() && x.clave===p);
+    if(usr){
+      setAdminSesion(usr);
+      if(usr.sucursalId) setSucActId(usr.sucursalId);
+      setVista('admin-dashboard');
+      return null;
+    }
     return 'Email o contraseña incorrectos.';
   }
   function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
@@ -921,7 +929,15 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
   const es={nombre:'',emoji:'🎪',direccion:'',color:'#06b6d4'};
   const [fu,setFu]=useState(eu);const [fs,setFs]=useState(es);
   const [mu,setMu]=useState('');const [ms,setMs]=useState('');
-  function addU(e){e.preventDefault();if(usuarios.find(x=>x.usuario===fu.usuario)){setMu('Usuario ya existe.');return;}setUsuarios([...usuarios,{...fu,id:'ua-'+Date.now()}]);setFu(eu);setMu('✅ Usuario creado.');setTimeout(()=>setMu(''),3000);}
+  const [editUid,setEditUid]=useState(null);const [showClave,setShowClave]=useState(false);const [reveal,setReveal]=useState({});
+  function guardarU(e){
+    e.preventDefault();
+    const dup=usuarios.find(x=>x.usuario.toLowerCase()===fu.usuario.trim().toLowerCase() && x.id!==editUid);
+    if(dup){setMu('Ese usuario ya existe.');return;}
+    if(editUid){setUsuarios(usuarios.map(x=>x.id===editUid?{...x,...fu,rol:'encargada'}:x));setMu('✅ Cambios guardados.');}
+    else{setUsuarios([...usuarios,{...fu,rol:'encargada',id:'ua-'+Date.now()}]);setMu('✅ Encargada creada.');}
+    setFu(eu);setEditUid(null);setTimeout(()=>setMu(''),3000);
+  }
   function addS(e){e.preventDefault();setSucursales([...sucursales,{...fs,id:'sz-'+Date.now()}]);setFs(es);setMs('✅ Sucursal creada.');setTimeout(()=>setMs(''),3000);}
   return(
     <div className="fade-in" style={{maxWidth:800,margin:'0 auto',padding:'20px 16px'}}>
@@ -929,34 +945,51 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
       <h1 style={{fontWeight:900,fontSize:20,marginBottom:18}}>⚙️ Usuarios & Sucursales</h1>
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
         <div style={S.card}>
-          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>Crear Usuario</h3>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>{editUid?'Editar encargada':'Crear encargada'}</h3>
+          <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Las encargadas entran con su usuario y contraseña. (Vos, como dueña, entrás con tu email.)</p>
           {mu&&<div style={{background:'#f0fdf4',color:'#166534',padding:9,borderRadius:10,fontSize:12,fontWeight:700,marginBottom:10}}>{mu}</div>}
-          <form onSubmit={addU} style={{display:'flex',flexDirection:'column',gap:10}}>
-            {[['Nombre','nombre','text'],['Usuario','usuario','text'],['Contraseña','clave','password']].map(([l,k,t])=>(
-              <label key={k}><span style={S.label}>{l}</span><input type={t} value={fu[k]} onChange={e=>setFu({...fu,[k]:e.target.value})} style={S.input} required/></label>
-            ))}
-            <label><span style={S.label}>Rol</span>
-              <select value={fu.rol} onChange={e=>setFu({...fu,rol:e.target.value})} style={S.input}>
-                <option value="superadmin">Super Admin (dueño)</option>
-                <option value="encargada">Encargada de sucursal</option>
-              </select>
+          <form onSubmit={guardarU} style={{display:'flex',flexDirection:'column',gap:10}}>
+            <label><span style={S.label}>Nombre</span><input value={fu.nombre} onChange={e=>setFu({...fu,nombre:e.target.value})} style={S.input} required/></label>
+            <label><span style={S.label}>Usuario</span><input value={fu.usuario} onChange={e=>setFu({...fu,usuario:e.target.value})} style={S.input} autoComplete="off" required/></label>
+            <label><span style={S.label}>Contraseña</span>
+              <div style={{position:'relative'}}>
+                <input type={showClave?'text':'password'} value={fu.clave} onChange={e=>setFu({...fu,clave:e.target.value})} style={{...S.input,paddingRight:42}} autoComplete="new-password" required/>
+                <button type="button" onClick={()=>setShowClave(!showClave)} style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:16,color:'#94a3b8'}}>{showClave?'🙈':'👁️'}</button>
+              </div>
             </label>
-            {fu.rol==='encargada'&&<label><span style={S.label}>Sucursal</span>
+            <label><span style={S.label}>Sucursal</span>
               <select value={fu.sucursalId} onChange={e=>setFu({...fu,sucursalId:e.target.value})} style={S.input} required>
                 <option value=''>— Elegir —</option>
                 {sucursales.map(s=><option key={s.id} value={s.id}>{s.emoji} {s.nombre}</option>)}
               </select>
-            </label>}
-            <button type="submit" style={{...S.btn,background:'#0f172a',color:'white',padding:'10px'}}>+ Crear Usuario</button>
+            </label>
+            <div style={{display:'flex',gap:8}}>
+              <button type="submit" style={{...S.btn,background:'#0f172a',color:'white',padding:'10px',flex:1}}>{editUid?'✓ Guardar cambios':'+ Crear encargada'}</button>
+              {editUid&&<button type="button" onClick={()=>{setFu(eu);setEditUid(null);}} style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'10px'}}>Cancelar</button>}
+            </div>
           </form>
           <div style={{marginTop:18,borderTop:'1px solid #f1f5f9',paddingTop:14}}>
-            <p style={{fontSize:11,fontWeight:700,color:'#64748b',marginBottom:10}}>Usuarios actuales</p>
-            {usuarios.map(u=>(
-              <div key={u.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 0',borderBottom:'1px solid #f8fafc',fontSize:12}}>
-                <div><b>{u.nombre}</b> <span style={{color:'#94a3b8',fontSize:10}}>· {u.usuario} · {u.rol}</span></div>
-                {u.rol!=='superadmin'&&<button onClick={()=>setUsuarios(usuarios.filter(x=>x.id!==u.id))} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer'}}>🗑</button>}
+            <p style={{fontSize:11,fontWeight:700,color:'#64748b',marginBottom:10}}>Encargadas</p>
+            {usuarios.length===0&&<p style={{fontSize:11,color:'#94a3b8'}}>Todavía no hay encargadas.</p>}
+            {usuarios.map(u=>{
+              const suc=sucursales.find(s=>s.id===u.sucursalId);
+              return(
+              <div key={u.id} style={{padding:'8px 0',borderBottom:'1px solid #f8fafc',fontSize:12}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+                  <div><b>{u.nombre}</b> <span style={{color:'#94a3b8',fontSize:10}}>· {u.usuario}{suc?' · '+suc.nombre:''}</span></div>
+                  <div style={{display:'flex',gap:6,flexShrink:0}}>
+                    <button onClick={()=>{setFu({nombre:u.nombre,usuario:u.usuario,clave:u.clave,rol:'encargada',sucursalId:u.sucursalId||''});setEditUid(u.id);window.scrollTo(0,0);}} style={{background:'#f1f5f9',border:'none',borderRadius:8,padding:'4px 10px',cursor:'pointer',fontSize:11,fontWeight:700}}>Editar</button>
+                    <button onClick={()=>setUsuarios(usuarios.filter(x=>x.id!==u.id))} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14}}>🗑</button>
+                  </div>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:6,marginTop:4}}>
+                  <span style={{fontSize:10,color:'#64748b'}}>Contraseña:</span>
+                  <span style={{fontSize:11,fontWeight:700,fontFamily:'monospace'}}>{reveal[u.id]?u.clave:'••••••'}</span>
+                  <button onClick={()=>setReveal(r=>({...r,[u.id]:!r[u.id]}))} style={{background:'none',border:'none',cursor:'pointer',fontSize:13}}>{reveal[u.id]?'🙈':'👁️'}</button>
+                </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
         <div style={S.card}>
