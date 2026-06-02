@@ -459,9 +459,9 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     ];
     window.open('https://wa.me/'+waNum(ev.celPapa)+'?text='+encodeURIComponent(lineas.join('\n')),'_blank');
   }
-  const ef={nombre:'',tipo:'Cumpleaños',edad:'',dia:'',mes:'',anio:String((iaConfig&&iaConfig.anioVigente)||2026),hIni:'',hFin:'',celPapa:'',nomPapa:'',user:'',pass:'',temId:'t-3',doble:false,nombre2:'',edad2:'',temId2:'t-1',nomPapa2:'',celPapa2:''};
+  const ef={nombre:'',tipo:'Cumpleaños',edad:'',edadUnidad:'años',dia:'',mes:'',anio:String((iaConfig&&iaConfig.anioVigente)||2026),hIni:'',hFin:'',celPapa:'',nomPapa:'',user:'',pass:'',temId:'t-3',doble:false,nombre2:'',edad2:'',temId2:'t-1',nomPapa2:'',celPapa2:''};
   const [form,setForm]=useState(ef); const [editId,setEditId]=useState(null); const [open,setOpen]=useState(false);
-  const [fMes,setFMes]=useState(''); const [fDia,setFDia]=useState('');
+  const [fMes,setFMes]=useState(''); const [fDia,setFDia]=useState(''); const [msgOk,setMsgOk]=useState('');
 
   function autoCredenciales(){
     if(!form.nombre) return alert('Ingresá primero el nombre del agasajado.');
@@ -493,15 +493,18 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     if(editId){setEventos(eventos.map(x=>x.id===editId?{...x,...form,...fmt}:x));setEditId(null);}
     else{setEventos(prev=>[...prev,{...form,...fmt,id:'ev-'+Date.now().toString(16),sucId:sucAct.id}]);}
     setForm(ef);setOpen(false);
+    setMsgOk('✅ Se guardó correctamente');setTimeout(()=>setMsgOk(''),3500);
+    window.scrollTo(0,0);
   }
   function copiarLink(id){navigator.clipboard?.writeText(window.location.href.split('?')[0]+'?inv='+id);alert('¡Enlace copiado!');}
 
   return(
     <div className="fade-in" style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      {msgOk&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msgOk}</div>}
       <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:18}}>
-        <div><h1 style={{fontWeight:900,fontSize:22}}>Eventos — {sucAct.nombre}</h1><p style={{fontSize:11,color:'#64748b'}}>{evsLocal.length} cumpleaños</p></div>
-        <button style={{...S.btn,background:'#06b6d4',color:'#0f172a'}} onClick={()=>{setOpen(!open);setEditId(null);setForm(ef);}}>{open?'✕ Cancelar':'+ Cargar Cumpleaños'}</button>
+        <div><h1 style={{fontWeight:900,fontSize:22}}>Eventos — {sucAct.nombre}</h1><p style={{fontSize:11,color:'#64748b'}}>{evsLocal.length} evento(s)</p></div>
+        <button style={{...S.btn,background:'#06b6d4',color:'#0f172a'}} onClick={()=>{setOpen(!open);setEditId(null);setForm(ef);}}>{open?'✕ Cancelar':'+ Cargar Evento'}</button>
       </div>
 
       {/* Filtros */}
@@ -518,12 +521,22 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
       {/* Formulario */}
       {open&&(
         <div className="fade-in" style={{...S.card,border:'2px solid #06b6d4',marginBottom:18}}>
-          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>{editId?'✏️ Editar Evento':'+ Nuevo Cumpleaños'}</h3>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>{editId?'✏️ Editar Evento':'+ Nuevo Evento'}</h3>
           <form onSubmit={sub}>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:14}}>
-              {[['Nombre','nombre','text',''],['Edad','edad','number','']].map(([l,k,t,ph])=>(
-                <label key={k}><span style={S.label}>{l}</span><input type={t} placeholder={ph} value={form[k]} autoComplete="off" onChange={e=>setForm({...form,[k]:e.target.value})} style={S.input} required={['nombre','edad'].includes(k)}/></label>
+              {[['Nombre','nombre','text','']].map(([l,k,t,ph])=>(
+                <label key={k}><span style={S.label}>{l}</span><input type={t} placeholder={ph} value={form[k]} autoComplete="off" onChange={e=>setForm({...form,[k]:e.target.value})} style={S.input} required/></label>
               ))}
+              <label><span style={S.label}>Edad</span>
+                <div style={{display:'flex',gap:4}}>
+                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} required={form.edadUnidad!=='noaplica'} onChange={e=>setForm({...form,edad:e.target.value})} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
+                  <select value={form.edadUnidad||'años'} onChange={e=>setForm({...form,edadUnidad:e.target.value,edad:e.target.value==='noaplica'?'':form.edad})} style={{...S.input,flex:1}}>
+                    <option value="años">años</option>
+                    <option value="meses">meses</option>
+                    <option value="noaplica">no aplica</option>
+                  </select>
+                </div>
+              </label>
               <label><span style={S.label}>Día</span><input type="number" placeholder="" value={form.dia} autoComplete="off" onChange={e=>setForm({...form,dia:e.target.value})} style={S.input} required/></label>
               <label><span style={S.label}>Mes</span>
                 <select value={form.mes} onChange={e=>setForm({...form,mes:e.target.value})} style={{...S.input}} required>
@@ -1651,7 +1664,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     ctx.fillText(nombre,W/2,H/2-60);
     // tipo + edad
     ctx.fillStyle='white';ctx.font='bold 26px Arial';
-    ctx.fillText(fmtTipo(form.tipo,iaConfig).fmtEdad ? ((form.tipo||'Cumpleanos')+' · '+(form.edad||papaSesion.edad)+' anos') : (form.tipo||'Evento'),W/2,H/2);
+    const _u=(papaSesion.edadUnidad||form.edadUnidad||'años');
+    ctx.fillText((fmtTipo(form.tipo,iaConfig).fmtEdad && _u!=='noaplica' && (form.edad||papaSesion.edad)) ? ((form.tipo||'Cumpleanos')+' · '+(form.edad||papaSesion.edad)+' '+(_u==='meses'?'meses':'anos')) : (form.tipo||'Evento'),W/2,H/2);
     // Línea divisora
     ctx.fillStyle='rgba(255,255,255,0.25)';ctx.fillRect(60,H/2+30,W-120,1);
     // Detalles del evento
@@ -2318,6 +2332,8 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
   const fEdad = (ev && ev.fmtEdad!==undefined) ? ev.fmtEdad : true;
   const fTitulo = (ev && ev.fmtTitulo) ? ev.fmtTitulo.replace(/\{nombre\}/g, ev.nombre||'') : 'Quiero invitarte a festejar mi cumple!';
   const fDirigido = (ev && ev.fmtDirigido) || '';
+  const fUnidad = (ev && ev.edadUnidad) || 'años';
+  const fMostrarEdad = fEdad && fUnidad!=='noaplica' && ev && ev.edad!=='' && ev.edad!==undefined && ev.edad!==null;
   const fotos=(suc.fotos||[]).filter(f=>f&&f.length>0);
   const [nom,setNom]=useState('');
   const [ad,setAd]=useState(1);
@@ -2406,8 +2422,13 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
         {fDirigido&&<p style={{color:'#888',fontSize:15,margin:'0 0 4px',fontWeight:700}}>{fDirigido}</p>}
         <p style={{color:'#333',fontSize:18,margin:'0 0 8px'}}>{fTitulo}</p>
 
-        {/* 5. EDAD (solo si el formato lo indica) */}
-        {fEdad&&<p style={{color:col,fontSize:72,fontWeight:900,margin:'0 0 8px',lineHeight:1}}>{ev?ev.edad:''}</p>}
+        {/* 5. EDAD (según formato y unidad: años/meses/no aplica) */}
+        {fMostrarEdad&&(
+          <div style={{margin:'0 0 8px'}}>
+            <p style={{color:col,fontSize:72,fontWeight:900,margin:0,lineHeight:1}}>{ev.edad}</p>
+            <p style={{color:col,fontSize:15,fontWeight:800,margin:0,textTransform:'uppercase',letterSpacing:1}}>{fUnidad==='meses'?'meses':'años'}</p>
+          </div>
+        )}
 
         {/* 6. FECHA */}
         <p style={{color:'#555',fontSize:17,margin:'0 0 2px'}}>Te espero el dia</p>
