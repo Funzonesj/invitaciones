@@ -1,0 +1,2451 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Fun Zone & Play Point</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#f7f9fc;color:#1e293b}
+input,select,textarea,button{font-family:inherit;outline:none}
+.scrollbar-none::-webkit-scrollbar{display:none}
+.scrollbar-none{-ms-overflow-style:none;scrollbar-width:none}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn .25s ease}
+@keyframes bounce{0%,100%{transform:translateY(-6px)}50%{transform:none}}
+.bounce{animation:bounce .9s infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pulse{from{transform:scale(1);opacity:1}to{transform:scale(1.12);opacity:.85}}
+.spin{animation:spin 1.5s linear infinite}
+/* ── Responsive ── */
+@media(max-width:640px){
+  .hide-mobile{display:none!important}
+  .show-mobile{display:flex!important}
+  .grid-auto-2{grid-template-columns:1fr!important}
+  .admin-tematicas-grid{grid-template-columns:1fr!important}
+}
+@media(min-width:641px){
+  .show-mobile{display:none!important}
+}
+@media(max-width:700px){
+  .papa-grid{grid-template-columns:minmax(0,1fr)!important}
+  .papa-grid>*{min-width:0!important}
+  .admin-tematicas-grid{grid-template-columns:1fr!important}
+}
+.hamburger-menu{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:200;display:flex;flex-direction:column}
+.hamburger-panel{background:#0f172a;padding:20px 16px;display:flex;flex-direction:column;gap:4;min-width:260px;max-width:320px;height:100%;overflow-y:auto;border-right:1px solid #334155}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useRef, useEffect } = React;
+
+/* ── HELPERS ─────────────────────────────────────────────── */
+function genUser(nombre) {
+  const base = nombre.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').slice(0,8);
+  const nums = Math.floor(100+Math.random()*900);
+  return base + nums;
+}
+function genPass() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
+  let p='';for(let i=0;i<10;i++) p+=chars[Math.floor(Math.random()*chars.length)];
+  return p;
+}
+// Normaliza un celular argentino al formato internacional que necesita WhatsApp (54 9 + area + numero)
+function waNum(n){
+  let d=(n||'').toString().replace(/\D/g,'');     // dejar solo dígitos
+  if(!d) return '';
+  if(d.startsWith('549')) return d;                // ya está completo
+  if(d.startsWith('54'))  return '549'+d.slice(2); // tiene país pero falta el 9 de celular
+  if(d.startsWith('0'))   d=d.slice(1);            // sacar 0 inicial (ej: 0264...)
+  return '549'+d;                                  // agregar código país Argentina + 9 móvil
+}
+
+/* ── DATOS INICIALES ─────────────────────────────────────── */
+const SUCURSALES0 = [
+  {id:'sz-1',nombre:'Fun Zone',emoji:'🎪',color:'#f97316',tel:'2646135515',web:'',direccion:'Av San Martin 1515, Ramos Mejia, Bs As',logo:'',portadaFrase:'Recibiste una Invitacion Digital',fotos:['','','','']},
+  {id:'sz-2',nombre:'Play Point',emoji:'🎯',color:'#7c3aed',tel:'2646135515',web:'',direccion:'Av. Rivadavia 14200, Ramos Mejia, Bs As',logo:'',portadaFrase:'Recibiste una Invitacion Digital',fotos:['','','','']},
+];
+const USUARIOS0 = [
+  {id:'ua-0',usuario:'admin',      clave:'admin123', rol:'superadmin', sucursalId:null,  nombre:'Administrador'},
+  {id:'ua-1',usuario:'encargada1', clave:'1234',     rol:'encargada',  sucursalId:'sz-1',nombre:'Encargada Fun Zone'},
+  {id:'ua-2',usuario:'encargada2', clave:'1234',     rol:'encargada',  sucursalId:'sz-2',nombre:'Encargada Play Point'},
+];
+const TEMATICAS0 = [
+  {id:'t-1',nombre:'Lionel Messi',      cats:['TODOS','DEPORTES','NENES'],            img:'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=400&fit=crop',emoji:'⚽'},
+  {id:'t-2',nombre:'Princesa Rosalina', cats:['TODOS','PRINCESAS','NENAS'],            img:'https://images.unsplash.com/photo-1566577134770-3d85bb3a9cc4?w=400&fit=crop',emoji:'⭐'},
+  {id:'t-3',nombre:'Unicornio Glitter', cats:['TODOS','INFANTILES','NENAS','FANTASÍA'],img:'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=400&fit=crop',emoji:'🦄'},
+  {id:'t-4',nombre:'Super Mario Bros',  cats:['TODOS','VIDEOJUEGOS','NENES'],          img:'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=400&fit=crop',emoji:'🍄'},
+  {id:'t-5',nombre:'Dragón Caballeros', cats:['TODOS','ANIME','NENES'],                img:'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&fit=crop',emoji:'🐉'},
+  {id:'t-6',nombre:'Patos La Película', cats:['TODOS','CARTELERA','INFANTILES'],       img:'https://images.unsplash.com/photo-1555685812-4b943f1cb0eb?w=400&fit=crop',emoji:'🦆'},
+];
+const EVENTOS0 = [
+  {id:'ev-1',sucId:'sz-1',user:'alison2026',pass:'alison123',nombre:'Alison', tipo:'Cumpleaños',edad:'5',dia:'31',mes:'05',anio:'2026',hIni:'17:00',hFin:'22:00',celPapa:'2646135515',nomPapa:'Lorena Sánchez',temId:'t-3'},
+  {id:'ev-2',sucId:'sz-2',user:'kiara2026', pass:'kiara123', nombre:'Kiara',  tipo:'Cumpleaños',edad:'6',dia:'31',mes:'05',anio:'2026',hIni:'17:00',hFin:'22:00',celPapa:'2646135515',nomPapa:'Mariana Gómez', temId:'t-2'},
+];
+const CONFS0 = [
+  {id:'c-1',evId:'ev-1',invitado:'Benjamín Gómez',    adultos:1,ninos:1,cel:'1123456781'},
+  {id:'c-2',evId:'ev-1',invitado:'Martina Rodríguez', adultos:2,ninos:1,cel:'1123456782'},
+  {id:'c-3',evId:'ev-1',invitado:'Mateo Fernández',   adultos:1,ninos:2,cel:'1123456783'},
+];
+const CATS = ['TODOS','ANIME','CARTELERA','SERIES','INFANTILES','NENES','NENAS','PRINCESAS','VIDEOJUEGOS','SUPERHEROES','DEPORTES','FANTASÍA'];
+const MESES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function fechaLarga(dia,mes,anio){
+  if(!dia||!mes||!anio) return '';
+  return new Date(+anio,+mes-1,+dia).toLocaleDateString('es-AR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+
+/* ── ESTILOS COMUNES ─────────────────────────────────────── */
+const S = {
+  card:  {background:'#fff',borderRadius:18,border:'1px solid #e2e8f0',padding:'18px'},
+  btn:   {padding:'10px 20px',fontWeight:700,border:'none',borderRadius:12,cursor:'pointer',fontSize:13},
+  input: {padding:'10px 12px',border:'1px solid #e2e8f0',borderRadius:10,fontSize:13,width:'100%',background:'#f8fafc'},
+  label: {fontSize:11,fontWeight:700,color:'#64748b',display:'block',marginBottom:4},
+  back:  {background:'none',border:'none',color:'#06b6d4',fontWeight:700,fontSize:12,cursor:'pointer',marginBottom:12},
+};
+
+/* ══════════════════════════════════════════════════════════
+   APP PRINCIPAL
+══════════════════════════════════════════════════════════ */
+// Detect invitation URL param before React renders
+const _SEARCH = window.location.search || window.location.hash.replace('#','?');
+const _INV_PARAM = new URLSearchParams(_SEARCH).get('inv');
+// If param looks like base64 (contains letters+numbers, not just ev-X), decode event data
+let _INV_EV_DATA = null;
+if(_INV_PARAM && !_INV_PARAM.match(/^ev-/)){
+  try{_INV_EV_DATA = JSON.parse(atob(_INV_PARAM));}catch(e){}
+}
+const _PAPA_PARAM = new URLSearchParams(_SEARCH).get('papa');
+let _PAPA_DATA = null;
+if(_PAPA_PARAM){try{_PAPA_DATA=JSON.parse(atob(_PAPA_PARAM));}catch(e){}}
+const INIT_INV_ID = _INV_PARAM || 'ev-1';
+const INIT_VISTA = _INV_PARAM ? 'invitado-portada' : (_PAPA_DATA ? 'papa-creador' : (_PAPA_PARAM ? 'papa-login' : 'admin-login'));
+
+function App() {
+  function loadLS(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch(e){return def;}}
+  const [sucursales,  setSucursales]  = useState(()=>loadLS('fz_sucursales',SUCURSALES0));
+  const [usuarios,    setUsuarios]    = useState(USUARIOS0);
+  const [tematicas,   setTematicas]   = useState(TEMATICAS0);
+  const [eventos,     setEventos]     = useState(()=>{
+    const base=loadLS('fz_eventos',EVENTOS0);
+    let result=[...base];
+    if(_INV_EV_DATA){const exists=result.find(e=>e.id===_INV_EV_DATA.id);if(!exists)result=[_INV_EV_DATA,...result];}
+    if(_PAPA_DATA){const exists=result.find(e=>e.id===_PAPA_DATA.id);if(!exists)result=[_PAPA_DATA,...result];}
+    return result;
+  });
+  const [confs,       setConfs]       = useState(()=>loadLS('fz_confs',CONFS0));
+
+  // Configuración IA & Precios (gestionada por el admin)
+  const [iaConfig, setIaConfig] = useState(()=>{ const _iaDef={
+    anioVigente:  2026,
+    promptImagen: 'Una fotografía de {nombre}, {edad} años, celebrando su cumpleaños con temática {tematica}. Fondo festivo con globos, colores vibrantes, estilo fotógrafo profesional de eventos infantiles. Alta resolución, formato vertical 9:16.',
+    promptVideo:  'Video corto de 5 segundos con el personaje {tematica} saludando y diciendo ¡Feliz cumpleaños {nombre}! Estilo animación infantil, colorido y alegre.',
+    precioImagen: 1500,
+    precioVideo:  3500,
+    apiImagen:    '',
+    apiVideo:     '',
+    promptMejora: 'Mejorá la foto del niño/a: balance de color, brillo, contraste y nitidez para que se vea profesional en la invitación.',
+    apiMejora:    '',
+    siteUrl:      '',
+    mpLink:       'https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=DEMO',
+    mpPublicKey:  'TEST-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+    menuPrompt:   '',
+    faqItems:     [],
+    descargablesLinks: [],
+    adicionales:  [],
+    menuConfig: {
+      prompt: 'Basándome en mi experiencia con fiestas infantiles, calculá las cantidades considerando estación, horas de fiesta y tipo de menú. Niños consumen más dulce que salado, adultos al revés. En verano aumentar bebidas 30%.',
+      horas: [3,4,5,6],
+      ninos:   [{id:'mn-1',nombre:'Pancho',emoji:'🌭'},{id:'mn-2',nombre:'Pizzeta',emoji:'🍕'},{id:'mn-3',nombre:'Mini sandwich',emoji:'🥪'},{id:'mn-4',nombre:'Nuggets',emoji:'🍗'}],
+      adultos: [{id:'ma-1',nombre:'Pizza',emoji:'🍕'},{id:'ma-2',nombre:'Empanada',emoji:'🥟'},{id:'ma-3',nombre:'Sandwichón',emoji:'🥖'},{id:'ma-4',nombre:'Tarta',emoji:'🥧'}],
+      snacks:  [{id:'ms-1',nombre:'Papas fritas',emoji:'🍟'},{id:'ms-2',nombre:'Palitos',emoji:'🥨'},{id:'ms-3',nombre:'Maní',emoji:'🥜'},{id:'ms-4',nombre:'Chizitos',emoji:'🍿'}],
+      postres: [{id:'mp-1',nombre:'Torta',emoji:'🎂'},{id:'mp-2',nombre:'Mesa dulce',emoji:'🍰'},{id:'mp-3',nombre:'Alfajores',emoji:'🧁'}],
+      bebidas: [{id:'mb-1',nombre:'Gaseosa',emoji:'🥤'},{id:'mb-2',nombre:'Agua',emoji:'💧'},{id:'mb-3',nombre:'Jugo',emoji:'🧃'},{id:'mb-4',nombre:'Bebida adultos',emoji:'🍷'}],
+    },
+  }; const _iaSaved=loadLS('fz_iaconfig',null); return _iaSaved?{..._iaDef,..._iaSaved}:_iaDef; });
+
+  const [adminSesion, setAdminSesion] = useState(null);
+  const [sucActId,    setSucActId]    = useState('sz-1');
+  const [papaSesion,  setPapaSesion]  = useState(_PAPA_DATA || null);
+
+  const [invEvId,     setInvEvId]     = useState(INIT_INV_ID);
+  const [vista,       setVista]       = useState(INIT_VISTA);
+  const [menuOpen,    setMenuOpen]    = useState(false);
+
+  // Detect ?inv= param after mount as reliable fallback
+  React.useEffect(()=>{
+    const inv=new URLSearchParams(window.location.search).get('inv');
+    if(inv){setInvEvId(inv);setVista('invitado-portada');}
+  },[]);
+  // Auto-save to localStorage
+  React.useEffect(()=>{try{localStorage.setItem('fz_eventos',JSON.stringify(eventos));}catch(e){};},[eventos]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_confs',JSON.stringify(confs));}catch(e){};},[confs]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){};},[sucursales]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){};},[iaConfig]);
+
+  const sucAct   = sucursales.find(s=>s.id===sucActId)||sucursales[0];
+  const esSA     = adminSesion?.rol==='superadmin';
+  const evsLocal = eventos.filter(e=>e.sucId===sucActId);
+
+  function loginAdmin(u,p){
+    const usr=usuarios.find(x=>x.usuario.toLowerCase()===u.toLowerCase()&&x.clave===p);
+    if(!usr) return 'Usuario o contraseña incorrectos.';
+    setAdminSesion(usr);
+    if(usr.rol==='encargada') setSucActId(usr.sucursalId);
+    setVista('admin-dashboard');
+    return null;
+  }
+  function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
+
+  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-ia','admin-config'].includes(vista);
+  const isPapa  = ['papa-login','papa-creador'].includes(vista);
+
+  return (
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:'#f7f9fc'}}>
+
+      {/* HEADER */}
+      {vista!=='invitado-portada'&&vista!=='invitado-web'&&(
+        <header style={{background:'#0f172a',color:'white',padding:'10px 16px',position:'sticky',top:0,zIndex:100,borderBottom:'1px solid #312e81'}}>
+          <div style={{maxWidth:900,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+            {/* Logo */}
+            <div style={{display:'flex',alignItems:'center',gap:10,flex:1}}>
+              <div style={{background:'#7c3aed',borderRadius:10,padding:'5px 8px',fontSize:20}}>🎈</div>
+              <div>
+                <div style={{fontWeight:900,fontSize:13,lineHeight:1.1}}>FUN ZONE & PLAY POINT <span style={{background:'#f97316',color:'white',fontSize:9,padding:'2px 6px',borderRadius:99,fontWeight:900,marginLeft:4}}>PRO</span></div>
+                <div style={{fontSize:9,color:'#94a3b8',marginTop:1}}>Invitaciones Digitales</div>
+              </div>
+            </div>
+            {/* Desktop nav */}
+            <div className="hide-mobile" style={{display:'flex',gap:4,background:'#1e293b',padding:4,borderRadius:14,border:'1px solid #334155'}}>
+              {adminSesion&&<button onClick={()=>setVista('admin-dashboard')} style={{padding:'5px 12px',borderRadius:10,fontSize:11,fontWeight:900,border:'none',cursor:'pointer',background:isAdmin?'#06b6d4':'transparent',color:isAdmin?'#0f172a':'#94a3b8'}}>💼 Admin</button>}
+              <button onClick={()=>papaSesion?setVista('papa-creador'):setVista('papa-login')} style={{padding:'5px 12px',borderRadius:10,fontSize:11,fontWeight:900,border:'none',cursor:'pointer',background:isPapa?'#f97316':'transparent',color:isPapa?'white':'#94a3b8'}}>👪 Papás</button>
+              <button onClick={()=>{const inv=new URLSearchParams(window.location.search).get('inv');if(inv)setInvEvId(inv);setVista('invitado-portada');}} style={{padding:'5px 12px',borderRadius:10,fontSize:11,fontWeight:900,border:'none',cursor:'pointer',background:vista==='invitado-portada'||vista==='invitado-web'?'#7c3aed':'transparent',color:vista==='invitado-portada'||vista==='invitado-web'?'white':'#94a3b8'}}>🎁 Invitado</button>
+            </div>
+            {/* Desktop sucursal & logout */}
+            <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:8}}>
+              {adminSesion&&esSA&&(
+                <select value={sucActId} onChange={e=>setSucActId(e.target.value)} style={{background:'#1e293b',color:'white',border:'1px solid #334155',borderRadius:8,padding:'4px 8px',fontSize:11,fontWeight:700}}>
+                  {sucursales.map(s=><option key={s.id} value={s.id}>{s.emoji} {s.nombre}</option>)}
+                </select>
+              )}
+              {adminSesion&&!esSA&&<span style={{background:'#1e293b',color:'#94a3b8',border:'1px solid #334155',borderRadius:8,padding:'4px 8px',fontSize:11,fontWeight:700}}>{sucAct.emoji} {sucAct.nombre}</span>}
+              {adminSesion&&<button onClick={logoutAdmin} title="Salir" style={{background:'#1e293b',border:'1px solid #334155',color:'#f87171',borderRadius:8,padding:'4px 8px',cursor:'pointer',fontSize:13}}>⏻</button>}
+            </div>
+            {/* Hamburger button (mobile only) */}
+            <button className="show-mobile" onClick={()=>setMenuOpen(true)} style={{background:'#1e293b',border:'1px solid #334155',color:'white',borderRadius:10,padding:'6px 10px',cursor:'pointer',fontSize:18,lineHeight:1}}>☰</button>
+          </div>
+        </header>
+      )}
+      {/* HAMBURGER MENU OVERLAY */}
+      {menuOpen&&(
+        <div className="hamburger-menu" onClick={e=>{if(e.target===e.currentTarget)setMenuOpen(false)}}>
+          <div className="hamburger-panel">
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20,paddingBottom:14,borderBottom:'1px solid #334155'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                <span style={{fontSize:24}}>🎈</span>
+                <span style={{fontWeight:900,fontSize:14,color:'white'}}>Fun Zone</span>
+              </div>
+              <button onClick={()=>setMenuOpen(false)} style={{background:'none',border:'none',color:'#94a3b8',fontSize:20,cursor:'pointer'}}>✕</button>
+            </div>
+            {adminSesion&&(
+              <button onClick={()=>{setVista('admin-dashboard');setMenuOpen(false);}} style={{width:'100%',textAlign:'left',padding:'12px 14px',background:isAdmin?'#1e3a5f':'transparent',border:'none',color:isAdmin?'#06b6d4':'#94a3b8',borderRadius:10,cursor:'pointer',fontSize:14,fontWeight:isAdmin?900:400,marginBottom:2}}>💼 Panel Admin</button>
+            )}
+            <button onClick={()=>{papaSesion?setVista('papa-creador'):setVista('papa-login');setMenuOpen(false);}} style={{width:'100%',textAlign:'left',padding:'12px 14px',background:isPapa?'#7c2d12':'transparent',border:'none',color:isPapa?'#f97316':'#94a3b8',borderRadius:10,cursor:'pointer',fontSize:14,fontWeight:isPapa?900:400,marginBottom:2}}>👪 Acceso Papás</button>
+            <button onClick={()=>{setVista('invitado-portada');setMenuOpen(false);}} style={{width:'100%',textAlign:'left',padding:'12px 14px',background:(vista==='invitado-portada'||vista==='invitado-web')?'#3b1f7c':'transparent',border:'none',color:(vista==='invitado-portada'||vista==='invitado-web')?'#a78bfa':'#94a3b8',borderRadius:10,cursor:'pointer',fontSize:14,fontWeight:900,marginBottom:2}}>🎁 Ver Invitación</button>
+            {adminSesion&&esSA&&(
+              <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #334155'}}>
+                <div style={{fontSize:10,color:'#64748b',fontWeight:700,marginBottom:8,paddingLeft:4}}>SUCURSAL</div>
+                {sucursales.map(s=>(
+                  <button key={s.id} onClick={()=>{setSucActId(s.id);setMenuOpen(false);}} style={{width:'100%',textAlign:'left',padding:'10px 14px',background:sucActId===s.id?'#1e293b':'transparent',border:'none',color:sucActId===s.id?'white':'#64748b',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:sucActId===s.id?900:400,marginBottom:2}}>{s.emoji} {s.nombre}</button>
+                ))}
+              </div>
+            )}
+            {adminSesion&&(
+              <div style={{marginTop:'auto',paddingTop:20}}>
+                <button onClick={()=>{logoutAdmin();setMenuOpen(false);}} style={{width:'100%',padding:'11px',background:'#1e293b',border:'1px solid #334155',color:'#f87171',borderRadius:10,cursor:'pointer',fontSize:13,fontWeight:700}}>⏻ Cerrar sesión</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <main style={{flex:1}}>
+        {vista==='admin-login'       && <AdminLogin     onLogin={loginAdmin}/>}
+        {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} tematicas={tematicas}/>}
+        {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig}/>}
+        {vista==='admin-tematicas'   && <AdminTematicas setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
+        {vista==='admin-excel'       && <AdminExcel     setVista={setVista} sucActId={sucActId} eventos={eventos} setEventos={setEventos}/>}
+        {vista==='admin-asistencias' && <AdminAsistencias setVista={setVista} evsLocal={evsLocal} confs={confs}/>}
+        {vista==='admin-remarketing' && <AdminRemarketing setVista={setVista} evsLocal={evsLocal} sucAct={sucAct}/>}
+        {vista==='admin-usuarios'    && <AdminUsuarios  setVista={setVista} usuarios={usuarios} setUsuarios={setUsuarios} sucursales={sucursales} setSucursales={setSucursales}/>}
+        {vista==='admin-ia'          && <AdminIA setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-config'      && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-menu'        && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId}/>}
+        {vista==='papa-creador'      && papaSesion&&<PapaCreador setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs}/>}
+        {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas}/>}
+        {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs}/>}
+      </main>
+
+      {vista!=='invitado-portada'&&vista!=='invitado-web'&&(
+        <footer style={{background:'#0f172a',color:'#475569',textAlign:'center',padding:'10px',fontSize:11,borderTop:'1px solid #1e293b'}}>
+          © 2026 Fun Zone & Play Point · Sistema de Invitaciones Digitales
+        </footer>
+      )}
+    </div>
+  );
+}
+
+/* ── ADMIN LOGIN ─────────────────────────────────────────── */
+function AdminLogin({onLogin}){
+  const [u,setU]=useState(''); const [p,setP]=useState(''); const [err,setErr]=useState(''); const [showP,setShowP]=useState(false);
+  function sub(e){e.preventDefault();const r=onLogin(u,p);if(r)setErr(r);}
+  return(
+    <div style={{display:'flex',justifyContent:'center',alignItems:'center',minHeight:'80vh',padding:16}}>
+      <div className="fade-in" style={{...S.card,maxWidth:360,width:'100%',padding:32,boxShadow:'0 8px 32px rgba(0,0,0,0.10)'}}>
+        <div style={{textAlign:'center',marginBottom:24}}><div style={{fontSize:48}}>🔐</div>
+          <h2 style={{fontWeight:900,fontSize:22,marginTop:8}}>Panel Administrativo</h2>
+          <p style={{color:'#64748b',fontSize:12,marginTop:4}}>Ingreso seguro</p>
+        </div>
+        {err&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#dc2626',padding:'10px 14px',borderRadius:12,fontSize:12,marginBottom:14}}>{err}</div>}
+        <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
+          <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Usuario" autoComplete="username" required/>
+          <div style={{position:'relative'}}>
+            <input style={{...S.input,paddingRight:44}} type={showP?'text':'password'} value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="Contraseña" autoComplete="current-password" required/>
+            <button type="button" onClick={()=>setShowP(!showP)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:18,color:'#94a3b8'}}>
+              {showP?'🙈':'👁️'}
+            </button>
+          </div>
+          <button style={{...S.btn,background:'linear-gradient(135deg,#06b6d4,#7c3aed)',color:'white',padding:'13px',fontSize:14}}>Ingresar al Sistema</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN DASHBOARD ─────────────────────────────────────── */
+function AdminDashboard({setVista,sucAct,evsLocal,tematicas}){
+  const items=[
+    {e:'📅',t:'Eventos Contratados', s:`${evsLocal.length} activos`,   v:'admin-eventos',    bdr:'#06b6d4',badge:'ENTRAR'},
+    {e:'📊',t:'Carga Excel Semanal', s:'Autocompletar agenda',          v:'admin-excel',      bdr:'#10b981'},
+    {e:'🖼️',t:'Portadas/Temáticas',  s:`${tematicas.length} portadas`, v:'admin-tematicas',  bdr:'#7c3aed'},
+    {e:'👥',t:'Ver Asistencias',      s:'Checklist de invitados',       v:'admin-asistencias',bdr:'#f43f5e'},
+    {e:'📣',t:'Remarketing',          s:'Envíos masivos',               v:'admin-remarketing',bdr:'#f97316'},
+    {e:'⚙️',t:'Usuarios & Sucursales',s:'Cuentas y salones',           v:'admin-usuarios',   bdr:'#94a3b8'},
+    {e:'🍽️',t:'Menú Interactivo',      s:'Prompt y comidas',            v:'admin-menu',       bdr:'#f59e0b'},
+    {e:'🤖',t:'IA & Precios',          s:'Prompts y API keys',          v:'admin-ia',         bdr:'#8b5cf6'},
+    {e:'🛠️',t:'Configuración',         s:'Año vigente y sitio',          v:'admin-config',     bdr:'#0ea5e9'},
+  ];
+  return(
+    <div className="fade-in" style={{maxWidth:700,margin:'0 auto',padding:'24px 16px'}}>
+      <div style={{...S.card,display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,padding:20}}>
+        <div style={{display:'flex',alignItems:'center',gap:14}}>
+          <div style={{width:54,height:54,borderRadius:16,background:`linear-gradient(135deg,${sucAct.color},#7c3aed)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>{sucAct.emoji}</div>
+          <div><div style={{fontWeight:900,fontSize:20}}>{sucAct.nombre}</div><div style={{fontSize:11,color:'#64748b'}}>Panel de Control</div></div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{width:8,height:8,background:'#22c55e',borderRadius:'50%',display:'inline-block'}}></span><span style={{fontSize:11,fontWeight:700,color:'#64748b'}}>Activo</span></div>
+      </div>
+      <p style={{fontWeight:900,color:'#1e293b',marginBottom:14,fontSize:13,textTransform:'uppercase',letterSpacing:1}}>Servicios Disponibles</p>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(175px,1fr))',gap:12}}>
+        {items.map(c=>(
+          <div key={c.v} onClick={()=>setVista(c.v)} style={{...S.card,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',gap:8,padding:20,border:`2px solid ${c.bdr}22`,position:'relative',transition:'transform .15s'}}
+            onMouseEnter={e=>e.currentTarget.style.transform='translateY(-2px)'}
+            onMouseLeave={e=>e.currentTarget.style.transform=''}>
+            {c.badge&&<span style={{position:'absolute',top:10,right:10,background:c.bdr,color:'white',fontSize:9,padding:'2px 7px',borderRadius:99,fontWeight:900}}>{c.badge}</span>}
+            <span style={{fontSize:28}}>{c.e}</span>
+            <span style={{fontWeight:800,fontSize:13,color:'#1e293b'}}>{c.t}</span>
+            <span style={{fontSize:10,color:'#94a3b8'}}>{c.s}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN EVENTOS ───────────────────────────────────────── */
+function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,setInvEvId,confs,iaConfig}){
+  function enviarCredsWA(ev){
+    const salon=sucAct.nombre;
+    const base=window.location.href.split('?')[0];
+    const papaData=btoa(JSON.stringify({id:ev.id,sucId:ev.sucId,nombre:ev.nombre,tipo:ev.tipo||'Cumpleanos',edad:ev.edad,dia:ev.dia,mes:ev.mes,anio:ev.anio,hIni:ev.hIni,hFin:ev.hFin,celPapa:ev.celPapa,nomPapa:ev.nomPapa,temId:ev.temId,user:ev.user,pass:ev.pass}));
+    const loginLink=base+'?papa='+papaData;
+    const lineas=[
+      'Hola '+ev.nomPapa+'!',
+      '',
+      'Te enviamos el acceso a las *Invitaciones Digitales* de *'+salon+'*',
+      'para el '+(ev.tipo||'Cumpleanos')+' de *'+ev.nombre+'*.',
+      '',
+      '*Ingresa con tu link personal:*',
+      loginLink,
+      '',
+      '(Si el link no abre directo, ingresa manualmente:)',
+      '*Usuario:* '+ev.user,
+      '*Contrasena:* '+ev.pass,
+      '',
+      '_El acceso vence al dia siguiente del evento._',
+      '- '+salon,
+    ];
+    window.open('https://wa.me/'+waNum(ev.celPapa)+'?text='+encodeURIComponent(lineas.join('\n')),'_blank');
+  }
+  const ef={nombre:'',tipo:'Cumpleaños',edad:'',dia:'',mes:'',anio:String((iaConfig&&iaConfig.anioVigente)||2026),hIni:'',hFin:'',celPapa:'',nomPapa:'',user:'',pass:'',temId:'t-3',doble:false,nombre2:'',edad2:'',temId2:'t-1',nomPapa2:'',celPapa2:''};
+  const [form,setForm]=useState(ef); const [editId,setEditId]=useState(null); const [open,setOpen]=useState(false);
+  const [fMes,setFMes]=useState(''); const [fDia,setFDia]=useState('');
+
+  function autoCredenciales(){
+    if(!form.nombre) return alert('Ingresá primero el nombre del agasajado.');
+    setForm(f=>({...f, user: genUser(f.nombre), pass: genPass()}));
+  }
+  const listFiltrada=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fDia||e.dia===fDia));
+
+  const [alertaSup,setAlertaSup]=useState(null); // {ev, accion}
+  function sub(e){
+    e.preventDefault();
+    // Detectar superposición de horarios en la misma sucursal y día
+    const conflicto=eventos.find(x=>
+      x.sucId===sucAct.id &&
+      x.id!==editId &&
+      x.dia===form.dia && x.mes===form.mes && x.anio===form.anio &&
+      !(form.hFin<=x.hIni || form.hIni>=x.hFin)
+    );
+    if(conflicto){
+      setAlertaSup({ev:conflicto,accion:()=>{
+        guardarEvento();
+        setAlertaSup(null);
+      }});
+      return;
+    }
+    guardarEvento();
+  }
+  function guardarEvento(){
+    if(editId){setEventos(eventos.map(x=>x.id===editId?{...x,...form}:x));setEditId(null);}
+    else{setEventos(prev=>[...prev,{...form,id:'ev-'+Date.now().toString(16),sucId:sucAct.id}]);}
+    setForm(ef);setOpen(false);
+  }
+  function copiarLink(id){navigator.clipboard?.writeText(window.location.href+'?inv='+id);alert('¡Enlace copiado!');}
+
+  return(
+    <div className="fade-in" style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:18}}>
+        <div><h1 style={{fontWeight:900,fontSize:22}}>Eventos — {sucAct.nombre}</h1><p style={{fontSize:11,color:'#64748b'}}>{evsLocal.length} cumpleaños</p></div>
+        <button style={{...S.btn,background:'#06b6d4',color:'#0f172a'}} onClick={()=>{setOpen(!open);setEditId(null);setForm(ef);}}>{open?'✕ Cancelar':'+ Cargar Cumpleaños'}</button>
+      </div>
+
+      {/* Filtros */}
+      <div style={{...S.card,display:'flex',gap:12,flexWrap:'wrap',alignItems:'center',marginBottom:14,padding:'10px 16px'}}>
+        <span style={{fontSize:11,fontWeight:700,color:'#64748b'}}>🔍 Filtrar:</span>
+        <select value={fMes} onChange={e=>setFMes(e.target.value)} style={{padding:'6px 10px',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12,fontWeight:700}}>
+          <option value=''>— Todos los meses —</option>
+          {MESES.slice(1).map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
+        </select>
+        <input placeholder="Día" value={fDia} onChange={e=>setFDia(e.target.value)} style={{...S.input,width:90,padding:'6px 10px'}}/>
+        <span style={{fontSize:11,color:'#94a3b8'}}>{listFiltrada.length} resultado(s)</span>
+      </div>
+
+      {/* Formulario */}
+      {open&&(
+        <div className="fade-in" style={{...S.card,border:'2px solid #06b6d4',marginBottom:18}}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>{editId?'✏️ Editar Evento':'+ Nuevo Cumpleaños'}</h3>
+          <form onSubmit={sub}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:14}}>
+              {[['Nombre','nombre','text','Alison'],['Edad','edad','number','5']].map(([l,k,t,ph])=>(
+                <label key={k}><span style={S.label}>{l}</span><input type={t} placeholder={ph} value={form[k]} autoComplete="off" onChange={e=>setForm({...form,[k]:e.target.value})} style={S.input} required={['nombre'].includes(k)}/></label>
+              ))}
+              <label><span style={S.label}>Día</span><input type="number" placeholder="31" value={form.dia} autoComplete="off" onChange={e=>setForm({...form,dia:e.target.value})} style={S.input} required/></label>
+              <label><span style={S.label}>Mes</span>
+                <select value={form.mes} onChange={e=>setForm({...form,mes:e.target.value})} style={{...S.input}} required>
+                  <option value="">Mes</option>
+                  {MESES.slice(1).map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
+                </select>
+              </label>
+              <label><span style={S.label}>Año</span><input type="number" placeholder="2026" value={form.anio} autoComplete="off" onChange={e=>setForm({...form,anio:e.target.value})} style={S.input} required/></label>
+              {[['Hora Inicio','hIni','text','17:00'],['Hora Fin','hFin','text','22:00'],['Celular papá','celPapa','text','2646135515'],['Nombre padre/madre','nomPapa','text',''],['Usuario papás','user','text','']].map(([l,k,t,ph])=>(
+                <label key={k}><span style={S.label}>{l}</span><input type={t} placeholder={ph} value={form[k]} autoComplete="off" onChange={e=>setForm({...form,[k]:e.target.value})} style={S.input} required={['user'].includes(k)}/></label>
+              ))}
+              <label><span style={S.label}>Clave papás</span>
+                <div style={{display:'flex',gap:4}}>
+                  <input type="text" value={form.pass} autoComplete="new-password" onChange={e=>setForm({...form,pass:e.target.value})} style={{...S.input,flex:1}} required placeholder="Ej: alison123"/>
+                  <button type="button" onClick={()=>{const r=Math.random().toString(36).slice(2,8);setForm({...form,pass:r});}} style={{...S.btn,background:'#7c3aed',color:'white',padding:'0 10px',fontSize:11,whiteSpace:'nowrap'}}>Auto</button>
+                </div>
+              </label>
+              <label><span style={S.label}>Tipo</span>
+                <select value={form.tipo} onChange={e=>setForm({...form,tipo:e.target.value})} style={{...S.input}}>
+                  <option>Cumpleaños</option><option>Comunión</option><option>Bautismo</option>
+                </select>
+              </label>
+              <label><span style={S.label}>Temática inicial</span>
+                <select value={form.temId} onChange={e=>setForm({...form,temId:e.target.value})} style={{...S.input}}>
+                  {tematicas.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.nombre}</option>)}
+                </select>
+              </label>
+            </div>
+            {/* Credenciales con auto-generador */}
+            <div style={{background:'#f0fdf4',borderRadius:12,padding:12,border:'1px solid #bbf7d0',marginBottom:10}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <span style={{fontSize:11,fontWeight:700,color:'#166534'}}>🔐 Credenciales del Papá</span>
+                <button type="button" onClick={autoCredenciales} style={{...S.btn,background:'#16a34a',color:'white',padding:'5px 12px',fontSize:11}}>✨ Auto-generar seguras</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                <label><span style={S.label}>Usuario</span><input value={form.user} onChange={e=>setForm({...form,user:e.target.value})} style={S.input} placeholder="Se genera automático" required/></label>
+                <label><span style={S.label}>Contraseña</span><input value={form.pass} onChange={e=>setForm({...form,pass:e.target.value})} style={S.input} placeholder="Se genera automático" required/></label>
+              </div>
+              {form.user&&form.pass&&<p style={{fontSize:10,color:'#15803d',marginTop:6,fontWeight:600}}>✓ Credenciales listas — vencen al día siguiente del cumpleaños</p>}
+            </div>
+            {/* ── Cumpleaños Doble ── */}
+            <label style={{display:'flex',alignItems:'center',gap:10,background:'#fefce8',border:'1px solid #fde68a',borderRadius:12,padding:'10px 14px',marginBottom:12,cursor:'pointer'}}>
+              <input type="checkbox" checked={form.doble} onChange={e=>setForm({...form,doble:e.target.checked})} style={{width:18,height:18,accentColor:'#f97316',cursor:'pointer'}}/>
+              <div>
+                <span style={{fontWeight:800,fontSize:13,color:'#92400e'}}>🎂🎂 Cumpleaños Doble</span>
+                <div style={{fontSize:10,color:'#a16207'}}>Dos homenajeados en el mismo evento — se generarán dos tarjetas y listas de asistencia independientes</div>
+              </div>
+            </label>
+            {form.doble&&(
+              <div className="fade-in" style={{background:'#fff7ed',border:'2px solid #fb923c',borderRadius:14,padding:14,marginBottom:12}}>
+                <div style={{fontWeight:900,fontSize:13,color:'#c2410c',marginBottom:12}}>🎉 Segundo Cumpleañero/a</div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:10}}>
+                  {[['Nombre','nombre2','text',''],['Edad','edad2','number',''],['Nombre padre/madre','nomPapa2','text',''],['Celular papá','celPapa2','text','']].map(([l,k,t,ph])=>(
+                    <label key={k}><span style={S.label}>{l}</span><input type={t} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={S.input}/></label>
+                  ))}
+                  <label><span style={S.label}>Temática</span>
+                    <select value={form.temId2} onChange={e=>setForm({...form,temId2:e.target.value})} style={{...S.input}}>
+                      {tematicas.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.nombre}</option>)}
+                    </select>
+                  </label>
+                </div>
+                <div style={{background:'#fff',borderRadius:10,padding:10,border:'1px solid #fed7aa',fontSize:11,color:'#92400e'}}>
+                  <span style={{fontSize:13}}>🔐</span> <b>Acceso compartido:</b> El papá/mamá del segundo cumpleañero ingresa con las <b>mismas credenciales</b> del primer evento. En su panel podrá alternar entre las dos tarjetas con un botón.
+                </div>
+              </div>
+            )}
+            <button type="submit" style={{...S.btn,background:'#06b6d4',color:'#0f172a'}}>{editId?'✓ Guardar Cambios':'✓ Registrar'}</button>
+          </form>
+        </div>
+      )}
+      {/* ── Modal Alerta Superposición ── */}
+      {alertaSup&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
+          <div className="fade-in" style={{...S.card,maxWidth:420,width:'100%',padding:28}}>
+            <div style={{textAlign:'center',marginBottom:16}}>
+              <div style={{fontSize:48,marginBottom:8}}>⚠️</div>
+              <h3 style={{fontWeight:900,fontSize:18,color:'#dc2626',marginBottom:4}}>¡Superposición de Turnos!</h3>
+              <p style={{fontSize:12,color:'#64748b'}}>Se detectó un conflicto de horario con otro cumpleaños</p>
+            </div>
+            <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:12,padding:14,marginBottom:18}}>
+              <p style={{fontSize:12,color:'#1e293b',marginBottom:6}}><b>Evento existente:</b></p>
+              <p style={{fontSize:14,fontWeight:900,color:'#dc2626'}}>{alertaSup.ev.nombre} · {alertaSup.ev.dia}/{alertaSup.ev.mes}/{alertaSup.ev.anio}</p>
+              <p style={{fontSize:12,color:'#64748b'}}>{alertaSup.ev.hIni} a {alertaSup.ev.hFin} hs</p>
+              <p style={{fontSize:11,color:'#ef4444',marginTop:8}}>⚠️ El horario que querés cargar se superpone con este evento. La encargada fue notificada.</p>
+            </div>
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={()=>setAlertaSup(null)} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#64748b',padding:12}}>← Corregir horario</button>
+              <button onClick={alertaSup.accion} style={{...S.btn,flex:1,background:'#dc2626',color:'white',padding:12,fontSize:12}}>Registrar igual</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tarjetas */}
+      {listFiltrada.length===0
+        ?<div style={{textAlign:'center',color:'#94a3b8',padding:48}}>No hay cumpleaños para esa fecha.</div>
+        :<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:16}}>
+          {listFiltrada.map(ev=>{
+            const tem=tematicas.find(t=>t.id===ev.temId)||tematicas[0];
+            const cnt=confs.filter(c=>c.evId===ev.id).length;
+            return(
+              <div key={ev.id} style={{background:'#fff',borderRadius:20,overflow:'hidden',border:'1px solid #e2e8f0',display:'flex',flexDirection:'column'}}>
+                <div style={{background:'linear-gradient(135deg,#0088cc,#06b6d4)',padding:'14px 16px',color:'white',position:'relative'}}>
+                  <div style={{position:'absolute',right:14,top:12,background:'rgba(255,255,255,.2)',backdropFilter:'blur(8px)',borderRadius:12,width:46,height:46,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',border:'1px solid rgba(255,255,255,.3)'}}>
+                    <span style={{fontWeight:900,fontSize:18,lineHeight:1}}>{ev.dia}</span>
+                    <span style={{fontSize:8,textTransform:'uppercase',fontWeight:700}}>{MESES[+ev.mes]?.slice(0,3)}</span>
+                  </div>
+                  <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+                    <span style={{fontSize:9,background:'rgba(0,0,0,.2)',padding:'2px 8px',borderRadius:99,fontWeight:700}}>{ev.tipo}</span>
+                    {ev.doble&&<span style={{fontSize:9,background:'#f97316',color:'white',padding:'2px 8px',borderRadius:99,fontWeight:900}}>🎂🎂 DOBLE</span>}
+                  </div>
+                  <div style={{fontWeight:900,fontSize:20,marginTop:4}}>{ev.nombre}{ev.doble&&ev.nombre2?<span style={{fontSize:13,fontWeight:600,opacity:.85}}> & {ev.nombre2}</span>:''}</div>
+                  <div style={{fontSize:11,opacity:.85}}>{ev.hIni} a {ev.hFin} hs</div>
+                </div>
+                <div style={{height:90,background:'#0f172a',position:'relative',overflow:'hidden'}}>
+                  <img src={tem.img} alt="" style={{width:'100%',height:'100%',objectFit:'cover',opacity:.8}}/>
+                  <span style={{position:'absolute',bottom:5,left:8,background:'rgba(0,0,0,.75)',color:'white',fontSize:9,padding:'2px 6px',borderRadius:5,fontWeight:700}}>{tem.nombre}</span>
+                </div>
+                <div style={{padding:'10px 14px',fontSize:11,flex:1}}>
+                  <p><b>Papá/Mamá:</b> {ev.nomPapa}</p>
+                  <p><b>Celular:</b> {ev.celPapa}</p>
+                  <div style={{background:'#f8fafc',borderRadius:10,padding:'6px 10px',display:'flex',justifyContent:'space-between',marginTop:6}}>
+                    <span>👤 <b>{ev.user}</b></span><span>🔑 <b>{ev.pass}</b></span>
+                  </div>
+                </div>
+                <div style={{borderTop:'1px solid #f1f5f9',padding:'8px 12px',display:'flex',gap:6,justifyContent:'space-around',background:'#fafafa'}}>
+                  <a href={`tel:${ev.celPapa}`} title="Llamar" style={{padding:6,borderRadius:8,color:'#0088cc',textDecoration:'none',fontSize:18}}>📞</a>
+                  <button onClick={()=>enviarCredsWA(ev)} title="Enviar acceso por WhatsApp al papá" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>🔑</button>
+                  <button onClick={()=>copiarLink(ev.id)} title="Copiar link invitado" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>🔗</button>
+                  <button onClick={()=>{setInvEvId(ev.id);setVista('admin-asistencias');}} title="Ver asistentes" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18,position:'relative'}}>
+                    👥<span style={{position:'absolute',top:0,right:0,background:'#7c3aed',color:'white',fontSize:8,borderRadius:99,width:13,height:13,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{cnt}</span>
+                  </button>
+                  <button onClick={()=>{setForm({...ev});setEditId(ev.id);setOpen(true);window.scrollTo(0,0);}} title="Editar" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>✏️</button>
+                </div>
+                {/* Botón envío credenciales destacado */}
+                <button onClick={()=>enviarCredsWA(ev)} style={{background:'#16a34a',color:'white',border:'none',padding:'7px',fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #15803d'}}>
+                  🔑 Enviar acceso por WhatsApp
+                </button>
+                <button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>🎁 Ver Invitación</button>
+              </div>
+            );
+          })}
+        </div>
+      }
+    </div>
+  );
+}
+
+/* ── ADMIN TEMATICAS ─────────────────────────────────────── */
+function AdminTematicas({setVista,tematicas,setTematicas}){
+  const [form,setForm]=useState({nombre:'',emoji:'🎨',img:'',prev:'',cats:['INFANTILES']});
+  const [nuevaCat,setNuevaCat]=useState('');
+  const [allCats,setAllCats]=useState([...CATS]);
+  const [msg,setMsg]=useState('');
+  const fRef=useRef();
+
+  function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(x=>({...x,img:ev.target.result,prev:ev.target.result}));r.readAsDataURL(f);}
+  function toggleCat(c){setForm(f=>({...f,cats:f.cats.includes(c)?f.cats.filter(x=>x!==c):[...f.cats,c]}))}
+  function addCat(e){e.preventDefault();if(!nuevaCat.trim())return;const c=nuevaCat.trim().toUpperCase();if(!allCats.includes(c))setAllCats(p=>[...p,c]);setForm(f=>({...f,cats:[...f.cats,c]}));setNuevaCat('');}
+  function sub(e){
+    e.preventDefault();
+    if(!form.nombre||!form.img){setMsg('Completá nombre e imagen.');return;}
+    const c=form.cats.includes('TODOS')?form.cats:['TODOS',...form.cats];
+    setTematicas(p=>[...p,{id:'t-'+Date.now(),nombre:form.nombre,cats:c,img:form.img,emoji:form.emoji}]);
+    setForm({nombre:'',emoji:'🎨',img:'',prev:'',cats:['INFANTILES']});
+    setMsg('¡Portada cargada!');setTimeout(()=>setMsg(''),3000);
+  }
+
+  return(
+    <div className="fade-in" style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:20,marginBottom:18}}>🖼️ Portadas y Temáticas</h1>
+      <div style={{display:'grid',gridTemplateColumns:'min(300px,100%) 1fr',gap:20,alignItems:'start'}} className="admin-tematicas-grid">
+        <div style={S.card}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>Cargar Nueva Portada</h3>
+          {msg&&<div style={{background:'#f0fdf4',color:'#166534',padding:10,borderRadius:10,fontSize:12,fontWeight:700,marginBottom:10}}>{msg}</div>}
+          <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
+            <label><span style={S.label}>Nombre</span><input value={form.nombre} onChange={e=>setForm({...form,nombre:e.target.value})} style={S.input} placeholder="Ej: Spiderman" required/></label>
+            <label><span style={S.label}>Emoji</span><input value={form.emoji} onChange={e=>setForm({...form,emoji:e.target.value})} maxLength={2} style={{...S.input,width:60,fontSize:24,textAlign:'center'}}/></label>
+            <div>
+              <span style={S.label}>Imagen (formato 9:16 ideal)</span>
+              <div onClick={()=>fRef.current.click()} style={{border:'2px dashed #c4b5fd',borderRadius:12,padding:14,textAlign:'center',cursor:'pointer',background:'#faf5ff'}}>
+                {form.prev
+                  ?<img src={form.prev} alt="" style={{width:'100%',aspectRatio:'9/16',objectFit:'cover',borderRadius:8}}/>
+                  :<div style={{color:'#7c3aed',fontSize:12,fontWeight:700}}>📤 Subir imagen<br/><span style={{fontSize:10,color:'#94a3b8',fontWeight:400}}>1080×1920px ideal · 9:16</span></div>}
+              </div>
+              <input ref={fRef} type="file" accept="image/*" onChange={onFile} style={{display:'none'}}/>
+              <input value={form.img.startsWith('data:')?'':form.img} onChange={e=>setForm({...form,img:e.target.value,prev:''})} placeholder="O pegá una URL" style={{...S.input,marginTop:6,fontSize:11}}/>
+            </div>
+            <div>
+              <span style={S.label}>Categorías</span>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:8}}>
+                {allCats.map(c=><button type="button" key={c} onClick={()=>toggleCat(c)} style={{padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,border:'none',cursor:'pointer',background:form.cats.includes(c)?'#7c3aed':'#f1f5f9',color:form.cats.includes(c)?'white':'#64748b'}}>{c}</button>)}
+              </div>
+              <form onSubmit={addCat} style={{display:'flex',gap:6}}>
+                <input value={nuevaCat} onChange={e=>setNuevaCat(e.target.value)} placeholder="Nueva categoría..." style={{...S.input,flex:1,padding:'7px 10px',fontSize:11}}/>
+                <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',padding:'7px 12px'}}>+</button>
+              </form>
+            </div>
+            <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',width:'100%',padding:12}}>✓ Guardar Portada</button>
+          </form>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10}}>
+          {tematicas.map(t=>(
+            <div key={t.id} style={{background:'#fff',borderRadius:14,overflow:'hidden',border:'1px solid #e2e8f0'}}>
+              <div style={{aspectRatio:'9/16',background:'#0f172a',position:'relative',overflow:'hidden'}}>
+                <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                <span style={{position:'absolute',bottom:5,left:5,background:'rgba(0,0,0,.75)',color:'white',fontSize:9,padding:'2px 5px',borderRadius:5,fontWeight:700}}>{t.nombre}</span>
+                <span style={{position:'absolute',top:5,left:6,fontSize:16}}>{t.emoji}</span>
+              </div>
+              <button onClick={()=>setTematicas(tematicas.filter(x=>x.id!==t.id))} style={{width:'100%',padding:6,background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:11,fontWeight:700,borderTop:'1px solid #fee2e2'}}>🗑 Eliminar</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN EXCEL ─────────────────────────────────────────── */
+function AdminExcel({setVista,sucActId,eventos,setEventos}){
+  const [txt,setTxt]=useState(''); const [msg,setMsg]=useState('');
+  function sub(e){
+    e.preventDefault();
+    if(!txt.trim()){setMsg('Pega el texto de tu planilla.');return;}
+    const filas=txt.split('\n').filter(l=>l.trim());
+    let n=0;const nuevo=[...eventos];
+    filas.forEach((f,i)=>{
+      const c=f.split(/\t|;/).map(x=>x.trim());
+      if(c.length>=3&&c[0]){
+        nuevo.push({id:'ev-xl-'+Date.now()+i,sucId:sucActId,nombre:c[0],edad:c[1]||'5',dia:c[2],mes:c[3]||'05',anio:c[4]||'2026',hIni:c[5]||'17:00',hFin:c[6]||'22:00',nomPapa:c[7]||'',celPapa:c[8]||'',user:c[9]||(c[0].toLowerCase().replace(/\s/g,'')+'2026'),pass:c[10]||'1234',temId:'t-3',tipo:'Cumpleaños'});
+        n++;
+      }
+    });
+    setEventos(nuevo);setMsg(`✅ Se importaron ${n} cumpleaños.`);setTxt('');setTimeout(()=>setMsg(''),5000);
+  }
+  return(
+    <div className="fade-in" style={{maxWidth:620,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <div style={S.card}>
+        <h1 style={{fontWeight:900,fontSize:20,marginBottom:6}}>📊 Carga Excel Semanal</h1>
+        <p style={{fontSize:12,color:'#64748b',marginBottom:16}}>Copiá las filas de tu planilla y pegálas acá.</p>
+        {msg&&<div style={{background:'#f0fdf4',color:'#166534',padding:12,borderRadius:12,fontSize:12,fontWeight:700,marginBottom:14}}>{msg}</div>}
+        <div style={{background:'#f8fafc',borderRadius:12,padding:12,fontSize:11,color:'#64748b',marginBottom:14,border:'1px dashed #e2e8f0'}}>
+          <b>Columnas:</b> Nombre · Edad · Día · Mes · Año · HoraInicio · HoraFin · Padre/Madre · Celular · Usuario · Clave
+        </div>
+        <form onSubmit={sub}>
+          <textarea rows={7} value={txt} onChange={e=>setTxt(e.target.value)} placeholder="Pegá las filas acá..." style={{...S.input,fontFamily:'monospace',resize:'vertical'}}/>
+          <button type="submit" style={{...S.btn,background:'#10b981',color:'white',width:'100%',padding:14,marginTop:12,fontSize:14}}>📤 Importar Fiestas</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN ASISTENCIAS ───────────────────────────────────── */
+function AdminAsistencias({setVista,evsLocal,confs}){
+  const [selId,setSelId]=useState(evsLocal[0]?.id||'');
+  const [fMes,setFMes]=useState(''); const [fDia,setFDia]=useState('');
+  const evsFilt=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fDia||e.dia===fDia));
+  const cSel=confs.filter(c=>c.evId===selId);
+  const totN=cSel.reduce((a,c)=>a+(+c.ninos||0),0);
+  const totA=cSel.reduce((a,c)=>a+(+c.adultos||0),0);
+  return(
+    <div className="fade-in" style={{maxWidth:740,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:20,marginBottom:16}}>👥 Reporte de Asistencias</h1>
+      <div style={{...S.card,display:'flex',gap:12,flexWrap:'wrap',alignItems:'center',marginBottom:14,padding:'10px 16px'}}>
+        <span style={{fontSize:11,fontWeight:700,color:'#64748b'}}>Filtrar:</span>
+        <select value={fMes} onChange={e=>setFMes(e.target.value)} style={{padding:'6px 10px',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12,fontWeight:700}}>
+          <option value=''>— Todos los meses —</option>
+          {MESES.slice(1).map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
+        </select>
+        <input placeholder="Día" value={fDia} onChange={e=>setFDia(e.target.value)} style={{...S.input,width:80,padding:'6px 10px'}}/>
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:18}}>
+        {evsFilt.length===0&&<p style={{color:'#94a3b8',textAlign:'center',padding:20}}>No hay eventos para esa fecha.</p>}
+        {evsFilt.map(ev=>{
+          const cnt=confs.filter(c=>c.evId===ev.id).length;const sel=ev.id===selId;
+          return(
+            <div key={ev.id} onClick={()=>setSelId(ev.id)} style={{...S.card,cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 16px',border:sel?'2px solid #f59e0b':'1px solid #e2e8f0',background:sel?'#fef3c7':'white',transition:'all .15s'}}>
+              <div style={{display:'flex',alignItems:'center',gap:14}}>
+                <div style={{background:sel?'#f59e0b':'#0088cc',color:'white',borderRadius:12,padding:'4px 10px',textAlign:'center',minWidth:50}}>
+                  <div style={{fontWeight:900,fontSize:20,lineHeight:1}}>{ev.dia}</div>
+                  <div style={{fontSize:8,textTransform:'uppercase'}}>{MESES[+ev.mes]?.slice(0,3)}</div>
+                </div>
+                <div><div style={{fontWeight:800,fontSize:14}}>{ev.nombre}</div><div style={{fontSize:11,color:'#64748b'}}>{ev.hIni} a {ev.hFin} · {ev.tipo}</div></div>
+              </div>
+              <div style={{textAlign:'right'}}><div style={{fontSize:28,fontWeight:900,color:sel?'#d97706':'#7c3aed'}}>{cnt}</div><div style={{fontSize:9,color:'#94a3b8'}}>confirmados</div></div>
+            </div>
+          );
+        })}
+      </div>
+      {selId&&(
+        <div className="fade-in">
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:14}}>
+            {[['Familias',cSel.length,'#06b6d4'],['Niños',totN,'#7c3aed'],['Adultos',totA,'#f97316']].map(([l,v,c])=>(
+              <div key={l} style={{background:'white',borderRadius:14,padding:14,textAlign:'center',border:`1px solid ${c}33`}}>
+                <div style={{fontSize:11,fontWeight:700,color:c}}>{l}</div>
+                <div style={{fontSize:32,fontWeight:900}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{...S.card,overflow:'hidden',padding:0}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+              <thead><tr style={{background:'#f8fafc',borderBottom:'1px solid #e2e8f0'}}>
+                {['Nombre','Adultos','Niños','Celular'].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:700,color:'#64748b'}}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {cSel.length===0?<tr><td colSpan={4} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Sin confirmaciones aún.</td></tr>
+                  :cSel.map(c=><tr key={c.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                    <td style={{padding:'9px 14px',fontWeight:700}}>{c.invitado}</td>
+                    <td style={{padding:'9px 14px',textAlign:'center'}}>{c.adultos}</td>
+                    <td style={{padding:'9px 14px',textAlign:'center'}}>{c.ninos}</td>
+                    <td style={{padding:'9px 14px',fontFamily:'monospace'}}>{c.cel}</td>
+                  </tr>)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── ADMIN REMARKETING ───────────────────────────────────── */
+function AdminRemarketing({setVista,evsLocal,sucAct}){
+  const [msg,setMsg]=useState('🎉 ¡Hola! Queremos invitarte a las promociones especiales de {salon}. ¡Consultá!');
+  const [imgPrev,setImgPrev]=useState('');
+  const [fMes,setFMes]=useState('05'); const [fAnio,setFAnio]=useState('2026');
+  const fRef=useRef();
+  function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setImgPrev(ev.target.result);r.readAsDataURL(f);}
+  const targets=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fAnio||e.anio===fAnio));
+  function enviar(ev){const t=msg.replace('{salon}',sucAct.nombre).replace('{nombre}',ev.nombre);window.open(`https://wa.me/${waNum(ev.celPapa)}?text=${encodeURIComponent(t)}`,'_blank');}
+  return(
+    <div className="fade-in" style={{maxWidth:820,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:20,marginBottom:18}}>📣 Remarketing</h1>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        <div style={S.card}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>Plantilla del Mensaje</h3>
+          <textarea rows={5} value={msg} onChange={e=>setMsg(e.target.value)} style={{...S.input,resize:'vertical',marginBottom:8}} placeholder="Usá {nombre} y {salon}"/>
+          <p style={{fontSize:10,color:'#94a3b8',marginBottom:12}}>Variables: <b>{'{nombre}'}</b> · <b>{'{salon}'}</b></p>
+          <div onClick={()=>fRef.current.click()} style={{border:'2px dashed #fed7aa',borderRadius:14,padding:14,textAlign:'center',cursor:'pointer',background:'#fff7ed',minHeight:80,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {imgPrev?<img src={imgPrev} alt="" style={{maxWidth:'100%',maxHeight:160,borderRadius:8,objectFit:'contain'}}/>:<div style={{color:'#f97316',fontSize:12,fontWeight:700}}>📎 Adjuntar imagen/flyer</div>}
+          </div>
+          <input ref={fRef} type="file" accept="image/*" onChange={onFile} style={{display:'none'}}/>
+          {imgPrev&&<button onClick={()=>setImgPrev('')} style={{marginTop:6,background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:11}}>🗑 Quitar imagen</button>}
+        </div>
+        <div style={S.card}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>Envío Masivo por Período</h3>
+          <div style={{display:'flex',gap:10,marginBottom:12,flexWrap:'wrap'}}>
+            <select value={fMes} onChange={e=>setFMes(e.target.value)} style={{...S.input,flex:1,padding:'8px 10px'}}>
+              <option value=''>— Todos los meses —</option>
+              {MESES.slice(1).map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
+            </select>
+            <input value={fAnio} onChange={e=>setFAnio(e.target.value)} placeholder="Año" maxLength={4} style={{...S.input,width:80,padding:'8px 10px'}}/>
+          </div>
+          <p style={{fontSize:11,color:'#64748b',marginBottom:10,fontWeight:700}}>{targets.length} contacto(s)</p>
+          <div style={{display:'flex',flexDirection:'column',gap:8,maxHeight:320,overflowY:'auto'}} className="scrollbar-none">
+            {targets.length===0?<p style={{color:'#94a3b8',textAlign:'center',padding:20,fontSize:12}}>Sin contactos para ese período.</p>
+              :targets.map(ev=>(
+                <div key={ev.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#f8fafc',borderRadius:12,padding:'10px 14px',gap:8}}>
+                  <div><div style={{fontWeight:800,fontSize:13}}>{ev.nomPapa}</div><div style={{fontSize:10,color:'#64748b'}}>Cumple de {ev.nombre} · {ev.dia}/{ev.mes}</div></div>
+                  <button onClick={()=>enviar(ev)} style={{...S.btn,background:'#22c55e',color:'white',padding:'7px 14px',fontSize:11,whiteSpace:'nowrap'}}>💬 Enviar</button>
+                </div>
+              ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── ADMIN USUARIOS ──────────────────────────────────────── */
+function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales}){
+  const eu={nombre:'',usuario:'',clave:'',rol:'encargada',sucursalId:''};
+  const es={nombre:'',emoji:'🎪',direccion:'',color:'#06b6d4'};
+  const [fu,setFu]=useState(eu);const [fs,setFs]=useState(es);
+  const [mu,setMu]=useState('');const [ms,setMs]=useState('');
+  function addU(e){e.preventDefault();if(usuarios.find(x=>x.usuario===fu.usuario)){setMu('Usuario ya existe.');return;}setUsuarios([...usuarios,{...fu,id:'ua-'+Date.now()}]);setFu(eu);setMu('✅ Usuario creado.');setTimeout(()=>setMu(''),3000);}
+  function addS(e){e.preventDefault();setSucursales([...sucursales,{...fs,id:'sz-'+Date.now()}]);setFs(es);setMs('✅ Sucursal creada.');setTimeout(()=>setMs(''),3000);}
+  return(
+    <div className="fade-in" style={{maxWidth:800,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:20,marginBottom:18}}>⚙️ Usuarios & Sucursales</h1>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        <div style={S.card}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>Crear Usuario</h3>
+          {mu&&<div style={{background:'#f0fdf4',color:'#166534',padding:9,borderRadius:10,fontSize:12,fontWeight:700,marginBottom:10}}>{mu}</div>}
+          <form onSubmit={addU} style={{display:'flex',flexDirection:'column',gap:10}}>
+            {[['Nombre','nombre','text'],['Usuario','usuario','text'],['Contraseña','clave','password']].map(([l,k,t])=>(
+              <label key={k}><span style={S.label}>{l}</span><input type={t} value={fu[k]} onChange={e=>setFu({...fu,[k]:e.target.value})} style={S.input} required/></label>
+            ))}
+            <label><span style={S.label}>Rol</span>
+              <select value={fu.rol} onChange={e=>setFu({...fu,rol:e.target.value})} style={S.input}>
+                <option value="superadmin">Super Admin (dueño)</option>
+                <option value="encargada">Encargada de sucursal</option>
+              </select>
+            </label>
+            {fu.rol==='encargada'&&<label><span style={S.label}>Sucursal</span>
+              <select value={fu.sucursalId} onChange={e=>setFu({...fu,sucursalId:e.target.value})} style={S.input} required>
+                <option value=''>— Elegir —</option>
+                {sucursales.map(s=><option key={s.id} value={s.id}>{s.emoji} {s.nombre}</option>)}
+              </select>
+            </label>}
+            <button type="submit" style={{...S.btn,background:'#0f172a',color:'white',padding:'10px'}}>+ Crear Usuario</button>
+          </form>
+          <div style={{marginTop:18,borderTop:'1px solid #f1f5f9',paddingTop:14}}>
+            <p style={{fontSize:11,fontWeight:700,color:'#64748b',marginBottom:10}}>Usuarios actuales</p>
+            {usuarios.map(u=>(
+              <div key={u.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'7px 0',borderBottom:'1px solid #f8fafc',fontSize:12}}>
+                <div><b>{u.nombre}</b> <span style={{color:'#94a3b8',fontSize:10}}>· {u.usuario} · {u.rol}</span></div>
+                {u.rol!=='superadmin'&&<button onClick={()=>setUsuarios(usuarios.filter(x=>x.id!==u.id))} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer'}}>🗑</button>}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={S.card}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>Nueva Sucursal</h3>
+          {ms&&<div style={{background:'#f0fdf4',color:'#166534',padding:9,borderRadius:10,fontSize:12,fontWeight:700,marginBottom:10}}>{ms}</div>}
+          <form onSubmit={addS} style={{display:'flex',flexDirection:'column',gap:10}}>
+            {[['Nombre del salon','nombre'],['Direccion','direccion'],['Sitio web o Instagram','web'],['Telefono WhatsApp','tel']].map(([l,k])=>(
+              <label key={k}><span style={S.label}>{l}</span><input value={fs[k]} onChange={e=>setFs({...fs,[k]:e.target.value})} style={S.input} required/></label>
+            ))}
+            <div style={{display:'flex',gap:10}}>
+              <label style={{flex:1}}><span style={S.label}>Emoji</span><input value={fs.emoji} onChange={e=>setFs({...fs,emoji:e.target.value})} maxLength={2} style={{...S.input,width:56,fontSize:22,textAlign:'center'}}/></label>
+              <label style={{flex:1}}><span style={S.label}>Color</span><input type="color" value={fs.color} onChange={e=>setFs({...fs,color:e.target.value})} style={{height:42,width:'100%',border:'none',borderRadius:10,cursor:'pointer'}}/></label>
+            </div>
+            <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',padding:'10px'}}>+ Crear Sucursal</button>
+          </form>
+          <div style={{marginTop:18,borderTop:'1px solid #f1f5f9',paddingTop:14}}>
+            {sucursales.map(s=>{
+              const [editing,setEditing]=React.useState(false);
+              const [ed,setEd]=React.useState(s);
+              return(
+              <div key={s.id} style={{borderBottom:'1px solid #f8fafc',paddingBottom:10,marginBottom:10}}>
+                {!editing?(
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <div style={{width:32,height:32,borderRadius:8,background:s.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>{s.emoji}</div>
+                      <div><b style={{fontSize:13}}>{s.nombre}</b><p style={{fontSize:10,color:'#94a3b8',margin:0}}>{s.direccion}</p></div>
+                    </div>
+                    <div style={{display:'flex',gap:6}}>
+                      <button onClick={()=>{setEd(s);setEditing(true);}} style={{background:'#f1f5f9',border:'none',borderRadius:8,padding:'5px 10px',cursor:'pointer',fontSize:11,fontWeight:700}}>Editar</button>
+                      {sucursales.length>1&&<button onClick={()=>setSucursales(sucursales.filter(x=>x.id!==s.id))} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:16}}>🗑</button>}
+                    </div>
+                  </div>
+                ):(
+                  <div style={{background:'#f8fafc',borderRadius:12,padding:14}}>
+                    <div style={{fontWeight:900,fontSize:13,marginBottom:14,color:'#1e293b'}}>Editando: {s.nombre}</div>
+
+                    {/* Datos generales */}
+                    <div style={{background:'white',borderRadius:10,padding:12,marginBottom:12,border:'1px solid #e2e8f0'}}>
+                      <div style={{fontWeight:800,fontSize:11,color:'#64748b',marginBottom:10,textTransform:'uppercase'}}>Datos del salon</div>
+                      {[['Nombre','nombre'],['Direccion','direccion'],['Sitio web / Instagram','web'],['Telefono WA','tel'],['Logo URL (imagen circular)','logo']].map(([l,k])=>(
+                        <label key={k} style={{display:'block',marginBottom:6}}><span style={S.label}>{l}</span><input value={ed[k]||''} onChange={e=>setEd({...ed,[k]:e.target.value})} style={S.input}/></label>
+                      ))}
+                      <div style={{display:'flex',gap:8}}>
+                        <label style={{flex:1}}><span style={S.label}>Emoji</span><input value={ed.emoji||''} onChange={e=>setEd({...ed,emoji:e.target.value})} maxLength={2} style={{...S.input,fontSize:22,textAlign:'center'}}/></label>
+                      </div>
+                    </div>
+
+                    {/* PRIMERA PORTADA */}
+                    <div style={{background:'white',borderRadius:10,padding:12,marginBottom:12,border:'2px solid '+(ed.color||'#f97316')}}>
+                      <div style={{fontWeight:800,fontSize:11,color:'#64748b',marginBottom:10,textTransform:'uppercase'}}>Primera Portada</div>
+                      <label style={{display:'block',marginBottom:10}}>
+                        <span style={S.label}>Frase de bienvenida</span>
+                        <input value={ed.portadaFrase||''} onChange={e=>setEd({...ed,portadaFrase:e.target.value})} style={S.input} placeholder="Recibiste una invitacion de"/>
+                      </label>
+                      {/* Preview mini */}
+                      <div style={{background:ed.color||'#f97316',borderRadius:10,padding:'10px 14px',marginBottom:12,textAlign:'center'}}>
+                        <p style={{color:'rgba(255,255,255,.9)',fontSize:10,margin:'0 0 2px',letterSpacing:1}}>{ed.portadaFrase||'Recibiste una invitacion de'}</p>
+                        <p style={{color:'white',fontSize:16,fontWeight:900,margin:0}}>Nombre del festejado</p>
+                      </div>
+                      <span style={S.label}>Color de fondo</span>
+                      {/* Paleta de colores predefinidos */}
+                      <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:10}}>
+                        {['#f97316','#ef4444','#ec4899','#a855f7','#7c3aed','#3b82f6','#06b6d4','#10b981','#84cc16','#eab308','#f59e0b','#0f172a'].map(c=>(
+                          <button key={c} onClick={()=>setEd({...ed,color:c})} style={{width:32,height:32,borderRadius:'50%',background:c,border:(ed.color||'#f97316')===c?'3px solid #1e293b':'3px solid transparent',cursor:'pointer',boxShadow:'0 2px 6px rgba(0,0,0,.2)'}}></button>
+                        ))}
+                      </div>
+                      <label style={{display:'flex',alignItems:'center',gap:10}}>
+                        <span style={{...S.label,margin:0}}>Color personalizado:</span>
+                        <input type="color" value={ed.color||'#f97316'} onChange={e=>setEd({...ed,color:e.target.value})} style={{width:44,height:36,border:'none',borderRadius:8,cursor:'pointer'}}/>
+                        <span style={{fontSize:11,color:'#64748b'}}>{ed.color||'#f97316'}</span>
+                      </label>
+                    </div>
+
+                    {/* Fotos */}
+                    <div style={{background:'white',borderRadius:10,padding:12,marginBottom:12,border:'1px solid #e2e8f0'}}>
+                      <div style={{fontWeight:800,fontSize:11,color:'#64748b',marginBottom:10,textTransform:'uppercase'}}>Fotos del salon (hasta 4)</div>
+                      {[0,1,2,3].map(i=>(
+                        <input key={i} value={(ed.fotos||['','','',''])[i]||''} onChange={e=>{const f=[...(ed.fotos||['','','',''])];f[i]=e.target.value;setEd({...ed,fotos:f});}} style={{...S.input,marginBottom:6}} placeholder={'Foto '+(i+1)+' - URL de imagen'}/>
+                      ))}
+                    </div>
+
+                    <div style={{display:'flex',gap:8}}>
+                      <button onClick={()=>{setSucursales(sucursales.map(x=>x.id===s.id?{...x,...ed}:x));setEditing(false);}} style={{...S.btn,background:'#16a34a',color:'white',flex:1,padding:'10px'}}>Guardar</button>
+                      <button onClick={()=>setEditing(false)} style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'10px'}}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── PAPA LOGIN ──────────────────────────────────────────── */
+/* ── ADMIN IA & PRECIOS ──────────────────────────────────── */
+function AdminIA({setVista,iaConfig,setIaConfig}){
+  const [cfg,setCfg]=useState(iaConfig);
+  const [msg,setMsg]=useState('');
+  function set(k,v){setCfg(c=>({...c,[k]:v}));}
+  function guardar(){setIaConfig(cfg);setMsg('✓ Cambios guardados');setTimeout(()=>setMsg(''),2500);}
+  const servicio=(titulo,emoji,kPrompt,kApi,kPrecio,phPrompt)=>(
+    <div style={{...S.card,marginBottom:14}}>
+      <h3 style={{fontWeight:900,fontSize:15,marginBottom:12}}>{emoji} {titulo}</h3>
+      <label style={{display:'block',marginBottom:10}}><span style={S.label}>Prompt (instrucción para la IA)</span>
+        <textarea value={cfg[kPrompt]||''} onChange={e=>set(kPrompt,e.target.value)} rows={4} style={{...S.input,resize:'vertical',fontFamily:'inherit'}} placeholder={phPrompt}/>
+        <span style={{fontSize:10,color:'#94a3b8'}}>Variables disponibles: {'{nombre}'}, {'{edad}'}, {'{tematica}'}</span>
+      </label>
+      <label style={{display:'block',marginBottom:10}}><span style={S.label}>🔑 API Key</span>
+        <input value={cfg[kApi]||''} onChange={e=>set(kApi,e.target.value)} style={S.input} placeholder="Pegá aquí la API key del servicio" autoComplete="off"/>
+      </label>
+      <label style={{display:'block',maxWidth:220}}><span style={S.label}>💲 Precio al papá ($)</span>
+        <input type="number" value={cfg[kPrecio]||0} onChange={e=>set(kPrecio,+e.target.value)} style={S.input}/>
+      </label>
+    </div>
+  );
+  return(
+    <div className="fade-in" style={{maxWidth:700,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🤖 IA & Precios</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>Prompts, API keys y precios de los servicios de IA</p>
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msg}</div>}
+
+      {servicio('Imagen IA','🖼️','promptImagen','apiImagen','precioImagen','Una fotografía de {nombre}, {edad} años, con temática {tematica}...')}
+      {servicio('Video IA','🎬','promptVideo','apiVideo','precioVideo','Video corto del personaje {tematica} saludando a {nombre}...')}
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:15,marginBottom:4}}>🪄 Mejorador de foto</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Gratis para el papá. Puede ver la foto <b>original</b> y la <b>mejorada</b>, y elegir cuál usar.</p>
+        <label style={{display:'block',marginBottom:10}}><span style={S.label}>Prompt (instrucción para la IA)</span>
+          <textarea value={cfg.promptMejora||''} onChange={e=>set('promptMejora',e.target.value)} rows={3} style={{...S.input,resize:'vertical',fontFamily:'inherit'}} placeholder="Mejorá la foto: color, brillo y nitidez..."/>
+        </label>
+        <label style={{display:'block'}}><span style={S.label}>🔑 API Key</span>
+          <input value={cfg.apiMejora||''} onChange={e=>set('apiMejora',e.target.value)} style={S.input} placeholder="Pegá aquí la API key del servicio" autoComplete="off"/>
+        </label>
+        <p style={{fontSize:10,color:'#16a34a',marginTop:8,fontWeight:700}}>✓ Sin precio — incluido en el servicio</p>
+      </div>
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:15,marginBottom:4}}>💳 Cobros (Mercado Pago)</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Datos para cobrar los servicios de IA a los papás.</p>
+        <label style={{display:'block',marginBottom:10}}><span style={S.label}>Link de pago</span>
+          <input value={cfg.mpLink||''} onChange={e=>set('mpLink',e.target.value)} style={S.input} placeholder="https://mpago.la/..." autoComplete="off"/>
+        </label>
+        <label style={{display:'block'}}><span style={S.label}>Public Key</span>
+          <input value={cfg.mpPublicKey||''} onChange={e=>set('mpPublicKey',e.target.value)} style={S.input} placeholder="APP_USR-..." autoComplete="off"/>
+        </label>
+      </div>
+
+      <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#8b5cf6,#7c3aed)',color:'white',padding:'13px 28px',fontSize:14}}>✓ Guardar cambios</button>
+    </div>
+  );
+}
+
+/* ── ADMIN CONFIGURACIÓN ─────────────────────────────────── */
+function AdminConfig({setVista,iaConfig,setIaConfig}){
+  const [cfg,setCfg]=useState(iaConfig);
+  const [msg,setMsg]=useState('');
+  function set(k,v){setCfg(c=>({...c,[k]:v}));}
+  function guardar(){setIaConfig(cfg);setMsg('✓ Configuración guardada');setTimeout(()=>setMsg(''),2500);}
+  const anios=[];for(let y=2025;y<=2030;y++)anios.push(y);
+  return(
+    <div className="fade-in" style={{maxWidth:700,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🛠️ Configuración</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>Ajustes generales del sistema</p>
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msg}</div>}
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>🗓️ Año vigente</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Se usa por defecto al cargar nuevos cumpleaños.</p>
+        <select value={cfg.anioVigente||2026} onChange={e=>set('anioVigente',+e.target.value)} style={{...S.input,maxWidth:160}}>
+          {anios.map(y=><option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>🌐 Dirección del sitio</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Los links de WhatsApp usan <b>automáticamente</b> la dirección de este sitio. No hay que configurar nada.</p>
+        <input readOnly value={window.location.origin+window.location.pathname} style={{...S.input,background:'#f1f5f9',color:'#64748b',cursor:'not-allowed'}}/>
+      </div>
+
+      <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#0ea5e9,#06b6d4)',color:'white',padding:'13px 28px',fontSize:14}}>✓ Guardar configuración</button>
+    </div>
+  );
+}
+
+/* ── ADMIN MENÚ INTERACTIVO ──────────────────────────────── */
+function AdminMenu({setVista,iaConfig,setIaConfig}){
+  const base=iaConfig.menuConfig||{prompt:'',ninos:[],adultos:[],snacks:[],postres:[],bebidas:[]};
+  const [cfg,setCfg]=useState(base);
+  const [nuevo,setNuevo]=useState({});
+  const [msg,setMsg]=useState('');
+  const cats=[['ninos','🧒 Niños'],['adultos','🧑 Adultos'],['snacks','🍿 Snacks'],['postres','🍰 Postres'],['bebidas','🥤 Bebidas']];
+  function guardar(){setIaConfig(c=>({...c,menuConfig:cfg}));setMsg('✓ Menú guardado');setTimeout(()=>setMsg(''),2500);}
+  function quitar(cat,id){setCfg(c=>({...c,[cat]:(c[cat]||[]).filter(i=>i.id!==id)}));}
+  function agregar(cat){
+    const n=nuevo[cat]||{}; if(!n.nombre||!n.nombre.trim())return;
+    const item={id:cat+'-'+Math.floor(Math.random()*1e6),nombre:n.nombre.trim(),emoji:(n.emoji||'🍽️').trim()};
+    setCfg(c=>({...c,[cat]:[...(c[cat]||[]),item]}));
+    setNuevo(x=>({...x,[cat]:{nombre:'',emoji:''}}));
+  }
+  return(
+    <div className="fade-in" style={{maxWidth:700,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🍽️ Menú Interactivo</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>Administrá el cálculo de comida y las opciones que ve el papá.</p>
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msg}</div>}
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>🤖 Prompt de cálculo de comida</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Instrucción para calcular las cantidades según invitados, horas y estación.</p>
+        <textarea value={cfg.prompt||''} onChange={e=>setCfg(c=>({...c,prompt:e.target.value}))} rows={5} style={{...S.input,resize:'vertical',fontFamily:'inherit'}} placeholder="Ej: Calculá las cantidades considerando estación, horas de fiesta y tipo de menú. Niños consumen más dulce que salado..."/>
+      </div>
+
+      {cats.map(([k,lbl])=>(
+        <div key={k} style={{...S.card,marginBottom:14}}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:10}}>{lbl}</h3>
+          <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:10}}>
+            {(cfg[k]||[]).map(it=>(
+              <span key={it.id} style={{display:'inline-flex',alignItems:'center',gap:6,background:'#f1f5f9',borderRadius:99,padding:'6px 10px',fontSize:12,fontWeight:700}}>
+                <span>{it.emoji}</span>{it.nombre}
+                <button onClick={()=>quitar(k,it.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:13,fontWeight:900,padding:0,lineHeight:1}}>✕</button>
+              </span>
+            ))}
+            {(!cfg[k]||cfg[k].length===0)&&<span style={{fontSize:11,color:'#94a3b8'}}>Sin opciones todavía.</span>}
+          </div>
+          <div style={{display:'flex',gap:6}}>
+            <input value={(nuevo[k]||{}).emoji||''} onChange={e=>setNuevo(x=>({...x,[k]:{...(x[k]||{}),emoji:e.target.value}}))} placeholder="🍕" style={{...S.input,width:56,textAlign:'center'}} maxLength={2}/>
+            <input value={(nuevo[k]||{}).nombre||''} onChange={e=>setNuevo(x=>({...x,[k]:{...(x[k]||{}),nombre:e.target.value}}))} placeholder="Nombre de la comida" style={{...S.input,flex:1}}/>
+            <button onClick={()=>agregar(k)} style={{...S.btn,background:'#f59e0b',color:'#0f172a',whiteSpace:'nowrap'}}>+ Agregar</button>
+          </div>
+        </div>
+      ))}
+
+      <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#f59e0b,#f97316)',color:'white',padding:'13px 28px',fontSize:14}}>✓ Guardar menú</button>
+    </div>
+  );
+}
+
+function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId}){
+  const [u,setU]=useState('');const [p,setP]=useState('');const [err,setErr]=useState('');const [showP,setShowP]=useState(false);
+  function sub(e){
+    e.preventDefault();
+    // Try to find event in local list first
+    let ev=eventos.find(x=>x.user&&x.user.toLowerCase()===u.toLowerCase()&&x.pass===p);
+    // If not found, try URL param papa (encoded credentials + event data)
+    if(!ev){
+      try{
+        const papaParam=new URLSearchParams(window.location.search).get('papa');
+        if(papaParam){const d=JSON.parse(atob(papaParam));if(d.user&&d.user.toLowerCase()===u.toLowerCase()&&d.pass===p)ev=d;}
+      }catch(ex){}
+    }
+    if(!ev){setErr('Datos incorrectos. Verifica usuario y contrasena.');return;}
+    const fF=new Date(+ev.anio,+ev.mes-1,+ev.dia);
+    const fV=new Date(fF);fV.setDate(fF.getDate()+2);fV.setHours(0,0,0,0);
+    const hoy=new Date();hoy.setHours(0,0,0,0);
+    if(hoy>=fV){setErr('El acceso para este evento ha vencido.');return;}
+    setPapaSesion(ev);setInvEvId(ev.id);setVista('papa-creador');
+  }
+  return(
+    <div style={{display:'flex',justifyContent:'center',alignItems:'center',minHeight:'80vh',padding:16}}>
+      <div className="fade-in" style={{...S.card,maxWidth:360,width:'100%',padding:32,boxShadow:'0 8px 32px rgba(0,0,0,0.10)'}}>
+        <div style={{textAlign:'center',marginBottom:22}}><div style={{fontSize:48}}>🎂</div>
+          <h2 style={{fontWeight:900,fontSize:20,marginTop:8}}>Acceso para Padres</h2>
+          <p style={{color:'#64748b',fontSize:12,marginTop:4}}>Personalizá tu invitación digital</p>
+        </div>
+        {err&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#dc2626',padding:'10px 14px',borderRadius:12,fontSize:12,marginBottom:12}}>{err}</div>}
+        <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
+          <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Usuario" autoComplete="username" required/>
+          <div style={{position:'relative'}}>
+            <input style={{...S.input,paddingRight:44}} type={showP?'text':'password'} value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="Contraseña" autoComplete="current-password" required/>
+            <button type="button" onClick={()=>setShowP(!showP)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:18,color:'#94a3b8'}}>
+              {showP?'🙈':'👁️'}
+            </button>
+          </div>
+          <button style={{...S.btn,background:'#f97316',color:'white',padding:14,fontSize:14}}>Ingresar</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ── IA UPLOAD SECTION ───────────────────────────────────── */
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[]}){
+  const fotoRef=useRef();
+  const persRef=useRef();
+  const [modoPersonaje,setModoPersonaje]=useState('db'); // 'db' | 'upload'
+  const [busqTem,setBusqTem]=useState('');
+  const listo=fotoNino&&personaje;
+
+  function onPickFoto(e){
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();r.onload=ev=>setFotoNino(ev.target.result);r.readAsDataURL(f);
+  }
+  function onPickPers(e){
+    const f=e.target.files[0];if(!f)return;
+    const r=new FileReader();r.onload=ev=>setPersonaje(ev.target.result);r.readAsDataURL(f);
+  }
+
+  const colorIA=tipo==='imagen'?'#0ea5e9':'#e11d48';
+  const emojiIA=tipo==='imagen'?'🖼️':'🎬';
+
+  return(
+    <div className="fade-in">
+      <div style={{background:'linear-gradient(135deg,'+colorIA+'15,'+colorIA+'08)',border:'1px solid '+colorIA+'30',borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+          <span style={{fontSize:22}}>{emojiIA}</span>
+          <div>
+            <div style={{fontWeight:800,fontSize:14,color:colorIA}}>{tipo==='imagen'?'Imagen IA Personalizada':'Video IA Personalizado'}</div>
+            <div style={{fontSize:11,color:'#64748b'}}>Cargá las fotos y generamos 3 {tipo==='imagen'?'imágenes':'videos'} únicas con IA</div>
+          </div>
+        </div>
+        <div style={{fontSize:11,color:'#475569',background:'white',borderRadius:8,padding:8,border:'1px solid #e2e8f0'}}>
+          {tipo==='imagen'
+            ?'📌 La IA crea imágenes artísticas con el personaje elegido. No modifica el rostro del niño/a.'
+            :'📌 La IA genera un video corto de saludo con el personaje y el entorno de la temática elegida.'
+          }
+        </div>
+      </div>
+
+      {/* Upload: Foto del niño cuerpo completo */}
+      <div style={{marginBottom:12}}>
+        <label style={{...S.label,color:colorIA,fontSize:12}}>📸 FOTO DEL NIÑO/A — CUERPO COMPLETO <span style={{color:'#e11d48'}}>*</span></label>
+        <div style={{fontSize:10,color:'#64748b',marginBottom:6}}>⚠️ Debe ser una foto de cuerpo completo (cabeza a pies) para mejores resultados</div>
+        <input ref={fotoRef} type="file" accept="image/*" style={{display:'none'}} onChange={onPickFoto}/>
+        {!fotoNino
+          ?<div onClick={()=>fotoRef.current.click()} style={{border:'2px dashed '+colorIA+'60',borderRadius:12,padding:'20px',textAlign:'center',cursor:'pointer',background:colorIA+'08',transition:'all .2s'}}
+            onMouseEnter={e=>{e.currentTarget.style.background=colorIA+'15'}}
+            onMouseLeave={e=>{e.currentTarget.style.background=colorIA+'08'}}>
+            <div style={{fontSize:32,marginBottom:6}}>🧒</div>
+            <div style={{fontWeight:700,fontSize:13,color:colorIA}}>Subir foto cuerpo completo</div>
+            <div style={{fontSize:10,color:'#94a3b8',marginTop:2}}>JPG, PNG · Máx. 10 MB</div>
+          </div>
+          :<div style={{position:'relative',borderRadius:12,overflow:'hidden',height:140,background:'#0f172a'}}>
+            <img src={fotoNino} alt="foto niño" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+            <button onClick={()=>setFotoNino('')} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+            <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,.5)',padding:'4px 8px',fontSize:10,color:'white',textAlign:'center'}}>✅ Foto cargada · Cuerpo completo</div>
+          </div>
+        }
+      </div>
+
+      {/* Personaje / Character — selector de DB o upload propio */}
+      <div style={{marginBottom:16}}>
+        <label style={{...S.label,color:colorIA,fontSize:12}}>🎭 PERSONAJE / TEMÁTICA <span style={{color:'#e11d48'}}>*</span></label>
+        {/* Toggle */}
+        <div style={{display:'flex',gap:6,marginBottom:8}}>
+          <button type="button" onClick={()=>setModoPersonaje('db')} style={{...S.btn,flex:1,padding:'6px 8px',fontSize:11,background:modoPersonaje==='db'?colorIA:'#f1f5f9',color:modoPersonaje==='db'?'white':'#64748b'}}>🗂 Elegir de la base</button>
+          <button type="button" onClick={()=>setModoPersonaje('upload')} style={{...S.btn,flex:1,padding:'6px 8px',fontSize:11,background:modoPersonaje==='upload'?colorIA:'#f1f5f9',color:modoPersonaje==='upload'?'white':'#64748b'}}>📤 Subir imagen propia</button>
+        </div>
+        <input ref={persRef} type="file" accept="image/*" style={{display:'none'}} onChange={onPickPers}/>
+        {/* Personaje ya seleccionado */}
+        {personaje&&(
+          <div style={{position:'relative',borderRadius:12,overflow:'hidden',height:120,background:'#0f172a',marginBottom:8}}>
+            <img src={personaje} alt="personaje" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+            <button onClick={()=>setPersonaje('')} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+            <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,.6)',padding:'4px 8px',fontSize:10,color:'white',textAlign:'center'}}>✅ Personaje seleccionado</div>
+          </div>
+        )}
+        {/* Modo: base de datos */}
+        {modoPersonaje==='db'&&!personaje&&(
+          <div>
+            <input value={busqTem} onChange={e=>setBusqTem(e.target.value)} placeholder="🔍 Buscar personaje..." style={{...S.input,marginBottom:8,fontSize:12}}/>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,maxHeight:200,overflowY:'auto'}} className="scrollbar-none">
+              {tematicas.filter(t=>t.nombre.toLowerCase().includes(busqTem.toLowerCase())).map(t=>(
+                <div key={t.id} onClick={()=>setPersonaje(t.img)}
+                  style={{borderRadius:10,overflow:'hidden',cursor:'pointer',border:'2px solid #e2e8f0',transition:'all .15s'}}
+                  onMouseEnter={e=>e.currentTarget.style.borderColor=colorIA}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor='#e2e8f0'}>
+                  <div style={{aspectRatio:'9/16',maxHeight:90,background:'#0f172a',position:'relative',overflow:'hidden'}}>
+                    <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  </div>
+                  <div style={{padding:'3px 5px',fontSize:9,fontWeight:700,color:'#475569',textAlign:'center',background:'#f8fafc',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.emoji} {t.nombre}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* Modo: upload propio */}
+        {modoPersonaje==='upload'&&!personaje&&(
+          <div onClick={()=>persRef.current.click()} style={{border:'2px dashed '+colorIA+'60',borderRadius:12,padding:'20px',textAlign:'center',cursor:'pointer',background:colorIA+'08',transition:'all .2s'}}
+            onMouseEnter={e=>{e.currentTarget.style.background=colorIA+'15'}}
+            onMouseLeave={e=>{e.currentTarget.style.background=colorIA+'08'}}>
+            <div style={{fontSize:32,marginBottom:6}}>🎭</div>
+            <div style={{fontWeight:700,fontSize:13,color:colorIA}}>Subir imagen del personaje</div>
+            <div style={{fontSize:10,color:'#94a3b8',marginTop:2}}>JPG, PNG · Máx. 10 MB</div>
+          </div>
+        )}
+      </div>
+
+      {/* Precio y botón pagar */}
+      {resultados.length===0&&(
+        <div>
+          <div style={{background:'#f8fafc',borderRadius:12,padding:12,marginBottom:12,border:'1px solid #e2e8f0',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+            <div>
+              <div style={{fontSize:11,color:'#64748b'}}>Precio por generación</div>
+              <div style={{fontSize:11,color:'#94a3b8'}}>(3 {tipo==='imagen'?'imágenes':'videos'} a elección)</div>
+            </div>
+            <div style={{fontWeight:900,fontSize:20,color:'#1e293b'}}>${precio.toLocaleString('es-AR')}</div>
+          </div>
+          <button
+            onClick={onPagar}
+            disabled={!listo}
+            style={{...S.btn,width:'100%',padding:'13px',fontSize:14,
+              background:listo?'linear-gradient(135deg,#009ee3,#0070ba)':'#e2e8f0',
+              color:listo?'white':'#94a3b8',cursor:listo?'pointer':'not-allowed'}}>
+            {listo?'💳 Pagar y Generar con IA':'⬆️ Cargá ambas fotos para continuar'}
+          </button>
+        </div>
+      )}
+
+      {/* Resultados: grilla de 3 */}
+      {resultados.length>0&&(
+        <div className="fade-in">
+          <div style={{fontWeight:800,fontSize:13,marginBottom:10,color:'#1e293b'}}>✨ Elegí tu favorita:</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:12}}>
+            {resultados.map((src,i)=>(
+              <div key={i} onClick={()=>onUsar(i)}
+                style={{cursor:'pointer',borderRadius:10,overflow:'hidden',border:selIdx===i?'3px solid '+colorIA:'2px solid #e2e8f0',transition:'all .2s',position:'relative'}}>
+                {tipo==='imagen'
+                  ?<div style={{aspectRatio:'9/16',maxHeight:160}}>
+                    <img src={src} alt={`opción ${i+1}`} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  </div>
+                  :<div style={{aspectRatio:'9/16',maxHeight:160,background:'#0f172a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
+                    <span style={{fontSize:22}}>🎬</span>
+                    <span style={{color:'#94a3b8',fontSize:9}}>Video {i+1}</span>
+                  </div>
+                }
+                {selIdx===i&&(
+                  <div style={{position:'absolute',top:4,right:4,background:colorIA,color:'white',borderRadius:'50%',width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11}}>✓</div>
+                )}
+                <div style={{padding:'4px',textAlign:'center',background:'white',fontSize:10,fontWeight:selIdx===i?800:400,color:selIdx===i?colorIA:'#64748b'}}>
+                  {selIdx===i?'✓ Seleccionada':'Opción '+(i+1)}
+                </div>
+              </div>
+            ))}
+          </div>
+          {selIdx!==null&&(
+            <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:10,padding:10,marginBottom:10,fontSize:11,color:'#16a34a',textAlign:'center',fontWeight:700}}>
+              ✅ Opción #{selIdx+1} seleccionada — se usará como portada de la invitación
+            </div>
+          )}
+          <button onClick={onDescartar} style={{...S.btn,background:'#fef2f2',color:'#dc2626',width:'100%',fontSize:12}}>
+            🔄 Descartar y volver a generar
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── PAGO MERCADOPAGO (simulado) ─────────────────────────── */
+function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
+  const [paso,setPaso]=useState('resumen'); // resumen | pagando | aprobado
+  useEffect(()=>{
+    if(paso==='pagando'){
+      // Simula redirección y vuelta de MP en 3 segundos
+      const t=setTimeout(()=>setPaso('aprobado'),3000);
+      return()=>clearTimeout(t);
+    }
+  },[paso]);
+  if(paso==='resumen') return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
+      <div className="fade-in" style={{...S.card,maxWidth:400,width:'100%',padding:28}}>
+        <div style={{textAlign:'center',marginBottom:20}}>
+          <div style={{fontSize:44,marginBottom:8}}>{tipo==='imagen'?'🖼️':'🎬'}</div>
+          <h2 style={{fontWeight:900,fontSize:19}}>Generar {tipo==='imagen'?'Imagen':'Video'} con IA</h2>
+          <p style={{fontSize:12,color:'#64748b',marginTop:4}}>Personalizado para <b>{nombre}</b> · Temática <b>{tematica}</b></p>
+        </div>
+        <div style={{background:'#f8fafc',borderRadius:14,padding:16,marginBottom:18,border:'1px solid #e2e8f0'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+            <span style={{fontSize:13,color:'#64748b'}}>Generación IA {tipo==='imagen'?'imagen':'video'}</span>
+            <span style={{fontSize:18,fontWeight:900,color:'#1e293b'}}>${precio.toLocaleString('es-AR')}</span>
+          </div>
+          {tipo==='imagen'&&<p style={{fontSize:11,color:'#94a3b8'}}>• Imagen en formato 9:16 · Alta resolución<br/>• Sin modificación de rostro<br/>• Lista en segundos</p>}
+          {tipo==='video'&&<p style={{fontSize:11,color:'#94a3b8'}}>• Video animado 5 segundos<br/>• Personaje del entorno elegido<br/>• Descargable en MP4</p>}
+        </div>
+        <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12,padding:12,marginBottom:16,fontSize:11,color:'#92400e'}}>
+          <b>⚠️ Aviso:</b> Vas a ser redirigido a MercadoPago para completar el pago de forma segura. Una vez aprobado, volvés automáticamente a generar tu {tipo==='imagen'?'imagen':'video'}.
+        </div>
+        <div style={{display:'flex',gap:10}}>
+          <button onClick={onCancelar} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#64748b',padding:'12px'}}>Cancelar</button>
+          <button onClick={()=>setPaso('pagando')} style={{...S.btn,flex:2,background:'linear-gradient(135deg,#009ee3,#0070ba)',color:'white',padding:'12px',fontSize:14}}>
+            💳 Pagar con MercadoPago
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+  if(paso==='pagando') return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999}}>
+      <div className="fade-in" style={{...S.card,maxWidth:360,width:'100%',padding:32,textAlign:'center'}}>
+        <div style={{width:60,height:60,borderRadius:'50%',background:'linear-gradient(135deg,#009ee3,#0070ba)',margin:'0 auto 16px',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <span style={{fontSize:28}} className="spin">⚙️</span>
+        </div>
+        <h3 style={{fontWeight:900,fontSize:16,marginBottom:8}}>Procesando pago en MercadoPago...</h3>
+        <p style={{fontSize:12,color:'#64748b'}}>No cierres esta ventana. Estamos verificando tu pago.</p>
+        <div style={{marginTop:16,height:4,background:'#e2e8f0',borderRadius:99,overflow:'hidden'}}>
+          <div style={{height:'100%',background:'#009ee3',borderRadius:99,animation:'progreso 3s linear forwards'}}></div>
+        </div>
+        <style>{`@keyframes progreso{from{width:0%}to{width:100%}}`}</style>
+      </div>
+    </div>
+  );
+  if(paso==='aprobado') return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
+      <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:28,textAlign:'center'}}>
+        <div style={{width:64,height:64,borderRadius:'50%',background:'#dcfce7',margin:'0 auto 14px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>✅</div>
+        <h3 style={{fontWeight:900,fontSize:18,color:'#16a34a',marginBottom:6}}>¡Pago Aprobado!</h3>
+        <p style={{fontSize:12,color:'#64748b',marginBottom:20}}>Tu pago fue procesado correctamente. Ahora vamos a generar tu {tipo==='imagen'?'imagen':'video'} con IA.</p>
+        <button onClick={onPagado} style={{...S.btn,background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',width:'100%',padding:'13px',fontSize:14}}>
+          🤖 Generar {tipo==='imagen'?'Imagen':'Video'} ahora
+        </button>
+      </div>
+    </div>
+  );
+  return null;
+}
+
+/* ── GENERADOR IA ─────────────────────────────────────────── */
+function GeneradorIA({tipo,nombre,tematica,prompt,onResultado,onCerrar}){
+  const [paso,setPaso]=useState('generando');
+  const [progreso,setProgreso]=useState(0);
+  const imgPool=[
+    'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&fit=crop',
+    'https://images.unsplash.com/photo-1464349153735-7db50ed83c84?w=600&fit=crop',
+    'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&fit=crop',
+    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&fit=crop',
+    'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=600&fit=crop',
+    'https://images.unsplash.com/photo-1504196606672-aef5c9cefc92?w=600&fit=crop',
+  ];
+  // Pick 3 different images (simulating 3 IA results)
+  const [resultados] = useState(()=>{
+    const shuffled=[...imgPool].sort(()=>Math.random()-.5);
+    return shuffled.slice(0,3);
+  });
+  useEffect(()=>{
+    let v=0;
+    const t=setInterval(()=>{
+      v+=2;setProgreso(v);
+      if(v>=100){clearInterval(t);setTimeout(()=>setPaso('listo'),400);}
+    },80);
+    return()=>clearInterval(t);
+  },[]);
+  if(paso==='generando') return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
+      <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:28,textAlign:'center'}}>
+        <div style={{fontSize:44,marginBottom:12}}>{tipo==='imagen'?'🖼️':'🎬'}</div>
+        <h3 style={{fontWeight:900,fontSize:17,marginBottom:6}}>Generando con IA...</h3>
+        <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Creando 3 {tipo==='imagen'?'imágenes':'videos'} para <b>{nombre}</b></p>
+        <div style={{height:8,background:'#e2e8f0',borderRadius:99,overflow:'hidden',marginBottom:8}}>
+          <div style={{height:'100%',background:'linear-gradient(90deg,#7c3aed,#a855f7)',borderRadius:99,width:progreso+'%',transition:'width .1s'}}></div>
+        </div>
+        <p style={{fontSize:11,color:'#7c3aed',fontWeight:700}}>{progreso}%</p>
+        <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>Procesando con IA · Sin modificar el rostro</p>
+      </div>
+    </div>
+  );
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16,overflowY:'auto'}}>
+      <div className="fade-in" style={{...S.card,maxWidth:460,width:'100%',padding:24,margin:'auto'}}>
+        <h3 style={{fontWeight:900,fontSize:17,marginBottom:4,textAlign:'center'}}>🎉 ¡{tipo==='imagen'?'Imágenes':'Videos'} listos!</h3>
+        <p style={{fontSize:11,color:'#64748b',textAlign:'center',marginBottom:16}}>Se generaron 3 opciones. Elegí la que más te guste.</p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:16}}>
+          {resultados.map((src,i)=>(
+            <div key={i} style={{display:'flex',flexDirection:'column',gap:6,alignItems:'center'}}>
+              {tipo==='imagen'
+                ?<div style={{aspectRatio:'9/16',borderRadius:10,overflow:'hidden',width:'100%',maxHeight:180,cursor:'pointer',border:'2px solid #e2e8f0'}}>
+                  <img src={src} alt={`resultado ${i+1}`} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                </div>
+                :<div style={{aspectRatio:'9/16',borderRadius:10,overflow:'hidden',width:'100%',maxHeight:180,background:'#0f172a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,cursor:'pointer',border:'2px solid #e2e8f0'}}>
+                  <span style={{fontSize:28}}>🎬</span>
+                  <p style={{color:'#94a3b8',fontSize:9,textAlign:'center',padding:'0 4px'}}>Video {i+1}</p>
+                </div>
+              }
+              <button onClick={()=>onResultado(resultados)} style={{...S.btn,background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',fontSize:10,padding:'6px 10px',width:'100%'}}>
+                ✓ Elegir #{i+1}
+              </button>
+            </div>
+          ))}
+        </div>
+        <button onClick={onCerrar} style={{...S.btn,background:'#f1f5f9',color:'#64748b',width:'100%'}}>Cancelar</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── PAPA CREADOR ────────────────────────────────────────── */
+function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,tematicas,sucursales,setInvEvId,iaConfig,confs,setConfs}){
+  const [form,setForm]=useState({nombre:papaSesion.nombre,tipo:papaSesion.tipo||'Cumpleaños',edad:papaSesion.edad,celPapa:papaSesion.celPapa,temId:papaSesion.temId||'t-3',fotoNino:'',fotoMejorada:'',usarMejorada:true,usarFoto:false,iaImagenes:[],iaImagenSel:null,fotoNinoIA:'',personajeIA:'',iaVideos:[],iaVideoSel:null,fotoNinoIAV:'',personajeIAV:''});
+  const [ftxt,setFtxt]=useState('');const [fcat,setFcat]=useState('TODOS');
+  const [modoPortada,setModoPortada]=useState('tematica');
+  const [mejora,setMejora]=useState({brillo:110,contraste:115,saturacion:120,calidez:0,aplicado:false});
+  const fotoRef=useRef();const canvasRef=useRef();
+  const [pagoActivo,setPagoActivo]=useState(null);
+  const [genActivo,setGenActivo]=useState(null);
+  const [invGuardada,setInvGuardada]=useState(false);
+  const [seccion,setSeccion]=useState('tarjeta');
+  const [kidActivo,setKidActivo]=useState(1);
+  const [shortLinkLoading,setShortLinkLoading]=useState(false);
+  async function acortarYCompartir(longUrl,nombre,fecha,salon){
+    setShortLinkLoading(true);
+    let finalUrl=longUrl;
+    // Generar alias personalizado: invitacion-nombre (sin espacios ni caracteres especiales)
+    const alias='invitacion-'+nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'').slice(0,20);
+    try{
+      // Intentar con alias personalizado
+      const res1=await fetch('https://is.gd/create.php?format=simple&shorturl='+alias+'&url='+encodeURIComponent(longUrl));
+      if(res1.ok){
+        const t1=await res1.text();
+        if(t1.startsWith('https://is.gd/')){finalUrl=t1.trim();}
+        else{
+          // Alias tomado, intentar con nombre+anio
+          const alias2=alias+new Date().getFullYear().toString().slice(-2);
+          const res2=await fetch('https://is.gd/create.php?format=simple&shorturl='+alias2+'&url='+encodeURIComponent(longUrl));
+          if(res2.ok){const t2=await res2.text();if(t2.startsWith('https://'))finalUrl=t2.trim();}
+          else{
+            // Fallback: auto
+            const res3=await fetch('https://is.gd/create.php?format=simple&url='+encodeURIComponent(longUrl));
+            if(res3.ok){const t3=await res3.text();if(t3.startsWith('https://'))finalUrl=t3.trim();}
+          }
+        }
+      }
+    }catch(e){}
+    setShortLinkLoading(false);
+    const lineas=[
+      '*'+nombre+' te invita!*',
+      'El dia '+fecha+' en '+salon,
+      '',
+      'Abri la invitacion:',
+      finalUrl,
+    ];
+    window.open('https://wa.me/?text='+encodeURIComponent(lineas.join('\n')),'_blank');
+  }
+  // Menu IA
+  const [menuAdultos,setMenuAdultos]=useState('');
+  const [menuNinos,setMenuNinos]=useState('');
+  const [menuResult,setMenuResult]=useState(null);
+  const [menuGen,setMenuGen]=useState(false);
+  const [menuEstacion,setMenuEstacion]=useState('Primavera');
+  const [menuHoras,setMenuHoras]=useState('');
+  const [menuSel,setMenuSel]=useState({ninos:{},adultos:{},snacks:{},postres:{},bebidas:{}});
+  // FAQ chat
+  const [faqQ,setFaqQ]=useState('');
+  const [faqChat,setFaqChat]=useState([]);
+  const [faqTyping,setFaqTyping]=useState(false);
+
+  const suc=sucursales.find(s=>s.id===papaSesion.sucId)||sucursales[0];
+  const temA=tematicas.find(t=>t.id===form.temId)||tematicas[0];
+  const tFilt=tematicas.filter(t=>t.nombre.toLowerCase().includes(ftxt.toLowerCase())&&(fcat==='TODOS'||t.cats.includes(fcat)));
+  const cssFilter=`brightness(${mejora.brillo}%) contrast(${mejora.contraste}%) saturate(${mejora.saturacion}%) sepia(${mejora.calidez}%)`;
+  const fotoElegida=(form.usarMejorada&&form.fotoMejorada)?form.fotoMejorada:form.fotoNino;
+  const portadaImg=modoPortada==='foto'&&fotoElegida?fotoElegida:temA.img;
+  const esDoble=papaSesion.doble&&papaSesion.nombre2;
+  const confsEv=(confs||[]).filter(c=>c.evId===papaSesion.id);
+
+  function onFotoNino(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(x=>({...x,fotoNino:ev.target.result,fotoMejorada:'',usarFoto:true}));r.readAsDataURL(f);}
+  function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
+  function guardar(e){e.preventDefault();setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form}:x));setPapaSesion({...papaSesion,...form});setInvGuardada(true);alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');}
+  function descargarInvitacion(){
+    const W=540,H=960;
+    const canvas=document.createElement('canvas');
+    canvas.width=W;canvas.height=H;
+    const ctx=canvas.getContext('2d');
+    const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const fecha=papaSesion.dia+' de '+(meses[(+papaSesion.mes)-1]||'')+' de '+papaSesion.anio;
+    // Fondo degradado (no depende de imágenes externas)
+    const grad=ctx.createLinearGradient(0,0,W,H);
+    grad.addColorStop(0,'#1e0a4e');
+    grad.addColorStop(0.5,'#7c3aed');
+    grad.addColorStop(1,'#c2410c');
+    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+    // Círculos decorativos
+    ctx.fillStyle='rgba(255,255,255,0.06)';
+    ctx.beginPath();ctx.arc(W*0.8,H*0.2,180,0,Math.PI*2);ctx.fill();
+    ctx.beginPath();ctx.arc(W*0.1,H*0.7,140,0,Math.PI*2);ctx.fill();
+    // Badge superior
+    ctx.fillStyle='#f43f5e';
+    ctx.beginPath();ctx.roundRect(W/2-90,44,180,40,20);ctx.fill();
+    ctx.fillStyle='white';ctx.font='bold 18px Arial';ctx.textAlign='center';
+    ctx.fillText('TE INVITO!',W/2,71);
+    // Salon name
+    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='16px Arial';
+    ctx.fillText(suc.nombre,W/2,140);
+    // Nombre del festejado
+    const nombre=form.nombre||papaSesion.nombre||'';
+    ctx.fillStyle='#fef9c3';ctx.font='bold 70px Arial';ctx.textAlign='center';
+    // Wrap if long
+    if(ctx.measureText(nombre).width>480){ctx.font='bold 50px Arial';}
+    ctx.fillText(nombre,W/2,H/2-60);
+    // tipo + edad
+    ctx.fillStyle='white';ctx.font='bold 26px Arial';
+    ctx.fillText((form.tipo||'Cumpleanos')+' · '+(form.edad||papaSesion.edad)+' anos',W/2,H/2);
+    // Línea divisora
+    ctx.fillStyle='rgba(255,255,255,0.25)';ctx.fillRect(60,H/2+30,W-120,1);
+    // Detalles del evento
+    ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font='22px Arial';
+    ctx.fillText(fecha,W/2,H/2+80);
+    ctx.fillText(papaSesion.hIni+' a '+papaSesion.hFin+' hs',W/2,H/2+115);
+    // Caja lugar
+    ctx.fillStyle='rgba(255,255,255,0.12)';
+    ctx.beginPath();ctx.roundRect(40,H/2+148,W-80,100,20);ctx.fill();
+    ctx.fillStyle='white';ctx.font='bold 24px Arial';
+    ctx.fillText(suc.nombre,W/2,H/2+195);
+    ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='17px Arial';
+    const dir=suc.direccion||'';
+    if(ctx.measureText(dir).width>440){ctx.font='14px Arial';}
+    ctx.fillText(dir,W/2,H/2+225);
+    // Footer
+    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='13px Arial';
+    ctx.fillText('Invitaciones Digitales · '+suc.nombre,W/2,H-30);
+    // Descargar
+    const a=document.createElement('a');
+    a.href=canvas.toDataURL('image/jpeg',0.93);
+    a.download='invitacion-'+(nombre||'evento').replace(/\s/g,'-')+'.jpg';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+  }
+  function calcularMenu(){
+    const a=+menuAdultos||0;const n=+menuNinos||0;const t=a+n;
+    if(!t)return alert('Ingresá la cantidad de adultos y niños.');
+    const h=+menuHoras||4;
+    const cfg=iaConfig.menuConfig||{};
+    // Season multipliers
+    const bMult=menuEstacion==='Verano'?1.3:menuEstacion==='Invierno'?0.8:1.0;
+    const hMult=h<=3?0.85:h===4?1.0:h===5?1.15:1.3;
+    setMenuGen(true);
+    setTimeout(()=>{
+      const results=[];
+      const shopping=[];
+      // Helper: calc per item
+      function addItems(cat,items,baseN,baseA,unit){
+        const sel=(menuSel[cat]||{});
+        const selItems=items.filter(i=>sel[i.id]);
+        if(!selItems.length)return;
+        const perItem=selItems.length;
+        selItems.forEach(item=>{
+          const rawN=n*(baseN/perItem)*hMult;
+          const rawA=a*(baseA/perItem)*hMult;
+          const total=Math.ceil(rawN+rawA);
+          results.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:unit,cat});
+          shopping.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:unit});
+        });
+      }
+      addItems('ninos',cfg.ninos||[]  , 2.5, 0.5, 'unidades');
+      addItems('adultos',cfg.adultos||[], 0.5, 2.0, 'unidades');
+      addItems('snacks',cfg.snacks||[]  , 0.3, 0.2, 'kg');
+      addItems('postres',cfg.postres||[], 0.15,0.1, 'porción');
+      // Bebidas with season multiplier
+      const bSel=(menuSel.bebidas||{});
+      const bItems=(cfg.bebidas||[]).filter(i=>bSel[i.id]);
+      bItems.forEach(item=>{
+        const total=Math.ceil(t*0.35*bMult*hMult);
+        results.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:'litros',cat:'bebidas'});
+        shopping.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:'litros'});
+      });
+      setMenuResult({items:results,shopping,adultos:a,ninos:n,horas:h,estacion:menuEstacion});
+      setMenuGen(false);
+    },2500);
+  }
+  function enviarFaq(e){
+    e.preventDefault();
+    if(!faqQ.trim())return;
+    const q=faqQ.trim();
+    setFaqChat(c=>[...c,{de:'user',txt:q}]);
+    setFaqQ('');setFaqTyping(true);
+    setTimeout(()=>{
+      const items=iaConfig.faqItems||[];
+      const words=q.toLowerCase().split(' ').filter(w=>w.length>3);
+      const match=items.find(i=>words.some(w=>i.pregunta.toLowerCase().includes(w))||i.pregunta.toLowerCase().includes(q.toLowerCase()));
+      const resp=match?match.respuesta:'Lo siento, no tengo información sobre eso. Para consultas específicas, contactá directamente con el salón.';
+      setFaqChat(c=>[...c,{de:'ia',txt:resp}]);
+      setFaqTyping(false);
+    },1500);
+  }
+
+  const SECCIONES=[
+    ['tarjeta','🎨','Tarjeta','#7c3aed'],
+    ['confirmaciones','👥','Confirmados','#06b6d4'],
+    ['menu','🍽️','Menú IA','#f97316'],
+    ['descargables','📦','Recursos','#16a34a'],
+    ['faq','💬','Consultas','#e11d48'],
+    ['adicionales','➕','Adicionales','#8b5cf6'],
+  ];
+
+  return(
+    <div className="fade-in" style={{maxWidth:940,margin:'0 auto',padding:'20px 16px'}}>
+      {/* Header */}
+      <div style={{...S.card,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,marginBottom:16,padding:18}}>
+        <div>
+          <span style={{fontSize:10,background:'#ede9fe',color:'#7c3aed',padding:'3px 10px',borderRadius:99,fontWeight:700}}>Panel Papás</span>
+          <h1 style={{fontWeight:900,fontSize:20,marginTop:6}}>Hola, {papaSesion.nomPapa||'Mamá/Papá'} 👋</h1>
+          <p style={{fontSize:11,color:'#64748b',margin:0}}>{papaSesion.tipo||'Cumpleaños'} de <b>{papaSesion.nombre}</b> · {papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin} hs</p>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={()=>{setInvEvId(papaSesion.id);setVista('invitado-portada');}} style={{...S.btn,background:'#7c3aed',color:'white'}}>👁 Ver Tarjeta</button>
+          <button onClick={()=>{setPapaSesion(null);setVista('papa-login');}} style={{...S.btn,background:'#f1f5f9',color:'#64748b'}}>Salir</button>
+        </div>
+      </div>
+
+      {/* Doble Banner */}
+      {esDoble&&(
+        <div style={{...S.card,background:'linear-gradient(135deg,#fff7ed,#fef9c3)',border:'2px solid #f97316',marginBottom:16,padding:'12px 16px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:24}}>🎂🎂</span>
+              <div><div style={{fontWeight:900,fontSize:13,color:'#c2410c'}}>Cumpleaños Doble — editando invitación de:</div><div style={{fontSize:11,color:'#92400e'}}>Cada homenajeado tiene su propia tarjeta y lista</div></div>
+            </div>
+            <div style={{display:'flex',gap:6}}>
+              <button onClick={()=>setKidActivo(1)} style={{...S.btn,padding:'7px 16px',background:kidActivo===1?'#f97316':'#f1f5f9',color:kidActivo===1?'white':'#64748b',fontSize:12}}>🎉 {papaSesion.nombre}</button>
+              <button onClick={()=>setKidActivo(2)} style={{...S.btn,padding:'7px 16px',background:kidActivo===2?'#7c3aed':'#f1f5f9',color:kidActivo===2?'white':'#64748b',fontSize:12}}>🎉 {papaSesion.nombre2}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Section tabs */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:4,background:'#f1f5f9',borderRadius:16,padding:4,marginBottom:20}}>
+        {SECCIONES.map(([v,e,l,c])=>(
+          <button key={v} onClick={()=>setSeccion(v)} style={{padding:'10px 4px',borderRadius:12,fontSize:10,fontWeight:800,border:'none',cursor:'pointer',background:seccion===v?c:'transparent',color:seccion===v?'white':'#64748b',transition:'all .2s',display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+            <span style={{fontSize:18}}>{e}</span>{l}
+          </button>
+        ))}
+      </div>
+
+      {/* ══ TARJETA ══ */}
+      {seccion==='tarjeta'&&(
+        <div style={{display:'grid',gridTemplateColumns:'min(340px,100%) 1fr',gap:20,alignItems:'start'}} className="papa-grid">
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <div style={S.card}>
+              <h2 style={{fontWeight:900,fontSize:15,color:'#f97316',marginBottom:14}}>Datos de la Invitación</h2>
+              <form onSubmit={guardar} style={{display:'flex',flexDirection:'column',gap:11}}>
+                {[['😊 Nombre','nombre','text'],['🎂 Edad','edad','text'],['📱 Celular (confirmaciones)','celPapa','text']].map(([l,k,t])=>(
+                  <label key={k}><span style={{...S.label,color:'#f97316'}}>{l}</span>
+                    <input type={t} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{...S.input,border:'2px solid #fed7aa',fontWeight:700}}/></label>
+                ))}
+                <label><span style={{...S.label,color:'#f97316'}}>🎈 Tipo</span>
+                  <select value={form.tipo} onChange={e=>setForm({...form,tipo:e.target.value})} style={{...S.input,border:'2px solid #fed7aa',fontWeight:700}}>
+                    <option>Cumpleaños</option><option>Comunión</option><option>Bautismo</option>
+                  </select>
+                </label>
+                <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:12,padding:'10px 12px'}}>
+                  <span style={{...S.label,color:'#94a3b8',fontSize:10}}>📅 FECHA Y HORARIO (fijado por el salón)</span>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:6}}>
+                    <div><span style={{...S.label,color:'#94a3b8'}}>Fecha</span><input readOnly value={papaSesion.dia&&papaSesion.mes&&papaSesion.anio?`${papaSesion.dia}/${papaSesion.mes}/${papaSesion.anio}`:'—'} style={{...S.input,background:'#f1f5f9',color:'#64748b',cursor:'not-allowed',fontWeight:700}}/></div>
+                    <div><span style={{...S.label,color:'#94a3b8'}}>Horario</span><input readOnly value={papaSesion.hIni&&papaSesion.hFin?`${papaSesion.hIni} – ${papaSesion.hFin} hs`:'—'} style={{...S.input,background:'#f1f5f9',color:'#64748b',cursor:'not-allowed',fontWeight:700}}/></div>
+                  </div>
+                </div>
+                <button type="submit" style={{...S.btn,background:'linear-gradient(135deg,#f97316,#7c3aed)',color:'white',padding:13}}>✓ Guardar Invitación</button>
+              </form>
+            </div>
+            {/* WA Compartir */}
+            <div style={{...S.card,padding:0,overflow:'hidden'}}>
+              {/* Mini preview tarjeta */}
+              <div style={{position:'relative',height:180,background:'#0f172a',overflow:'hidden'}}>
+                <img src={portadaImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',opacity:.85}}/>
+                <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.75) 0%,transparent 50%)'}}></div>
+                <span style={{position:'absolute',top:10,left:10,background:'#f43f5e',color:'white',fontSize:9,padding:'3px 10px',borderRadius:99,fontWeight:900}}>TE INVITO!</span>
+                <div style={{position:'absolute',bottom:10,left:0,right:0,textAlign:'center',color:'white'}}>
+                  <div style={{fontSize:22,fontWeight:900,textShadow:'0 2px 8px rgba(0,0,0,.5)'}}>{form.nombre||papaSesion.nombre}</div>
+                  <div style={{fontSize:11,opacity:.8}}>{papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin}hs</div>
+                </div>
+              </div>
+              <div style={{padding:'12px 14px',display:'flex',gap:8}}>
+                <button disabled={shortLinkLoading} onClick={()=>{
+                  const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+                  const fecha=papaSesion.dia+' de '+(meses[(+papaSesion.mes)-1]||'')+' de '+papaSesion.anio;
+                  const baseUrl=window.location.href.split('?')[0];
+                  const evData={id:papaSesion.id,sucId:papaSesion.sucId,nombre:form.nombre||papaSesion.nombre,tipo:form.tipo||'Cumpleanos',edad:form.edad||papaSesion.edad,dia:papaSesion.dia,mes:papaSesion.mes,anio:papaSesion.anio,hIni:papaSesion.hIni,hFin:papaSesion.hFin,celPapa:papaSesion.celPapa,nomPapa:papaSesion.nomPapa,temId:form.temId||papaSesion.temId};
+                  const longUrl=baseUrl+'?inv='+btoa(JSON.stringify(evData));
+                  acortarYCompartir(longUrl,evData.nombre,fecha,suc.nombre);
+                }} style={{...S.btn,flex:1,background:shortLinkLoading?'#94a3b8':'#25d366',color:'white',padding:'11px',fontSize:13,fontWeight:800}}>
+                  {shortLinkLoading?'Generando link...':'Enviar por WhatsApp'}
+                </button>
+                <button onClick={descargarInvitacion} style={{...S.btn,background:'#7c3aed',color:'white',padding:'11px 14px',fontSize:12}} title="Descargar JPG">JPG</button>
+              </div>
+            </div>
+          </div>
+          {/* Portada selector */}
+          <div style={S.card}>
+            <div style={{background:'#f0f9ff',border:'1px solid #bae6fd',borderRadius:14,padding:'12px 14px',marginBottom:16}}>
+              <p style={{fontSize:12,color:'#0369a1',margin:0}}><b>Personalizá tu tarjeta:</b> elegí temática, subí foto o generá con IA. Guardá para desbloquear los exclusivos.</p>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:4,background:'#f1f5f9',borderRadius:14,padding:4,marginBottom:18}}>
+              {[['tematica','🎨','Temática','#7c3aed'],['foto','📸','Foto','#f97316'],['ia-imagen','🖼️','Imagen IA','#0ea5e9'],['ia-video','🎬','Video IA','#e11d48'],['exclusivos','📦','Exclusivos','#16a34a']].map(([v,e,l,c])=>(
+                <button key={v} onClick={()=>setModoPortada(v)} style={{padding:'8px 4px',borderRadius:10,fontSize:10,fontWeight:800,border:'none',cursor:'pointer',background:modoPortada===v?c:'transparent',color:modoPortada===v?'white':'#64748b',transition:'all .2s',display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+                  <span style={{fontSize:16}}>{e}</span>{l}
+                </button>
+              ))}
+            </div>
+            {modoPortada==='tematica'&&(
+              <div className="fade-in">
+                <h2 style={{fontWeight:900,fontSize:17,marginBottom:8}}>¡Más de 830 Temáticas!</h2>
+                <input value={ftxt} onChange={e=>setFtxt(e.target.value)} placeholder="🔍 Buscar..." style={{...S.input,marginBottom:10}}/>
+                <div style={{display:'flex',gap:4,overflowX:'auto',paddingBottom:8,marginBottom:12}} className="scrollbar-none">
+                  {CATS.map(c=><button key={c} onClick={()=>setFcat(c)} style={{padding:'4px 10px',borderRadius:8,fontSize:10,fontWeight:900,border:'none',cursor:'pointer',whiteSpace:'nowrap',background:fcat===c?'#7c3aed':'#f1f5f9',color:fcat===c?'white':'#64748b'}}>{c}</button>)}
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,maxHeight:420,overflowY:'auto'}} className="scrollbar-none">
+                  {tFilt.map(t=>{const sel=form.temId===t.id;return(
+                    <div key={t.id} onClick={()=>setForm({...form,temId:t.id,usarFoto:false})} style={{borderRadius:12,overflow:'hidden',border:sel?'3px solid #7c3aed':'2px solid #e2e8f0',cursor:'pointer',boxShadow:sel?'0 0 0 3px #c4b5fd':'none',transition:'all .15s'}}>
+                      <div style={{aspectRatio:'9/16',background:'#0f172a',position:'relative',overflow:'hidden'}}>
+                        <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                        <span style={{position:'absolute',bottom:4,left:4,background:'rgba(0,0,0,.75)',color:'white',fontSize:9,padding:'2px 5px',borderRadius:5,fontWeight:700}}>{t.nombre}</span>
+                        {sel&&<span style={{position:'absolute',top:5,right:5,background:'#7c3aed',color:'white',borderRadius:99,fontSize:12,width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center'}}>✓</span>}
+                      </div>
+                    </div>
+                  );})}
+                </div>
+              </div>
+            )}
+            {modoPortada==='foto'&&(
+              <div className="fade-in">
+                <h2 style={{fontWeight:900,fontSize:17,marginBottom:8}}>📸 Foto de tu Hijo/a</h2>
+                <div onClick={()=>fotoRef.current.click()} style={{border:'2px dashed #fed7aa',borderRadius:14,padding:form.fotoNino?0:24,textAlign:'center',cursor:'pointer',background:'#fff7ed',marginBottom:14,overflow:'hidden',minHeight:60,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  {form.fotoNino
+                    ?<div style={{position:'relative',width:'100%'}}>
+                      <img src={fotoElegida} alt="foto" style={{width:'100%',aspectRatio:'9/16',objectFit:'cover',filter:form.fotoMejorada?'none':cssFilter}}/>
+                      {!form.fotoMejorada&&<div style={{position:'absolute',top:8,left:8,background:'rgba(249,115,22,.9)',color:'white',fontSize:9,padding:'3px 8px',borderRadius:99,fontWeight:900}}>VISTA PREVIA</div>}
+                      {form.fotoMejorada&&form.usarMejorada&&<div style={{position:'absolute',top:8,left:8,background:'rgba(22,163,74,.95)',color:'white',fontSize:9,padding:'3px 8px',borderRadius:99,fontWeight:900}}>✓ MEJORADA</div>}
+                      {form.fotoMejorada&&!form.usarMejorada&&<div style={{position:'absolute',top:8,left:8,background:'rgba(15,23,42,.85)',color:'white',fontSize:9,padding:'3px 8px',borderRadius:99,fontWeight:900}}>ORIGINAL</div>}
+                    </div>
+                    :<div style={{color:'#f97316',fontSize:13,fontWeight:700}}>📤 Subir foto<br/><span style={{fontSize:10,color:'#94a3b8',fontWeight:400}}>JPG, PNG · Vertical preferido</span></div>
+                  }
+                </div>
+                <input ref={fotoRef} type="file" accept="image/*" onChange={onFotoNino} style={{display:'none'}}/>
+                {form.fotoNino&&(
+                  <div>
+                    <div style={{background:'#fafafa',borderRadius:14,padding:14,marginBottom:12,border:'1px solid #e2e8f0'}}>
+                      {[['☀️ Brillo','brillo',80,160],['🌗 Contraste','contraste',80,160],['🎨 Saturación','saturacion',60,180],['🌡 Calidez','calidez',0,40]].map(([lbl,key,min,max])=>(
+                        <div key={key} style={{marginBottom:10}}>
+                          <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:11,color:'#64748b'}}>{lbl}</span><span style={{fontSize:11,fontWeight:700}}>{mejora[key]}</span></div>
+                          <input type="range" min={min} max={max} value={mejora[key]} onChange={e=>setMejora(m=>({...m,[key]:+e.target.value,aplicado:false}))} style={{width:'100%',accentColor:'#f97316'}}/>
+                        </div>
+                      ))}
+                      <div style={{display:'flex',gap:8}}>
+                        <button type="button" onClick={()=>setMejora({brillo:110,contraste:115,saturacion:120,calidez:0,aplicado:false})} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#64748b',padding:'8px',fontSize:11}}>↺ Reset</button>
+                        <button type="button" onClick={aplicarMejora} style={{...S.btn,flex:1,background:'linear-gradient(135deg,#f97316,#fbbf24)',color:'#0f172a',padding:'8px',fontSize:11}}>✨ Mejorar</button>
+                      </div>
+                    </div>
+                    {form.fotoMejorada&&(
+                      <div style={{marginBottom:12}}>
+                        <span style={{...S.label,color:'#64748b'}}>¿Cuál querés usar?</span>
+                        <div style={{display:'flex',gap:8}}>
+                          <button type="button" onClick={()=>setForm(f=>({...f,usarMejorada:false}))} style={{...S.btn,flex:1,background:!form.usarMejorada?'#0f172a':'#f1f5f9',color:!form.usarMejorada?'white':'#64748b',padding:'8px',fontSize:11}}>Original</button>
+                          <button type="button" onClick={()=>setForm(f=>({...f,usarMejorada:true}))} style={{...S.btn,flex:1,background:form.usarMejorada?'#16a34a':'#f1f5f9',color:form.usarMejorada?'white':'#64748b',padding:'8px',fontSize:11}}>✨ Mejorada</button>
+                        </div>
+                      </div>
+                    )}
+                    <button type="button" onClick={()=>setForm(f=>({...f,usarFoto:true}))} style={{...S.btn,width:'100%',background:form.usarFoto?'#16a34a':'#0f172a',color:'white',padding:12,fontSize:13}}>{form.usarFoto?'✓ Usando esta foto':'Usar esta foto'}</button>
+                  </div>
+                )}
+                <canvas ref={canvasRef} style={{display:'none'}}/>
+              </div>
+            )}
+            {modoPortada==='ia-imagen'&&(
+              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>setPagoActivo('imagen')} onDescartar={()=>setForm(f=>({...f,iaImagenes:[],usarFoto:false}))} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:true}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas}/>
+            )}
+            {modoPortada==='ia-video'&&(
+              <IAUploadSection tipo="video" precio={iaConfig.precioVideo} resultados={form.iaVideos||[]} onPagar={()=>setPagoActivo('video')} onDescartar={()=>setForm(f=>({...f,iaVideos:[]}))} onUsar={idx=>setForm(f=>({...f,iaVideoSel:idx}))} selIdx={form.iaVideoSel} fotoNino={form.fotoNinoIAV||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIAV:v}))} personaje={form.personajeIAV||''} setPersonaje={v=>setForm(f=>({...f,personajeIAV:v}))} tematicas={tematicas}/>
+            )}
+            {modoPortada==='exclusivos'&&(
+              <div className="fade-in">
+                {!invGuardada?(
+                  <div style={{textAlign:'center',padding:'24px 16px'}}>
+                    <div style={{fontSize:52,marginBottom:12}}>🔒</div>
+                    <h3 style={{fontWeight:900,fontSize:17,marginBottom:8}}>Exclusivos Bloqueados</h3>
+                    <p style={{fontSize:12,color:'#64748b'}}>Guardá tu invitación para desbloquear las plantillas de <b>{temA.nombre}</b>.</p>
+                  </div>
+                ):(
+                  <div className="fade-in">
+                    <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:12,padding:10,marginBottom:12,fontSize:12,color:'#16a34a',fontWeight:700}}>🔓 {temA.emoji} {temA.nombre} — plantillas desbloqueadas</div>
+                    {[{emoji:'🎨',titulo:'Cartel Fiesta (A4)'},{emoji:'🖼️',titulo:'Marco de Fotos'},{emoji:'📋',titulo:'Lista de Asistentes'},{emoji:'🎁',titulo:'Etiquetas Souvenirs (x12)'},{emoji:'💌',titulo:'Sobre de Invitación'}].map((item,i)=>(
+                      <div key={i} style={{...S.card,display:'flex',alignItems:'center',gap:12,marginBottom:8,padding:'12px 14px'}}>
+                        <span style={{fontSize:22}}>{item.emoji}</span>
+                        <div style={{flex:1,fontWeight:800,fontSize:12}}>{item.titulo}</div>
+                        <a href={temA.img} download target="_blank" style={{...S.btn,background:'#16a34a',color:'white',padding:'6px 12px',fontSize:10,textDecoration:'none'}}>⬇️</a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══ CONFIRMACIONES ══ */}
+      {seccion==='confirmaciones'&&(
+        <div className="fade-in" style={S.card}>
+          <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>👥 Lista de Confirmados</h2>
+          <p style={{fontSize:12,color:'#64748b',marginBottom:16}}>{papaSesion.tipo} de <b>{papaSesion.nombre}</b> · {papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio}</p>
+          {confsEv.length===0?(
+            <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}>
+              <div style={{fontSize:40,marginBottom:8}}>👀</div>
+              <p style={{fontWeight:700}}>Aún no hay confirmaciones</p>
+              <p style={{fontSize:11}}>Compartí la invitación para que los invitados puedan confirmar.</p>
+            </div>
+          ):(
+            <>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:16}}>
+                {[['Familias',confsEv.length,'#06b6d4'],['Niños',confsEv.reduce((a,c)=>a+(+c.ninos||0),0),'#7c3aed'],['Adultos',confsEv.reduce((a,c)=>a+(+c.adultos||0),0),'#f97316']].map(([l,v,c])=>(
+                  <div key={l} style={{background:'white',borderRadius:14,padding:14,textAlign:'center',border:`1px solid ${c}33`}}>
+                    <div style={{fontSize:11,fontWeight:700,color:c}}>{l}</div>
+                    <div style={{fontSize:32,fontWeight:900}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{overflow:'hidden',borderRadius:14,border:'1px solid #e2e8f0'}}>
+                <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+                  <thead><tr style={{background:'#f8fafc'}}>
+                    {['Nombre','👶 Niños','👨 Adultos','📱 Cel'].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontWeight:700,color:'#64748b'}}>{h}</th>)}
+                  </tr></thead>
+                  <tbody>
+                    {confsEv.map(c=><tr key={c.id} style={{borderTop:'1px solid #f1f5f9'}}>
+                      <td style={{padding:'9px 14px',fontWeight:700}}>{c.invitado}</td>
+                      <td style={{padding:'9px 14px',textAlign:'center'}}>{c.ninos}</td>
+                      <td style={{padding:'9px 14px',textAlign:'center'}}>{c.adultos}</td>
+                      <td style={{padding:'9px 14px',fontFamily:'monospace',fontSize:11}}>{c.cel}</td>
+                    </tr>)}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ══ MENÚ IA ══ */}
+      {seccion==='menu'&&(
+        <div className="fade-in">
+          <div style={{...S.card,marginBottom:16}}>
+            <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
+              <span style={{fontSize:32}}>🍽️</span>
+              <div><h2 style={{fontWeight:900,fontSize:18,margin:0}}>Calculadora de Menú Inteligente</h2>
+              <p style={{fontSize:11,color:'#64748b',margin:0}}>Completá el formulario y la IA calcula cantidades y lista de compras</p></div>
+            </div>
+
+            {/* Paso 1: Invitados */}
+            <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:12,padding:14,marginBottom:14}}>
+              <div style={{fontWeight:800,fontSize:12,color:'#7c3aed',marginBottom:10}}>👥 PASO 1 — Invitados</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                <label><span style={S.label}>👶 Niños</span><input type="number" min={0} value={menuNinos} onChange={e=>setMenuNinos(e.target.value)} style={S.input} placeholder="Ej: 15"/></label>
+                <label><span style={S.label}>👨 Adultos</span><input type="number" min={0} value={menuAdultos} onChange={e=>setMenuAdultos(e.target.value)} style={S.input} placeholder="Ej: 20"/></label>
+              </div>
+            </div>
+
+            {/* Paso 2: Evento */}
+            <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:12,padding:14,marginBottom:14}}>
+              <div style={{fontWeight:800,fontSize:12,color:'#7c3aed',marginBottom:10}}>📅 PASO 2 — Detalles del evento</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+                <label><span style={S.label}>🌸 Estación del año</span>
+                  <select value={menuEstacion} onChange={e=>setMenuEstacion(e.target.value)} style={S.input}>
+                    {['Primavera','Verano','Otoño','Invierno'].map(s=><option key={s} value={s}>{s==='Primavera'?'🌸':s==='Verano'?'☀️':s==='Otoño'?'🍂':'❄️'} {s}</option>)}
+                  </select>
+                </label>
+                <label><span style={S.label}>⏰ Duración de la fiesta</span>
+                  <select value={menuHoras} onChange={e=>setMenuHoras(e.target.value)} style={S.input}>
+                    <option value="">Seleccioná...</option>
+                    {(iaConfig.menuConfig?.horas||[3,4,5,6]).map(h=><option key={h} value={h}>{h} horas</option>)}
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            {/* Paso 3: Menú */}
+            {['ninos','adultos','snacks','postres','bebidas'].map(cat=>{
+              const labels={ninos:'🧒 Menú Niños',adultos:'👨 Menú Adultos',snacks:'🍿 Snacks',postres:'🎂 Torta y Postres',bebidas:'🥤 Bebidas'};
+              const items=(iaConfig.menuConfig?.[cat])||[];
+              if(!items.length)return null;
+              return(
+                <div key={cat} style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:12,padding:14,marginBottom:14}}>
+                  <div style={{fontWeight:800,fontSize:12,color:'#7c3aed',marginBottom:10}}>{labels[cat]}</div>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+                    {items.map(item=>{
+                      const checked=!!(menuSel[cat]||{})[item.id];
+                      return(
+                        <button key={item.id} onClick={()=>setMenuSel(s=>({...s,[cat]:{...s[cat],[item.id]:!checked}}))}
+                          style={{padding:'7px 12px',borderRadius:20,border:`2px solid ${checked?'#7c3aed':'#e2e8f0'}`,background:checked?'#ede9fe':'white',color:checked?'#7c3aed':'#64748b',fontSize:12,cursor:'pointer',fontWeight:checked?700:400,display:'flex',alignItems:'center',gap:5}}>
+                          <span>{item.emoji}</span>{item.nombre}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{fontSize:10,color:'#94a3b8',marginTop:6}}>Seleccioná los ítems que querés incluir</div>
+                </div>
+              );
+            })}
+
+            <button onClick={calcularMenu} disabled={menuGen||(!+menuNinos&&!+menuAdultos)||!menuHoras} style={{...S.btn,background:(menuGen||(!+menuNinos&&!+menuAdultos)||!menuHoras)?'#e2e8f0':'linear-gradient(135deg,#f97316,#fbbf24)',color:(menuGen||(!+menuNinos&&!+menuAdultos)||!menuHoras)?'#94a3b8':'#0f172a',width:'100%',padding:14,fontSize:14}}>
+              {menuGen?'🤖 Calculando cantidades...' : '🍽️ Generar Menú Inteligente'}
+            </button>
+            {menuGen&&<div style={{textAlign:'center',padding:16,color:'#f97316',fontWeight:700,fontSize:13}}>⏳ Analizando estación, horas y preferencias...</div>}
+          </div>
+
+          {/* Resultados */}
+          {menuResult&&!menuGen&&(
+            <div className="fade-in">
+              <div style={{...S.card,marginBottom:16}}>
+                <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:12,padding:12,marginBottom:16,fontSize:13,color:'#166534',fontWeight:700}}>
+                  ✅ Menú calculado para {menuResult.ninos} niños + {menuResult.adultos} adultos · {menuResult.horas}hs · {menuResult.estacion==='Verano'?'☀️':menuResult.estacion==='Invierno'?'❄️':menuResult.estacion==='Otoño'?'🍂':'🌸'} {menuResult.estacion}
+                </div>
+                {/* Results by category */}
+                {['ninos','adultos','snacks','postres','bebidas'].map(cat=>{
+                  const labels={ninos:'🧒 Menú Niños',adultos:'👨 Menú Adultos',snacks:'🍿 Snacks',postres:'🎂 Torta y Postres',bebidas:'🥤 Bebidas'};
+                  const catItems=menuResult.items.filter(r=>r.cat===cat);
+                  if(!catItems.length)return null;
+                  return(
+                    <div key={cat} style={{marginBottom:14}}>
+                      <div style={{fontWeight:800,fontSize:11,color:'#475569',marginBottom:6,textTransform:'uppercase',letterSpacing:1}}>{labels[cat]}</div>
+                      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:8}}>
+                        {catItems.map((r,i)=>(
+                          <div key={i} style={{background:'white',border:'1px solid #e2e8f0',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                            <span style={{fontSize:13,color:'#475569'}}>{r.emoji} {r.nombre}</span>
+                            <span style={{fontWeight:900,fontSize:15,color:'#1e293b'}}>{r.cant}<span style={{fontSize:9,fontWeight:400,color:'#94a3b8',marginLeft:2}}>{r.u}</span></span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Shopping list */}
+              <div style={{...S.card,marginBottom:16}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+                  <h3 style={{fontWeight:900,fontSize:15,margin:0}}>🛒 Lista de Compras</h3>
+                  <div style={{display:'flex',gap:8}}>
+                    <button onClick={()=>{
+                      const suc=sucursales.find(s=>s.id===papaSesion.sucId)||sucursales[0];
+                      const lines=[
+                        `🎉 Lista de Compras - Fiesta de ${papaSesion.nombre}`,
+                        `📅 ${menuResult.estacion} · ${menuResult.horas}hs · ${menuResult.ninos} niños + ${menuResult.adultos} adultos`,
+                        ``,
+                        ...menuResult.shopping.map(s=>`${s.emoji} ${s.nombre}: ${s.cant} ${s.u}`),
+                        ``,
+                        `💡 Agregar 10-15% de margen extra.`,
+                        `📍 ${suc.nombre} · ${suc.tel}`,
+                      ];
+                      const txt=lines.join('\n');
+                      const wa=`https://wa.me/?text=${encodeURIComponent(txt)}`;
+                      window.open(wa,'_blank');
+                    }} style={{...S.btn,background:'#25d366',color:'white',padding:'7px 12px',fontSize:11,display:'flex',alignItems:'center',gap:5}}>
+                      <span>📱</span> Compartir
+                    </button>
+                    <button onClick={()=>{
+                      const suc=sucursales.find(s=>s.id===papaSesion.sucId)||sucursales[0];
+                      const lines=[
+                        `LISTA DE COMPRAS`,
+                        `Fiesta de ${papaSesion.nombre}`,
+                        `${menuResult.estacion} · ${menuResult.horas} horas · ${menuResult.ninos} niños + ${menuResult.adultos} adultos`,
+                        ``,
+                        ...menuResult.shopping.map(s=>`${s.emoji}  ${s.nombre.padEnd(20)} ${s.cant} ${s.u}`),
+                        ``,
+                        `* Agregar 10-15% de margen extra`,
+                        `${suc.nombre} · Tel: ${suc.tel}`,
+                      ];
+                      const txt=lines.join('\n');
+                      const blob=new Blob([txt],{type:'text/plain'});
+                      const url=URL.createObjectURL(blob);
+                      const a=document.createElement('a');
+                      a.href=url;a.download=`lista-compras-${papaSesion.nombre}.txt`;
+                      a.click();URL.revokeObjectURL(url);
+                    }} style={{...S.btn,background:'#7c3aed',color:'white',padding:'7px 12px',fontSize:11,display:'flex',alignItems:'center',gap:5}}>
+                      <span>⬇️</span> Descargar
+                    </button>
+                  </div>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                  {menuResult.shopping.map((s,i)=>(
+                    <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 12px',background:i%2===0?'#f8fafc':'white',borderRadius:8}}>
+                      <span style={{fontSize:13}}>{s.emoji} {s.nombre}</span>
+                      <span style={{fontWeight:700,fontSize:13,color:'#0f172a'}}>{s.cant} {s.u}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{marginTop:12,background:'#fffbeb',border:'1px solid #fde68a',borderRadius:10,padding:10,fontSize:11,color:'#92400e'}}>
+                  <b>💡 Consejo:</b> Cantidades estimadas según experiencia. Se recomienda agregar un 10-15% de margen extra.
+                  {menuResult.estacion==='Verano'&&<span> En verano se calculó +30% en bebidas.</span>}
+                  {menuResult.estacion==='Invierno'&&<span> En invierno se calculó -20% en bebidas.</span>}
+                </div>
+              </div>
+              <button onClick={()=>{setMenuResult(null);setMenuSel({ninos:{},adultos:{},snacks:{},postres:{},bebidas:{}})} } style={{...S.btn,background:'#f1f5f9',color:'#64748b',width:'100%'}}>🔄 Calcular de nuevo</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ DESCARGABLES ══ */}
+      {seccion==='descargables'&&(
+        <div className="fade-in" style={S.card}>
+          <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>📦 Recursos Descargables</h2>
+          <p style={{fontSize:12,color:'#64748b',marginBottom:16}}>Materiales y recursos para tu evento</p>
+          {(iaConfig.descargablesLinks||[]).length===0?(
+            <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}>
+              <div style={{fontSize:40,marginBottom:8}}>📂</div>
+              <p style={{fontWeight:700}}>El salón aún no cargó recursos</p>
+              <p style={{fontSize:11}}>Los archivos aparecerán acá cuando el salón los configure desde el panel admin.</p>
+            </div>
+          ):(
+            <div style={{display:'flex',flexDirection:'column',gap:10}}>
+              {(iaConfig.descargablesLinks||[]).map((dl,i)=>(
+                <div key={dl.id||i} style={{...S.card,display:'flex',alignItems:'center',gap:14,padding:'14px 16px',border:'1px solid #e2e8f0'}}>
+                  <div style={{width:44,height:44,borderRadius:12,background:'#f0fdf4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{dl.emoji||'📄'}</div>
+                  <div style={{flex:1}}><div style={{fontWeight:800,fontSize:13}}>{dl.nombre}</div><div style={{fontSize:10,color:'#94a3b8'}}>{(dl.tipo||'ARCHIVO').toUpperCase()} · Google Drive</div></div>
+                  {dl.url?<a href={dl.url} target="_blank" style={{...S.btn,background:'#16a34a',color:'white',padding:'8px 14px',fontSize:11,textDecoration:'none',flexShrink:0}}>⬇️ Descargar</a>:<span style={{fontSize:11,color:'#94a3b8',fontStyle:'italic'}}>Próximamente</span>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ══ FAQ ══ */}
+      {seccion==='faq'&&(
+        <div className="fade-in">
+          <div style={{...S.card,marginBottom:12,padding:'14px 18px',display:'flex',alignItems:'center',gap:12}}>
+            <div style={{width:40,height:40,borderRadius:'50%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>{'🤖'}</div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:900,fontSize:14}}>Asistente del Salon</div>
+              <div style={{fontSize:11,color:'#22c55e',fontWeight:600}}>En linea - Solo responde sobre el salon y tu evento</div>
+            </div>
+            {faqChat.length>0&&<button onClick={()=>setFaqChat([])} style={{background:'#f1f5f9',border:'none',borderRadius:8,color:'#94a3b8',cursor:'pointer',fontSize:11,padding:'5px 10px'}}>Limpiar</button>}
+          </div>
+          <div style={{...S.card,minHeight:280,maxHeight:380,overflowY:'auto',padding:16,display:'flex',flexDirection:'column',gap:10,marginBottom:12}}>
+            {faqChat.length===0&&(
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px 0',gap:14}}>
+                <div style={{fontSize:44}}>{'💬'}</div>
+                <div style={{textAlign:'center'}}>
+                  <div style={{fontWeight:800,fontSize:14,color:'#1e293b',marginBottom:4}}>Tenes alguna consulta?</div>
+                  <div style={{fontSize:12,color:'#94a3b8'}}>Preguntame sobre el salon, el evento o los servicios.</div>
+                </div>
+                {(iaConfig.faqItems||[]).length>0&&(
+                  <div style={{width:'100%'}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#94a3b8',textAlign:'center',marginBottom:8}}>PREGUNTAS FRECUENTES</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                      {(iaConfig.faqItems||[]).slice(0,5).map(function(item){return(
+                        <button key={item.id} onClick={()=>setFaqChat([{de:'user',txt:item.pregunta},{de:'ia',txt:item.respuesta}])}
+                          style={{padding:'10px 14px',borderRadius:12,fontSize:12,border:'1px solid #e2e8f0',background:'#f8fafc',cursor:'pointer',color:'#475569',fontWeight:600,textAlign:'left'}}>
+                          {'❓ '}{item.pregunta}
+                        </button>
+                      );})}
+                    </div>
+                  </div>
+                )}
+                {(iaConfig.faqItems||[]).length===0&&(
+                  <div style={{background:'#f8fafc',borderRadius:12,padding:14,fontSize:12,color:'#94a3b8',textAlign:'center',width:'100%'}}>
+                    {'El salon aun no cargo preguntas frecuentes. Podes escribirme igual y te respondo.'}
+                  </div>
+                )}
+              </div>
+            )}
+            {faqChat.map(function(m,i){return(
+              <div key={i} style={{display:'flex',justifyContent:m.de==='user'?'flex-end':'flex-start',alignItems:'flex-end',gap:6}}>
+                {m.de==='ia'&&<div style={{width:28,height:28,borderRadius:'50%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,flexShrink:0}}>{'🤖'}</div>}
+                <div style={{background:m.de==='user'?'#7c3aed':'white',color:m.de==='user'?'white':'#1e293b',borderRadius:14,padding:'10px 14px',maxWidth:'78%',fontSize:13,lineHeight:1.4,border:m.de==='ia'?'1px solid #e2e8f0':'none'}}>
+                  {m.txt}
+                </div>
+              </div>
+            );})}
+            {faqTyping&&(
+              <div style={{display:'flex',gap:5,alignItems:'center',padding:'10px 14px',background:'white',borderRadius:14,width:'fit-content',border:'1px solid #e2e8f0'}}>
+                <span style={{fontSize:13}}>{'🤖'}</span>
+                <span style={{width:7,height:7,background:'#94a3b8',borderRadius:'50%',display:'inline-block'}}></span>
+                <span style={{width:7,height:7,background:'#94a3b8',borderRadius:'50%',display:'inline-block'}}></span>
+                <span style={{width:7,height:7,background:'#94a3b8',borderRadius:'50%',display:'inline-block'}}></span>
+              </div>
+            )}
+          </div>
+          <form onSubmit={enviarFaq} style={{...S.card,padding:'10px 12px',display:'flex',gap:8,alignItems:'center'}}>
+            <input value={faqQ} onChange={e=>setFaqQ(e.target.value)} placeholder="Escribi tu pregunta..." style={{...S.input,flex:1,marginBottom:0}} required/>
+            <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',padding:'10px 18px',flexShrink:0}}>Enviar</button>
+          </form>
+          {faqChat.length>0&&<button onClick={()=>setFaqChat([])} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:11,marginTop:8}}>Limpiar chat</button>}
+        </div>
+      )}
+
+      {/* ══ ADICIONALES ══ */}
+      {seccion==='adicionales'&&(
+        <div className="fade-in" style={S.card}>
+          <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>➕ Contratar Adicionales</h2>
+          <p style={{fontSize:12,color:'#64748b',marginBottom:16}}>Servicios extras para hacer tu evento aún más especial</p>
+          {(iaConfig.adicionales||[]).length===0?(
+            <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}>
+              <div style={{fontSize:40,marginBottom:8}}>🛍️</div>
+              <p style={{fontWeight:700}}>El salón aún no configuró adicionales</p>
+            </div>
+          ):(
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14}}>
+              {(iaConfig.adicionales||[]).map((ad,i)=>(
+                <div key={ad.id||i} style={{...S.card,padding:18,border:'1px solid #e2e8f0',display:'flex',flexDirection:'column',gap:10}}>
+                  <div style={{display:'flex',alignItems:'center',gap:12}}>
+                    <div style={{width:48,height:48,borderRadius:14,background:'#ede9fe',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24}}>{ad.emoji||'✨'}</div>
+                    <div><div style={{fontWeight:900,fontSize:14}}>{ad.nombre}</div><div style={{fontSize:20,fontWeight:900,color:'#7c3aed'}}>${(+ad.precio).toLocaleString('es-AR')}</div></div>
+                  </div>
+                  <p style={{fontSize:12,color:'#64748b',margin:0}}>{ad.desc}</p>
+                  <button onClick={()=>{const t=`Hola! Quiero contratar: *${ad.nombre}* para el ${papaSesion.tipo||'Cumpleaños'} de ${papaSesion.nombre} el ${papaSesion.dia}/${papaSesion.mes}/${papaSesion.anio} en ${suc.nombre}. ¿Podemos coordinarlo? 🎉`;window.open(`https://wa.me/?text=${encodeURIComponent(t)}`,'_blank');}} style={{...S.btn,background:'#22c55e',color:'white',width:'100%',padding:'10px',fontSize:12}}>💬 Consultar por WhatsApp</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modales */}
+      {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} onResultado={imgs=>{if(genActivo==='imagen')setForm(f=>({...f,iaImagenes:imgs,iaImagenSel:null}));else setForm(f=>({...f,iaVideos:imgs,iaVideoSel:null}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
+    </div>
+  );
+}
+
+
+/* ── INVITADO PORTADA ────────────────────────────────────── */
+function InvPortada({setVista,eventos,invEvId,sucursales}){
+  const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
+  const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
+  const col=suc.color||'#f97316';
+  React.useEffect(()=>{
+    const container=document.getElementById('confetti-container');
+    if(!container)return;
+    const colors=['#fff','#fde68a','#fed7aa','#fecdd3','#ffffff','#fef3c7'];
+    for(let i=0;i<60;i++){
+      const el=document.createElement('div');
+      const size=Math.random()*8+4;
+      el.style.cssText='position:absolute;width:'+size+'px;height:'+size+'px;background:'+colors[Math.floor(Math.random()*colors.length)]+';border-radius:'+(Math.random()>0.5?'50%':'2px')+';left:'+Math.random()*100+'%;top:-20px;opacity:0;animation:fall '+(Math.random()*3+2)+'s '+(Math.random()*3)+'s infinite;';
+      container.appendChild(el);
+    }
+    const style=document.createElement('style');
+    style.textContent='@keyframes fall{0%{top:-20px;opacity:1;transform:rotate(0deg) translateX(0)}100%{top:110%;opacity:0;transform:rotate(360deg) translateX('+(Math.random()>0.5?'':'-')+'50px)}}';
+    document.head.appendChild(style);
+    return()=>{if(container)container.innerHTML='';};
+  },[]);
+  return(
+    <div style={{minHeight:'100vh',background:col,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,textAlign:'center',position:'relative',overflow:'hidden'}}>
+      <div id="confetti-container" style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:0}}></div>
+      <div style={{position:'absolute',top:'10%',left:'10%',width:200,height:200,borderRadius:'50%',background:'rgba(255,255,255,.12)',filter:'blur(40px)'}}></div>
+      <div style={{position:'absolute',bottom:'15%',right:'5%',width:160,height:160,borderRadius:'50%',background:'rgba(255,255,255,.10)',filter:'blur(30px)'}}></div>
+      <div style={{position:'relative',zIndex:1}}>
+        {suc.logo?<img src={suc.logo} alt={suc.nombre} style={{width:90,height:90,borderRadius:'50%',objectFit:'cover',border:'4px solid white',boxShadow:'0 4px 20px rgba(0,0,0,.2)',marginBottom:24}}/>:<div style={{fontSize:52,marginBottom:20}}>{'🎉'}</div>}
+        <p style={{color:'rgba(255,255,255,.9)',fontSize:13,fontWeight:600,letterSpacing:2,textTransform:'uppercase',margin:'0 0 10px'}}>{suc.portadaFrase||'Recibiste una invitacion de'}</p>
+        <h1 style={{color:'white',fontSize:40,fontWeight:900,margin:'0 0 24px',textShadow:'0 2px 16px rgba(0,0,0,.25)',lineHeight:1.1}}>{ev?ev.nombre:'...'}</h1>
+        <p style={{color:'rgba(255,255,255,.8)',fontSize:15,margin:'0 0 28px'}}>Descubri donde es el evento?</p>
+        <button onClick={()=>setVista('invitado-web')} style={{background:'white',color:col,fontWeight:800,fontSize:16,border:'none',borderRadius:99,padding:'16px 48px',cursor:'pointer',boxShadow:'0 8px 32px rgba(0,0,0,.15)'}}>
+          Abrir Invitacion
+        </button>
+        <p style={{marginTop:36,color:'rgba(255,255,255,.35)',fontSize:11}}>{'by '+suc.nombre+' - Invitaciones Digitales'}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ── INVITADO WEB ─────────────────────────────────────────── */
+function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs}){
+  const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
+  const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
+  const tem=tematicas.find(t=>t.id===ev?.temId)||tematicas[0];
+  const col=suc.color||'#f97316';
+  const fotos=(suc.fotos||[]).filter(f=>f&&f.length>0);
+  const [nom,setNom]=useState('');
+  const [ad,setAd]=useState(1);
+  const [ni,setNi]=useState(1);
+  const [cel,setCel]=useState('');
+  const [ok,setOk]=useState(false);
+  const [countdown,setCountdown]=useState({dias:0,horas:0,mins:0,segs:0,llego:false});
+
+  React.useEffect(()=>{
+    function calcular(){
+      if(!ev)return;
+      const hoy=new Date();
+      const fecha=new Date(ev.anio,ev.mes-1,ev.dia,+(ev.hFin||'23').split(':')[0],0,0);
+      const diff=fecha-hoy;
+      if(diff<=0){setCountdown({dias:0,horas:0,mins:0,segs:0,llego:true});return;}
+      const dias=Math.floor(diff/86400000);
+      const horas=Math.floor((diff%86400000)/3600000);
+      const mins=Math.floor((diff%3600000)/60000);
+      const segs=Math.floor((diff%60000)/1000);
+      setCountdown({dias,horas,mins,segs,llego:false});
+    }
+    calcular();
+    const t=setInterval(calcular,1000);
+    return()=>clearInterval(t);
+  },[ev]);
+
+  function conf(e){
+    e.preventDefault();
+    setConfs(prev=>{
+      const updated=[...prev,{id:'c-'+Date.now(),evId:ev.id,invitado:nom,adultos:ad,ninos:ni,cel}];
+      try{localStorage.setItem('fz_confs',JSON.stringify(updated));}catch(err){}
+      return updated;
+    });
+    setOk(true);
+    const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const fecha=ev.dia+' de '+(meses[(+ev.mes)-1]||'')+' de '+ev.anio;
+    const link=window.location.href;
+    const lineas=[
+      'Hola '+ev.nomPapa+'!',
+      '',
+      nom+' confirma asistencia al '+ev.tipo+' de '+ev.nombre,
+      'Fecha: '+fecha,
+      '',
+      'Asistimos: '+ni+' ninos y '+ad+' adultos',
+      '',
+      'Invitacion: '+link,
+    ];
+    setTimeout(()=>{
+      window.open('https://wa.me/'+waNum(ev.celPapa)+'?text='+encodeURIComponent(lineas.join('\n')),'_blank');
+      setNom('');setCel('');setAd(1);setNi(1);setOk(false);
+    },1800);
+  }
+
+  const diaStr=ev?(ev.dia+'/'+ev.mes+'/'+ev.anio):'';
+  const horario=ev?('de '+ev.hIni+' a '+ev.hFin+'hs'):'';
+
+  return(
+    <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto'}}>
+
+      {/* 1. IMAGEN TEMATICA FULL */}
+      <div style={{position:'relative',width:'100%'}}>
+        <img src={tem.img} alt={tem.nombre} style={{width:'100%',display:'block',maxHeight:500,objectFit:'cover'}}/>
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)'}}></div>
+        <span style={{position:'absolute',top:14,left:14,background:'#f43f5e',color:'white',fontSize:12,padding:'5px 16px',borderRadius:99,fontWeight:900,letterSpacing:1}}>TE INVITO!</span>
+      </div>
+
+      {/* 2. LOGO centrado sobre la imagen */}
+      <div style={{display:'flex',justifyContent:'center',marginTop:-50,marginBottom:8,position:'relative',zIndex:2}}>
+        {suc.logo?(
+          <div style={{width:100,height:100,borderRadius:'50%',border:'5px solid '+col,overflow:'hidden',background:'white',boxShadow:'0 4px 20px rgba(0,0,0,.18)'}}>
+            <img src={suc.logo} alt={suc.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+          </div>
+        ):(
+          <div style={{width:100,height:100,borderRadius:'50%',border:'5px solid '+col,background:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:40,boxShadow:'0 4px 20px rgba(0,0,0,.18)'}}>
+            {suc.emoji||'🎪'}
+          </div>
+        )}
+      </div>
+
+      {/* 3. NOMBRE */}
+      <div style={{textAlign:'center',padding:'0 20px 12px'}}>
+        <h1 style={{color:col,fontSize:44,fontWeight:900,margin:'0 0 8px',lineHeight:1}}>{ev?ev.nombre:''}</h1>
+
+        {/* 4. FRASE */}
+        <p style={{color:'#333',fontSize:18,margin:'0 0 8px'}}>Quiero invitarte a festejar mi cumple!</p>
+
+        {/* 5. EDAD */}
+        <p style={{color:col,fontSize:72,fontWeight:900,margin:'0 0 8px',lineHeight:1}}>{ev?ev.edad:''}</p>
+
+        {/* 6. FECHA */}
+        <p style={{color:'#555',fontSize:17,margin:'0 0 2px'}}>Te espero el dia</p>
+        <p style={{color:'#1e293b',fontSize:22,fontWeight:900,margin:'0 0 2px'}}>{diaStr}</p>
+        <p style={{color:'#555',fontSize:16,margin:'0 0 20px'}}>{horario}</p>
+
+        {/* 7. COUNTDOWN o LLEGO EL DIA */}
+        {countdown.llego?(
+          <div className="bounce" style={{textAlign:'center',padding:'16px 0'}}>
+            <p style={{color:col,fontSize:32,fontWeight:900,margin:0,animation:'pulse 0.8s infinite alternate'}}>LLEGO EL DIA!</p>
+          </div>
+        ):(
+          <div style={{background:'#f8fafc',borderRadius:16,padding:'14px 10px',marginBottom:8}}>
+            <p style={{fontSize:12,color:'#888',margin:'0 0 8px',fontWeight:600}}>Cuenta regresiva</p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6}}>
+              {[['dias',countdown.dias],['horas',countdown.horas],['min',countdown.mins]].map(([lbl,val])=>(
+                <div key={lbl} style={{background:'white',borderRadius:12,padding:'10px 4px',boxShadow:'0 2px 8px rgba(0,0,0,.08)'}}>
+                  <div style={{fontSize:28,fontWeight:900,color:col,lineHeight:1}}>{String(val).padStart(2,'0')}</div>
+                  <div style={{fontSize:10,color:'#888',marginTop:2}}>{lbl}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 8. FESTEJO EN EL SALON */}
+      <div style={{textAlign:'center',padding:'16px 20px',borderTop:'1px solid #f0f0f0',borderBottom:'1px solid #f0f0f0'}}>
+        <p style={{color:'#333',fontSize:22,margin:'0 0 4px',fontWeight:400}}>Festejo en el salon</p>
+        <p style={{color:col,fontSize:28,fontWeight:900,margin:0,textTransform:'uppercase'}}>{suc.nombre}</p>
+      </div>
+
+      {/* 9. FOTOS 2x2 */}
+      {fotos.length>0&&(
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:3,margin:'3px 0'}}>
+          {fotos.slice(0,4).map((f,i)=>(
+            <div key={i} style={{aspectRatio:'1',overflow:'hidden',background:'#e2e8f0'}}>
+              <img src={f} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 10. DIRECCIÓN */}
+      <div style={{padding:'20px',textAlign:'center',borderBottom:'1px solid #f0f0f0'}}>
+        <p style={{color:'#888',fontSize:14,margin:'0 0 4px'}}>se encuentra ubicado en</p>
+        <a href={'https://maps.google.com/?q='+encodeURIComponent(suc.direccion||'')} target="_blank"
+          style={{color:'#1e293b',fontSize:17,fontWeight:700,textDecoration:'underline',textDecorationColor:col,display:'block'}}>
+          {suc.direccion}
+        </a>
+      </div>
+
+      {/* 11. BOTONES */}
+      <div style={{padding:'16px',display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+        <button onClick={()=>document.getElementById('conf-form-'+ev.id)&&document.getElementById('conf-form-'+ev.id).scrollIntoView({behavior:'smooth'})}
+          style={{border:'2px solid '+col,borderRadius:14,padding:'14px 4px',display:'flex',flexDirection:'column',alignItems:'center',gap:4,cursor:'pointer',background:col+'0d'}}>
+          <span style={{fontSize:22}}>{'👥'}</span>
+          <span style={{fontSize:9,fontWeight:900,color:'#1e293b',textAlign:'center'}}>CONFIRMAR</span>
+          <span style={{fontSize:9,fontWeight:900,color:'#1e293b',textAlign:'center'}}>ASISTENCIA</span>
+        </button>
+        <a href={'https://maps.google.com/?q='+encodeURIComponent(suc.direccion||'')} target="_blank"
+          style={{border:'2px solid '+col,borderRadius:14,padding:'14px 4px',display:'flex',flexDirection:'column',alignItems:'center',gap:4,textDecoration:'none',background:col+'0d'}}>
+          <span style={{fontSize:22}}>{'📍'}</span>
+          <span style={{fontSize:9,fontWeight:900,color:'#1e293b',textAlign:'center'}}>COMO</span>
+          <span style={{fontSize:9,fontWeight:900,color:'#1e293b',textAlign:'center'}}>LLEGAR</span>
+        </a>
+        <button onClick={()=>{
+            if(suc.web){window.open(suc.web,'_blank');}
+            else{alert(suc.nombre+'\n'+suc.direccion+(suc.tel?'\nTel: '+suc.tel:''));}
+          }} style={{border:'2px solid '+col,borderRadius:14,padding:'14px 4px',display:'flex',flexDirection:'column',alignItems:'center',gap:4,cursor:'pointer',background:col+'0d'}}>
+          <span style={{fontSize:22}}>{'🎪'}</span>
+          <span style={{fontSize:9,fontWeight:900,color:'#1e293b',textAlign:'center'}}>INFO DEL</span>
+          <span style={{fontSize:9,fontWeight:900,color:'#1e293b',textAlign:'center'}}>SALON</span>
+        </button>
+      </div>
+
+      {/* 12. CONFIRMAR ASISTENCIA */}
+      <div style={{margin:'0 16px 12px',border:'2px dashed '+col,borderRadius:18,padding:'16px',textAlign:'center'}}>
+        <p style={{fontSize:24,fontWeight:900,color:'#1e293b',margin:'0 0 4px'}}>Confirmar tu asistencia</p>
+        <p style={{fontSize:14,color:'#888',margin:0}}>es muy importante. Muchas Gracias.</p>
+      </div>
+
+      {/* 13. FORM */}
+      <div id={'conf-form-'+ev.id} style={{margin:'0 16px 16px',background:'#fff',borderRadius:18,padding:16,border:'1px solid '+col+'44'}}>
+        <p style={{fontSize:13,fontWeight:900,textAlign:'center',marginBottom:12,textTransform:'uppercase',color:col}}>Registra tu Asistencia</p>
+        {ok?(
+          <div style={{background:'#f0fdf4',color:'#166534',padding:12,borderRadius:12,textAlign:'center',fontSize:13,fontWeight:700}}>Asistencia registrada! Gracias!</div>
+        ):(
+          <form onSubmit={conf} style={{display:'flex',flexDirection:'column',gap:8}}>
+            <input value={nom} onChange={e=>setNom(e.target.value)} placeholder="Tu nombre" required style={{...S.input,border:'1px solid '+col+'66',fontSize:14}}/>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+              <div><label style={{fontSize:11,color:'#888',display:'block',marginBottom:2}}>Ninos</label>
+                <input type="number" value={ni} onChange={e=>setNi(e.target.value)} min={0} style={{...S.input,border:'1px solid '+col+'66',textAlign:'center',fontSize:14}}/></div>
+              <div><label style={{fontSize:11,color:'#888',display:'block',marginBottom:2}}>Adultos</label>
+                <input type="number" value={ad} onChange={e=>setAd(e.target.value)} min={1} style={{...S.input,border:'1px solid '+col+'66',textAlign:'center',fontSize:14}}/></div>
+            </div>
+            <input value={cel} onChange={e=>setCel(e.target.value)} placeholder="Tu celular" required style={{...S.input,border:'1px solid '+col+'66',fontSize:14}}/>
+            <button type="submit" style={{...S.btn,background:col,color:'white',padding:12,fontSize:14,width:'100%'}}>Confirmar Asistencia</button>
+          </form>
+        )}
+      </div>
+
+      {/* 14. COMPARTIR */}
+      <div style={{margin:'0 16px 16px'}}>
+        <button onClick={()=>{
+          const baseUrl2=(window.location.href.split('?')[0]);
+          const evData2={id:ev.id,sucId:ev.sucId,nombre:ev.nombre,tipo:ev.tipo||'Cumpleanos',edad:ev.edad,dia:ev.dia,mes:ev.mes,anio:ev.anio,hIni:ev.hIni,hFin:ev.hFin,celPapa:ev.celPapa,nomPapa:ev.nomPapa,temId:ev.temId};
+          const link=baseUrl2+'?inv='+btoa(JSON.stringify(evData2));
+          const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+          const fecha=ev.dia+' de '+(meses[(+ev.mes)-1]||'')+' de '+ev.anio;
+          const lineas=[ev.nombre+' te invita a su '+ev.tipo,'El dia '+fecha,'en '+suc.nombre,'','Abri la invitacion:',link];
+          window.open('https://wa.me/?text='+encodeURIComponent(lineas.join('\n')),'_blank');
+        }} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:12,fontSize:14}}>
+          Compartir por WhatsApp
+        </button>
+      </div>
+
+      {/* 15. FOOTER */}
+      <div style={{background:col,color:'white',padding:'20px 16px',textAlign:'center'}}>
+        <p style={{fontSize:12,fontWeight:700,margin:'0 0 4px',opacity:.9}}>Invitaciones Virtuales Interactivas</p>
+        <p style={{fontSize:14,fontWeight:900,margin:0}}>{'by '+suc.nombre+'®'}</p>
+      </div>
+
+    </div>
+  );
+}
+
+/* ── RENDER ──────────────────────────────────────────────── */
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
