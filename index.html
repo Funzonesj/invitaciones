@@ -361,18 +361,18 @@ function App() {
 
       <main style={{flex:1}}>
         {vista==='admin-login'       && <AdminLogin     onLogin={loginAdmin}/>}
-        {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} tematicas={tematicas}/>}
+        {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} tematicas={tematicas} esSA={esSA}/>}
         {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig}/>}
         {vista==='admin-tematicas'   && <AdminTematicas setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-excel'       && <AdminExcel     setVista={setVista} sucActId={sucActId} eventos={eventos} setEventos={setEventos}/>}
         {vista==='admin-asistencias' && <AdminAsistencias setVista={setVista} evsLocal={evsLocal} confs={confs}/>}
         {vista==='admin-remarketing' && <AdminRemarketing setVista={setVista} evsLocal={evsLocal} sucAct={sucAct}/>}
-        {vista==='admin-usuarios'    && <AdminUsuarios  setVista={setVista} usuarios={usuarios} setUsuarios={setUsuarios} sucursales={sucursales} setSucursales={setSucursales}/>}
-        {vista==='admin-ia'          && <AdminIA setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
-        {vista==='admin-config'      && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
-        {vista==='admin-menu'        && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
-        {vista==='admin-formatos'    && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
-        {vista==='admin-descargables'&& <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-usuarios'    && esSA && <AdminUsuarios  setVista={setVista} usuarios={usuarios} setUsuarios={setUsuarios} sucursales={sucursales} setSucursales={setSucursales}/>}
+        {vista==='admin-ia'          && esSA && <AdminIA setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-config'      && esSA && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId}/>}
         {vista==='papa-creador'      && papaSesion&&<PapaCreador setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs}/>}
         {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
@@ -417,20 +417,20 @@ function AdminLogin({onLogin}){
 }
 
 /* ── ADMIN DASHBOARD ─────────────────────────────────────── */
-function AdminDashboard({setVista,sucAct,evsLocal,tematicas}){
+function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA}){
   const items=[
     {e:'📅',t:'Eventos Contratados', s:`${evsLocal.length} activos`,   v:'admin-eventos',    bdr:'#06b6d4',badge:'ENTRAR'},
     {e:'📊',t:'Carga Excel Semanal', s:'Autocompletar agenda',          v:'admin-excel',      bdr:'#10b981'},
     {e:'🖼️',t:'Portadas/Temáticas',  s:`${tematicas.length} portadas`, v:'admin-tematicas',  bdr:'#7c3aed'},
     {e:'👥',t:'Ver Asistencias',      s:'Checklist de invitados',       v:'admin-asistencias',bdr:'#f43f5e'},
     {e:'📣',t:'Remarketing',          s:'Envíos masivos',               v:'admin-remarketing',bdr:'#f97316'},
-    {e:'⚙️',t:'Usuarios & Sucursales',s:'Cuentas y salones',           v:'admin-usuarios',   bdr:'#94a3b8'},
-    {e:'🍽️',t:'Menú Interactivo',      s:'Prompt y comidas',            v:'admin-menu',       bdr:'#f59e0b'},
-    {e:'🎟️',t:'Formatos de Tarjeta',   s:'Por tipo de evento',          v:'admin-formatos',   bdr:'#ec4899'},
-    {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a'},
-    {e:'🤖',t:'IA & Precios',          s:'Prompts y API keys',          v:'admin-ia',         bdr:'#8b5cf6'},
-    {e:'🛠️',t:'Configuración',         s:'Año vigente y sitio',          v:'admin-config',     bdr:'#0ea5e9'},
-  ];
+    {e:'⚙️',t:'Usuarios & Sucursales',s:'Cuentas y salones',           v:'admin-usuarios',   bdr:'#94a3b8',ownerOnly:true},
+    {e:'🍽️',t:'Menú Interactivo',      s:'Prompt y comidas',            v:'admin-menu',       bdr:'#f59e0b',ownerOnly:true},
+    {e:'🎟️',t:'Formatos de Tarjeta',   s:'Por tipo de evento',          v:'admin-formatos',   bdr:'#ec4899',ownerOnly:true},
+    {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a',ownerOnly:true},
+    {e:'🤖',t:'IA & Precios',          s:'Prompts y API keys',          v:'admin-ia',         bdr:'#8b5cf6',ownerOnly:true},
+    {e:'🛠️',t:'Configuración',         s:'Año vigente y sitio',          v:'admin-config',     bdr:'#0ea5e9',ownerOnly:true},
+  ].filter(c=>esSA||!c.ownerOnly);
   return(
     <div className="fade-in" style={{maxWidth:700,margin:'0 auto',padding:'24px 16px'}}>
       <div style={{...S.card,display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,padding:20}}>
