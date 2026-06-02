@@ -251,25 +251,18 @@ function App() {
   const evsLocal = eventos.filter(e=>e.sucId===sucActId);
 
   async function loginAdmin(u,p){
-    // 1) Login profesional con Supabase Auth (si es un email)
-    if(SB && (u||'').includes('@')){
-      try{
-        const {data,error}=await SB.auth.signInWithPassword({email:(u||'').trim(),password:p});
-        if(!error && data && data.user){
-          setAdminSesion({rol:'superadmin',nombre:'Administrador',usuario:u});
-          setVista('admin-dashboard');
-          return null;
-        }
-        if(error && /confirm/i.test(error.message||'')) return 'Tu usuario no está confirmado en Supabase.';
-      }catch(e){}
-    }
-    // 2) Respaldo: usuarios internos (admin / encargadas)
-    const usr=usuarios.find(x=>x.usuario.toLowerCase()===(u||'').toLowerCase()&&x.clave===p);
-    if(!usr) return 'Email o contraseña incorrectos.';
-    setAdminSesion(usr);
-    if(usr.rol==='encargada') setSucActId(usr.sucursalId);
-    setVista('admin-dashboard');
-    return null;
+    // Login profesional con Supabase Auth (email + contraseña verificados en servidor)
+    if(!SB) return 'No hay conexión con el servidor. Revisá tu internet e intentá de nuevo.';
+    try{
+      const {data,error}=await SB.auth.signInWithPassword({email:(u||'').trim(),password:p});
+      if(!error && data && data.user){
+        setAdminSesion({rol:'superadmin',nombre:'Administrador',usuario:u});
+        setVista('admin-dashboard');
+        return null;
+      }
+      if(error && /confirm/i.test(error.message||'')) return 'Tu usuario no está confirmado en Supabase.';
+    }catch(e){}
+    return 'Email o contraseña incorrectos.';
   }
   function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
 
