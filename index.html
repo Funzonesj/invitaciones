@@ -481,7 +481,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     ];
     window.open('https://wa.me/'+waNum(ev.celPapa)+'?text='+encodeURIComponent(lineas.join('\n')),'_blank');
   }
-  const ef={nombre:'',tipo:'Cumpleaños',edad:'',edadUnidad:'años',dia:'',mes:'',anio:String((iaConfig&&iaConfig.anioVigente)||2026),hIni:'',hFin:'',celPapa:'',nomPapa:'',user:'',pass:'',temId:'t-3',doble:false,nombre2:'',edad2:'',temId2:'t-1',nomPapa2:'',celPapa2:''};
+  const ef={nombre:'',tipo:'Cumpleaños',edad:'',edadUnidad:'años',dia:'',mes:'',anio:String((iaConfig&&iaConfig.anioVigente)||2026),hIni:'',hFin:'',celPapa:'',dni:'',nomPapa:'',user:'',pass:'',temId:'t-3',doble:false,nombre2:'',edad2:'',temId2:'t-1',nomPapa2:'',celPapa2:''};
   const [form,setForm]=useState(ef); const [editId,setEditId]=useState(null); const [open,setOpen]=useState(false);
   const [fMes,setFMes]=useState(''); const [fDia,setFDia]=useState(''); const [msgOk,setMsgOk]=useState('');
 
@@ -567,8 +567,8 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                 </select>
               </label>
               <label><span style={S.label}>Año</span><input type="number" placeholder="" value={form.anio} autoComplete="off" onChange={e=>setForm({...form,anio:e.target.value})} style={S.input} required/></label>
-              {[['Hora Inicio','hIni','text',''],['Hora Fin','hFin','text',''],['Celular papá','celPapa','text',''],['Nombre padre/madre','nomPapa','text',''],['Usuario papás','user','text','']].map(([l,k,t,ph])=>(
-                <label key={k}><span style={S.label}>{l}</span><input type={t} placeholder={ph} value={form[k]} autoComplete="off" onChange={e=>setForm({...form,[k]:e.target.value})} style={S.input} required={['hIni','hFin','celPapa'].includes(k)}/></label>
+              {[['Hora Inicio','hIni','text',''],['Hora Fin','hFin','text',''],['Celular papá','celPapa','text',''],['DNI papá','dni','text',''],['Nombre padre/madre','nomPapa','text',''],['Usuario papás','user','text','']].map(([l,k,t,ph])=>(
+                <label key={k}><span style={S.label}>{l}</span><input type={t} placeholder={ph} value={form[k]} autoComplete="off" onChange={e=>setForm({...form,[k]:e.target.value})} style={S.input} required={['hIni','hFin','celPapa','dni'].includes(k)}/></label>
               ))}
               <label><span style={S.label}>Tipo</span>
                 <select value={form.tipo} onChange={e=>setForm({...form,tipo:e.target.value})} style={{...S.input}}>
@@ -785,7 +785,7 @@ function AdminExcel({setVista,sucActId,eventos,setEventos}){
       const primera=(c[0]||'').toLowerCase();
       if(primera==='nombre'||primera==='nombre ') return; // saltear fila de titulos
       if(c.length>=3&&c[0]){
-        nuevo.push({id:'ev-xl-'+Date.now()+i,sucId:sucActId,nombre:c[0],edad:c[1]||'5',dia:c[2],mes:c[3]||'05',anio:c[4]||'2026',hIni:c[5]||'17:00',hFin:c[6]||'22:00',nomPapa:c[7]||'',celPapa:c[8]||'',user:c[9]||(c[0].toLowerCase().replace(/\s/g,'')+'2026'),pass:c[10]||'1234',temId:'t-3',tipo:'Cumpleaños'});
+        nuevo.push({id:'ev-xl-'+Date.now()+i,sucId:sucActId,nombre:c[0],edad:c[1]||'5',dia:c[2],mes:c[3]||'05',anio:c[4]||'2026',hIni:c[5]||'17:00',hFin:c[6]||'22:00',nomPapa:c[7]||'',dni:c[8]||'',celPapa:c[9]||'',user:c[10]||(c[0].toLowerCase().replace(/\s/g,'')+'2026'),pass:c[11]||'1234',temId:'t-3',tipo:'Cumpleaños'});
         n++;
       }
     });
@@ -793,9 +793,9 @@ function AdminExcel({setVista,sucActId,eventos,setEventos}){
   }
   function descargarPlantilla(){
     const filas=[
-      ['Nombre','Edad','Dia','Mes','Anio','Hora Inicio','Hora Fin','Padre/Madre','Celular','Usuario','Clave'],
-      ['Mia Gonzalez','5','15','06','2026','17:00','21:00','Laura Gonzalez','2645522081','miagonzalez2026','1234'],
-      ['Thiago Perez','7','22','06','2026','18:00','22:00','Marcos Perez','2644567890','thiagoperez2026','5678'],
+      ['Nombre','Edad','Dia','Mes','Anio','Hora Inicio','Hora Fin','Padre/Madre','DNI','Celular','Usuario','Clave'],
+      ['Mia Gonzalez','5','15','06','2026','17:00','21:00','Laura Gonzalez','30111222','2645522081','miagonzalez2026','1234'],
+      ['Thiago Perez','7','22','06','2026','18:00','22:00','Marcos Perez','28999888','2644567890','thiagoperez2026','5678'],
     ];
     const csv='﻿'+filas.map(f=>f.join(';')).join('\r\n');
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
@@ -810,7 +810,7 @@ function AdminExcel({setVista,sucActId,eventos,setEventos}){
         <p style={{fontSize:12,color:'#64748b',marginBottom:16}}>Copiá las filas de tu planilla y pegálas acá.</p>
         {msg&&<div style={{background:'#f0fdf4',color:'#166534',padding:12,borderRadius:12,fontSize:12,fontWeight:700,marginBottom:14}}>{msg}</div>}
         <div style={{background:'#f8fafc',borderRadius:12,padding:12,fontSize:11,color:'#64748b',marginBottom:12,border:'1px dashed #e2e8f0'}}>
-          <b>Columnas:</b> Nombre · Edad · Día · Mes · Año · HoraInicio · HoraFin · Padre/Madre · Celular · Usuario · Clave
+          <b>Columnas:</b> Nombre · Edad · Día · Mes · Año · HoraInicio · HoraFin · Padre/Madre · DNI · Celular · Usuario · Clave
         </div>
         <button type="button" onClick={descargarPlantilla} style={{...S.btn,background:'#eef2ff',color:'#4338ca',width:'100%',padding:12,marginBottom:14,fontSize:13,fontWeight:800}}>⬇️ Descargar plantilla Excel</button>
         <p style={{fontSize:11,color:'#94a3b8',marginBottom:14,lineHeight:1.5}}>💡 Descargá la plantilla, completála en Excel, después copiá las filas (sin los títulos) y pegálas acá abajo.</p>
