@@ -1412,20 +1412,52 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId}){
 }
 
 /* ── IA UPLOAD SECTION ───────────────────────────────────── */
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[]}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre=''}){
   const fotoRef=useRef();
   const persRef=useRef();
+  function descargar9x16(src){
+    const W=1080,H=1920;
+    const c=document.createElement('canvas');c.width=W;c.height=H;
+    const ctx=c.getContext('2d');
+    const img=new Image();img.crossOrigin='anonymous';
+    img.onload=()=>{
+      const ar=img.width/img.height, target=W/H; let dw,dh,dx,dy;
+      if(ar>target){dh=H;dw=H*ar;dx=(W-dw)/2;dy=0;}else{dw=W;dh=W/ar;dx=0;dy=(H-dh)/2;}
+      ctx.fillStyle='#0f172a';ctx.fillRect(0,0,W,H);
+      ctx.drawImage(img,dx,dy,dw,dh);
+      const texto='¡'+(nombre||'')+(personajeNombre?(' y '+personajeNombre):'')+' te espera'+(personajeNombre?'n':'')+' a festejar sus '+(edad||'')+' años!';
+      const m=44, bx=m, by=44, bw=W-m*2;
+      ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='top';ctx.font='bold 58px Arial';
+      // medir lineas
+      const palabras=texto.split(' ');const lineas=[];let ln='';
+      palabras.forEach(p=>{const t=ln?ln+' '+p:p;if(ctx.measureText(t).width>bw-60&&ln){lineas.push(ln);ln=p;}else ln=t;});
+      if(ln)lineas.push(ln);
+      const lh=72, bh=lineas.length*lh+44;
+      const grad=ctx.createLinearGradient(bx,0,bx+bw,0);grad.addColorStop(0,'#ec4899');grad.addColorStop(1,'#7c3aed');
+      ctx.fillStyle=grad;
+      const r=28;ctx.beginPath();ctx.moveTo(bx+r,by);ctx.arcTo(bx+bw,by,bx+bw,by+bh,r);ctx.arcTo(bx+bw,by+bh,bx,by+bh,r);ctx.arcTo(bx,by+bh,bx,by,r);ctx.arcTo(bx,by,bx+bw,by,r);ctx.closePath();ctx.fill();
+      ctx.fillStyle='#fff';
+      lineas.forEach((l,i)=>ctx.fillText(l,W/2,by+22+i*lh));
+      try{
+        const url=c.toDataURL('image/png');
+        const a=document.createElement('a');a.href=url;a.download='invitacion-'+(nombre||'fiesta').toLowerCase().replace(/\s/g,'')+'.png';
+        document.body.appendChild(a);a.click();document.body.removeChild(a);
+      }catch(err){alert('No se pudo descargar (la imagen es de otra web). Generala con IA y volvé a intentar.');}
+    };
+    img.onerror=()=>alert('No se pudo preparar la descarga.');
+    img.src=src;
+  }
   const [modoPersonaje,setModoPersonaje]=useState('db'); // 'db' | 'upload'
   const [busqTem,setBusqTem]=useState('');
   const listo=fotoNino&&personaje;
 
   function onPickFoto(e){
     const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();r.onload=ev=>setFotoNino(ev.target.result);r.readAsDataURL(f);
+    resizeImg(f,768,data=>setFotoNino(data));
   }
   function onPickPers(e){
     const f=e.target.files[0];if(!f)return;
-    const r=new FileReader();r.onload=ev=>setPersonaje(ev.target.result);r.readAsDataURL(f);
+    resizeImg(f,768,data=>setPersonaje(data));
   }
 
   const colorIA=tipo==='imagen'?'#0ea5e9':'#e11d48';
@@ -1449,23 +1481,33 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
         </div>
       </div>
 
-      {/* Upload: Foto del niño cuerpo completo */}
+      {/* Upload: Foto del niño */}
       <div style={{marginBottom:12}}>
-        <label style={{...S.label,color:colorIA,fontSize:12}}>📸 FOTO DEL NIÑO/A — CUERPO COMPLETO <span style={{color:'#e11d48'}}>*</span></label>
-        <div style={{fontSize:10,color:'#64748b',marginBottom:6}}>⚠️ Debe ser una foto de cuerpo completo (cabeza a pies) para mejores resultados</div>
+        <label style={{...S.label,color:colorIA,fontSize:12}}>📸 FOTO DEL NIÑO/A <span style={{color:'#e11d48'}}>*</span></label>
+        {/* Consejos para sacar la foto (se muestran antes de subir) */}
+        {!fotoNino&&(
+          <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12,padding:'12px 14px',marginBottom:10,fontSize:12,color:'#92400e',lineHeight:1.7}}>
+            <div style={{fontWeight:900,marginBottom:6}}>¡Para que la imagen quede mágica! ✨</div>
+            <div style={{fontWeight:700,marginBottom:4}}>Sacá la foto del niño/a así:</div>
+            📍 Contra una pared blanca o clara<br/>
+            😄 Sonriendo y mirando a la cámara<br/>
+            👕 Que se vea desde la cintura para arriba<br/>
+            💡 Con buena luz (evitá el flash)
+          </div>
+        )}
         <input ref={fotoRef} type="file" accept="image/*" style={{display:'none'}} onChange={onPickFoto}/>
         {!fotoNino
           ?<div onClick={()=>fotoRef.current.click()} style={{border:'2px dashed '+colorIA+'60',borderRadius:12,padding:'20px',textAlign:'center',cursor:'pointer',background:colorIA+'08',transition:'all .2s'}}
             onMouseEnter={e=>{e.currentTarget.style.background=colorIA+'15'}}
             onMouseLeave={e=>{e.currentTarget.style.background=colorIA+'08'}}>
             <div style={{fontSize:32,marginBottom:6}}>🧒</div>
-            <div style={{fontWeight:700,fontSize:13,color:colorIA}}>Subir foto cuerpo completo</div>
-            <div style={{fontSize:10,color:'#94a3b8',marginTop:2}}>JPG, PNG · Máx. 10 MB</div>
+            <div style={{fontWeight:700,fontSize:13,color:colorIA}}>Subir foto del niño/a</div>
+            <div style={{fontSize:10,color:'#94a3b8',marginTop:2}}>JPG, PNG · De la cintura para arriba</div>
           </div>
           :<div style={{position:'relative',borderRadius:12,overflow:'hidden',height:140,background:'#0f172a'}}>
             <img src={fotoNino} alt="foto niño" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
             <button onClick={()=>setFotoNino('')} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
-            <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,.5)',padding:'4px 8px',fontSize:10,color:'white',textAlign:'center'}}>✅ Foto cargada · Cuerpo completo</div>
+            <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,.5)',padding:'4px 8px',fontSize:10,color:'white',textAlign:'center'}}>✅ Foto cargada</div>
           </div>
         }
       </div>
@@ -1570,6 +1612,11 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
               ✅ Opción #{selIdx+1} seleccionada — se usará como portada de la invitación
             </div>
           )}
+          {selIdx!==null&&tipo==='imagen'&&resultados[selIdx]&&(
+            <button onClick={()=>descargar9x16(resultados[selIdx])} style={{...S.btn,background:'linear-gradient(135deg,#ec4899,#7c3aed)',color:'white',width:'100%',marginBottom:10}}>
+              ⬇️ Descargar imagen (9:16) con cartel
+            </button>
+          )}
           <button onClick={onDescartar} style={{...S.btn,background:'#fef2f2',color:'#dc2626',width:'100%',fontSize:12}}>
             🔄 Descartar y volver a generar
           </button>
@@ -1648,67 +1695,90 @@ function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
 }
 
 /* ── GENERADOR IA ─────────────────────────────────────────── */
-function GeneradorIA({tipo,nombre,tematica,prompt,onResultado,onCerrar}){
-  const [paso,setPaso]=useState('generando');
+function GeneradorIA({tipo,nombre,tematica,prompt,fotoNino,personaje,personajeNombre,edad,onResultado,onCerrar}){
+  const [paso,setPaso]=useState('generando'); // generando | listo | error
   const [progreso,setProgreso]=useState(0);
-  const imgPool=[
-    'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&fit=crop',
-    'https://images.unsplash.com/photo-1464349153735-7db50ed83c84?w=600&fit=crop',
-    'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&fit=crop',
-    'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=600&fit=crop',
-    'https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=600&fit=crop',
-    'https://images.unsplash.com/photo-1504196606672-aef5c9cefc92?w=600&fit=crop',
-  ];
-  // Pick 3 different images (simulating 3 IA results)
-  const [resultados] = useState(()=>{
-    const shuffled=[...imgPool].sort(()=>Math.random()-.5);
-    return shuffled.slice(0,3);
-  });
+  const [resultados,setResultados]=useState([]);
+  const [errMsg,setErrMsg]=useState('');
+
+  // Animación de progreso (sube hasta 90% mientras espera la respuesta real)
   useEffect(()=>{
-    let v=0;
-    const t=setInterval(()=>{
-      v+=2;setProgreso(v);
-      if(v>=100){clearInterval(t);setTimeout(()=>setPaso('listo'),400);}
-    },80);
+    if(paso!=='generando')return;
+    const t=setInterval(()=>{setProgreso(p=>p<90?p+(p<60?3:1):p);},300);
     return()=>clearInterval(t);
+  },[paso]);
+
+  // Generación real
+  useEffect(()=>{
+    let cancel=false;
+    (async()=>{
+      try{
+        if(tipo==='imagen'){
+          if(!fotoNino||!personaje) throw new Error('Faltan la foto del niño/a o el personaje.');
+          const resp=await fetch('/api/generar-imagen',{
+            method:'POST',headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({fotoNino,personaje,personajeNombre:personajeNombre||tematica||'',n:2})
+          });
+          const data=await resp.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
+          if(!resp.ok) throw new Error(data.error||'No se pudo generar la imagen.');
+          if(cancel)return;
+          setResultados(data.imagenes||[]);setProgreso(100);setPaso('listo');
+        } else {
+          // Video con IA: todavía no integrado → demostración
+          await new Promise(r=>setTimeout(r,2200));
+          if(cancel)return;
+          setResultados([
+            'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&fit=crop',
+            'https://images.unsplash.com/photo-1464349153735-7db50ed83c84?w=600&fit=crop',
+          ]);
+          setProgreso(100);setPaso('listo');
+        }
+      }catch(e){ if(cancel)return; setErrMsg(String((e&&e.message)||e));setPaso('error'); }
+    })();
+    return()=>{cancel=true;};
   },[]);
+
   if(paso==='generando') return(
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
       <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:28,textAlign:'center'}}>
         <div style={{fontSize:44,marginBottom:12}}>{tipo==='imagen'?'🖼️':'🎬'}</div>
         <h3 style={{fontWeight:900,fontSize:17,marginBottom:6}}>Generando con IA...</h3>
-        <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Creando 3 {tipo==='imagen'?'imágenes':'videos'} para <b>{nombre}</b></p>
+        <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Creando la magia para <b>{nombre}</b> ✨</p>
         <div style={{height:8,background:'#e2e8f0',borderRadius:99,overflow:'hidden',marginBottom:8}}>
-          <div style={{height:'100%',background:'linear-gradient(90deg,#7c3aed,#a855f7)',borderRadius:99,width:progreso+'%',transition:'width .1s'}}></div>
+          <div style={{height:'100%',background:'linear-gradient(90deg,#7c3aed,#a855f7)',borderRadius:99,width:progreso+'%',transition:'width .3s'}}></div>
         </div>
         <p style={{fontSize:11,color:'#7c3aed',fontWeight:700}}>{progreso}%</p>
-        <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>Procesando con IA · Sin modificar el rostro</p>
+        <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>Esto puede tardar entre 20 y 40 segundos. No cierres esta ventana.</p>
+      </div>
+    </div>
+  );
+  if(paso==='error') return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
+      <div className="fade-in" style={{...S.card,maxWidth:400,width:'100%',padding:28,textAlign:'center'}}>
+        <div style={{fontSize:44,marginBottom:12}}>😕</div>
+        <h3 style={{fontWeight:900,fontSize:17,marginBottom:6}}>No se pudo generar</h3>
+        <p style={{fontSize:12,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:10,padding:10,marginBottom:16}}>{errMsg}</p>
+        <button onClick={onCerrar} style={{...S.btn,background:'#f1f5f9',color:'#334155',width:'100%'}}>Cerrar e intentar de nuevo</button>
       </div>
     </div>
   );
   return(
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16,overflowY:'auto'}}>
       <div className="fade-in" style={{...S.card,maxWidth:460,width:'100%',padding:24,margin:'auto'}}>
-        <h3 style={{fontWeight:900,fontSize:17,marginBottom:4,textAlign:'center'}}>🎉 ¡{tipo==='imagen'?'Imágenes':'Videos'} listos!</h3>
-        <p style={{fontSize:11,color:'#64748b',textAlign:'center',marginBottom:16}}>Se generaron 3 opciones. Elegí la que más te guste.</p>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:16}}>
+        <h3 style={{fontWeight:900,fontSize:17,marginBottom:4,textAlign:'center'}}>🎉 ¡{tipo==='imagen'?'Imágenes':'Videos'} listas!</h3>
+        <p style={{fontSize:11,color:'#64748b',textAlign:'center',marginBottom:16}}>Se generaron {resultados.length} opciones. Tocá "Usar estas" y después elegí tu favorita.</p>
+        <div style={{display:'grid',gridTemplateColumns:`repeat(${Math.min(resultados.length,3)},1fr)`,gap:10,marginBottom:16}}>
           {resultados.map((src,i)=>(
-            <div key={i} style={{display:'flex',flexDirection:'column',gap:6,alignItems:'center'}}>
+            <div key={i} style={{aspectRatio:'9/16',borderRadius:10,overflow:'hidden',width:'100%',maxHeight:200,border:'2px solid #e2e8f0'}}>
               {tipo==='imagen'
-                ?<div style={{aspectRatio:'9/16',borderRadius:10,overflow:'hidden',width:'100%',maxHeight:180,cursor:'pointer',border:'2px solid #e2e8f0'}}>
-                  <img src={src} alt={`resultado ${i+1}`} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                </div>
-                :<div style={{aspectRatio:'9/16',borderRadius:10,overflow:'hidden',width:'100%',maxHeight:180,background:'#0f172a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,cursor:'pointer',border:'2px solid #e2e8f0'}}>
-                  <span style={{fontSize:28}}>🎬</span>
-                  <p style={{color:'#94a3b8',fontSize:9,textAlign:'center',padding:'0 4px'}}>Video {i+1}</p>
-                </div>
-              }
-              <button onClick={()=>onResultado(resultados)} style={{...S.btn,background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',fontSize:10,padding:'6px 10px',width:'100%'}}>
-                ✓ Elegir #{i+1}
-              </button>
+                ?<img src={src} alt={`resultado ${i+1}`} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                :<div style={{width:'100%',height:'100%',background:'#0f172a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
+                  <span style={{fontSize:28}}>🎬</span><p style={{color:'#94a3b8',fontSize:9}}>Video {i+1}</p>
+                </div>}
             </div>
           ))}
         </div>
+        <button onClick={()=>onResultado(resultados)} style={{...S.btn,background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',width:'100%',marginBottom:8}}>✓ Usar estas opciones</button>
         <button onClick={onCerrar} style={{...S.btn,background:'#f1f5f9',color:'#64748b',width:'100%'}}>Cancelar</button>
       </div>
     </div>
@@ -2059,7 +2129,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>setPagoActivo('imagen')} onDescartar={()=>setForm(f=>({...f,iaImagenes:[],usarFoto:false}))} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:true}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas}/>
+              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>setPagoActivo('imagen')} onDescartar={()=>setForm(f=>({...f,iaImagenes:[],usarFoto:false}))} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:true}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''}/>
             )}
             {modoPortada==='ia-video'&&(
               <IAUploadSection tipo="video" precio={iaConfig.precioVideo} resultados={form.iaVideos||[]} onPagar={()=>setPagoActivo('video')} onDescartar={()=>setForm(f=>({...f,iaVideos:[]}))} onUsar={idx=>setForm(f=>({...f,iaVideoSel:idx}))} selIdx={form.iaVideoSel} fotoNino={form.fotoNinoIAV||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIAV:v}))} personaje={form.personajeIAV||''} setPersonaje={v=>setForm(f=>({...f,personajeIAV:v}))} tematicas={tematicas}/>
@@ -2408,7 +2478,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} onResultado={imgs=>{if(genActivo==='imagen')setForm(f=>({...f,iaImagenes:imgs,iaImagenSel:null}));else setForm(f=>({...f,iaVideos:imgs,iaVideoSel:null}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===(genActivo==='imagen'?form.personajeIA:form.personajeIAV))||{}).nombre||temA.nombre} onResultado={imgs=>{if(genActivo==='imagen')setForm(f=>({...f,iaImagenes:imgs,iaImagenSel:null}));else setForm(f=>({...f,iaVideos:imgs,iaVideoSel:null}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
     </div>
   );
 }
