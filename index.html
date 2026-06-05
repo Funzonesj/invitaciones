@@ -711,7 +711,7 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
 
   function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(x=>({...x,img:ev.target.result,prev:ev.target.result}));r.readAsDataURL(f);}
   function toggleCat(c){setForm(f=>({...f,cats:f.cats.includes(c)?f.cats.filter(x=>x!==c):[...f.cats,c]}))}
-  function addCat(e){e.preventDefault();if(!nuevaCat.trim())return;const c=nuevaCat.trim().toUpperCase();if(!allCats.includes(c))setAllCats(p=>[...p,c]);setForm(f=>({...f,cats:[...f.cats,c]}));setNuevaCat('');}
+  function addCat(e){if(e&&e.preventDefault)e.preventDefault();if(!nuevaCat.trim())return;const c=nuevaCat.trim().toUpperCase();if(!allCats.includes(c))setAllCats(p=>[...p,c]);setForm(f=>({...f,cats:[...f.cats,c]}));setNuevaCat('');}
   function sub(e){
     e.preventDefault();
     if(!form.nombre||!form.img){setMsg('Completá nombre e imagen.');return;}
@@ -747,10 +747,10 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
               <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:8}}>
                 {allCats.map(c=><button type="button" key={c} onClick={()=>toggleCat(c)} style={{padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,border:'none',cursor:'pointer',background:form.cats.includes(c)?'#7c3aed':'#f1f5f9',color:form.cats.includes(c)?'white':'#64748b'}}>{c}</button>)}
               </div>
-              <form onSubmit={addCat} style={{display:'flex',gap:6}}>
-                <input value={nuevaCat} onChange={e=>setNuevaCat(e.target.value)} placeholder="Nueva categoría..." style={{...S.input,flex:1,padding:'7px 10px',fontSize:11}}/>
-                <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',padding:'7px 12px'}}>+</button>
-              </form>
+              <div style={{display:'flex',gap:6}}>
+                <input value={nuevaCat} onChange={e=>setNuevaCat(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addCat();}}} placeholder="Nueva categoría..." style={{...S.input,flex:1,padding:'7px 10px',fontSize:11}}/>
+                <button type="button" onClick={()=>addCat()} style={{...S.btn,background:'#7c3aed',color:'white',padding:'7px 12px'}}>+</button>
+              </div>
             </div>
             <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',width:'100%',padding:12}}>✓ Guardar Portada</button>
           </form>
