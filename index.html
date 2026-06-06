@@ -1852,7 +1852,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
           <span style={{fontSize:22}}>{emojiIA}</span>
           <div>
             <div style={{fontWeight:800,fontSize:14,color:colorIA}}>{tipo==='imagen'?'Imagen IA Personalizada':'Video IA Personalizado'}</div>
-            <div style={{fontSize:11,color:'#64748b'}}>{tipo==='imagen'?'Cargá las fotos y generamos 6 imágenes (2 estilos) para que elijas':'Cargá las fotos y generamos videos únicos con IA'}</div>
+            <div style={{fontSize:11,color:'#64748b'}}>{tipo==='imagen'?'Cargá las fotos y generamos 6 imágenes para que elijas':'Cargá las fotos y generamos tu video con IA'}</div>
           </div>
         </div>
         <div style={{fontSize:11,color:'#475569',background:'white',borderRadius:8,padding:8,border:'1px solid #e2e8f0'}}>
@@ -2144,7 +2144,8 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,modelA,modelB,cantidad
           const composedB=(prompt2&&prompt2.trim())?(repl(prompt2)+'\nUse the TWO attached images: Image 1 is the child (preserve the real face exactly), Image 2 is the character/costume reference. Vertical image, no text, no letters, no watermark.'):composedA;
           // Repartir: mitad con prompt A, mitad con prompt B (ej: 6 → 3 y 3)
           const n=Math.max(1,Math.min(totalGen,6));
-          const nA=Math.ceil(n/2);
+          // "Disfraz" (Prompt B) desactivado por ahora → todas con "Amigos" (Prompt A). Para reactivar: const nA=Math.ceil(n/2);
+          const nA=n;
           const mA=modelA||'fal-ai/nano-banana/edit';
           const mB=modelB||'fal-ai/nano-banana/edit';
           const lista=[];for(let i=0;i<n;i++)lista.push(i<nA?{p:composedA,m:mA}:{p:composedB,m:mB});
