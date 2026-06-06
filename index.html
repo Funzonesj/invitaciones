@@ -1806,13 +1806,8 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
   const [modoPersonaje,setModoPersonaje]=useState('db'); // 'db' | 'upload'
   const [busqTem,setBusqTem]=useState('');
   const [catTem,setCatTem]=useState('TODOS');
-  const [zoom,setZoom]=useState(null); // imagen ampliada (mantener presionado)
+  const [zoom,setZoom]=useState(null); // imagen ampliada (se abre al tocar)
   const [aviso,setAviso]=useState(tipo==='imagen'); // pop-up informativo al entrar
-  const holdTimer=useRef(null);
-  const heldRef=useRef(false);
-  function pressStart(src){heldRef.current=false;clearTimeout(holdTimer.current);holdTimer.current=setTimeout(()=>{heldRef.current=true;setZoom(src);},280);}
-  function pressEnd(i){clearTimeout(holdTimer.current);if(heldRef.current){setZoom(null);heldRef.current=false;}else{onUsar(i);}}
-  function pressCancel(){clearTimeout(holdTimer.current);if(heldRef.current){setZoom(null);heldRef.current=false;}}
   const listo=fotoNino&&personaje;
   // Personajes disponibles para el papá: los del Catálogo IA (si hay), si no todos
   const iaTem=(tematicas.some(t=>t.ia)?tematicas.filter(t=>t.ia):tematicas);
@@ -1976,22 +1971,17 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
         <div className="fade-in">
           <div style={{background:colorIA+'12',border:'1px solid '+colorIA+'33',borderRadius:12,padding:'10px 12px',marginBottom:10,textAlign:'center'}}>
             <div style={{fontWeight:900,fontSize:13,color:colorIA}}>👆 Elegí la imagen para tu tarjeta</div>
-            <div style={{fontSize:10,color:'#64748b',marginTop:2}}>Tocá para elegirla · Mantené presionada para verla grande</div>
+            <div style={{fontSize:10,color:'#64748b',marginTop:2}}>Tocá una imagen para verla grande y elegirla</div>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:14}}>
             {resultados.map((src,i)=>(
               <div key={i} style={{display:'flex',flexDirection:'column',gap:6}}>
                 <div
-                  onPointerDown={()=>tipo==='imagen'?pressStart(src):null}
-                  onPointerUp={()=>tipo==='imagen'?pressEnd(i):onUsar(i)}
-                  onPointerMove={()=>tipo==='imagen'?pressCancel():null}
-                  onPointerLeave={()=>tipo==='imagen'?pressCancel():null}
-                  onPointerCancel={()=>tipo==='imagen'?pressCancel():null}
-                  onContextMenu={e=>e.preventDefault()}
-                  style={{cursor:'pointer',borderRadius:12,overflow:'hidden',border:selIdx===i?'4px solid '+colorIA:'2px solid #e2e8f0',transition:'all .2s',position:'relative',userSelect:'none',WebkitUserSelect:'none',touchAction:'pan-y'}}>
+                  onClick={()=>tipo==='imagen'?setZoom({src,i}):onUsar(i)}
+                  style={{cursor:'pointer',borderRadius:12,overflow:'hidden',border:selIdx===i?'4px solid '+colorIA:'2px solid #e2e8f0',transition:'all .2s',position:'relative'}}>
                   {tipo==='imagen'
                     ?<div style={{aspectRatio:'9/16'}}>
-                      <img src={src} alt={`opción ${i+1}`} draggable={false} style={{width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}}/>
+                      <img src={src} alt={`opción ${i+1}`} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                     </div>
                     :<div style={{aspectRatio:'9/16',background:'#0f172a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
                       <span style={{fontSize:22}}>🎬</span>
@@ -2002,7 +1992,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
                     <div style={{position:'absolute',top:6,right:6,background:colorIA,color:'white',borderRadius:'50%',width:24,height:24,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,boxShadow:'0 2px 6px rgba(0,0,0,.3)'}}>✓</div>
                   )}
                   <div style={{padding:'5px',textAlign:'center',background:selIdx===i?colorIA:'white',fontSize:11,fontWeight:selIdx===i?900:600,color:selIdx===i?'white':'#64748b'}}>
-                    {selIdx===i?'✓ Portada elegida':'Imagen '+(i+1)}
+                    {selIdx===i?'✓ Portada elegida':'🔍 Ver / elegir'}
                   </div>
                 </div>
                 {tipo==='imagen'&&(
@@ -2022,11 +2012,16 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
         </div>
       )}
 
-      {/* Zoom: imagen ampliada mientras se mantiene presionada */}
+      {/* Zoom: imagen ampliada con botones (se abre al tocar) */}
       {zoom&&(
-        <div onPointerUp={pressCancel} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-          <img src={zoom} alt="vista ampliada" style={{maxWidth:'100%',maxHeight:'90vh',borderRadius:14,boxShadow:'0 10px 40px rgba(0,0,0,.5)'}}/>
-          <div style={{position:'absolute',bottom:20,left:0,right:0,textAlign:'center',color:'white',fontSize:13,fontWeight:700,opacity:.85}}>Soltá para volver</div>
+        <div onClick={()=>setZoom(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:1000,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:16}}>
+          <button onClick={(e)=>{e.stopPropagation();setZoom(null);}} style={{position:'absolute',top:14,right:14,background:'rgba(255,255,255,.2)',color:'white',border:'none',borderRadius:'50%',width:42,height:42,fontSize:20,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+          <img onClick={e=>e.stopPropagation()} src={zoom.src} alt="vista ampliada" style={{maxWidth:'100%',maxHeight:'72vh',borderRadius:14,boxShadow:'0 10px 40px rgba(0,0,0,.5)',marginBottom:14}}/>
+          <div onClick={e=>e.stopPropagation()} style={{display:'flex',gap:10,width:'100%',maxWidth:420}}>
+            <button onClick={()=>{onUsar(zoom.i);setZoom(null);}} style={{...S.btn,flex:2,background:selIdx===zoom.i?'#16a34a':'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'14px',fontSize:14,fontWeight:900}}>{selIdx===zoom.i?'✓ Es tu portada':'✓ Elegir para la tarjeta'}</button>
+            <button onClick={()=>guardarFoto(zoom.src)} style={{...S.btn,flex:1,background:'rgba(255,255,255,.15)',color:'white',padding:'14px',fontSize:13,fontWeight:800}}>⬇️</button>
+          </div>
+          <button onClick={(e)=>{e.stopPropagation();setZoom(null);}} style={{marginTop:12,background:'none',border:'none',color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Cerrar</button>
         </div>
       )}
     </div>
