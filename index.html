@@ -399,7 +399,7 @@ function App() {
 
       <main style={{flex:1}}>
         {vista==='admin-login'       && <AdminLogin     onLogin={loginAdmin}/>}
-        {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} tematicas={tematicas} esSA={esSA}/>}
+        {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} tematicas={tematicas} esSA={esSA} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig}/>}
         {vista==='admin-tematicas'   && <AdminTematicas setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-excel'       && <AdminExcel     setVista={setVista} sucActId={sucActId} eventos={eventos} setEventos={setEventos}/>}
@@ -548,7 +548,7 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
   return(
     <div className="fade-in" style={{maxWidth:560,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
-      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>{esMejorador?'🪄 Mejorador de imagen':'🎨 Generador de Catálogo'}</h1>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>{esMejorador?'🪄 Mejorador de imagen':'🎨 Generador de imagen IA'}</h1>
       <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>{esMejorador?'Subí una foto y mejorá su calidad (nitidez, color, resolución) con IA, sin cambiar el estilo.':'Subí un personaje y generá su versión en 3D estilo Pixar para el catálogo.'}</p>
 
       <label style={S.label}>Imagen del personaje</label>
@@ -622,7 +622,7 @@ function AdminCatalogoIA({setVista,tematicas,setTematicas}){
     <div className="fade-in" style={{maxWidth:760,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
       <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🤖 Catálogo IA</h1>
-      <p style={{fontSize:11,color:'#64748b',marginBottom:16}}>Personajes que los papás pueden elegir para generar su imagen con IA. Agregá más desde 🖼️ Portadas/Temáticas (botón "➕ Catálogo IA") o creando uno en 🎨 Generador de Catálogo.</p>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:16}}>Personajes que los papás pueden elegir para generar su imagen con IA. Agregá más desde 🖼️ Catálogo de imágenes (botón "➕ Catálogo IA") o creando uno en 🎨 Generador de imagen IA.</p>
       {items.length===0&&<div style={{...S.card,textAlign:'center',color:'#94a3b8',fontSize:13,padding:24}}>Todavía no hay personajes en el Catálogo IA.</div>}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10}}>
         {items.map(t=>(
@@ -640,11 +640,16 @@ function AdminCatalogoIA({setVista,tematicas,setTematicas}){
 }
 
 /* ── ADMIN DASHBOARD ─────────────────────────────────────── */
-function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA}){
-  const items=[
+function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaConfig}){
+  const [edit,setEdit]=useState(false);
+  const [editId,setEditId]=useState(null);
+  const dragRef=useRef(null);
+  const custom=(iaConfig&&iaConfig.dashCustom)||{};
+  const orden=(iaConfig&&iaConfig.dashOrden)||[];
+  const base=[
     {e:'📅',t:'Eventos Contratados', s:`${evsLocal.length} activos`,   v:'admin-eventos',    bdr:'#06b6d4',badge:'ENTRAR'},
     {e:'📊',t:'Carga Excel Semanal', s:'Autocompletar agenda',          v:'admin-excel',      bdr:'#10b981'},
-    {e:'🖼️',t:'Portadas/Temáticas',  s:`${tematicas.length} portadas`, v:'admin-tematicas',  bdr:'#7c3aed'},
+    {e:'🖼️',t:'Catálogo de imágenes', s:`${tematicas.length} imágenes`, v:'admin-tematicas',  bdr:'#7c3aed'},
     {e:'👥',t:'Ver Asistencias',      s:'Checklist de invitados',       v:'admin-asistencias',bdr:'#f43f5e'},
     {e:'📣',t:'Remarketing',          s:'Envíos masivos',               v:'admin-remarketing',bdr:'#f97316'},
     {e:'⚙️',t:'Usuarios & Sucursales',s:'Cuentas y salones',           v:'admin-usuarios',   bdr:'#94a3b8',ownerOnly:true},
@@ -652,10 +657,14 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA}){
     {e:'🎟️',t:'Formatos de Tarjeta',   s:'Por tipo de evento',          v:'admin-formatos',   bdr:'#ec4899',ownerOnly:true},
     {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a',ownerOnly:true},
     {e:'🤖',t:'IA & Precios',          s:'Prompts y API keys',          v:'admin-ia',         bdr:'#8b5cf6',ownerOnly:true},
-    {e:'🎨',t:'Generador de Catálogo', s:'Crear en 3D o mejorar',         v:'admin-catalogo',   bdr:'#534AB7',ownerOnly:true},
+    {e:'🎨',t:'Generador de imagen IA', s:'Crear en 3D o mejorar',        v:'admin-catalogo',   bdr:'#534AB7',ownerOnly:true},
     {e:'🤖',t:'Catálogo IA',           s:'Personajes para los papás',     v:'admin-catalogo-ia',bdr:'#0ea5e9',ownerOnly:true},
     {e:'🛠️',t:'Configuración',         s:'Año vigente y sitio',          v:'admin-config',     bdr:'#0ea5e9',ownerOnly:true},
-  ].filter(c=>esSA||!c.ownerOnly);
+  ].filter(c=>esSA||!c.ownerOnly).map(c=>({...c, e:(custom[c.v]&&custom[c.v].e)||c.e, t:(custom[c.v]&&custom[c.v].t)||c.t}));
+  const items=[...base].sort((a,b)=>{const ia=orden.indexOf(a.v),ib=orden.indexOf(b.v);if(ia<0&&ib<0)return 0;if(ia<0)return 1;if(ib<0)return -1;return ia-ib;});
+  function guardar(nc,no){setIaConfig(c=>({...c,dashCustom:nc===undefined?(c.dashCustom||{}):nc,dashOrden:no===undefined?(c.dashOrden||[]):no}));}
+  function setCampo(v,campo,val){guardar({...custom,[v]:{...(custom[v]||{}),[campo]:val}},undefined);}
+  function reordenar(from,to){if(!from||from===to)return;const vis=items.map(x=>x.v);const fi=vis.indexOf(from);if(fi<0)return;vis.splice(fi,1);const ti=vis.indexOf(to);vis.splice(ti<0?vis.length:ti,0,from);guardar(undefined,vis);}
   return(
     <div className="fade-in" style={{maxWidth:700,margin:'0 auto',padding:'24px 16px'}}>
       <div style={{...S.card,display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,padding:20}}>
@@ -663,18 +672,34 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA}){
           <div style={{width:54,height:54,borderRadius:16,background:`linear-gradient(135deg,${sucAct.color},#7c3aed)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>{sucAct.emoji}</div>
           <div><div style={{fontWeight:900,fontSize:20}}>{sucAct.nombre}</div><div style={{fontSize:11,color:'#64748b'}}>Panel de Control</div></div>
         </div>
-        <div style={{display:'flex',alignItems:'center',gap:6}}><span style={{width:8,height:8,background:'#22c55e',borderRadius:'50%',display:'inline-block'}}></span><span style={{fontSize:11,fontWeight:700,color:'#64748b'}}>Activo</span></div>
+        <button onClick={()=>{setEdit(!edit);setEditId(null);}} style={{...S.btn,background:edit?'#16a34a':'#f1f5f9',color:edit?'white':'#475569',padding:'7px 12px',fontSize:12}}>{edit?'✓ Listo':'✏️ Editar panel'}</button>
       </div>
       <p style={{fontWeight:900,color:'#1e293b',marginBottom:14,fontSize:13,textTransform:'uppercase',letterSpacing:1}}>Servicios Disponibles</p>
+      {edit&&<div style={{background:'#fffbeb',border:'1px solid #fde68a',color:'#92400e',borderRadius:10,padding:'8px 12px',fontSize:11,marginBottom:12,fontWeight:600}}>✏️ Tocá el lápiz para cambiar nombre/icono. Arrastrá una tarjeta con el mouse para reordenar.</div>}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(175px,1fr))',gap:12}}>
         {items.map(c=>(
-          <div key={c.v} onClick={()=>setVista(c.v)} style={{...S.card,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',gap:8,padding:20,border:`2px solid ${c.bdr}22`,position:'relative',transition:'transform .15s'}}
-            onMouseEnter={e=>e.currentTarget.style.transform='translateY(-2px)'}
+          <div key={c.v}
+            draggable={edit}
+            onDragStart={()=>{dragRef.current=c.v;}}
+            onDragOver={e=>{if(edit)e.preventDefault();}}
+            onDrop={()=>{if(edit)reordenar(dragRef.current,c.v);}}
+            onClick={()=>{if(!edit)setVista(c.v);}}
+            style={{...S.card,cursor:edit?'grab':'pointer',display:'flex',flexDirection:'column',alignItems:'center',textAlign:'center',gap:8,padding:20,border:`2px solid ${c.bdr}${edit?'88':'22'}`,position:'relative',transition:'transform .15s'}}
+            onMouseEnter={e=>{if(!edit)e.currentTarget.style.transform='translateY(-2px)';}}
             onMouseLeave={e=>e.currentTarget.style.transform=''}>
-            {c.badge&&<span style={{position:'absolute',top:10,right:10,background:c.bdr,color:'white',fontSize:9,padding:'2px 7px',borderRadius:99,fontWeight:900}}>{c.badge}</span>}
-            <span style={{fontSize:28}}>{c.e}</span>
-            <span style={{fontWeight:800,fontSize:13,color:'#1e293b'}}>{c.t}</span>
-            <span style={{fontSize:10,color:'#94a3b8'}}>{c.s}</span>
+            {!edit&&c.badge&&<span style={{position:'absolute',top:10,right:10,background:c.bdr,color:'white',fontSize:9,padding:'2px 7px',borderRadius:99,fontWeight:900}}>{c.badge}</span>}
+            {edit&&<button onClick={(e)=>{e.stopPropagation();setEditId(editId===c.v?null:c.v);}} style={{position:'absolute',top:8,right:8,background:'#0ea5e9',color:'white',border:'none',borderRadius:8,width:26,height:26,cursor:'pointer',fontSize:13}}>✏️</button>}
+            {editId===c.v?(
+              <div style={{width:'100%'}} onClick={e=>e.stopPropagation()}>
+                <input value={c.e} onChange={e=>setCampo(c.v,'e',e.target.value)} maxLength={2} style={{...S.input,width:56,fontSize:24,textAlign:'center',margin:'0 auto 8px'}}/>
+                <input value={c.t} onChange={e=>setCampo(c.v,'t',e.target.value)} style={{...S.input,fontSize:12,textAlign:'center'}}/>
+                <button onClick={()=>setEditId(null)} style={{...S.btn,background:'#16a34a',color:'white',width:'100%',marginTop:8,padding:'7px',fontSize:12}}>✓ Listo</button>
+              </div>
+            ):(<>
+              <span style={{fontSize:28}}>{c.e}</span>
+              <span style={{fontWeight:800,fontSize:13,color:'#1e293b'}}>{c.t}</span>
+              <span style={{fontSize:10,color:'#94a3b8'}}>{c.s}</span>
+            </>)}
           </div>
         ))}
       </div>
@@ -949,7 +974,7 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
   return(
     <div className="fade-in" style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
-      <h1 style={{fontWeight:900,fontSize:20,marginBottom:18}}>🖼️ Portadas y Temáticas</h1>
+      <h1 style={{fontWeight:900,fontSize:20,marginBottom:18}}>🖼️ Catálogo de imágenes</h1>
       <div style={{display:'grid',gridTemplateColumns:'min(300px,100%) 1fr',gap:20,alignItems:'start'}} className="admin-tematicas-grid">
         <div style={S.card}>
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>Cargar Nueva Portada</h3>
