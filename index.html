@@ -301,7 +301,7 @@ function App() {
   }
   function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
 
-  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-config'].includes(vista);
+  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-mejorador','admin-config'].includes(vista);
   const isPapa  = ['papa-login','papa-creador'].includes(vista);
 
   // Mientras carga la base de datos en links de invitación/papá, mostrar cargando
@@ -394,6 +394,7 @@ function App() {
         {vista==='admin-usuarios'    && esSA && <AdminUsuarios  setVista={setVista} usuarios={usuarios} setUsuarios={setUsuarios} sucursales={sucursales} setSucursales={setSucursales}/>}
         {vista==='admin-ia'          && esSA && <AdminIA setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-catalogo'    && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
+        {vista==='admin-mejorador'   && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas} modo="mejorador"/>}
         {vista==='admin-config'      && esSA && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
@@ -442,11 +443,12 @@ function AdminLogin({onLogin}){
 }
 
 /* ── ADMIN GENERADOR DE CATÁLOGO (fal.ai) ────────────────── */
-function AdminCatalogo({setVista,tematicas,setTematicas}){
+function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
+  const esMejorador = modo==='mejorador';
   const PURPLE='#534AB7';
   const [img,setImg]=useState('');
-  const [opt,setOpt]=useState('3d');
-  const [model,setModel]=useState('fal-ai/flux-pro/kontext/text-to-image');
+  const [opt,setOpt]=useState(esMejorador?'enhance':'3d');
+  const [model,setModel]=useState(esMejorador?'fal-ai/flux-pro/kontext':'fal-ai/flux-pro/kontext/text-to-image');
   const [ratio,setRatio]=useState('9:16');
   const [cargando,setCargando]=useState(false);
   const [err,setErr]=useState('');
@@ -503,8 +505,8 @@ function AdminCatalogo({setVista,tematicas,setTematicas}){
   return(
     <div className="fade-in" style={{maxWidth:560,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
-      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🎨 Generador de Catálogo</h1>
-      <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>Subí un personaje y generá su versión para el catálogo (3D o mejorada) con fal.ai.</p>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>{esMejorador?'🪄 Mejorador de imagen':'🎨 Generador de Catálogo'}</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>{esMejorador?'Subí una foto y mejorá su calidad (nitidez, color, resolución) con IA, sin cambiar el estilo.':'Subí un personaje y generá su versión para el catálogo (3D o mejorada) con fal.ai.'}</p>
 
       <label style={S.label}>Imagen del personaje</label>
       <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
@@ -575,6 +577,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA}){
     {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a',ownerOnly:true},
     {e:'🤖',t:'IA & Precios',          s:'Prompts y API keys',          v:'admin-ia',         bdr:'#8b5cf6',ownerOnly:true},
     {e:'🎨',t:'Generador de Catálogo', s:'Personajes 3D con IA',         v:'admin-catalogo',   bdr:'#534AB7',ownerOnly:true},
+    {e:'🪄',t:'Mejorador de imagen',   s:'Subí una foto y mejorala',     v:'admin-mejorador',  bdr:'#0ea5e9',ownerOnly:true},
     {e:'🛠️',t:'Configuración',         s:'Año vigente y sitio',          v:'admin-config',     bdr:'#0ea5e9',ownerOnly:true},
   ].filter(c=>esSA||!c.ownerOnly);
   return(
