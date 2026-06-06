@@ -470,7 +470,11 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
   const [prompt,setPrompt]=useState('');
   const [copiado,setCopiado]=useState(false);
   const [msg,setMsg]=useState('');
+  const [guardarOpen,setGuardarOpen]=useState(false);
+  const [gNombre,setGNombre]=useState('');
+  const [gCats,setGCats]=useState(['TODOS']);
   const fileRef=useRef();
+  function toggleGCat(c){setGCats(cs=>cs.includes(c)?cs.filter(x=>x!==c):[...cs,c]);}
 
   const prompt3D='Hyper realistic 3D render, NOT cartoon, NOT anime, NOT illustration, NOT 2D,\nphotorealistic 3D Pixar movie quality, cinematic lighting, ultra high quality,\n8K resolution, full body portrait, vertical 9:16 format,\nwarm welcoming smile, arms slightly open as if inviting someone for a hug,\nleave extra empty clean space at the top of the image for text overlay,\nno text, no watermark, clean background behind character.';
   const promptEnhance='Enhance this image quality only.\nKeep the exact same art style as the original.\nDo NOT change to 3D, do NOT change to photorealistic.\nDo NOT modify the art style in any way.\nKeep exact same character design, colors, pose and composition.\nOnly improve: sharpness, resolution, color vibrancy, lighting and details.\nRemove any noise, blur or artifacts.\nExtend background naturally to fill full vertical 9:16 portrait format.\nLeave extra empty clean space at the top for text overlay.\nUltra high quality, 8K resolution. No text, no watermark.';
@@ -519,15 +523,15 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
     finally{setCargando(false);}
   }
   function copiar(){if(navigator.clipboard)navigator.clipboard.writeText(prompt).then(()=>{setCopiado(true);setTimeout(()=>setCopiado(false),2000);});}
-  function agregarATematicas(){
-    const nombre=window.prompt('¿Nombre del personaje para el catálogo?');
-    if(!nombre||!nombre.trim())return;
-    setMsg('Procesando imagen…');
+  function guardarEnCatalogo(){
+    if(!gNombre.trim()){setErr('Poné un nombre para el personaje.');return;}
+    const cats=gCats.includes('TODOS')?gCats:['TODOS',...gCats];
+    setErr('');setMsg('Guardando…');
     // Bajar y achicar la imagen para guardarla liviana
     fetch(resultUrl).then(r=>r.blob()).then(blob=>{
       const burl=URL.createObjectURL(blob);const im=new Image();
-      im.onload=()=>{try{const sc=Math.min(1,500/im.width);const cv=document.createElement('canvas');cv.width=Math.round(im.width*sc);cv.height=Math.round(im.height*sc);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);const data=cv.toDataURL('image/jpeg',0.72);setTematicas(p=>[...p,{id:'t-'+Date.now(),nombre:nombre.trim(),cats:['TODOS'],img:data,emoji:'🎨'}]);setMsg('✅ Agregado a Portadas/Temáticas');setTimeout(()=>setMsg(''),3000);}catch(err){setMsg('No se pudo agregar. Descargala y subila manualmente en Portadas.');}URL.revokeObjectURL(burl);};
-      im.onerror=()=>{setMsg('No se pudo agregar. Descargala y subila manualmente en Portadas.');};
+      im.onload=()=>{try{const sc=Math.min(1,500/im.width);const cv=document.createElement('canvas');cv.width=Math.round(im.width*sc);cv.height=Math.round(im.height*sc);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);const data=cv.toDataURL('image/jpeg',0.72);setTematicas(p=>[...p,{id:'t-'+Date.now(),nombre:gNombre.trim(),cats,img:data,emoji:'🎨'}]);setMsg('✅ Guardado en el catálogo (Portadas/Temáticas)');setGuardarOpen(false);setGNombre('');setGCats(['TODOS']);setTimeout(()=>setMsg(''),3500);}catch(err){setMsg('No se pudo guardar. Descargala y subila manualmente en Portadas.');}URL.revokeObjectURL(burl);};
+      im.onerror=()=>{setMsg('No se pudo guardar. Descargala y subila manualmente en Portadas.');};
       im.src=burl;
     }).catch(()=>setMsg('No se pudo descargar la imagen. Usá el botón Descargar y subila en Portadas.'));
   }
@@ -548,11 +552,13 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
 
       <label style={S.label}>Imagen del personaje</label>
       <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
-      <div onClick={()=>fileRef.current.click()} style={{border:img?('2px solid '+PURPLE):'2px dashed #cbd5e1',borderRadius:12,padding:img?0:'28px',textAlign:'center',cursor:'pointer',background:'#fff',marginBottom:14,overflow:'hidden'}}>
+      <div style={{position:'relative',border:img?('2px solid '+PURPLE):'2px dashed #cbd5e1',borderRadius:12,padding:img?0:'28px',textAlign:'center',cursor:'pointer',background:'#fff',marginBottom:14,overflow:'hidden'}} onClick={()=>{if(!img)fileRef.current.click();}}>
         {img
           ?<img src={img} alt="" style={{width:'100%',maxHeight:280,objectFit:'contain',borderRadius:10,display:'block'}}/>
           :<div><div style={{fontSize:34,marginBottom:6}}>🖼️</div><div style={{fontSize:14,color:'#64748b',fontWeight:700}}>Hacé clic para subir la imagen</div><div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>JPG, PNG, WEBP · o pegá con Ctrl+V</div></div>}
+        {img&&<button type="button" onClick={(e)=>{e.stopPropagation();setImg('');setResultUrl('');setGuardarOpen(false);}} style={{position:'absolute',top:8,right:8,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:'50%',width:30,height:30,cursor:'pointer',fontSize:15,display:'flex',alignItems:'center',justifyContent:'center'}}>🗑</button>}
       </div>
+      {img&&<button type="button" onClick={()=>{setImg('');setResultUrl('');setGuardarOpen(false);fileRef.current.click();}} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#334155',marginBottom:14}}>🔄 Cambiar por otra imagen</button>}
       <button type="button" onClick={pegarImagen} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#334155',marginBottom:14}}>📋 Pegar imagen del portapapeles</button>
 
       <div style={{background:esMejorador?'#e0f2fe':'#EEEDFE',border:'1px solid '+(esMejorador?'#bae6fd':'#ddd6fe'),borderRadius:10,padding:'10px 12px',marginBottom:14,fontSize:12,fontWeight:700,color:esMejorador?'#075985':'#3C3489'}}>
@@ -584,7 +590,22 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
             <button onClick={copiar} style={{position:'absolute',top:8,right:8,...S.btn,padding:'5px 10px',fontSize:11,background:'#fff',border:'1px solid #e2e8f0',color:'#475569'}}>{copiado?'✓ Copiado':'📋 Copiar'}</button>
           </div>
           <button onClick={()=>{fetch(resultUrl).then(r=>r.blob()).then(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='personaje_catalogo.png';document.body.appendChild(a);a.click();document.body.removeChild(a);}).catch(()=>window.open(resultUrl,'_blank'));}} style={{...S.btn,width:'100%',background:'#fff',border:'1px solid #e2e8f0',color:'#1e293b',marginBottom:8}}>⬇️ Descargar imagen</button>
-          <button onClick={agregarATematicas} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white'}}>➕ Agregar a Portadas/Temáticas</button>
+          {!guardarOpen&&<button onClick={()=>setGuardarOpen(true)} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white'}}>➕ Guardar en el catálogo</button>}
+          {guardarOpen&&(
+            <div style={{...S.card,marginTop:4,borderLeft:'4px solid '+PURPLE}}>
+              <label style={{display:'block',marginBottom:10}}><span style={S.label}>Nombre del personaje</span>
+                <input value={gNombre} onChange={e=>setGNombre(e.target.value)} style={S.input} placeholder="Ej: Sirenita" autoFocus/>
+              </label>
+              <span style={S.label}>Categorías (para que aparezca al filtrar)</span>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6,margin:'6px 0 12px'}}>
+                {CATS.map(c=><button key={c} type="button" onClick={()=>toggleGCat(c)} style={{padding:'4px 11px',borderRadius:99,fontSize:11,fontWeight:700,border:'none',cursor:'pointer',background:gCats.includes(c)?PURPLE:'#f1f5f9',color:gCats.includes(c)?'white':'#64748b'}}>{c}</button>)}
+              </div>
+              <div style={{display:'flex',gap:8}}>
+                <button onClick={guardarEnCatalogo} style={{...S.btn,flex:1,background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white'}}>✓ Guardar</button>
+                <button onClick={()=>setGuardarOpen(false)} style={{...S.btn,background:'#f1f5f9',color:'#64748b'}}>Cancelar</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
