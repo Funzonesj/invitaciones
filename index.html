@@ -1141,13 +1141,15 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
 function AdminIA({setVista,iaConfig,setIaConfig}){
   const [cfg,setCfg]=useState(iaConfig);
   const [msg,setMsg]=useState('');
+  const [editando,setEditando]=useState(false);
   function set(k,v){setCfg(c=>({...c,[k]:v}));}
-  function guardar(){setIaConfig(cfg);setMsg('✓ Cambios guardados');setTimeout(()=>setMsg(''),2500);}
+  function guardar(){setIaConfig(cfg);setEditando(false);setMsg('✓ Cambios guardados');setTimeout(()=>setMsg(''),2500);}
+  const lockStyle=editando?{}:{background:'#f1f5f9',color:'#475569',cursor:'not-allowed'};
   const servicio=(titulo,emoji,kPrompt,kApi,kPrecio,phPrompt)=>(
     <div style={{...S.card,marginBottom:14}}>
       <h3 style={{fontWeight:900,fontSize:15,marginBottom:12}}>{emoji} {titulo}</h3>
       <label style={{display:'block',marginBottom:10}}><span style={S.label}>Prompt (instrucción para la IA)</span>
-        <textarea value={cfg[kPrompt]||''} onChange={e=>set(kPrompt,e.target.value)} rows={4} style={{...S.input,resize:'vertical',fontFamily:'inherit'}} placeholder={phPrompt}/>
+        <textarea value={cfg[kPrompt]||''} readOnly={!editando} onChange={e=>set(kPrompt,e.target.value)} rows={4} style={{...S.input,resize:'vertical',fontFamily:'inherit',...lockStyle}} placeholder={phPrompt}/>
         <span style={{fontSize:10,color:'#94a3b8'}}>Variables disponibles: {'{nombre}'}, {'{edad}'}, {'{personaje}'}. <b>No hace falta pedir el cartel ni el formato</b>: el sistema lo agrega solo.</span>
       </label>
       <label style={{display:'block',marginBottom:10}}><span style={S.label}>🔑 API Key</span>
@@ -1165,6 +1167,11 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
       <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>Prompts, API keys y precios de los servicios de IA</p>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msg}</div>}
 
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,background:editando?'#fef9c3':'#f1f5f9',border:'1px solid '+(editando?'#fde047':'#e2e8f0'),borderRadius:12,padding:'10px 14px',marginBottom:14}}>
+        <span style={{fontSize:12,fontWeight:700,color:editando?'#854d0e':'#64748b'}}>{editando?'✏️ Modo edición activado — ya podés modificar los prompts.':'🔒 Los prompts están protegidos para que no se borren sin querer.'}</span>
+        <button onClick={()=>setEditando(e=>!e)} style={{...S.btn,background:editando?'#64748b':'#0ea5e9',color:'white',padding:'7px 14px',fontSize:12,whiteSpace:'nowrap'}}>{editando?'🔒 Bloquear':'✏️ Editar'}</button>
+      </div>
+
       {servicio('Imagen IA','🖼️','promptImagen','apiImagen','precioImagen','Una fotografía de {nombre}, {edad} años, con temática {tematica}...')}
       {servicio('Video IA','🎬','promptVideo','apiVideo','precioVideo','Video corto del personaje {tematica} saludando a {nombre}...')}
 
@@ -1172,7 +1179,7 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
         <h3 style={{fontWeight:900,fontSize:15,marginBottom:4}}>🪄 Mejorador de foto</h3>
         <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Gratis para el papá. Puede ver la foto <b>original</b> y la <b>mejorada</b>, y elegir cuál usar.</p>
         <label style={{display:'block',marginBottom:10}}><span style={S.label}>Prompt (instrucción para la IA)</span>
-          <textarea value={cfg.promptMejora||''} onChange={e=>set('promptMejora',e.target.value)} rows={3} style={{...S.input,resize:'vertical',fontFamily:'inherit'}} placeholder="Mejorá la foto: color, brillo y nitidez..."/>
+          <textarea value={cfg.promptMejora||''} readOnly={!editando} onChange={e=>set('promptMejora',e.target.value)} rows={3} style={{...S.input,resize:'vertical',fontFamily:'inherit',...lockStyle}} placeholder="Mejorá la foto: color, brillo y nitidez..."/>
         </label>
         <label style={{display:'block'}}><span style={S.label}>🔑 API Key</span>
           <input value={cfg.apiMejora||''} onChange={e=>set('apiMejora',e.target.value)} style={S.input} placeholder="Pegá aquí la API key del servicio" autoComplete="off"/>
@@ -1415,7 +1422,7 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId}){
 function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre=''}){
   const fotoRef=useRef();
   const persRef=useRef();
-  function descargar9x16(src){
+  function componer9x16(src,accion){
     const W=1080,H=1920;
     const c=document.createElement('canvas');c.width=W;c.height=H;
     const ctx=c.getContext('2d');
@@ -1425,30 +1432,63 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
       if(ar>target){dh=H;dw=H*ar;dx=(W-dw)/2;dy=0;}else{dw=W;dh=W/ar;dx=0;dy=(H-dh)/2;}
       ctx.fillStyle='#0f172a';ctx.fillRect(0,0,W,H);
       ctx.drawImage(img,dx,dy,dw,dh);
-      const texto='¡'+(nombre||'')+(personajeNombre?(' y '+personajeNombre):'')+' te espera'+(personajeNombre?'n':'')+' a festejar sus '+(edad||'')+' años!';
-      const m=44, bx=m, by=44, bw=W-m*2;
-      ctx.fillStyle='#fff';ctx.textAlign='center';ctx.textBaseline='top';ctx.font='bold 58px Arial';
-      // medir lineas
-      const palabras=texto.split(' ');const lineas=[];let ln='';
-      palabras.forEach(p=>{const t=ln?ln+' '+p:p;if(ctx.measureText(t).width>bw-60&&ln){lineas.push(ln);ln=p;}else ln=t;});
-      if(ln)lineas.push(ln);
-      const lh=72, bh=lineas.length*lh+44;
-      const grad=ctx.createLinearGradient(bx,0,bx+bw,0);grad.addColorStop(0,'#ec4899');grad.addColorStop(1,'#7c3aed');
-      ctx.fillStyle=grad;
-      const r=28;ctx.beginPath();ctx.moveTo(bx+r,by);ctx.arcTo(bx+bw,by,bx+bw,by+bh,r);ctx.arcTo(bx+bw,by+bh,bx,by+bh,r);ctx.arcTo(bx,by+bh,bx,by,r);ctx.arcTo(bx,by,bx+bw,by,r);ctx.closePath();ctx.fill();
-      ctx.fillStyle='#fff';
-      lineas.forEach((l,i)=>ctx.fillText(l,W/2,by+22+i*lh));
+      // Color dominante del personaje (zona central-inferior de la imagen)
+      let cr=47,cg=111,cb=237;
       try{
-        const url=c.toDataURL('image/png');
-        const a=document.createElement('a');a.href=url;a.download='invitacion-'+(nombre||'fiesta').toLowerCase().replace(/\s/g,'')+'.png';
-        document.body.appendChild(a);a.click();document.body.removeChild(a);
-      }catch(err){alert('No se pudo descargar (la imagen es de otra web). Generala con IA y volvé a intentar.');}
+        const id=ctx.getImageData(Math.floor(W*0.15),Math.floor(H*0.45),Math.floor(W*0.7),Math.floor(H*0.5)).data;
+        let bestSat=-1;
+        for(let i=0;i<id.length;i+=4*30){const r=id[i],g=id[i+1],b=id[i+2];const mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx-mn;if(mx<45||mn>210)continue;if(sat>bestSat){bestSat=sat;cr=r;cg=g;cb=b;}}
+      }catch(e){}
+      const dk=f=>'rgb('+Math.round(cr*f)+','+Math.round(cg*f)+','+Math.round(cb*f)+')';
+      const bgYellow=(cr>175&&cg>150&&cb<120);
+      const ACC=bgYellow?'#ffffff':'#ffd23f';   // nombre y edad
+      const BLAN='#ffffff';                       // texto del medio
+      ctx.textAlign='center';ctx.textBaseline='top';
+      const rr=(x,y,w,h,r)=>{ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();};
+      const wrap=(text,font,maxW)=>{ctx.font=font;const ws=text.split(' ');const out=[];let ln='';ws.forEach(p=>{const t=ln?ln+' '+p:p;if(ctx.measureText(t).width>maxW&&ln){out.push(ln);ln=p;}else ln=t;});if(ln)out.push(ln);return out;};
+      const bigF='bold 72px Arial', midF='bold 50px Arial';
+      const per=(personajeNombre||'').trim(), nom=(nombre||'').trim(), ed=(edad||'').toString().trim();
+      const top=per?('¡'+per):'¡Te esperamos';
+      const mid=per?'te invita a festejar los':'a festejar los';
+      const age=(ed?(ed+' años'):'el cumple')+' de '+nom+'!';
+      const m=40, bx=m, by=48, bw=W-m*2, innerW=bw-100;
+      const lines=[];
+      wrap(top,bigF,innerW).forEach(t=>lines.push({t,c:ACC,f:bigF,h:82}));
+      wrap(mid,midF,innerW).forEach(t=>lines.push({t,c:BLAN,f:midF,h:60}));
+      wrap(age,bigF,innerW).forEach(t=>lines.push({t,c:ACC,f:bigF,h:82}));
+      const pad=36, bh=lines.reduce((a,l)=>a+l.h,0)+pad*2;
+      // colas tipo cinta (tono oscuro del personaje)
+      ctx.fillStyle=dk(0.45);
+      ctx.beginPath();ctx.moveTo(bx-26,by+bh*0.18);ctx.lineTo(bx+46,by+bh*0.34);ctx.lineTo(bx+46,by+bh*0.78);ctx.lineTo(bx-26,by+bh*0.94);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(bx+bw+26,by+bh*0.18);ctx.lineTo(bx+bw-46,by+bh*0.34);ctx.lineTo(bx+bw-46,by+bh*0.78);ctx.lineTo(bx+bw+26,by+bh*0.94);ctx.closePath();ctx.fill();
+      // panel principal: color del personaje (oscurecido para contraste) con borde acento
+      const grad=ctx.createLinearGradient(0,by,0,by+bh);grad.addColorStop(0,dk(0.85));grad.addColorStop(1,dk(0.5));
+      ctx.fillStyle=grad;rr(bx,by,bw,bh,26);ctx.fill();
+      ctx.lineWidth=9;ctx.strokeStyle=ACC;rr(bx,by,bw,bh,26);ctx.stroke();
+      // texto con contorno oscuro
+      let yy=by+pad;
+      lines.forEach(l=>{ctx.font=l.f;ctx.lineJoin='round';ctx.lineWidth=11;ctx.strokeStyle='#0a1430';ctx.strokeText(l.t,W/2,yy);ctx.fillStyle=l.c;ctx.fillText(l.t,W/2,yy);yy+=l.h;});
+      // descargar o compartir
+      const fname='invitacion-'+((nombre||'fiesta').toLowerCase().replace(/[^a-z0-9]/g,'')||'fiesta')+'.png';
+      try{
+        c.toBlob(blob=>{
+          if(!blob){alert('No se pudo preparar la imagen.');return;}
+          const file=new File([blob],fname,{type:'image/png'});
+          if(accion==='compartir' && navigator.canShare && navigator.canShare({files:[file]})){
+            navigator.share({files:[file],title:'Invitación',text:'¡Mirá la invitación!'}).catch(()=>{});
+          }else{
+            const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);
+            if(accion==='compartir')alert('Se descargó la imagen para que la compartas (tu dispositivo no permite compartir directo).');
+          }
+        },'image/png');
+      }catch(err){alert('No se pudo preparar la imagen.');}
     };
-    img.onerror=()=>alert('No se pudo preparar la descarga.');
+    img.onerror=()=>alert('No se pudo preparar la imagen.');
     img.src=src;
   }
   const [modoPersonaje,setModoPersonaje]=useState('db'); // 'db' | 'upload'
   const [busqTem,setBusqTem]=useState('');
+  const [catTem,setCatTem]=useState('TODOS');
   const listo=fotoNino&&personaje;
 
   function onPickFoto(e){
@@ -1532,10 +1572,13 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
         {/* Modo: base de datos */}
         {modoPersonaje==='db'&&!personaje&&(
           <div>
+            <select value={catTem} onChange={e=>setCatTem(e.target.value)} style={{...S.input,marginBottom:8,fontSize:12,fontWeight:700}}>
+              {CATS.map(cat=><option key={cat} value={cat}>{cat==='TODOS'?'📂 Todas las categorías':cat}</option>)}
+            </select>
             <input value={busqTem} onChange={e=>setBusqTem(e.target.value)} placeholder="🔍 Buscar personaje..." style={{...S.input,marginBottom:8,fontSize:12}}/>
             <div style={{background:colorIA+'12',color:colorIA,borderRadius:8,padding:'6px 10px',fontSize:11,fontWeight:700,marginBottom:8,textAlign:'center'}}>👇 Tocá un personaje de la lista (deslizá para ver más)</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,maxHeight:200,overflowY:'auto'}} className="scrollbar-none">
-              {tematicas.filter(t=>t.nombre.toLowerCase().includes(busqTem.toLowerCase())).map(t=>(
+              {tematicas.filter(t=>(catTem==='TODOS'||(t.cats||[]).includes(catTem))&&t.nombre.toLowerCase().includes(busqTem.toLowerCase())).map(t=>(
                 <div key={t.id} onClick={()=>setPersonaje(t.img)}
                   style={{borderRadius:10,overflow:'hidden',cursor:'pointer',border:'2px solid #e2e8f0',transition:'all .15s'}}
                   onMouseEnter={e=>e.currentTarget.style.borderColor=colorIA}
@@ -1614,9 +1657,14 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             </div>
           )}
           {selIdx!==null&&tipo==='imagen'&&resultados[selIdx]&&(
-            <button onClick={()=>descargar9x16(resultados[selIdx])} style={{...S.btn,background:'linear-gradient(135deg,#ec4899,#7c3aed)',color:'white',width:'100%',marginBottom:10}}>
-              ⬇️ Descargar imagen (9:16) con cartel
-            </button>
+            <div style={{display:'flex',gap:8,marginBottom:10}}>
+              <button onClick={()=>componer9x16(resultados[selIdx],'descargar')} style={{...S.btn,background:'linear-gradient(135deg,#ec4899,#7c3aed)',color:'white',flex:1}}>
+                ⬇️ Descargar
+              </button>
+              <button onClick={()=>componer9x16(resultados[selIdx],'compartir')} style={{...S.btn,background:'#22c55e',color:'white',flex:1}}>
+                📤 Compartir
+              </button>
+            </div>
           )}
           <button onClick={onDescartar} style={{...S.btn,background:'#fef2f2',color:'#dc2626',width:'100%',fontSize:12}}>
             🔄 Descartar y volver a generar
