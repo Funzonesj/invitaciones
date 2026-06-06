@@ -51,9 +51,17 @@ module.exports = async (req, res) => {
     // Prompt creativo: viene del panel administrativo (editable). Si no llega, usa uno por defecto.
     const creativo = (typeof prompt === 'string' && prompt.trim())
       ? prompt.trim()
-      : ('Tengo dos imágenes adjuntas. Generá una foto vertical donde el niño/a de la primera imagen aparece con su cara real y fiel, abrazado junto a ' + (personajeNombre || 'el personaje') + ' (segunda imagen). El niño/a fotorrealista y el personaje en estilo animado 3D. Ambos sonriendo y felices, en un escenario de cumpleaños con globos y confeti, colores vibrantes y alegres. Encuadre de la cintura para arriba.');
-    // Reglas técnicas fijas (siempre se agregan para que el resultado funcione con el cartel)
-    const reglas = '\n\nReglas técnicas (no modificar): formato vertical 9:16; NO escribas ningún texto, cartel ni letras en la imagen; dejá un espacio libre en la parte superior; mantené la cara real y fiel del niño/a de la PRIMERA imagen, sin cartoonizar ni animar su rostro; el personaje de la segunda imagen debe aparecer DEL MISMO TAMAÑO Y PROPORCIÓN que el niño/a, ambos parados lado a lado con el mismo encuadre y a la misma altura (no agrandes ni achiques al personaje).';
+      : 'Generá una foto alegre y festiva del niño/a junto a ' + (personajeNombre || 'el personaje') + ', colores vibrantes y alta calidad.';
+    // Reglas técnicas fijas (siempre se agregan para que el resultado salga consistente)
+    const reglas = '\n\nReglas técnicas (no modificar): '
+      + 'formato vertical; '
+      + 'imagen de CUERPO COMPLETO, de la cabeza a los pies, tanto del niño/a como del personaje; '
+      + 'el niño/a (primera imagen) y el personaje (segunda imagen) deben aparecer DEL MISMO TAMAÑO Y ALTURA, parados juntos lado a lado, en el mismo plano (no agrandes ni achiques al personaje); '
+      + 'el fondo debe ser el mundo/escenario característico del personaje de la segunda imagen (su ambientación propia), no un fondo genérico de fiesta; '
+      + 'el niño/a viste una remera estampada con la imagen del personaje; '
+      + 'mantené la cara real y fiel del niño/a de la PRIMERA imagen, sin cartoonizar ni animar su rostro; '
+      + 'el personaje en estilo animado 3D; '
+      + 'NO escribas ningún texto, cartel, número ni letras en la imagen.';
     const finalPrompt = creativo + reglas;
 
     const cantidad = Math.min(Math.max(parseInt(n, 10) || 2, 1), 3);

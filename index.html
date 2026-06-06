@@ -175,7 +175,7 @@ function App() {
       {id:'comunion', nombre:'Comunión',         edad:false, titulo:'¡Te invitamos a la Comunión de {nombre}!',      dirigido:''},
       {id:'escuela',  nombre:'Escuela / Jardín', edad:false, titulo:'¡Festejemos juntos el Día del Niño!',           dirigido:'Estimada maestra'},
     ],
-    promptImagen: 'Tengo dos imágenes adjuntas. Generá una foto vertical donde el niño/a de la primera imagen aparece con su cara real y fiel, abrazado junto a {personaje} (segunda imagen). El niño/a fotorrealista y {personaje} en estilo animado 3D. Ambos sonriendo y felices, en un escenario de cumpleaños con globos y confeti, colores vibrantes y alegres. Encuadre de la cintura para arriba.',
+    promptImagen: 'Generá una foto alegre y festiva del niño/a junto a {personaje}, ambos contentos y sonriendo, con colores vibrantes y alta calidad.',
     promptVideo:  'Video corto de 5 segundos con el personaje {tematica} saludando y diciendo ¡Feliz cumpleaños {nombre}! Estilo animación infantil, colorido y alegre.',
     precioImagen: 1500,
     precioVideo:  3500,
@@ -1423,68 +1423,17 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
   const fotoRef=useRef();
   const persRef=useRef();
   function componer9x16(src,accion){
-    const W=1080,H=1920;
-    const c=document.createElement('canvas');c.width=W;c.height=H;
-    const ctx=c.getContext('2d');
-    const img=new Image();img.crossOrigin='anonymous';
-    img.onload=()=>{
-      const ar=img.width/img.height, target=W/H; let dw,dh,dx,dy;
-      if(ar>target){dh=H;dw=H*ar;dx=(W-dw)/2;dy=0;}else{dw=W;dh=W/ar;dx=0;dy=(H-dh)/2;}
-      ctx.fillStyle='#0f172a';ctx.fillRect(0,0,W,H);
-      ctx.drawImage(img,dx,dy,dw,dh);
-      // Color dominante del personaje (zona central-inferior de la imagen)
-      let cr=47,cg=111,cb=237;
-      try{
-        const id=ctx.getImageData(Math.floor(W*0.15),Math.floor(H*0.45),Math.floor(W*0.7),Math.floor(H*0.5)).data;
-        let bestSat=-1;
-        for(let i=0;i<id.length;i+=4*30){const r=id[i],g=id[i+1],b=id[i+2];const mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx-mn;if(mx<45||mn>210)continue;if(sat>bestSat){bestSat=sat;cr=r;cg=g;cb=b;}}
-      }catch(e){}
-      const dk=f=>'rgb('+Math.round(cr*f)+','+Math.round(cg*f)+','+Math.round(cb*f)+')';
-      const bgYellow=(cr>175&&cg>150&&cb<120);
-      const ACC=bgYellow?'#ffffff':'#ffd23f';   // nombre y edad
-      const BLAN='#ffffff';                       // texto del medio
-      ctx.textAlign='center';ctx.textBaseline='top';
-      const rr=(x,y,w,h,r)=>{ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();};
-      const wrap=(text,font,maxW)=>{ctx.font=font;const ws=text.split(' ');const out=[];let ln='';ws.forEach(p=>{const t=ln?ln+' '+p:p;if(ctx.measureText(t).width>maxW&&ln){out.push(ln);ln=p;}else ln=t;});if(ln)out.push(ln);return out;};
-      const bigF='bold 72px Arial', midF='bold 50px Arial';
-      const per=(personajeNombre||'').trim(), nom=(nombre||'').trim(), ed=(edad||'').toString().trim();
-      const top=per?('¡'+per):'¡Te esperamos';
-      const mid=per?'te invita a festejar los':'a festejar los';
-      const age=(ed?(ed+' años'):'el cumple')+' de '+nom+'!';
-      const m=40, bx=m, by=48, bw=W-m*2, innerW=bw-100;
-      const lines=[];
-      wrap(top,bigF,innerW).forEach(t=>lines.push({t,c:ACC,f:bigF,h:82}));
-      wrap(mid,midF,innerW).forEach(t=>lines.push({t,c:BLAN,f:midF,h:60}));
-      wrap(age,bigF,innerW).forEach(t=>lines.push({t,c:ACC,f:bigF,h:82}));
-      const pad=36, bh=lines.reduce((a,l)=>a+l.h,0)+pad*2;
-      // colas tipo cinta (tono oscuro del personaje)
-      ctx.fillStyle=dk(0.45);
-      ctx.beginPath();ctx.moveTo(bx-26,by+bh*0.18);ctx.lineTo(bx+46,by+bh*0.34);ctx.lineTo(bx+46,by+bh*0.78);ctx.lineTo(bx-26,by+bh*0.94);ctx.closePath();ctx.fill();
-      ctx.beginPath();ctx.moveTo(bx+bw+26,by+bh*0.18);ctx.lineTo(bx+bw-46,by+bh*0.34);ctx.lineTo(bx+bw-46,by+bh*0.78);ctx.lineTo(bx+bw+26,by+bh*0.94);ctx.closePath();ctx.fill();
-      // panel principal: color del personaje (oscurecido para contraste) con borde acento
-      const grad=ctx.createLinearGradient(0,by,0,by+bh);grad.addColorStop(0,dk(0.85));grad.addColorStop(1,dk(0.5));
-      ctx.fillStyle=grad;rr(bx,by,bw,bh,26);ctx.fill();
-      ctx.lineWidth=9;ctx.strokeStyle=ACC;rr(bx,by,bw,bh,26);ctx.stroke();
-      // texto con contorno oscuro
-      let yy=by+pad;
-      lines.forEach(l=>{ctx.font=l.f;ctx.lineJoin='round';ctx.lineWidth=11;ctx.strokeStyle='#0a1430';ctx.strokeText(l.t,W/2,yy);ctx.fillStyle=l.c;ctx.fillText(l.t,W/2,yy);yy+=l.h;});
-      // descargar o compartir
-      const fname='invitacion-'+((nombre||'fiesta').toLowerCase().replace(/[^a-z0-9]/g,'')||'fiesta')+'.png';
-      try{
-        c.toBlob(blob=>{
-          if(!blob){alert('No se pudo preparar la imagen.');return;}
-          const file=new File([blob],fname,{type:'image/png'});
-          if(accion==='compartir' && navigator.canShare && navigator.canShare({files:[file]})){
-            navigator.share({files:[file],title:'Invitación',text:'¡Mirá la invitación!'}).catch(()=>{});
-          }else{
-            const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);
-            if(accion==='compartir')alert('Se descargó la imagen para que la compartas (tu dispositivo no permite compartir directo).');
-          }
-        },'image/png');
-      }catch(err){alert('No se pudo preparar la imagen.');}
-    };
-    img.onerror=()=>alert('No se pudo preparar la imagen.');
-    img.src=src;
+    // La imagen sale limpia (sin cartel): el texto lo pone la invitación de la app.
+    const fname='invitacion-'+((nombre||'fiesta').toLowerCase().replace(/[^a-z0-9]/g,'')||'fiesta')+'.png';
+    fetch(src).then(r=>r.blob()).then(blob=>{
+      const file=new File([blob],fname,{type:blob.type||'image/png'});
+      if(accion==='compartir' && navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:'Invitación',text:'¡Mirá la invitación!'}).catch(()=>{});
+      }else{
+        const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);
+        if(accion==='compartir')alert('Se descargó la imagen para que la compartas (tu dispositivo no permite compartir directo).');
+      }
+    }).catch(()=>alert('No se pudo preparar la imagen.'));
   }
   const [modoPersonaje,setModoPersonaje]=useState('db'); // 'db' | 'upload'
   const [busqTem,setBusqTem]=useState('');
