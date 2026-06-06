@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
   try {
     // Vercel ya parsea el JSON del body
     const body = req.body || {};
-    const { fotoNino, personaje, personajeNombre, n } = body;
+    const { fotoNino, personaje, personajeNombre, prompt, n } = body;
     if (!fotoNino || !personaje) {
       res.status(400).json({ error: 'Faltan las imágenes (foto del niño/a y personaje).' });
       return;
@@ -48,18 +48,13 @@ module.exports = async (req, res) => {
     const blobNino = await toBlob(fotoNino);
     const blobPers = await toBlob(personaje);
 
-    const prompt = [
-      'Tengo dos imágenes adjuntas.',
-      'Generá UNA imagen vertical donde:',
-      '- El niño/a de la PRIMERA imagen aparece con su cara real y fiel, SIN cartoonizar ni animar su rostro.',
-      '- Está junto a ' + (personajeNombre || 'el personaje') + ' (segunda imagen), abrazados, en un escenario festivo.',
-      '- El niño/a se ve fotorrealista; el personaje se ve animado 3D.',
-      '- Ambos sonríen felices.',
-      '- Fondo de cumpleaños con globos y confeti, colores vibrantes.',
-      '- Dejá un espacio libre en la parte de arriba (NO escribas texto; el cartel se agrega después).',
-      '- Encuadre del niño/a de la cintura para arriba.',
-      '- Formato vertical 9:16, alta calidad.',
-    ].join('\n');
+    // Prompt creativo: viene del panel administrativo (editable). Si no llega, usa uno por defecto.
+    const creativo = (typeof prompt === 'string' && prompt.trim())
+      ? prompt.trim()
+      : ('Tengo dos imágenes adjuntas. Generá una foto vertical donde el niño/a de la primera imagen aparece con su cara real y fiel, abrazado junto a ' + (personajeNombre || 'el personaje') + ' (segunda imagen). El niño/a fotorrealista y el personaje en estilo animado 3D. Ambos sonriendo y felices, en un escenario de cumpleaños con globos y confeti, colores vibrantes y alegres. Encuadre de la cintura para arriba.');
+    // Reglas técnicas fijas (siempre se agregan para que el resultado funcione con el cartel)
+    const reglas = '\n\nReglas técnicas (no modificar): formato vertical 9:16; NO escribas ningún texto, cartel ni letras en la imagen; dejá un espacio libre en la parte superior; mantené la cara real y fiel del niño/a de la PRIMERA imagen, sin cartoonizar ni animar su rostro.';
+    const finalPrompt = creativo + reglas;
 
     const cantidad = Math.min(Math.max(parseInt(n, 10) || 2, 1), 3);
 
@@ -67,7 +62,7 @@ module.exports = async (req, res) => {
     fd.append('model', 'gpt-image-1');
     fd.append('image[]', blobNino, 'nino.png');
     fd.append('image[]', blobPers, 'personaje.png');
-    fd.append('prompt', prompt);
+    fd.append('prompt', finalPrompt);
     fd.append('size', '1024x1536');
     fd.append('quality', 'high');
     fd.append('n', String(cantidad));
