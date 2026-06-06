@@ -712,6 +712,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
           </div>
         ))}
       </div>
+      {edit&&<button onClick={()=>{setEdit(false);setEditId(null);}} style={{position:'fixed',bottom:18,left:'50%',transform:'translateX(-50%)',background:'#16a34a',color:'white',border:'none',borderRadius:99,padding:'13px 30px',fontSize:15,fontWeight:800,cursor:'pointer',boxShadow:'0 6px 22px rgba(0,0,0,.28)',zIndex:300}}>✓ Listo, volver al panel</button>}
     </div>
   );
 }
