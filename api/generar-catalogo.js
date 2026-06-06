@@ -48,11 +48,17 @@ module.exports = async (req, res) => {
     }
 
     const esNano = String(model).includes('nano-banana');
+    const esKontextMulti = String(model).includes('kontext') && String(model).includes('multi');
     let reqBody;
     if (esNano) {
       const urls = (Array.isArray(images) && images.length) ? images.filter(Boolean) : (image ? [image] : []);
       if (!urls.length) { res.status(400).json({ error: 'Faltan imágenes.' }); return; }
       reqBody = { prompt: finalPrompt, image_urls: urls, num_images: 1, aspect_ratio: aspect_ratio || '9:16', output_format: 'jpeg' };
+    } else if (esKontextMulti) {
+      // FLUX.1 Kontext [max] multi: combina varias imágenes (no acepta aspect_ratio)
+      const urls = (Array.isArray(images) && images.length) ? images.filter(Boolean) : (image ? [image] : []);
+      if (!urls.length) { res.status(400).json({ error: 'Faltan imágenes.' }); return; }
+      reqBody = { prompt: finalPrompt, image_urls: urls, num_images: 1, output_format: 'jpeg' };
     } else if (isI2I) {
       if (!image) { res.status(400).json({ error: 'Para imagen→imagen hace falta subir una imagen.' }); return; }
       reqBody = { prompt: finalPrompt, image_url: image, image_size: size };
