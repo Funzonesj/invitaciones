@@ -1807,6 +1807,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
   const [busqTem,setBusqTem]=useState('');
   const [catTem,setCatTem]=useState('TODOS');
   const [zoom,setZoom]=useState(null); // imagen ampliada (mantener presionado)
+  const [aviso,setAviso]=useState(tipo==='imagen'); // pop-up informativo al entrar
   const holdTimer=useRef(null);
   const heldRef=useRef(false);
   function pressStart(src){heldRef.current=false;clearTimeout(holdTimer.current);holdTimer.current=setTimeout(()=>{heldRef.current=true;setZoom(src);},280);}
@@ -1831,6 +1832,17 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
 
   return(
     <div className="fade-in">
+      {/* Pop-up informativo */}
+      {aviso&&tipo==='imagen'&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:18}}>
+          <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:26,textAlign:'center'}}>
+            <div style={{fontSize:46,marginBottom:10}}>✨</div>
+            <h3 style={{fontWeight:900,fontSize:18,marginBottom:10}}>Antes de empezar</h3>
+            <p style={{fontSize:13.5,color:'#475569',lineHeight:1.6,marginBottom:20}}>La inteligencia artificial es genial, pero a veces puede cometer pequeños errores (en las manos, la cara o el fondo). <b>Por eso te damos 6 imágenes</b>, así elegís la que mejor quedó. 😊</p>
+            <button onClick={()=>setAviso(false)} style={{...S.btn,width:'100%',padding:'13px',fontSize:15,fontWeight:900,background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white'}}>Entendido ✓</button>
+          </div>
+        </div>
+      )}
       <div style={{background:'linear-gradient(135deg,'+colorIA+'15,'+colorIA+'08)',border:'1px solid '+colorIA+'30',borderRadius:14,padding:16,marginBottom:14}}>
         <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
           <span style={{fontSize:22}}>{emojiIA}</span>
@@ -2964,7 +2976,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===(genActivo==='imagen'?form.personajeIA:form.personajeIAV))||{}).nombre||temA.nombre} onResultado={imgs=>{if(genActivo==='imagen'){setForm(f=>{const prev=f.iaImagenes||[];const merged=[...prev,...imgs];return {...f,iaImagenes:merged,iaImagenSel:prev.length,usarFoto:false,portadaSrc:imgs[0]||f.portadaSrc};});setPapaSesion(ps=>{const n={...ps,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaGenCount:n.iaGenCount}:e));return n;});}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===(genActivo==='imagen'?form.personajeIA:form.personajeIAV))||{}).nombre||temA.nombre} onResultado={imgs=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
     </div>
   );
 }
