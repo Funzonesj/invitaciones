@@ -472,7 +472,7 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
   const [msg,setMsg]=useState('');
   const fileRef=useRef();
 
-  const prompt3D='A character with the same appearance as the reference image.\nHyper realistic 3D render, NOT cartoon, NOT anime, NOT illustration, NOT 2D,\nphotorealistic 3D Pixar movie quality, cinematic lighting, ultra high quality,\n8K resolution, full body portrait, vertical 9:16 format,\nwarm welcoming smile, arms slightly open as if inviting someone for a hug,\nleave extra empty clean space at the top of the image for text overlay,\nno text, no watermark, clean background behind character.';
+  const prompt3D='Hyper realistic 3D render, NOT cartoon, NOT anime, NOT illustration, NOT 2D,\nphotorealistic 3D Pixar movie quality, cinematic lighting, ultra high quality,\n8K resolution, full body portrait, vertical 9:16 format,\nwarm welcoming smile, arms slightly open as if inviting someone for a hug,\nleave extra empty clean space at the top of the image for text overlay,\nno text, no watermark, clean background behind character.';
   const promptEnhance='Enhance this image quality only.\nKeep the exact same art style as the original.\nDo NOT change to 3D, do NOT change to photorealistic.\nDo NOT modify the art style in any way.\nKeep exact same character design, colors, pose and composition.\nOnly improve: sharpness, resolution, color vibrancy, lighting and details.\nRemove any noise, blur or artifacts.\nExtend background naturally to fill full vertical 9:16 portrait format.\nLeave extra empty clean space at the top for text overlay.\nUltra high quality, 8K resolution. No text, no watermark.';
 
   function selectOption(o){setOpt(o);setModel(o==='enhance'?'fal-ai/flux-pro/kontext':'fal-ai/flux-pro/kontext/text-to-image');}
@@ -501,10 +501,16 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
   async function generar(){
     setErr('');setMsg('');
     if(!img){setErr('Subí una imagen primero');return;}
-    const p=(opt==='3d'?prompt3D:promptEnhance)+' Mantené el MISMO personaje de la imagen (mismos rasgos, ropa y colores), no lo cambies por otro.';
+    const esTresD=opt==='3d';
+    const p=esTresD?prompt3D:promptEnhance;
     setPrompt(p);setCargando(true);setResultUrl('');
     try{
-      const resp=await fetch('/api/generar-catalogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,images:[img],model:'fal-ai/nano-banana/edit',aspect_ratio:ratio})});
+      const size=ratio==='9:16'?{width:768,height:1366}:ratio==='1:1'?{width:1024,height:1024}:{width:1024,height:768};
+      // 3D: describir la imagen + flux text-to-image (esquiva restricciones). Mejorar: flux imagen→imagen.
+      const body=esTresD
+        ?{prompt:p,image:img,model:'fal-ai/flux-pro/kontext/text-to-image',size,describir:true,isI2I:false}
+        :{prompt:p,image:img,model:'fal-ai/flux-pro/kontext',size,isI2I:true};
+      const resp=await fetch('/api/generar-catalogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const data=await resp.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
       if(!resp.ok)throw new Error(data.error||'No se pudo generar.');
       if(!data.url)throw new Error('No se recibió imagen. Probá de nuevo.');
