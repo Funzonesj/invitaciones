@@ -73,10 +73,17 @@ function genUser(nombre) {
   const nums = Math.floor(100+Math.random()*900);
   return base + nums;
 }
-function genPass() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#!';
-  let p='';for(let i=0;i<10;i++) p+=chars[Math.floor(Math.random()*chars.length)];
-  return p;
+function genPass(nombre) {
+  const base=(nombre||'fiesta').toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').slice(0,10)||'fiesta';
+  return base+Math.floor(100+Math.random()*900); // ej: mateo481 (fácil + un número)
+}
+// ¿El acceso del evento está vencido? (2 días después de la fecha del evento)
+function estaVencido(ev){
+  if(!ev||!ev.anio||!ev.mes||!ev.dia) return false;
+  const fF=new Date(+ev.anio,+ev.mes-1,+ev.dia);
+  const fV=new Date(fF);fV.setDate(fF.getDate()+2);fV.setHours(0,0,0,0);
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  return hoy>=fV;
 }
 // Normaliza un celular argentino al formato internacional que necesita WhatsApp (54 9 + area + numero)
 function waNum(n){
@@ -204,6 +211,7 @@ function App() {
   const [adminSesion, setAdminSesion] = useState(null);
   const [sucActId,    setSucActId]    = useState('sz-1');
   const [papaSesion,  setPapaSesion]  = useState(_PAPA_DATA || null);
+  const [papaAviso,   setPapaAviso]   = useState('');
 
   const [invEvId,     setInvEvId]     = useState(INIT_INV_ID);
   const [vista,       setVista]       = useState(INIT_VISTA);
@@ -227,7 +235,10 @@ function App() {
           const ev=one.data&&one.data[0]&&one.data[0].data;
           if(ev){
             setEventos(prev=>prev.some(e=>e.id===ev.id)?prev:[ev,...prev]);
-            if(_PAPA_PARAM && !_PAPA_DATA){setPapaSesion(ev);setInvEvId(ev.id);setVista('papa-creador');}
+            if(_PAPA_PARAM && !_PAPA_DATA){
+              if(estaVencido(ev)){setPapaAviso('El acceso para este evento ha vencido.');setVista('papa-login');}
+              else{setPapaSesion(ev);setInvEvId(ev.id);setVista('papa-creador');}
+            }
             setDbReady(true); // la invitación ya puede renderizar sin esperar lo pesado
           }
         }catch(e){}
@@ -247,7 +258,7 @@ function App() {
         if(d.cfgUsr) setUsuarios(d.cfgUsr);
         if(_PAPA_PARAM && !_PAPA_DATA){
           const ev=d.eventos.find(e=>e.id===_PAPA_PARAM);
-          if(ev){setPapaSesion(ev);setInvEvId(ev.id);}
+          if(ev && !estaVencido(ev)){setPapaSesion(ev);setInvEvId(ev.id);}
         }
       }
       setDbReady(true);
@@ -386,7 +397,7 @@ function App() {
         {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
-        {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId}/>}
+        {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso}/>}
         {vista==='papa-creador'      && papaSesion&&<PapaCreador setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs}/>}
         {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
         {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
@@ -500,7 +511,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
 
   function autoCredenciales(){
     if(!form.nombre) return alert('Ingresá primero el nombre del agasajado.');
-    setForm(f=>({...f, user: genUser(f.nombre), pass: genPass()}));
+    setForm(f=>({...f, user: genUser(f.nombre), pass: genPass(f.nombre)}));
   }
   const listFiltrada=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fDia||e.dia===fDia));
 
@@ -1388,24 +1399,22 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
   );
 }
 
-function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId}){
+function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso}){
   const [u,setU]=useState('');const [p,setP]=useState('');const [err,setErr]=useState('');const [showP,setShowP]=useState(false);
   function sub(e){
     e.preventDefault();
-    // Try to find event in local list first
-    let ev=eventos.find(x=>x.user&&x.user.toLowerCase()===u.toLowerCase()&&x.pass===p);
-    // If not found, try URL param papa (encoded credentials + event data)
+    const uu=u.trim().toLowerCase(), pp=p.trim().toLowerCase();
+    // Buscar en la lista local (usuario y clave sin distinguir mayúsculas)
+    let ev=eventos.find(x=>x.user&&x.user.toLowerCase()===uu&&x.pass&&x.pass.toLowerCase()===pp);
+    // Si no, probar con el link ?papa= (credenciales codificadas, formato viejo)
     if(!ev){
       try{
         const papaParam=new URLSearchParams(window.location.search).get('papa');
-        if(papaParam){const d=JSON.parse(atob(papaParam));if(d.user&&d.user.toLowerCase()===u.toLowerCase()&&d.pass===p)ev=d;}
+        if(papaParam){const d=JSON.parse(atob(papaParam));if(d.user&&d.user.toLowerCase()===uu&&d.pass&&String(d.pass).toLowerCase()===pp)ev=d;}
       }catch(ex){}
     }
-    if(!ev){setErr('Datos incorrectos. Verifica usuario y contrasena.');return;}
-    const fF=new Date(+ev.anio,+ev.mes-1,+ev.dia);
-    const fV=new Date(fF);fV.setDate(fF.getDate()+2);fV.setHours(0,0,0,0);
-    const hoy=new Date();hoy.setHours(0,0,0,0);
-    if(hoy>=fV){setErr('El acceso para este evento ha vencido.');return;}
+    if(!ev){setErr('Datos incorrectos. Verificá usuario y contraseña.');return;}
+    if(estaVencido(ev)){setErr('El acceso para este evento ha vencido.');return;}
     setPapaSesion(ev);setInvEvId(ev.id);setVista('papa-creador');
   }
   return(
@@ -1415,7 +1424,7 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId}){
           <h2 style={{fontWeight:900,fontSize:20,marginTop:8}}>Acceso para Padres</h2>
           <p style={{color:'#64748b',fontSize:12,marginTop:4}}>Personalizá tu invitación digital</p>
         </div>
-        {err&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#dc2626',padding:'10px 14px',borderRadius:12,fontSize:12,marginBottom:12}}>{err}</div>}
+        {(err||aviso)&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#dc2626',padding:'10px 14px',borderRadius:12,fontSize:12,marginBottom:12}}>{err||aviso}</div>}
         <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
           <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Usuario" autoComplete="username" required/>
           <div style={{position:'relative'}}>
