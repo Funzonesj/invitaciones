@@ -219,11 +219,25 @@ function App() {
   React.useEffect(()=>{
     if(!SB){return;}
     (async()=>{
+      // 1) Links de invitación/papá: traer SOLO ese evento primero (rápido) y mostrar ya
+      const quickId=_INV_PARAM||_PAPA_PARAM;
+      if(quickId){
+        try{
+          const one=await SB.from('eventos').select('data').eq('id',quickId);
+          const ev=one.data&&one.data[0]&&one.data[0].data;
+          if(ev){
+            setEventos(prev=>prev.some(e=>e.id===ev.id)?prev:[ev,...prev]);
+            if(_PAPA_PARAM && !_PAPA_DATA){setPapaSesion(ev);setInvEvId(ev.id);setVista('papa-creador');}
+            setDbReady(true); // la invitación ya puede renderizar sin esperar lo pesado
+          }
+        }catch(e){}
+      }
+      // 2) Cargar el resto (puede tardar por imágenes guardadas) sin bloquear la pantalla
       const d=await sbLoadAll();
       if(d){
         setEventos(prev=>{
           const ids=new Set(d.eventos.map(e=>e.id));
-          const extra=prev.filter(e=>!ids.has(e.id) && ((_INV_EV_DATA&&e.id===_INV_EV_DATA.id)||(_PAPA_DATA&&e.id===_PAPA_DATA.id)));
+          const extra=prev.filter(e=>!ids.has(e.id) && ((_INV_EV_DATA&&e.id===_INV_EV_DATA.id)||(_PAPA_DATA&&e.id===_PAPA_DATA.id)||e.id===quickId));
           return [...d.eventos, ...extra];
         });
         setConfs(d.confs);
@@ -231,10 +245,9 @@ function App() {
         if(d.cfgTem && d.cfgTem.length) setTematicas(d.cfgTem);
         if(d.cfgSuc && d.cfgSuc.length) setSucursales(d.cfgSuc);
         if(d.cfgUsr) setUsuarios(d.cfgUsr);
-        // Link corto del papá: ?papa=<id> → entra directo al panel
         if(_PAPA_PARAM && !_PAPA_DATA){
           const ev=d.eventos.find(e=>e.id===_PAPA_PARAM);
-          if(ev){setPapaSesion(ev);setInvEvId(ev.id);setVista('papa-creador');}
+          if(ev){setPapaSesion(ev);setInvEvId(ev.id);}
         }
       }
       setDbReady(true);
@@ -1028,7 +1041,7 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
                 {fs.logo?<img src={fs.logo} alt="" style={{width:48,height:48,objectFit:'cover',borderRadius:'50%',border:'2px solid #e2e8f0',flexShrink:0}}/>:<div style={{width:48,height:48,borderRadius:'50%',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{fs.emoji||'🎪'}</div>}
                 <label style={{...S.btn,background:'#ede9fe',color:'#7c3aed',padding:'8px 12px',fontSize:12,cursor:'pointer'}}>
                   📷 Subir imagen
-                  <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,400,data=>setFs(prev=>({...prev,logo:data})));}}/>
+                  <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,260,data=>setFs(prev=>({...prev,logo:data})));}}/>
                 </label>
                 {fs.logo&&<button type="button" onClick={()=>setFs(prev=>({...prev,logo:''}))} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:16}}>🗑</button>}
               </div>
@@ -1069,7 +1082,7 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
                           <div style={{display:'flex',alignItems:'center',gap:8}}>
                             {ed.logo?<img src={ed.logo} alt="" style={{width:42,height:42,objectFit:'cover',borderRadius:'50%',border:'2px solid #e2e8f0',flexShrink:0}}/>:<div style={{width:42,height:42,borderRadius:'50%',background:'#f1f5f9',flexShrink:0}}></div>}
                             <label style={{...S.btn,background:'#0f172a',color:'white',padding:'8px 12px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>📷 Subir
-                              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,400,data=>setEd(prev=>({...prev,logo:data})));}}/>
+                              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,260,data=>setEd(prev=>({...prev,logo:data})));}}/>
                             </label>
                             {ed.logo&&<button type="button" onClick={()=>setEd(prev=>({...prev,logo:''}))} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:16}}>🗑</button>}
                           </div>
@@ -1112,7 +1125,7 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
                         <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
                           {foto?<img src={foto} alt="" style={{width:46,height:46,objectFit:'cover',borderRadius:8,flexShrink:0}}/>:<div style={{width:46,height:46,borderRadius:8,background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,color:'#94a3b8',flexShrink:0}}>{i+1}</div>}
                           <label style={{...S.btn,background:'#0f172a',color:'white',padding:'8px 12px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap'}}>📷 {foto?'Cambiar':'Subir'}
-                            <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,900,data=>{const f=[...(ed.fotos||['','','',''])];f[i]=data;setEd({...ed,fotos:f});});}}/>
+                            <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,640,data=>{const f=[...(ed.fotos||['','','',''])];f[i]=data;setEd({...ed,fotos:f});});}}/>
                           </label>
                           {foto&&<button type="button" onClick={()=>{const f=[...(ed.fotos||['','','',''])];f[i]='';setEd({...ed,fotos:f});}} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:16}}>🗑</button>}
                         </div>
