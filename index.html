@@ -1984,9 +1984,11 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
                 <div
                   onPointerDown={()=>tipo==='imagen'?pressStart(src):null}
                   onPointerUp={()=>tipo==='imagen'?pressEnd(i):onUsar(i)}
+                  onPointerMove={()=>tipo==='imagen'?pressCancel():null}
                   onPointerLeave={()=>tipo==='imagen'?pressCancel():null}
+                  onPointerCancel={()=>tipo==='imagen'?pressCancel():null}
                   onContextMenu={e=>e.preventDefault()}
-                  style={{cursor:'pointer',borderRadius:12,overflow:'hidden',border:selIdx===i?'4px solid '+colorIA:'2px solid #e2e8f0',transition:'all .2s',position:'relative',userSelect:'none',WebkitUserSelect:'none',touchAction:'none'}}>
+                  style={{cursor:'pointer',borderRadius:12,overflow:'hidden',border:selIdx===i?'4px solid '+colorIA:'2px solid #e2e8f0',transition:'all .2s',position:'relative',userSelect:'none',WebkitUserSelect:'none',touchAction:'pan-y'}}>
                   {tipo==='imagen'
                     ?<div style={{aspectRatio:'9/16'}}>
                       <img src={src} alt={`opción ${i+1}`} draggable={false} style={{width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}}/>
@@ -2141,7 +2143,8 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,cantidad,fotoNino,pers
           if(cancel)return;
           const urls=settled.filter(Boolean);
           if(!urls.length) throw new Error('No se pudo generar ninguna imagen. Probá de nuevo.');
-          setResultados(urls);setProgreso(100);setPaso('listo');
+          // Listo: enviamos las imágenes directo a la galería (sin pantalla intermedia)
+          setProgreso(100);onResultado(urls);
         } else {
           // Video con IA: todavía no integrado → demostración
           await new Promise(r=>setTimeout(r,2200));
@@ -2556,8 +2559,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <h2 style={{fontWeight:900,fontSize:17,marginBottom:8}}>📸 Foto de tu Hijo/a</h2>
                 <div onClick={()=>fotoRef.current.click()} style={{border:'2px dashed #fed7aa',borderRadius:14,padding:form.fotoNino?0:24,textAlign:'center',cursor:'pointer',background:'#fff7ed',marginBottom:14,overflow:'hidden',minHeight:60,display:'flex',alignItems:'center',justifyContent:'center'}}>
                   {form.fotoNino
-                    ?<div style={{position:'relative',width:'100%'}}>
-                      <img src={fotoElegida} alt="foto" style={{width:'100%',aspectRatio:'9/16',objectFit:'cover',filter:form.fotoMejorada?'none':cssFilter}}/>
+                    ?<div style={{position:'relative',width:'100%',background:'#0f172a',borderRadius:12,overflow:'hidden'}}>
+                      <img src={fotoElegida} alt="foto" style={{width:'100%',maxHeight:'60vh',objectFit:'contain',display:'block',filter:form.fotoMejorada?'none':cssFilter}}/>
                       {!form.fotoMejorada&&<div style={{position:'absolute',top:8,left:8,background:'rgba(249,115,22,.9)',color:'white',fontSize:9,padding:'3px 8px',borderRadius:99,fontWeight:900}}>VISTA PREVIA</div>}
                       {form.fotoMejorada&&form.usarMejorada&&<div style={{position:'absolute',top:8,left:8,background:'rgba(22,163,74,.95)',color:'white',fontSize:9,padding:'3px 8px',borderRadius:99,fontWeight:900}}>✓ MEJORADA</div>}
                       {form.fotoMejorada&&!form.usarMejorada&&<div style={{position:'absolute',top:8,left:8,background:'rgba(15,23,42,.85)',color:'white',fontSize:9,padding:'3px 8px',borderRadius:99,fontWeight:900}}>ORIGINAL</div>}
