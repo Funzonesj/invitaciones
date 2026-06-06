@@ -196,7 +196,7 @@ function App() {
     promptImagen2: 'I have two images attached.\nImage 1 is the person (the real person whose face, hair, skin tone and body proportions must be preserved exactly).\nImage 2 is the character reference (the costume, accessories and background to apply).\nTASK: Dress the person from Image 1 in the exact costume from Image 2. This is a costume transformation — only the clothing changes.\nFACE AND HAIR: Keep the face, facial features, skin tone, hair color, hair style and expression from Image 1 exactly as they are. Do not apply any artistic style to the face. The result must look like a real photo of the same person wearing a costume.\nCOSTUME: Apply the exact outfit from Image 2 — same colors, same style, same details and accessories. Include all accessories shown on the character.\nBACKGROUND: Replace the background completely with the background from Image 2 — same setting, same colors, same atmosphere. The original background from Image 1 must not appear.\nHEAD PROPORTIONS: Ensure the head size is naturally proportional to the body — realistic human proportions.\nFACE QUALITY: The face must be sharp, clear and well-lit.\nFull body shot, vertical format, photorealistic, professional quality.',
     modelImagen:  'fal-ai/nano-banana/edit',
     modelImagen2: 'fal-ai/nano-banana/edit',
-    promptVideo:  'Video corto de 5 segundos con el personaje {tematica} saludando y diciendo ¡Feliz cumpleaños {nombre}! Estilo animación infantil, colorido y alegre.',
+    promptVideo:  'The child and {personaje} are walking together toward the camera, side by side, both smiling and excited. After 4 seconds they stop and face the camera directly. {personaje} opens their mouth and speaks looking straight at the camera with an enthusiastic and happy expression. The child stands next to {personaje} smiling. Same background, same lighting, same setting as the image. No camera shake. No scene changes. Do not add any objects, accessories or elements that are not in the original image. Preserve both characters faces and appearance throughout the entire video.',
     precioImagen: 1500,
     precioVideo:  3500,
     txtTarjeta: {
@@ -2120,7 +2120,7 @@ function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
 }
 
 /* ── GENERADOR IA ─────────────────────────────────────────── */
-function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,modelA,modelB,cantidad,fotoNino,personaje,personajeNombre,edad,onResultado,onCerrar}){
+function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,modelA,modelB,cantidad,fotoNino,personaje,personajeNombre,edad,onResultado,onCerrar}){
   const [paso,setPaso]=useState('generando'); // generando | listo | error
   const [progreso,setProgreso]=useState(0);
   const [resultados,setResultados]=useState([]);
@@ -2167,12 +2167,21 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,modelA,modelB,cantidad
           // Listo: enviamos las imágenes directo a la galería (sin pantalla intermedia)
           setProgreso(100);onResultado(urls);
         } else {
-          // Video con IA (Kling v3 Pro imagen→video, vía cola de fal.ai)
-          if(!personaje) throw new Error('Elegí o subí el personaje para el video.');
+          // Video con IA: 1) imagen base (nene + personaje juntos)  2) animar con Kling v3 Pro
+          if(!fotoNino||!personaje) throw new Error('Subí la foto del niño/a y elegí el personaje.');
           const persNom=personajeNombre||tematica||'el personaje';
-          const baseV=(prompt||'').replace(/\{nombre\}/g,nombre||'').replace(/\{edad\}/g,edad||'').replace(/\{tematica\}/g,persNom).replace(/\{personaje\}/g,persNom);
-          // 1) Encolar
-          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:personaje,prompt:baseV,duration:5})});
+          const repl=s=>(s||'').replace(/\{nombre\}/g,nombre||'').replace(/\{edad\}/g,edad||'').replace(/\{tematica\}/g,persNom).replace(/\{personaje\}/g,persNom);
+          // 1) Imagen base: el niño/a y el personaje juntos, cuerpo entero
+          const baseImgPrompt=(repl(promptComposite)||'')+' Usá las DOS imágenes adjuntas: conservá EXACTAMENTE la cara y el parecido del niño/a de la PRIMERA imagen (no la cambies), al lado del personaje '+persNom+' de la SEGUNDA imagen. CUERPO ENTERO de ambos, parados juntos lado a lado, mirando al frente, en el mundo/escenario del personaje; UNA SOLA escena cohesiva y realista, misma iluminación; imagen vertical 9:16; sin texto ni letras.';
+          const ir=await fetch('/api/generar-catalogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:baseImgPrompt,images:[fotoNino,personaje],model:'fal-ai/nano-banana/edit',aspect_ratio:'9:16'})});
+          const idata=await ir.json().catch(()=>({}));
+          if(!ir.ok||!idata.url) throw new Error((idata&&idata.error)||'No se pudo crear la imagen base del video.');
+          if(cancel)return;
+          setProgreso(28);
+          const baseImg=idata.url;
+          const baseV=repl(prompt);
+          // 2) Encolar el video animando esa imagen
+          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:baseImg,prompt:baseV,duration:5})});
           const sd=await sub.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
           if(!sub.ok) throw new Error(sd.error||'No se pudo iniciar el video.');
           if(!sd.statusUrl||!sd.responseUrl) throw new Error('No se pudo iniciar el video.');
@@ -3025,7 +3034,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===(genActivo==='imagen'?form.personajeIA:form.personajeIAV))||{}).nombre||temA.nombre} onResultado={imgs=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===(genActivo==='imagen'?form.personajeIA:form.personajeIAV))||{}).nombre||temA.nombre} onResultado={imgs=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
     </div>
   );
 }
