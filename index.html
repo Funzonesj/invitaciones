@@ -1789,9 +1789,12 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
   const fotoRef=useRef();
   const persRef=useRef();
   function guardarFoto(src){
-    const fname='imagen-'+((nombre||'fiesta').toLowerCase().replace(/[^a-z0-9]/g,'')||'fiesta')+'-'+Math.floor(performance.now())+'.png';
+    const baseN=((nombre||'fiesta').toLowerCase().replace(/[^a-z0-9]/g,'')||'fiesta')+'-'+Math.floor(performance.now());
     fetch(src).then(r=>r.blob()).then(blob=>{
-      const file=new File([blob],fname,{type:blob.type||'image/png'});
+      const t=blob.type||'';
+      const ext=t.includes('video')||tipo==='video'?'mp4':(t.includes('png')?'png':'jpg');
+      const fname=(tipo==='video'?'video-':'imagen-')+baseN+'.'+ext;
+      const file=new File([blob],fname,{type:blob.type||(tipo==='video'?'video/mp4':'image/png')});
       if(navigator.canShare&&navigator.canShare({files:[file]})){
         navigator.share({files:[file],title:'Imagen',text:'¡Mirá la imagen!'}).catch(()=>{});
       }else{
@@ -1979,24 +1982,19 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
       {resultados.length>0&&(
         <div className="fade-in">
           <div style={{background:colorIA+'12',border:'1px solid '+colorIA+'33',borderRadius:12,padding:'10px 12px',marginBottom:10,textAlign:'center'}}>
-            <div style={{fontWeight:900,fontSize:13,color:colorIA}}>👆 Elegí la imagen para tu tarjeta</div>
-            <div style={{fontSize:10,color:'#64748b',marginTop:2}}>Tocá una imagen para verla grande y elegirla</div>
+            <div style={{fontWeight:900,fontSize:13,color:colorIA}}>{tipo==='imagen'?'👆 Elegí la imagen para tu tarjeta':'🎬 Tu video está listo'}</div>
+            <div style={{fontSize:10,color:'#64748b',marginTop:2}}>{tipo==='imagen'?'Tocá una imagen para verla grande y elegirla':'Reproducilo, descargalo o compartilo'}</div>
           </div>
+          {tipo==='imagen'?(
           <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:14}}>
             {resultados.map((src,i)=>(
               <div key={i} style={{display:'flex',flexDirection:'column',gap:6}}>
                 <div
-                  onClick={()=>tipo==='imagen'?setZoom({src,i}):onUsar(i)}
+                  onClick={()=>setZoom({src,i})}
                   style={{cursor:'pointer',borderRadius:12,overflow:'hidden',border:selIdx===i?'4px solid '+colorIA:'2px solid #e2e8f0',transition:'all .2s',position:'relative'}}>
-                  {tipo==='imagen'
-                    ?<div style={{aspectRatio:'9/16'}}>
-                      <img src={src} alt={`opción ${i+1}`} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                    </div>
-                    :<div style={{aspectRatio:'9/16',background:'#0f172a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
-                      <span style={{fontSize:22}}>🎬</span>
-                      <span style={{color:'#94a3b8',fontSize:9}}>Video {i+1}</span>
-                    </div>
-                  }
+                  <div style={{aspectRatio:'9/16'}}>
+                    <img src={src} alt={`opción ${i+1}`} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  </div>
                   {selIdx===i&&(
                     <div style={{position:'absolute',top:6,right:6,background:colorIA,color:'white',borderRadius:'50%',width:24,height:24,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,boxShadow:'0 2px 6px rgba(0,0,0,.3)'}}>✓</div>
                   )}
@@ -2004,12 +2002,20 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
                     {selIdx===i?'✓ Portada elegida':'🔍 Ver / elegir'}
                   </div>
                 </div>
-                {tipo==='imagen'&&(
-                  <button onClick={()=>guardarFoto(src)} style={{...S.btn,background:'#f1f5f9',color:'#334155',padding:'9px',fontSize:12,fontWeight:800}}>⬇️ Descargar</button>
-                )}
+                <button onClick={()=>guardarFoto(src)} style={{...S.btn,background:'#f1f5f9',color:'#334155',padding:'9px',fontSize:12,fontWeight:800}}>⬇️ Descargar</button>
               </div>
             ))}
           </div>
+          ):(
+          <div style={{marginBottom:14}}>
+            {resultados.map((src,i)=>(
+              <div key={i} style={{marginBottom:12}}>
+                <video src={src} controls playsInline style={{width:'100%',borderRadius:12,background:'#000',maxHeight:'60vh'}}></video>
+                <button onClick={()=>guardarFoto(src)} style={{...S.btn,background:'#f1f5f9',color:'#334155',padding:'11px',fontSize:13,fontWeight:800,width:'100%',marginTop:6}}>⬇️ Descargar / Compartir video</button>
+              </div>
+            ))}
+          </div>
+          )}
           {tipo==='imagen'&&onVerTarjeta&&(
             <button onClick={onVerTarjeta} disabled={selIdx===null}
               style={{...S.btn,width:'100%',padding:'15px',fontSize:16,fontWeight:900,
@@ -2161,14 +2167,30 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,modelA,modelB,cantidad
           // Listo: enviamos las imágenes directo a la galería (sin pantalla intermedia)
           setProgreso(100);onResultado(urls);
         } else {
-          // Video con IA: todavía no integrado → demostración
-          await new Promise(r=>setTimeout(r,2200));
+          // Video con IA (Kling v3 Pro imagen→video, vía cola de fal.ai)
+          if(!personaje) throw new Error('Elegí o subí el personaje para el video.');
+          const persNom=personajeNombre||tematica||'el personaje';
+          const baseV=(prompt||'').replace(/\{nombre\}/g,nombre||'').replace(/\{edad\}/g,edad||'').replace(/\{tematica\}/g,persNom).replace(/\{personaje\}/g,persNom);
+          // 1) Encolar
+          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:personaje,prompt:baseV,duration:5})});
+          const sd=await sub.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
+          if(!sub.ok) throw new Error(sd.error||'No se pudo iniciar el video.');
+          if(!sd.statusUrl||!sd.responseUrl) throw new Error('No se pudo iniciar el video.');
+          // 2) Consultar estado cada 6s (hasta ~5 min)
+          let urlVid='';
+          for(let i=0;i<50;i++){
+            await new Promise(r=>setTimeout(r,6000));
+            if(cancel)return;
+            try{
+              const ps=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:sd.statusUrl,responseUrl:sd.responseUrl})});
+              const pd=await ps.json().catch(()=>({}));
+              if(pd&&pd.done&&pd.url){urlVid=pd.url;break;}
+            }catch(e){/* reintenta */}
+            setProgreso(p=>p<92?p+2:p);
+          }
           if(cancel)return;
-          setResultados([
-            'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600&fit=crop',
-            'https://images.unsplash.com/photo-1464349153735-7db50ed83c84?w=600&fit=crop',
-          ]);
-          setProgreso(100);setPaso('listo');
+          if(!urlVid) throw new Error('El video está tardando más de lo normal. Probá de nuevo en un rato.');
+          setProgreso(100);onResultado([urlVid]);
         }
       }catch(e){ if(cancel)return; setErrMsg(String((e&&e.message)||e));setPaso('error'); }
     })();
@@ -2179,14 +2201,14 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,modelA,modelB,cantidad
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
       <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:28,textAlign:'center'}}>
         <div style={{fontSize:44,marginBottom:12}}>{tipo==='imagen'?'🖼️':'🎬'}</div>
-        <h3 style={{fontWeight:900,fontSize:17,marginBottom:6}}>Generando {tipo==='imagen'?totalGen+' imágenes':''} con IA...</h3>
+        <h3 style={{fontWeight:900,fontSize:17,marginBottom:6}}>{tipo==='imagen'?('Generando '+totalGen+' imágenes con IA...'):'Generando tu video con IA...'}</h3>
         <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Creando la magia para <b>{nombre}</b> ✨</p>
         <div style={{height:8,background:'#e2e8f0',borderRadius:99,overflow:'hidden',marginBottom:8}}>
           <div style={{height:'100%',background:'linear-gradient(90deg,#7c3aed,#a855f7)',borderRadius:99,width:progreso+'%',transition:'width .3s'}}></div>
         </div>
         <p style={{fontSize:11,color:'#7c3aed',fontWeight:700}}>{progreso}%</p>
         {tipo==='imagen'&&<p style={{fontSize:12,color:'#16a34a',fontWeight:800,marginTop:6}}>{hechas} de {totalGen} listas</p>}
-        <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>{tipo==='imagen'?'Estamos creando '+totalGen+' imágenes (varios estilos). Puede tardar 1 a 3 minutos. No cierres esta ventana.':'Esto puede tardar entre 20 y 40 segundos. No cierres esta ventana.'}</p>
+        <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>{tipo==='imagen'?('Estamos creando '+totalGen+' imágenes. Puede tardar 1 a 3 minutos. No cierres esta ventana.'):'El video puede tardar 1 a 3 minutos. No cierres esta ventana.'}</p>
       </div>
     </div>
   );
