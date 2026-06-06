@@ -315,7 +315,7 @@ function App() {
   }
   function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
 
-  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-mejorador','admin-config'].includes(vista);
+  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-catalogo-ia','admin-mejorador','admin-config'].includes(vista);
   const isPapa  = ['papa-login','papa-creador'].includes(vista);
 
   // Mientras carga la base de datos en links de invitación/papá, mostrar cargando
@@ -408,6 +408,7 @@ function App() {
         {vista==='admin-usuarios'    && esSA && <AdminUsuarios  setVista={setVista} usuarios={usuarios} setUsuarios={setUsuarios} sucursales={sucursales} setSucursales={setSucursales}/>}
         {vista==='admin-ia'          && esSA && <AdminIA setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-catalogo'    && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
+        {vista==='admin-catalogo-ia' && esSA && <AdminCatalogoIA setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-mejorador'   && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas} modo="mejorador"/>}
         {vista==='admin-config'      && esSA && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
@@ -530,7 +531,7 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
     // Bajar y achicar la imagen para guardarla liviana
     fetch(resultUrl).then(r=>r.blob()).then(blob=>{
       const burl=URL.createObjectURL(blob);const im=new Image();
-      im.onload=()=>{try{const sc=Math.min(1,500/im.width);const cv=document.createElement('canvas');cv.width=Math.round(im.width*sc);cv.height=Math.round(im.height*sc);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);const data=cv.toDataURL('image/jpeg',0.72);setTematicas(p=>[...p,{id:'t-'+Date.now(),nombre:gNombre.trim(),cats,img:data,emoji:'🎨'}]);setMsg('✅ Guardado en el catálogo (Portadas/Temáticas)');setGuardarOpen(false);setGNombre('');setGCats(['TODOS']);setTimeout(()=>setMsg(''),3500);}catch(err){setMsg('No se pudo guardar. Descargala y subila manualmente en Portadas.');}URL.revokeObjectURL(burl);};
+      im.onload=()=>{try{const sc=Math.min(1,500/im.width);const cv=document.createElement('canvas');cv.width=Math.round(im.width*sc);cv.height=Math.round(im.height*sc);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);const data=cv.toDataURL('image/jpeg',0.72);setTematicas(p=>[...p,{id:'t-'+Date.now(),nombre:gNombre.trim(),cats,img:data,emoji:'🎨',ia:true}]);setMsg('✅ Guardado en el Catálogo IA');setGuardarOpen(false);setGNombre('');setGCats(['TODOS']);setTimeout(()=>setMsg(''),3500);}catch(err){setMsg('No se pudo guardar. Descargala y subila manualmente en Portadas.');}URL.revokeObjectURL(burl);};
       im.onerror=()=>{setMsg('No se pudo guardar. Descargala y subila manualmente en Portadas.');};
       im.src=burl;
     }).catch(()=>setMsg('No se pudo descargar la imagen. Usá el botón Descargar y subila en Portadas.'));
@@ -561,8 +562,10 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
       {img&&<button type="button" onClick={()=>{setImg('');setResultUrl('');setGuardarOpen(false);fileRef.current.click();}} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#334155',marginBottom:14}}>🔄 Cambiar por otra imagen</button>}
       <button type="button" onClick={pegarImagen} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#334155',marginBottom:14}}>📋 Pegar imagen del portapapeles</button>
 
-      <div style={{background:esMejorador?'#e0f2fe':'#EEEDFE',border:'1px solid '+(esMejorador?'#bae6fd':'#ddd6fe'),borderRadius:10,padding:'10px 12px',marginBottom:14,fontSize:12,fontWeight:700,color:esMejorador?'#075985':'#3C3489'}}>
-        {esMejorador?'🪄 Mejora la calidad de la imagen (mantiene el estilo, la lleva a 9:16)':'🧊 Convierte el personaje a 3D estilo Pixar para el catálogo'}
+      <label style={S.label}>¿Qué querés hacer?</label>
+      <div style={{display:'flex',gap:8,marginBottom:14}}>
+        {optBtn('3d','🧊','Crear en 3D','Estilo Pixar HD')}
+        {optBtn('enhance','✨','Mejorar calidad','Mantiene el estilo')}
       </div>
 
       <label style={{display:'block',marginBottom:14}}><span style={S.label}>Formato</span>
@@ -612,6 +615,30 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
   );
 }
 
+/* ── ADMIN CATÁLOGO IA ───────────────────────────────────── */
+function AdminCatalogoIA({setVista,tematicas,setTematicas}){
+  const items=(tematicas||[]).filter(t=>t.ia);
+  return(
+    <div className="fade-in" style={{maxWidth:760,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🤖 Catálogo IA</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:16}}>Personajes que los papás pueden elegir para generar su imagen con IA. Agregá más desde 🖼️ Portadas/Temáticas (botón "➕ Catálogo IA") o creando uno en 🎨 Generador de Catálogo.</p>
+      {items.length===0&&<div style={{...S.card,textAlign:'center',color:'#94a3b8',fontSize:13,padding:24}}>Todavía no hay personajes en el Catálogo IA.</div>}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10}}>
+        {items.map(t=>(
+          <div key={t.id} style={{background:'#fff',borderRadius:14,overflow:'hidden',border:'1px solid #e2e8f0'}}>
+            <div style={{aspectRatio:'9/16',background:'#0f172a',position:'relative',overflow:'hidden'}}>
+              <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+              <span style={{position:'absolute',bottom:5,left:5,background:'rgba(0,0,0,.75)',color:'white',fontSize:9,padding:'2px 5px',borderRadius:5,fontWeight:700}}>{t.nombre}</span>
+            </div>
+            <button onClick={()=>setTematicas(p=>p.map(x=>x.id===t.id?{...x,ia:false}:x))} style={{width:'100%',padding:6,background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:11,fontWeight:700,borderTop:'1px solid #fee2e2'}}>✕ Quitar del Catálogo IA</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── ADMIN DASHBOARD ─────────────────────────────────────── */
 function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA}){
   const items=[
@@ -625,8 +652,8 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA}){
     {e:'🎟️',t:'Formatos de Tarjeta',   s:'Por tipo de evento',          v:'admin-formatos',   bdr:'#ec4899',ownerOnly:true},
     {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a',ownerOnly:true},
     {e:'🤖',t:'IA & Precios',          s:'Prompts y API keys',          v:'admin-ia',         bdr:'#8b5cf6',ownerOnly:true},
-    {e:'🎨',t:'Generador de Catálogo', s:'Personajes 3D con IA',         v:'admin-catalogo',   bdr:'#534AB7',ownerOnly:true},
-    {e:'🪄',t:'Mejorador de imagen',   s:'Subí una foto y mejorala',     v:'admin-mejorador',  bdr:'#0ea5e9',ownerOnly:true},
+    {e:'🎨',t:'Generador de Catálogo', s:'Crear en 3D o mejorar',         v:'admin-catalogo',   bdr:'#534AB7',ownerOnly:true},
+    {e:'🤖',t:'Catálogo IA',           s:'Personajes para los papás',     v:'admin-catalogo-ia',bdr:'#0ea5e9',ownerOnly:true},
     {e:'🛠️',t:'Configuración',         s:'Año vigente y sitio',          v:'admin-config',     bdr:'#0ea5e9',ownerOnly:true},
   ].filter(c=>esSA||!c.ownerOnly);
   return(
@@ -960,7 +987,9 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
                 <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                 <span style={{position:'absolute',bottom:5,left:5,background:'rgba(0,0,0,.75)',color:'white',fontSize:9,padding:'2px 5px',borderRadius:5,fontWeight:700}}>{t.nombre}</span>
                 <span style={{position:'absolute',top:5,left:6,fontSize:16}}>{t.emoji}</span>
+                {t.ia&&<span style={{position:'absolute',top:5,right:6,background:'#0ea5e9',color:'white',fontSize:8,padding:'2px 5px',borderRadius:5,fontWeight:800}}>IA</span>}
               </div>
+              <button onClick={()=>setTematicas(tematicas.map(x=>x.id===t.id?{...x,ia:!x.ia}:x))} style={{width:'100%',padding:6,background:t.ia?'#e0f2fe':'none',border:'none',color:t.ia?'#0369a1':'#0ea5e9',cursor:'pointer',fontSize:11,fontWeight:700,borderTop:'1px solid #e2e8f0'}}>{t.ia?'✓ En Catálogo IA':'➕ Catálogo IA'}</button>
               <button onClick={()=>setTematicas(tematicas.filter(x=>x.id!==t.id))} style={{width:'100%',padding:6,background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:11,fontWeight:700,borderTop:'1px solid #fee2e2'}}>🗑 Eliminar</button>
             </div>
           ))}
@@ -1723,7 +1752,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             <input value={busqTem} onChange={e=>setBusqTem(e.target.value)} placeholder="🔍 Buscar personaje..." style={{...S.input,marginBottom:8,fontSize:12}}/>
             <div style={{background:colorIA+'12',color:colorIA,borderRadius:8,padding:'6px 10px',fontSize:11,fontWeight:700,marginBottom:8,textAlign:'center'}}>👇 Tocá un personaje de la lista (deslizá para ver más)</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,maxHeight:200,overflowY:'auto'}} className="scrollbar-none">
-              {tematicas.filter(t=>(catTem==='TODOS'||(t.cats||[]).includes(catTem))&&t.nombre.toLowerCase().includes(busqTem.toLowerCase())).map(t=>(
+              {(tematicas.some(t=>t.ia)?tematicas.filter(t=>t.ia):tematicas).filter(t=>(catTem==='TODOS'||(t.cats||[]).includes(catTem))&&t.nombre.toLowerCase().includes(busqTem.toLowerCase())).map(t=>(
                 <div key={t.id} onClick={()=>setPersonaje(t.img)}
                   style={{borderRadius:10,overflow:'hidden',cursor:'pointer',border:'2px solid #e2e8f0',transition:'all .15s'}}
                   onMouseEnter={e=>e.currentTarget.style.borderColor=colorIA}
