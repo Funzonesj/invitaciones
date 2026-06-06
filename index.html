@@ -342,34 +342,34 @@ function App() {
 
       {/* HEADER */}
       {vista!=='invitado-portada'&&vista!=='invitado-web'&&(
-        <header style={{background:'#0f172a',color:'white',padding:'10px 16px',position:'sticky',top:0,zIndex:100,borderBottom:'1px solid #312e81'}}>
+        <header style={{background:'#ffffff',color:'#1e293b',padding:'10px 16px',position:'sticky',top:0,zIndex:100,borderBottom:'1px solid #eef2f7',boxShadow:'0 1px 10px rgba(15,23,42,.05)'}}>
           <div style={{maxWidth:900,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
             {/* Logo */}
             <div style={{display:'flex',alignItems:'center',gap:10,flex:1}}>
-              <div style={{background:'#7c3aed',borderRadius:10,padding:'5px 8px',fontSize:20}}>🎈</div>
+              {sucAct.logo?<img src={sucAct.logo} alt="" style={{width:34,height:34,borderRadius:10,objectFit:'cover'}}/>:<div style={{background:'linear-gradient(135deg,#7c3aed,#a855f7)',borderRadius:10,width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🎈</div>}
               <div>
-                <div style={{fontWeight:900,fontSize:13,lineHeight:1.1}}>FUN ZONE & PLAY POINT <span style={{background:'#f97316',color:'white',fontSize:9,padding:'2px 6px',borderRadius:99,fontWeight:900,marginLeft:4}}>PRO</span></div>
+                <div style={{fontWeight:900,fontSize:13,lineHeight:1.1,color:'#0f172a'}}>FUN ZONE & PLAY POINT <span style={{background:'#f97316',color:'white',fontSize:9,padding:'2px 6px',borderRadius:99,fontWeight:900,marginLeft:4}}>PRO</span></div>
                 <div style={{fontSize:9,color:'#94a3b8',marginTop:1}}>Invitaciones Digitales</div>
               </div>
             </div>
             {/* Desktop nav */}
-            <div className="hide-mobile" style={{display:'flex',gap:4,background:'#1e293b',padding:4,borderRadius:14,border:'1px solid #334155'}}>
-              {adminSesion&&<button onClick={()=>setVista('admin-dashboard')} style={{padding:'5px 12px',borderRadius:10,fontSize:11,fontWeight:900,border:'none',cursor:'pointer',background:isAdmin?'#06b6d4':'transparent',color:isAdmin?'#0f172a':'#94a3b8'}}>💼 Admin</button>}
-              <button onClick={()=>papaSesion?setVista('papa-creador'):setVista('papa-login')} style={{padding:'5px 12px',borderRadius:10,fontSize:11,fontWeight:900,border:'none',cursor:'pointer',background:isPapa?'#f97316':'transparent',color:isPapa?'white':'#94a3b8'}}>👪 Papás</button>
-              <button onClick={()=>{const inv=new URLSearchParams(window.location.search).get('inv');if(inv)setInvEvId(inv);setVista('invitado-portada');}} style={{padding:'5px 12px',borderRadius:10,fontSize:11,fontWeight:900,border:'none',cursor:'pointer',background:vista==='invitado-portada'||vista==='invitado-web'?'#7c3aed':'transparent',color:vista==='invitado-portada'||vista==='invitado-web'?'white':'#94a3b8'}}>🎁 Invitado</button>
+            <div className="hide-mobile" style={{display:'flex',gap:4,background:'#f1f5f9',padding:4,borderRadius:14}}>
+              {adminSesion&&<button onClick={()=>setVista('admin-dashboard')} style={{padding:'5px 12px',borderRadius:10,fontSize:11,fontWeight:900,border:'none',cursor:'pointer',background:isAdmin?'#06b6d4':'transparent',color:isAdmin?'white':'#64748b'}}>💼 Admin</button>}
+              <button onClick={()=>papaSesion?setVista('papa-creador'):setVista('papa-login')} style={{padding:'5px 12px',borderRadius:10,fontSize:11,fontWeight:900,border:'none',cursor:'pointer',background:isPapa?'#f97316':'transparent',color:isPapa?'white':'#64748b'}}>👪 Papás</button>
+              <button onClick={()=>{const inv=new URLSearchParams(window.location.search).get('inv');if(inv)setInvEvId(inv);setVista('invitado-portada');}} style={{padding:'5px 12px',borderRadius:10,fontSize:11,fontWeight:900,border:'none',cursor:'pointer',background:(vista==='invitado-portada'||vista==='invitado-web')?'#7c3aed':'transparent',color:(vista==='invitado-portada'||vista==='invitado-web')?'white':'#64748b'}}>🎁 Invitado</button>
             </div>
             {/* Desktop sucursal & logout */}
             <div className="hide-mobile" style={{display:'flex',alignItems:'center',gap:8}}>
               {adminSesion&&esSA&&(
-                <select value={sucActId} onChange={e=>setSucActId(e.target.value)} style={{background:'#1e293b',color:'white',border:'1px solid #334155',borderRadius:8,padding:'4px 8px',fontSize:11,fontWeight:700}}>
+                <select value={sucActId} onChange={e=>setSucActId(e.target.value)} style={{background:'#f1f5f9',color:'#334155',border:'1px solid #e2e8f0',borderRadius:8,padding:'4px 8px',fontSize:11,fontWeight:700}}>
                   {sucursales.map(s=><option key={s.id} value={s.id}>{s.emoji} {s.nombre}</option>)}
                 </select>
               )}
-              {adminSesion&&!esSA&&<span style={{background:'#1e293b',color:'#94a3b8',border:'1px solid #334155',borderRadius:8,padding:'4px 8px',fontSize:11,fontWeight:700}}>{sucAct.emoji} {sucAct.nombre}</span>}
-              {adminSesion&&<button onClick={logoutAdmin} title="Salir" style={{background:'#1e293b',border:'1px solid #334155',color:'#f87171',borderRadius:8,padding:'4px 8px',cursor:'pointer',fontSize:13}}>⏻</button>}
+              {adminSesion&&!esSA&&<span style={{background:'#f1f5f9',color:'#64748b',border:'1px solid #e2e8f0',borderRadius:8,padding:'4px 8px',fontSize:11,fontWeight:700}}>{sucAct.emoji} {sucAct.nombre}</span>}
+              {adminSesion&&<button onClick={logoutAdmin} title="Salir" style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#ef4444',borderRadius:8,padding:'4px 10px',cursor:'pointer',fontSize:13}}>⏻</button>}
             </div>
             {/* Hamburger button (mobile only) */}
-            <button className="show-mobile" onClick={()=>setMenuOpen(true)} style={{background:'#1e293b',border:'1px solid #334155',color:'white',borderRadius:10,padding:'6px 10px',cursor:'pointer',fontSize:18,lineHeight:1}}>☰</button>
+            <button className="show-mobile" onClick={()=>setMenuOpen(true)} style={{background:'#f1f5f9',border:'1px solid #e2e8f0',color:'#334155',borderRadius:10,padding:'6px 10px',cursor:'pointer',fontSize:18,lineHeight:1}}>☰</button>
           </div>
         </header>
       )}
@@ -426,7 +426,7 @@ function App() {
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso}/>}
         {vista==='papa-creador'      && papaSesion&&<PapaCreador setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs}/>}
-        {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))}/>}
+        {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))} esInvPortada={true}/>}
         {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))}/>}
       </main>
 
@@ -2845,10 +2845,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
 
 /* ── INVITADO PORTADA ────────────────────────────────────── */
-function InvPortada({setVista,eventos,invEvId,sucursales,iaConfig,volverInv}){
+function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volverInv}){
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
   const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
   const col=suc.color||'#f97316';
+  const tem=(tematicas||[]).find(t=>t.id===ev?.temId)||(tematicas||[])[0];
+  const temImg=tem&&tem.img;
   const T=(iaConfig&&iaConfig.txtTarjeta)||{};
   const tituloPortada = ev ? (ev.nombre||ev.tipo||'¡Te esperamos!') : '...';
   React.useEffect(()=>{
@@ -2869,14 +2871,16 @@ function InvPortada({setVista,eventos,invEvId,sucursales,iaConfig,volverInv}){
   return(
     <div style={{minHeight:'100vh',background:col,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,textAlign:'center',position:'relative',overflow:'hidden'}}>
       {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.55)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>← Volver al panel</button>}
+      {temImg&&<div style={{position:'absolute',inset:0,backgroundImage:'url('+temImg+')',backgroundSize:'cover',backgroundPosition:'center',filter:'blur(22px)',transform:'scale(1.18)'}}></div>}
+      <div style={{position:'absolute',inset:0,background:col,opacity:temImg?0.8:1}}></div>
       <div id="confetti-container" style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:0}}></div>
       <div style={{position:'absolute',top:'10%',left:'10%',width:200,height:200,borderRadius:'50%',background:'rgba(255,255,255,.12)',filter:'blur(40px)'}}></div>
       <div style={{position:'absolute',bottom:'15%',right:'5%',width:160,height:160,borderRadius:'50%',background:'rgba(255,255,255,.10)',filter:'blur(30px)'}}></div>
       <div style={{position:'relative',zIndex:1}}>
         {suc.logo?<img src={suc.logo} alt={suc.nombre} style={{width:90,height:90,borderRadius:'50%',objectFit:'cover',border:'4px solid white',boxShadow:'0 4px 20px rgba(0,0,0,.2)',marginBottom:24}}/>:<div style={{fontSize:52,marginBottom:20}}>{'🎉'}</div>}
-        <p style={{color:'rgba(255,255,255,.9)',fontSize:13,fontWeight:600,letterSpacing:2,textTransform:'uppercase',margin:'0 0 10px'}}>{suc.portadaFrase||'Recibiste una invitacion de'}</p>
-        <h1 style={{color:'white',fontSize:40,fontWeight:900,margin:'0 0 24px',textShadow:'0 2px 16px rgba(0,0,0,.25)',lineHeight:1.1}}>{tituloPortada}</h1>
-        <p style={{color:'rgba(255,255,255,.8)',fontSize:15,margin:'0 0 28px'}}>{T.portadaSub||'¿Descubrí dónde es el evento?'}</p>
+        <p style={{color:'rgba(255,255,255,.95)',fontSize:13,fontWeight:600,letterSpacing:2,textTransform:'uppercase',margin:'0 0 10px',textShadow:'0 1px 8px rgba(0,0,0,.3)'}}>{suc.portadaFrase||'Recibiste una invitacion de'}</p>
+        <h1 style={{color:'white',fontSize:40,fontWeight:900,margin:'0 0 24px',textShadow:'0 2px 18px rgba(0,0,0,.4)',lineHeight:1.1}}>{tituloPortada}</h1>
+        <p style={{color:'rgba(255,255,255,.92)',fontSize:15,margin:'0 0 28px',textShadow:'0 1px 8px rgba(0,0,0,.3)'}}>{T.portadaSub||'¿Descubrí dónde es el evento?'}</p>
         <button onClick={()=>setVista('invitado-web')} style={{background:'white',color:col,fontWeight:800,fontSize:16,border:'none',borderRadius:99,padding:'16px 48px',cursor:'pointer',boxShadow:'0 8px 32px rgba(0,0,0,.15)'}}>
           {T.portadaBtn||'Abrir Invitación'}
         </button>
