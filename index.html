@@ -426,8 +426,8 @@ function App() {
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso}/>}
         {vista==='papa-creador'      && papaSesion&&<PapaCreador setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs}/>}
-        {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
-        {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} iaConfig={iaConfig} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
+        {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))}/>}
+        {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))}/>}
       </main>
 
       {vista!=='invitado-portada'&&vista!=='invitado-web'&&(
@@ -2965,7 +2965,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
 
       {/* 1. IMAGEN TEMATICA FULL */}
       <div style={{position:'relative',width:'100%'}}>
-        <img src={tem.img} alt={tem.nombre} style={{width:'100%',display:'block',maxHeight:500,objectFit:'cover'}}/>
+        <img src={tem.img} alt={tem.nombre} style={{width:'100%',display:'block'}}/>
         <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)'}}></div>
         <span style={{position:'absolute',top:14,left:14,background:'#f43f5e',color:'white',fontSize:12,padding:'5px 16px',borderRadius:99,fontWeight:900,letterSpacing:1}}>TE INVITO!</span>
       </div>
