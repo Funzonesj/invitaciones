@@ -444,7 +444,6 @@ function AdminLogin({onLogin}){
 /* ── ADMIN GENERADOR DE CATÁLOGO (fal.ai) ────────────────── */
 function AdminCatalogo({setVista,tematicas,setTematicas}){
   const PURPLE='#534AB7';
-  const [apiKey,setApiKey]=useState('');
   const [img,setImg]=useState('');
   const [opt,setOpt]=useState('3d');
   const [model,setModel]=useState('fal-ai/flux-pro/kontext/text-to-image');
@@ -461,25 +460,21 @@ function AdminCatalogo({setVista,tematicas,setTematicas}){
   const promptEnhance='Enhance this image quality only.\nKeep the exact same art style as the original.\nDo NOT change to 3D, do NOT change to photorealistic.\nDo NOT modify the art style in any way.\nKeep exact same character design, colors, pose and composition.\nOnly improve: sharpness, resolution, color vibrancy, lighting and details.\nRemove any noise, blur or artifacts.\nExtend background naturally to fill full vertical 9:16 portrait format.\nLeave extra empty clean space at the top for text overlay.\nUltra high quality, 8K resolution. No text, no watermark.';
 
   function selectOption(o){setOpt(o);setModel(o==='enhance'?'fal-ai/flux-pro/kontext':'fal-ai/flux-pro/kontext/text-to-image');}
-  function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setImg(ev.target.result);r.readAsDataURL(f);}
+  function onFile(e){const f=e.target.files[0];if(!f)return;resizeImg(f,1024,data=>setImg(data));}
 
   async function generar(){
     setErr('');setMsg('');
-    if(!apiKey.trim()){setErr('Ingresá tu API key de fal.ai');return;}
     if(!img){setErr('Subí una imagen primero');return;}
     const p=opt==='3d'?prompt3D:promptEnhance;
     setPrompt(p);setCargando(true);setResultUrl('');
     try{
       const isI2I=model==='fal-ai/flux-pro/kontext';
       const size=ratio==='9:16'?{width:768,height:1366}:ratio==='1:1'?{width:1024,height:1024}:{width:1024,height:768};
-      const body=isI2I?{prompt:p,image_url:img,image_size:size}:{prompt:p,image_size:size,num_images:1};
-      const modelPath=model.replace('fal-ai/','');
-      const resp=await fetch('https://fal.run/'+modelPath,{method:'POST',headers:{'Authorization':'Key '+apiKey.trim(),'Content-Type':'application/json'},body:JSON.stringify(body)});
-      if(!resp.ok){const t=await resp.text();throw new Error('Error fal.ai: '+t);}
-      const data=await resp.json();
-      const url=(data.images&&data.images[0]&&data.images[0].url)||(data.image&&data.image.url);
-      if(!url)throw new Error('No se recibió imagen. Revisá el modelo seleccionado.');
-      setResultUrl(url);
+      const resp=await fetch('/api/generar-catalogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,image:img,model,size,isI2I})});
+      const data=await resp.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
+      if(!resp.ok)throw new Error(data.error||'No se pudo generar.');
+      if(!data.url)throw new Error('No se recibió imagen. Probá otro modelo.');
+      setResultUrl(data.url);
     }catch(e){setErr(String((e&&e.message)||e));}
     finally{setCargando(false);}
   }
@@ -510,12 +505,6 @@ function AdminCatalogo({setVista,tematicas,setTematicas}){
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
       <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🎨 Generador de Catálogo</h1>
       <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>Subí un personaje y generá su versión para el catálogo (3D o mejorada) con fal.ai.</p>
-
-      <div style={{...S.card,marginBottom:12}}>
-        <label style={S.label}>API Key de fal.ai</label>
-        <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="fal_..." style={S.input} autoComplete="off"/>
-        <p style={{fontSize:10,color:'#94a3b8',marginTop:6}}>🔒 Tu clave queda solo en este dispositivo (no se guarda).</p>
-      </div>
 
       <label style={S.label}>Imagen del personaje</label>
       <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
@@ -551,7 +540,7 @@ function AdminCatalogo({setVista,tematicas,setTematicas}){
       {err&&<div style={{background:'#FCEBEB',border:'1px solid #F09595',color:'#a32d2d',padding:'10px 14px',borderRadius:10,fontSize:12,marginBottom:12}}>{err}</div>}
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:10,fontSize:12,marginBottom:12,fontWeight:700}}>{msg}</div>}
 
-      <button onClick={generar} disabled={cargando||!img||!apiKey.trim()} style={{...S.btn,width:'100%',padding:14,fontSize:15,background:(cargando||!img||!apiKey.trim())?'#cbd5e1':PURPLE,color:'white',marginBottom:14}}>
+      <button onClick={generar} disabled={cargando||!img} style={{...S.btn,width:'100%',padding:14,fontSize:15,background:(cargando||!img)?'#cbd5e1':PURPLE,color:'white',marginBottom:14}}>
         {cargando?'⏳ Generando en fal.ai…':'✨ Generar imagen'}
       </button>
 
