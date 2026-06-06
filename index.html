@@ -301,7 +301,7 @@ function App() {
   }
   function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
 
-  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-descargables','admin-ia','admin-config'].includes(vista);
+  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-config'].includes(vista);
   const isPapa  = ['papa-login','papa-creador'].includes(vista);
 
   // Mientras carga la base de datos en links de invitación/papá, mostrar cargando
@@ -393,6 +393,7 @@ function App() {
         {vista==='admin-remarketing' && <AdminRemarketing setVista={setVista} evsLocal={evsLocal} sucAct={sucAct}/>}
         {vista==='admin-usuarios'    && esSA && <AdminUsuarios  setVista={setVista} usuarios={usuarios} setUsuarios={setUsuarios} sucursales={sucursales} setSucursales={setSucursales}/>}
         {vista==='admin-ia'          && esSA && <AdminIA setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-catalogo'    && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-config'      && esSA && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
@@ -440,6 +441,137 @@ function AdminLogin({onLogin}){
   );
 }
 
+/* ── ADMIN GENERADOR DE CATÁLOGO (fal.ai) ────────────────── */
+function AdminCatalogo({setVista,tematicas,setTematicas}){
+  const PURPLE='#534AB7';
+  const [apiKey,setApiKey]=useState('');
+  const [img,setImg]=useState('');
+  const [opt,setOpt]=useState('3d');
+  const [model,setModel]=useState('fal-ai/flux-pro/kontext/text-to-image');
+  const [ratio,setRatio]=useState('9:16');
+  const [cargando,setCargando]=useState(false);
+  const [err,setErr]=useState('');
+  const [resultUrl,setResultUrl]=useState('');
+  const [prompt,setPrompt]=useState('');
+  const [copiado,setCopiado]=useState(false);
+  const [msg,setMsg]=useState('');
+  const fileRef=useRef();
+
+  const prompt3D='A character with the same appearance as the reference image.\nHyper realistic 3D render, NOT cartoon, NOT anime, NOT illustration, NOT 2D,\nphotorealistic 3D Pixar movie quality, cinematic lighting, ultra high quality,\n8K resolution, full body portrait, vertical 9:16 format,\nwarm welcoming smile, arms slightly open as if inviting someone for a hug,\nleave extra empty clean space at the top of the image for text overlay,\nno text, no watermark, clean background behind character.';
+  const promptEnhance='Enhance this image quality only.\nKeep the exact same art style as the original.\nDo NOT change to 3D, do NOT change to photorealistic.\nDo NOT modify the art style in any way.\nKeep exact same character design, colors, pose and composition.\nOnly improve: sharpness, resolution, color vibrancy, lighting and details.\nRemove any noise, blur or artifacts.\nExtend background naturally to fill full vertical 9:16 portrait format.\nLeave extra empty clean space at the top for text overlay.\nUltra high quality, 8K resolution. No text, no watermark.';
+
+  function selectOption(o){setOpt(o);setModel(o==='enhance'?'fal-ai/flux-pro/kontext':'fal-ai/flux-pro/kontext/text-to-image');}
+  function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setImg(ev.target.result);r.readAsDataURL(f);}
+
+  async function generar(){
+    setErr('');setMsg('');
+    if(!apiKey.trim()){setErr('Ingresá tu API key de fal.ai');return;}
+    if(!img){setErr('Subí una imagen primero');return;}
+    const p=opt==='3d'?prompt3D:promptEnhance;
+    setPrompt(p);setCargando(true);setResultUrl('');
+    try{
+      const isI2I=model==='fal-ai/flux-pro/kontext';
+      const size=ratio==='9:16'?{width:768,height:1366}:ratio==='1:1'?{width:1024,height:1024}:{width:1024,height:768};
+      const body=isI2I?{prompt:p,image_url:img,image_size:size}:{prompt:p,image_size:size,num_images:1};
+      const modelPath=model.replace('fal-ai/','');
+      const resp=await fetch('https://fal.run/'+modelPath,{method:'POST',headers:{'Authorization':'Key '+apiKey.trim(),'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(!resp.ok){const t=await resp.text();throw new Error('Error fal.ai: '+t);}
+      const data=await resp.json();
+      const url=(data.images&&data.images[0]&&data.images[0].url)||(data.image&&data.image.url);
+      if(!url)throw new Error('No se recibió imagen. Revisá el modelo seleccionado.');
+      setResultUrl(url);
+    }catch(e){setErr(String((e&&e.message)||e));}
+    finally{setCargando(false);}
+  }
+  function copiar(){if(navigator.clipboard)navigator.clipboard.writeText(prompt).then(()=>{setCopiado(true);setTimeout(()=>setCopiado(false),2000);});}
+  function agregarATematicas(){
+    const nombre=window.prompt('¿Nombre del personaje para el catálogo?');
+    if(!nombre||!nombre.trim())return;
+    setMsg('Procesando imagen…');
+    // Bajar y achicar la imagen para guardarla liviana
+    fetch(resultUrl).then(r=>r.blob()).then(blob=>{
+      const burl=URL.createObjectURL(blob);const im=new Image();
+      im.onload=()=>{try{const sc=Math.min(1,500/im.width);const cv=document.createElement('canvas');cv.width=Math.round(im.width*sc);cv.height=Math.round(im.height*sc);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);const data=cv.toDataURL('image/jpeg',0.72);setTematicas(p=>[...p,{id:'t-'+Date.now(),nombre:nombre.trim(),cats:['TODOS'],img:data,emoji:'🎨'}]);setMsg('✅ Agregado a Portadas/Temáticas');setTimeout(()=>setMsg(''),3000);}catch(err){setMsg('No se pudo agregar. Descargala y subila manualmente en Portadas.');}URL.revokeObjectURL(burl);};
+      im.onerror=()=>{setMsg('No se pudo agregar. Descargala y subila manualmente en Portadas.');};
+      im.src=burl;
+    }).catch(()=>setMsg('No se pudo descargar la imagen. Usá el botón Descargar y subila en Portadas.'));
+  }
+
+  const optBtn=(o,emoji,titulo,desc)=>(
+    <div onClick={()=>selectOption(o)} style={{flex:1,padding:'12px',borderRadius:12,cursor:'pointer',border:opt===o?('2px solid '+PURPLE):'1px solid #e2e8f0',background:opt===o?'#EEEDFE':'#fff',transition:'all .15s'}}>
+      <div style={{fontSize:22,marginBottom:4}}>{emoji}</div>
+      <div style={{fontSize:13,fontWeight:800,color:opt===o?'#3C3489':'#1e293b'}}>{titulo}</div>
+      <div style={{fontSize:11,color:'#94a3b8',marginTop:2}}>{desc}</div>
+    </div>
+  );
+
+  return(
+    <div className="fade-in" style={{maxWidth:560,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🎨 Generador de Catálogo</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>Subí un personaje y generá su versión para el catálogo (3D o mejorada) con fal.ai.</p>
+
+      <div style={{...S.card,marginBottom:12}}>
+        <label style={S.label}>API Key de fal.ai</label>
+        <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="fal_..." style={S.input} autoComplete="off"/>
+        <p style={{fontSize:10,color:'#94a3b8',marginTop:6}}>🔒 Tu clave queda solo en este dispositivo (no se guarda).</p>
+      </div>
+
+      <label style={S.label}>Imagen del personaje</label>
+      <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
+      <div onClick={()=>fileRef.current.click()} style={{border:img?('2px solid '+PURPLE):'2px dashed #cbd5e1',borderRadius:12,padding:img?0:'28px',textAlign:'center',cursor:'pointer',background:'#fff',marginBottom:14,overflow:'hidden'}}>
+        {img
+          ?<img src={img} alt="" style={{width:'100%',maxHeight:280,objectFit:'contain',borderRadius:10,display:'block'}}/>
+          :<div><div style={{fontSize:34,marginBottom:6}}>🖼️</div><div style={{fontSize:14,color:'#64748b',fontWeight:700}}>Hacé clic para subir la imagen</div><div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>JPG, PNG, WEBP</div></div>}
+      </div>
+
+      <label style={S.label}>¿Qué querés hacer?</label>
+      <div style={{display:'flex',gap:8,marginBottom:14}}>
+        {optBtn('3d','🧊','Crear en 3D','Estilo Pixar HD')}
+        {optBtn('enhance','✨','Mejorar calidad','Mantiene el estilo')}
+      </div>
+
+      <div style={{display:'flex',gap:8,marginBottom:14}}>
+        <label style={{flex:1}}><span style={S.label}>Modelo</span>
+          <select value={model} onChange={e=>setModel(e.target.value)} style={S.input}>
+            <option value="fal-ai/flux-pro/kontext/text-to-image">flux-pro kontext (texto→imagen)</option>
+            <option value="fal-ai/flux-pro/kontext/max/text-to-image">flux-pro kontext max (mejor)</option>
+            <option value="fal-ai/flux-pro/kontext">flux-pro kontext (imagen→imagen)</option>
+          </select>
+        </label>
+        <label style={{flex:1}}><span style={S.label}>Formato</span>
+          <select value={ratio} onChange={e=>setRatio(e.target.value)} style={S.input}>
+            <option value="9:16">9:16 vertical ✅</option>
+            <option value="1:1">1:1 cuadrado</option>
+            <option value="4:3">4:3 horizontal</option>
+          </select>
+        </label>
+      </div>
+
+      {err&&<div style={{background:'#FCEBEB',border:'1px solid #F09595',color:'#a32d2d',padding:'10px 14px',borderRadius:10,fontSize:12,marginBottom:12}}>{err}</div>}
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:10,fontSize:12,marginBottom:12,fontWeight:700}}>{msg}</div>}
+
+      <button onClick={generar} disabled={cargando||!img||!apiKey.trim()} style={{...S.btn,width:'100%',padding:14,fontSize:15,background:(cargando||!img||!apiKey.trim())?'#cbd5e1':PURPLE,color:'white',marginBottom:14}}>
+        {cargando?'⏳ Generando en fal.ai…':'✨ Generar imagen'}
+      </button>
+
+      {resultUrl&&(
+        <div className="fade-in">
+          <label style={S.label}>Resultado</label>
+          <p style={{fontSize:11,color:'#94a3b8',textAlign:'center',marginBottom:6}}>⬆ Espacio libre arriba para el nombre del cumpleañero</p>
+          <img src={resultUrl} alt="" style={{width:'100%',borderRadius:12,border:'1px solid #e2e8f0',marginBottom:12}}/>
+          <div style={{background:'#f1f5f9',borderRadius:10,padding:12,marginBottom:12,position:'relative'}}>
+            <pre style={{fontSize:11,color:'#334155',whiteSpace:'pre-wrap',wordBreak:'break-word',fontFamily:'monospace',lineHeight:1.5,margin:0,paddingRight:70}}>{prompt}</pre>
+            <button onClick={copiar} style={{position:'absolute',top:8,right:8,...S.btn,padding:'5px 10px',fontSize:11,background:'#fff',border:'1px solid #e2e8f0',color:'#475569'}}>{copiado?'✓ Copiado':'📋 Copiar'}</button>
+          </div>
+          <a href={resultUrl} download="personaje_catalogo.png" target="_blank" rel="noopener" style={{...S.btn,display:'block',textAlign:'center',background:'#fff',border:'1px solid #e2e8f0',color:'#1e293b',marginBottom:8,textDecoration:'none'}}>⬇️ Descargar imagen</a>
+          <button onClick={agregarATematicas} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white'}}>➕ Agregar a Portadas/Temáticas</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── ADMIN DASHBOARD ─────────────────────────────────────── */
 function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA}){
   const items=[
@@ -453,6 +585,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA}){
     {e:'🎟️',t:'Formatos de Tarjeta',   s:'Por tipo de evento',          v:'admin-formatos',   bdr:'#ec4899',ownerOnly:true},
     {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a',ownerOnly:true},
     {e:'🤖',t:'IA & Precios',          s:'Prompts y API keys',          v:'admin-ia',         bdr:'#8b5cf6',ownerOnly:true},
+    {e:'🎨',t:'Generador de Catálogo', s:'Personajes 3D con IA',         v:'admin-catalogo',   bdr:'#534AB7',ownerOnly:true},
     {e:'🛠️',t:'Configuración',         s:'Año vigente y sitio',          v:'admin-config',     bdr:'#0ea5e9',ownerOnly:true},
   ].filter(c=>esSA||!c.ownerOnly);
   return(
