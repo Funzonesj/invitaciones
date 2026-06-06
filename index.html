@@ -1785,6 +1785,9 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
   const [busqTem,setBusqTem]=useState('');
   const [catTem,setCatTem]=useState('TODOS');
   const listo=fotoNino&&personaje;
+  // Personajes disponibles para el papá: los del Catálogo IA (si hay), si no todos
+  const iaTem=(tematicas.some(t=>t.ia)?tematicas.filter(t=>t.ia):tematicas);
+  const catsDisp=['TODOS',...CATS.filter(c=>c!=='TODOS'&&iaTem.some(t=>(t.cats||[]).includes(c)))];
 
   function onPickFoto(e){
     const f=e.target.files[0];if(!f)return;
@@ -1868,12 +1871,12 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
         {modoPersonaje==='db'&&!personaje&&(
           <div>
             <select value={catTem} onChange={e=>setCatTem(e.target.value)} style={{...S.input,marginBottom:8,fontSize:12,fontWeight:700}}>
-              {CATS.map(cat=><option key={cat} value={cat}>{cat==='TODOS'?'📂 Todas las categorías':cat}</option>)}
+              {catsDisp.map(cat=><option key={cat} value={cat}>{cat==='TODOS'?'📂 Todas las categorías':cat}</option>)}
             </select>
             <input value={busqTem} onChange={e=>setBusqTem(e.target.value)} placeholder="🔍 Buscar personaje..." style={{...S.input,marginBottom:8,fontSize:12}}/>
             <div style={{background:colorIA+'12',color:colorIA,borderRadius:8,padding:'6px 10px',fontSize:11,fontWeight:700,marginBottom:8,textAlign:'center'}}>👇 Tocá un personaje de la lista (deslizá para ver más)</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,maxHeight:200,overflowY:'auto'}} className="scrollbar-none">
-              {(tematicas.some(t=>t.ia)?tematicas.filter(t=>t.ia):tematicas).filter(t=>(catTem==='TODOS'||(t.cats||[]).includes(catTem))&&t.nombre.toLowerCase().includes(busqTem.toLowerCase())).map(t=>(
+              {iaTem.filter(t=>(catTem==='TODOS'||(t.cats||[]).includes(catTem))&&t.nombre.toLowerCase().includes(busqTem.toLowerCase())).map(t=>(
                 <div key={t.id} onClick={()=>setPersonaje(t.img)}
                   style={{borderRadius:10,overflow:'hidden',cursor:'pointer',border:'2px solid #e2e8f0',transition:'all .15s'}}
                   onMouseEnter={e=>e.currentTarget.style.borderColor=colorIA}
@@ -1904,10 +1907,10 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
         <div>
           <div style={{background:'#f8fafc',borderRadius:12,padding:12,marginBottom:12,border:'1px solid #e2e8f0',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
             <div>
-              <div style={{fontSize:11,color:'#64748b'}}>Precio por generación</div>
-              <div style={{fontSize:11,color:'#94a3b8'}}>(3 {tipo==='imagen'?'imágenes':'videos'} a elección)</div>
+              <div style={{fontSize:11,color:'#64748b'}}>{tipo==='imagen'?'Imagen con IA':'Precio por generación'}</div>
+              <div style={{fontSize:11,color:'#94a3b8'}}>{tipo==='imagen'?'Incluido en tu invitación':'(a elección)'}</div>
             </div>
-            <div style={{fontWeight:900,fontSize:20,color:'#1e293b'}}>${precio.toLocaleString('es-AR')}</div>
+            <div style={{fontWeight:900,fontSize:tipo==='imagen'?16:20,color:tipo==='imagen'?'#16a34a':'#1e293b'}}>{tipo==='imagen'?'GRATIS':('$'+precio.toLocaleString('es-AR'))}</div>
           </div>
           {tipo==='imagen'&&typeof restantesIA==='number'&&(
             <div style={{fontSize:11,fontWeight:700,textAlign:'center',marginBottom:10,color:restantesIA>0?'#16a34a':'#dc2626'}}>
@@ -1920,7 +1923,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             style={{...S.btn,width:'100%',padding:'13px',fontSize:14,
               background:listo?'linear-gradient(135deg,#009ee3,#0070ba)':'#e2e8f0',
               color:listo?'white':'#94a3b8',cursor:listo?'pointer':'not-allowed'}}>
-            {listo?'💳 Pagar y Generar con IA':'⬆️ Cargá ambas fotos para continuar'}
+            {listo?(tipo==='imagen'?'✨ Generar imagen (gratis)':'💳 Pagar y Generar con IA'):'⬆️ Cargá ambas fotos para continuar'}
           </button>
         </div>
       )}
@@ -2066,7 +2069,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,fotoNino,personaje,personajeNo
           if(!fotoNino||!personaje) throw new Error('Faltan la foto del niño/a o el personaje.');
           const persNom=personajeNombre||tematica||'el personaje';
           const base=(prompt||'').replace(/\{nombre\}/g,nombre||'').replace(/\{edad\}/g,edad||'').replace(/\{tematica\}/g,persNom).replace(/\{personaje\}/g,persNom);
-          const composed=base+' Usá las DOS imágenes adjuntas: conservá EXACTAMENTE la cara y el parecido de la persona de la PRIMERA imagen (no la cambies ni la estilices), y combinala con el/los personaje(s) de la SEGUNDA imagen. ENCUADRE: retrato de MEDIO CUERPO, de la CINTURA PARA ARRIBA, de ambos; los dos centrados, a la misma altura, del mismo tamaño y la misma escala (mismo plano de cámara). El personaje ABRAZANDO a la persona, con un brazo alrededor de su hombro, bien juntos y en contacto. Integrá a ambos en UNA SOLA escena cohesiva y realista, con la MISMA iluminación, sombras y estilo, de modo que NO parezca dos fotos pegadas o superpuestas, sino una sola foto tomada juntos. El fondo es el mundo/escenario del personaje; la persona lleva una remera estampada del personaje; el personaje en estilo 3D animado; imagen vertical, alegre y apta para todo público; dejá un poco de espacio libre arriba; sin texto ni letras.';
+          const composed=base+' Usá las DOS imágenes adjuntas: conservá EXACTAMENTE la cara y el parecido de la persona de la PRIMERA imagen (no la cambies ni la estilices), y combinala con el/los personaje(s) de la SEGUNDA imagen. ENCUADRE: retrato de MEDIO CUERPO, de la CINTURA PARA ARRIBA, de ambos; los dos centrados, a la misma altura, del mismo tamaño y la misma escala (mismo plano de cámara). El personaje ABRAZANDO a la persona, con un brazo alrededor de su hombro, bien juntos y en contacto. Integrá a ambos en UNA SOLA escena cohesiva y realista, con la MISMA iluminación, sombras y estilo, de modo que NO parezca dos fotos pegadas o superpuestas, sino una sola foto tomada juntos. El fondo es el mundo/escenario del personaje; el personaje en estilo 3D animado; imagen vertical, alegre y apta para todo público; dejá un poco de espacio libre arriba; sin texto ni letras.';
           // fal.ai nano-banana: combina las dos imágenes manteniendo la cara real
           const resp=await fetch('/api/generar-catalogo',{
             method:'POST',headers:{'Content-Type':'application/json'},
@@ -2152,8 +2155,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const LIMITE_IA=6;
   const genUsados=(papaSesion&&papaSesion.iaGenCount)||0;
   function pedirGenerar(tipo){
-    if(genUsados>=LIMITE_IA){alert('Llegaste al límite de '+LIMITE_IA+' imágenes generadas para este evento. Si necesitás más, consultá con el salón.');return;}
-    setPagoActivo(tipo);
+    if(genUsados>=LIMITE_IA){alert('Llegaste al límite de '+LIMITE_IA+' imágenes para este evento. Si necesitás más, consultá con el salón.');return;}
+    setGenActivo(tipo); // las primeras 6 son gratis: genera directo sin pago
   }
   const [seccion,setSeccion]=useState('tarjeta');
   const [kidActivo,setKidActivo]=useState(1);
