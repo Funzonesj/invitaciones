@@ -1883,11 +1883,11 @@ function GeneradorIA({tipo,nombre,tematica,prompt,fotoNino,personaje,personajeNo
           if(!fotoNino||!personaje) throw new Error('Faltan la foto del niño/a o el personaje.');
           const persNom=personajeNombre||tematica||'el personaje';
           const base=(prompt||'').replace(/\{nombre\}/g,nombre||'').replace(/\{edad\}/g,edad||'').replace(/\{tematica\}/g,persNom).replace(/\{personaje\}/g,persNom);
-          const composed=base+' Junto a la persona de la foto aparece '+persNom+' (personaje), ambos de cuerpo completo, del mismo tamaño y altura, parados juntos lado a lado; el fondo es el mundo/escenario de '+persNom+'; la persona lleva una remera estampada de '+persNom+'; conservá su cara y su parecido tal cual la foto; '+persNom+' en estilo 3D animado; imagen vertical alegre y apta para todo público; sin texto ni letras.';
-          // Usamos fal.ai (más permisivo con fotos reales) vía el mismo backend del catálogo
+          const composed=base+' Usá las DOS imágenes adjuntas: conservá EXACTAMENTE la cara y el parecido de la persona de la PRIMERA imagen (no la cambies ni la estilices), y juntala con el/los personaje(s) de la SEGUNDA imagen. Ambos de cuerpo completo, del mismo tamaño y altura, parados juntos lado a lado; el fondo es el mundo/escenario del personaje; la persona lleva una remera estampada del personaje; el personaje en estilo 3D animado; imagen vertical, alegre y apta para todo público; sin texto ni letras.';
+          // fal.ai nano-banana: combina las dos imágenes manteniendo la cara real
           const resp=await fetch('/api/generar-catalogo',{
             method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({prompt:composed,image:fotoNino,model:'fal-ai/flux-pro/kontext',size:{width:768,height:1366},isI2I:true})
+            body:JSON.stringify({prompt:composed,images:[fotoNino,personaje],model:'fal-ai/nano-banana/edit',aspect_ratio:'9:16'})
           });
           const data=await resp.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
           if(!resp.ok) throw new Error(data.error||'No se pudo generar la imagen.');

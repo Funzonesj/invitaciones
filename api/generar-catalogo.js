@@ -19,13 +19,21 @@ module.exports = async (req, res) => {
 
   try {
     const body = req.body || {};
-    const { prompt, image, model, size, isI2I } = body;
+    const { prompt, image, images, model, size, aspect_ratio, isI2I } = body;
     if (!prompt || !model) { res.status(400).json({ error: 'Faltan datos (prompt o modelo).' }); return; }
-    if (isI2I && !image) { res.status(400).json({ error: 'Para imagen→imagen hace falta subir una imagen.' }); return; }
 
-    const reqBody = isI2I
-      ? { prompt, image_url: image, image_size: size }
-      : { prompt, image_size: size, num_images: 1 };
+    const esNano = String(model).includes('nano-banana');
+    let reqBody;
+    if (esNano) {
+      const urls = (Array.isArray(images) && images.length) ? images.filter(Boolean) : (image ? [image] : []);
+      if (!urls.length) { res.status(400).json({ error: 'Faltan imágenes.' }); return; }
+      reqBody = { prompt, image_urls: urls, num_images: 1, aspect_ratio: aspect_ratio || '9:16', output_format: 'jpeg' };
+    } else if (isI2I) {
+      if (!image) { res.status(400).json({ error: 'Para imagen→imagen hace falta subir una imagen.' }); return; }
+      reqBody = { prompt, image_url: image, image_size: size };
+    } else {
+      reqBody = { prompt, image_size: size, num_images: 1 };
+    }
 
     // fal.run necesita el ID COMPLETO del modelo (incluyendo "fal-ai/")
     let modelPath = String(model).trim();
