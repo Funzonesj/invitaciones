@@ -97,8 +97,8 @@ function waNum(n){
 // Devuelve el formato de tarjeta (mostrar edad, título, dirigido) según el tipo de evento
 function fmtTipo(tipo, iaConfig){
   const t=((iaConfig&&iaConfig.tiposEvento)||[]).find(x=>x.nombre===tipo);
-  return t ? {fmtEdad:!!t.edad, fmtTitulo:t.titulo||'', fmtDirigido:t.dirigido||''}
-           : {fmtEdad:true, fmtTitulo:'', fmtDirigido:''};
+  return t ? {fmtEdad:!!t.edad, fmtTitulo:t.titulo||'', fmtDirigido:t.dirigido||'', fmtNombre:t.mostrarNombre!==false}
+           : {fmtEdad:true, fmtTitulo:'', fmtDirigido:'', fmtNombre:true};
 }
 // Redimensiona/comprime una imagen subida a un data URL liviano
 function resizeImg(file, maxW, cb){
@@ -190,7 +190,7 @@ function App() {
       {id:'cumple',   nombre:'Cumpleaños',       edad:true,  titulo:'¡{nombre} te invita a festejar su Cumpleaños!', dirigido:''},
       {id:'bautismo', nombre:'Bautismo',         edad:false, titulo:'¡Te invitamos al Bautismo de {nombre}!',        dirigido:''},
       {id:'comunion', nombre:'Comunión',         edad:false, titulo:'¡Te invitamos a la Comunión de {nombre}!',      dirigido:''},
-      {id:'escuela',  nombre:'Escuela / Jardín', edad:false, titulo:'¡Festejemos juntos el Día del Niño!',           dirigido:'Estimada maestra'},
+      {id:'escuela',  nombre:'Escuela / Jardín', edad:false, mostrarNombre:false, titulo:'¡Festejemos juntos el Día del Niño!',           dirigido:'Estimada maestra'},
     ],
     promptImagen: 'Creá una imagen tierna y divertida de cumpleaños infantil: el niño/a de la primera foto compartiendo con {personaje}, ambos contentos y sonriendo. Estilo alegre y familiar, colores vibrantes.',
     promptVideo:  'Video corto de 5 segundos con el personaje {tematica} saludando y diciendo ¡Feliz cumpleaños {nombre}! Estilo animación infantil, colorido y alegre.',
@@ -1566,6 +1566,10 @@ function AdminFormatos({setVista,iaConfig,setIaConfig}){
             <input type="checkbox" checked={!!t.edad} onChange={e=>upd(i,'edad',e.target.checked)} style={{width:18,height:18,accentColor:'#ec4899'}}/>
             <span style={{fontSize:13,fontWeight:700,color:'#1e293b'}}>Mostrar la edad en la tarjeta</span>
           </label>
+          <label style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,cursor:'pointer'}}>
+            <input type="checkbox" checked={t.mostrarNombre!==false} onChange={e=>upd(i,'mostrarNombre',e.target.checked)} style={{width:18,height:18,accentColor:'#ec4899'}}/>
+            <span style={{fontSize:13,fontWeight:700,color:'#1e293b'}}>Mostrar el nombre del agasajado en la tarjeta</span>
+          </label>
           <label style={{display:'block',marginBottom:10}}><span style={S.label}>Mensaje de la invitación</span>
             <input value={t.titulo} onChange={e=>upd(i,'titulo',e.target.value)} style={S.input} placeholder="Ej: ¡Te invitamos al Bautismo de {nombre}!"/>
             <span style={{fontSize:10,color:'#94a3b8'}}>Podés usar {'{nombre}'} y se reemplaza por el nombre del agasajado.</span>
@@ -2763,6 +2767,8 @@ function InvPortada({setVista,eventos,invEvId,sucursales,volverInv}){
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
   const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
   const col=suc.color||'#f97316';
+  const fNombre = !ev || ev.fmtNombre!==false;
+  const tituloPortada = ev ? (fNombre ? ev.nombre : (ev.tipo||'¡Te esperamos!')) : '...';
   React.useEffect(()=>{
     const container=document.getElementById('confetti-container');
     if(!container)return;
@@ -2787,7 +2793,7 @@ function InvPortada({setVista,eventos,invEvId,sucursales,volverInv}){
       <div style={{position:'relative',zIndex:1}}>
         {suc.logo?<img src={suc.logo} alt={suc.nombre} style={{width:90,height:90,borderRadius:'50%',objectFit:'cover',border:'4px solid white',boxShadow:'0 4px 20px rgba(0,0,0,.2)',marginBottom:24}}/>:<div style={{fontSize:52,marginBottom:20}}>{'🎉'}</div>}
         <p style={{color:'rgba(255,255,255,.9)',fontSize:13,fontWeight:600,letterSpacing:2,textTransform:'uppercase',margin:'0 0 10px'}}>{suc.portadaFrase||'Recibiste una invitacion de'}</p>
-        <h1 style={{color:'white',fontSize:40,fontWeight:900,margin:'0 0 24px',textShadow:'0 2px 16px rgba(0,0,0,.25)',lineHeight:1.1}}>{ev?ev.nombre:'...'}</h1>
+        <h1 style={{color:'white',fontSize:40,fontWeight:900,margin:'0 0 24px',textShadow:'0 2px 16px rgba(0,0,0,.25)',lineHeight:1.1}}>{tituloPortada}</h1>
         <p style={{color:'rgba(255,255,255,.8)',fontSize:15,margin:'0 0 28px'}}>Descubri donde es el evento?</p>
         <button onClick={()=>setVista('invitado-web')} style={{background:'white',color:col,fontWeight:800,fontSize:16,border:'none',borderRadius:99,padding:'16px 48px',cursor:'pointer',boxShadow:'0 8px 32px rgba(0,0,0,.15)'}}>
           Abrir Invitacion
@@ -2810,6 +2816,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
   const fDirigido = (ev && ev.fmtDirigido) || '';
   const fUnidad = (ev && ev.edadUnidad) || 'años';
   const fMostrarEdad = fEdad && fUnidad!=='noaplica' && ev && ev.edad!=='' && ev.edad!==undefined && ev.edad!==null;
+  const fNombre = !ev || ev.fmtNombre!==false;
   const fotos=(suc.fotos||[]).filter(f=>f&&f.length>0);
   const [nom,setNom]=useState('');
   const [ad,setAd]=useState(1);
@@ -2892,7 +2899,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
 
       {/* 3. NOMBRE */}
       <div style={{textAlign:'center',padding:'0 20px 12px'}}>
-        <h1 style={{color:col,fontSize:44,fontWeight:900,margin:'0 0 8px',lineHeight:1}}>{ev?ev.nombre:''}</h1>
+        {fNombre&&<h1 style={{color:col,fontSize:44,fontWeight:900,margin:'0 0 8px',lineHeight:1}}>{ev?ev.nombre:''}</h1>}
 
         {/* 4. FRASE (según formato del tipo de evento) */}
         {fDirigido&&<p style={{color:'#888',fontSize:15,margin:'0 0 4px',fontWeight:700}}>{fDirigido}</p>}
