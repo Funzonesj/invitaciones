@@ -426,7 +426,7 @@ function App() {
         {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso}/>}
-        {vista==='papa-creador'      && papaSesion&&<PapaCreador setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs}/>}
+        {vista==='papa-creador'      && papaSesion&&<PapaCreador key={papaSesion.id} setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs}/>}
         {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))} esInvPortada={true}/>}
         {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))}/>}
       </main>
