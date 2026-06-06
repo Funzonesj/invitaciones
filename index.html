@@ -195,7 +195,7 @@ function App() {
     promptImagen: 'Creá una imagen tierna y divertida de cumpleaños infantil: el niño/a de la primera foto compartiendo con {personaje}, ambos contentos y sonriendo. Estilo alegre y familiar, colores vibrantes.',
     promptImagen2: 'I have two images attached.\nImage 1 is the person (the real person whose face, hair, skin tone and body proportions must be preserved exactly).\nImage 2 is the character reference (the costume, accessories and background to apply).\nTASK: Dress the person from Image 1 in the exact costume from Image 2. This is a costume transformation — only the clothing changes.\nFACE AND HAIR: Keep the face, facial features, skin tone, hair color, hair style and expression from Image 1 exactly as they are. Do not apply any artistic style to the face. The result must look like a real photo of the same person wearing a costume.\nCOSTUME: Apply the exact outfit from Image 2 — same colors, same style, same details and accessories. Include all accessories shown on the character.\nBACKGROUND: Replace the background completely with the background from Image 2 — same setting, same colors, same atmosphere. The original background from Image 1 must not appear.\nHEAD PROPORTIONS: Ensure the head size is naturally proportional to the body — realistic human proportions.\nFACE QUALITY: The face must be sharp, clear and well-lit.\nFull body shot, vertical format, photorealistic, professional quality.',
     modelImagen:  'fal-ai/nano-banana/edit',
-    modelImagen2: 'fal-ai/flux-pro/kontext/max/multi',
+    modelImagen2: 'fal-ai/nano-banana/edit',
     promptVideo:  'Video corto de 5 segundos con el personaje {tematica} saludando y diciendo ¡Feliz cumpleaños {nombre}! Estilo animación infantil, colorido y alegre.',
     precioImagen: 1500,
     precioVideo:  3500,
@@ -1525,11 +1525,11 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
           <span style={{fontSize:10,color:'#94a3b8'}}>Variables disponibles: {'{nombre}'}, {'{edad}'}, {'{personaje}'}. Podés escribirlo en inglés.</span>
         </label>
         <label style={{display:'block'}}><span style={S.label}>🤖 Modelo de IA para el "Disfraz"</span>
-          <select value={cfg.modelImagen2||'fal-ai/flux-pro/kontext/max/multi'} disabled={!editando} onChange={e=>set('modelImagen2',e.target.value)} style={{...S.input,...lockStyle}}>
-            <option value="fal-ai/flux-pro/kontext/max/multi">FLUX Kontext Max (recomendado para disfraz)</option>
-            <option value="fal-ai/nano-banana/edit">Nano-Banana (Gemini)</option>
+          <select value={cfg.modelImagen2||'fal-ai/nano-banana/edit'} disabled={!editando} onChange={e=>set('modelImagen2',e.target.value)} style={{...S.input,...lockStyle}}>
+            <option value="fal-ai/nano-banana/edit">Nano-Banana (Gemini) — recomendado</option>
+            <option value="fal-ai/flux-pro/kontext/max/multi">FLUX Kontext Max (ojo: a veces genera solo el personaje)</option>
           </select>
-          <span style={{fontSize:10,color:'#94a3b8'}}>El "Amigos" usa Nano-Banana. Probá cuál de los dos te da mejor el disfraz.</span>
+          <span style={{fontSize:10,color:'#94a3b8'}}>El "Amigos" usa Nano-Banana. Si querés cambiar el modelo del disfraz, elegí acá y Guardá.</span>
         </label>
       </div>
 
