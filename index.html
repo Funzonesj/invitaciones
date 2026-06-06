@@ -157,7 +157,17 @@ const _PAPA_PARAM = new URLSearchParams(_SEARCH).get('papa');
 let _PAPA_DATA = null;
 if(_PAPA_PARAM){try{_PAPA_DATA=JSON.parse(atob(_PAPA_PARAM));}catch(e){}}
 const INIT_INV_ID = _INV_PARAM || 'ev-1';
-const INIT_VISTA = _INV_PARAM ? 'invitado-portada' : (_PAPA_DATA ? 'papa-creador' : (_PAPA_PARAM ? 'papa-login' : 'admin-login'));
+// Sesiones recordadas en este dispositivo (para no poner la contraseña cada vez)
+let _ADMIN_SAVED=null;
+try{const s=localStorage.getItem('fz_admin_sesion');if(s)_ADMIN_SAVED=JSON.parse(s);}catch(e){}
+let _PAPA_SAVED=null;
+try{const raw=localStorage.getItem('fz_papa_sesion');if(raw){const o=JSON.parse(raw);if(o&&o.ev&&o.t&&(Date.now()-o.t<24*3600*1000)&&!estaVencido(o.ev))_PAPA_SAVED=o.ev;}}catch(e){}
+const INIT_VISTA = _INV_PARAM ? 'invitado-portada'
+  : (_PAPA_DATA ? 'papa-creador'
+  : (_PAPA_PARAM ? 'papa-login'
+  : (_PAPA_SAVED ? 'papa-creador'
+  : (_ADMIN_SAVED ? 'admin-dashboard'
+  : 'admin-login'))));
 
 function App() {
   function loadLS(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch(e){return def;}}
@@ -208,9 +218,9 @@ function App() {
     },
   }; const _iaSaved=loadLS('fz_iaconfig',null); return _iaSaved?{..._iaDef,..._iaSaved}:_iaDef; });
 
-  const [adminSesion, setAdminSesion] = useState(null);
+  const [adminSesion, setAdminSesion] = useState(_ADMIN_SAVED);
   const [sucActId,    setSucActId]    = useState('sz-1');
-  const [papaSesion,  setPapaSesion]  = useState(_PAPA_DATA || null);
+  const [papaSesion,  setPapaSesion]  = useState(_PAPA_DATA || (!_PAPA_PARAM ? _PAPA_SAVED : null));
   const [papaAviso,   setPapaAviso]   = useState('');
 
   const [invEvId,     setInvEvId]     = useState(INIT_INV_ID);
@@ -271,6 +281,10 @@ function App() {
   React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){}; if(dbReady){sbUpsertConfig('__config_suc__',sucursales);}},[sucursales]);
   React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){}; if(dbReady){sbUpsertConfig('__config_ia__',iaConfig);}},[iaConfig]);
   React.useEffect(()=>{try{localStorage.setItem('fz_usuarios',JSON.stringify(usuarios));}catch(e){}; if(dbReady){sbUpsertConfig('__config_usuarios__',usuarios);}},[usuarios]);
+  // Recordar sesión del admin/encargada en este dispositivo (no pedir contraseña cada vez)
+  React.useEffect(()=>{try{if(adminSesion)localStorage.setItem('fz_admin_sesion',JSON.stringify(adminSesion));else localStorage.removeItem('fz_admin_sesion');}catch(e){}},[adminSesion]);
+  // Recordar sesión del papá por 24hs
+  React.useEffect(()=>{try{if(papaSesion)localStorage.setItem('fz_papa_sesion',JSON.stringify({ev:papaSesion,t:Date.now()}));else localStorage.removeItem('fz_papa_sesion');}catch(e){}},[papaSesion]);
 
   const sucAct   = sucursales.find(s=>s.id===sucActId)||sucursales[0];
   const esSA     = adminSesion?.rol==='superadmin';
@@ -1576,7 +1590,7 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso}){
 }
 
 /* ── IA UPLOAD SECTION ───────────────────────────────────── */
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre=''}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA}){
   const fotoRef=useRef();
   const persRef=useRef();
   function componer9x16(src,accion){
@@ -1720,6 +1734,11 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             </div>
             <div style={{fontWeight:900,fontSize:20,color:'#1e293b'}}>${precio.toLocaleString('es-AR')}</div>
           </div>
+          {tipo==='imagen'&&typeof restantesIA==='number'&&(
+            <div style={{fontSize:11,fontWeight:700,textAlign:'center',marginBottom:10,color:restantesIA>0?'#16a34a':'#dc2626'}}>
+              {restantesIA>0?('✨ Te quedan '+restantesIA+' de 6 imágenes'):'⛔ Llegaste al límite de 6 imágenes'}
+            </div>
+          )}
           <button
             onClick={onPagar}
             disabled={!listo}
@@ -1955,6 +1974,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [pagoActivo,setPagoActivo]=useState(null);
   const [genActivo,setGenActivo]=useState(null);
   const [invGuardada,setInvGuardada]=useState(false);
+  const LIMITE_IA=6;
+  const genUsados=(papaSesion&&papaSesion.iaGenCount)||0;
+  function pedirGenerar(tipo){
+    if(genUsados>=LIMITE_IA){alert('Llegaste al límite de '+LIMITE_IA+' imágenes generadas para este evento. Si necesitás más, consultá con el salón.');return;}
+    setPagoActivo(tipo);
+  }
   const [seccion,setSeccion]=useState('tarjeta');
   const [kidActivo,setKidActivo]=useState(1);
   const [shortLinkLoading,setShortLinkLoading]=useState(false);
@@ -2289,7 +2314,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>setPagoActivo('imagen')} onDescartar={()=>setForm(f=>({...f,iaImagenes:[],usarFoto:false}))} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:true}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''}/>
+              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>setForm(f=>({...f,iaImagenes:[],usarFoto:false}))} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:true}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={LIMITE_IA-genUsados}/>
             )}
             {modoPortada==='ia-video'&&(
               <IAUploadSection tipo="video" precio={iaConfig.precioVideo} resultados={form.iaVideos||[]} onPagar={()=>setPagoActivo('video')} onDescartar={()=>setForm(f=>({...f,iaVideos:[]}))} onUsar={idx=>setForm(f=>({...f,iaVideoSel:idx}))} selIdx={form.iaVideoSel} fotoNino={form.fotoNinoIAV||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIAV:v}))} personaje={form.personajeIAV||''} setPersonaje={v=>setForm(f=>({...f,personajeIAV:v}))} tematicas={tematicas}/>
@@ -2638,7 +2663,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===(genActivo==='imagen'?form.personajeIA:form.personajeIAV))||{}).nombre||temA.nombre} onResultado={imgs=>{if(genActivo==='imagen')setForm(f=>({...f,iaImagenes:imgs,iaImagenSel:null}));else setForm(f=>({...f,iaVideos:imgs,iaVideoSel:null}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===(genActivo==='imagen'?form.personajeIA:form.personajeIAV))||{}).nombre||temA.nombre} onResultado={imgs=>{if(genActivo==='imagen'){setForm(f=>({...f,iaImagenes:imgs,iaImagenSel:null}));setPapaSesion(ps=>{const n={...ps,iaGenCount:((ps&&ps.iaGenCount)||0)+1};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaGenCount:n.iaGenCount}:e));return n;});}else setForm(f=>({...f,iaVideos:imgs,iaVideoSel:null}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
     </div>
   );
 }
