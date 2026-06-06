@@ -1877,8 +1877,8 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             <div style={{fontWeight:700,fontSize:13,color:colorIA}}>Subir foto del niño/a</div>
             <div style={{fontSize:10,color:'#94a3b8',marginTop:2}}>JPG, PNG · De la cintura para arriba</div>
           </div>
-          :<div style={{position:'relative',borderRadius:12,overflow:'hidden',height:240,background:'#0f172a'}}>
-            <img src={fotoNino} alt="foto niño" style={{width:'100%',height:'100%',objectFit:'contain'}}/>
+          :<div style={{position:'relative',borderRadius:12,overflow:'hidden',height:260,background:'#0f172a'}}>
+            <img src={fotoNino} alt="foto niño" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top center'}}/>
             <button onClick={()=>setFotoNino('')} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
             <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,.5)',padding:'4px 8px',fontSize:10,color:'white',textAlign:'center'}}>✅ Foto cargada</div>
           </div>
@@ -1896,8 +1896,8 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
         <input ref={persRef} type="file" accept="image/*" style={{display:'none'}} onChange={onPickPers}/>
         {/* Personaje ya seleccionado */}
         {personaje&&(
-          <div style={{position:'relative',borderRadius:12,overflow:'hidden',height:240,background:'#0f172a',marginBottom:8}}>
-            <img src={personaje} alt="personaje" style={{width:'100%',height:'100%',objectFit:'contain'}}/>
+          <div style={{position:'relative',borderRadius:12,overflow:'hidden',height:260,background:'#0f172a',marginBottom:8}}>
+            <img src={personaje} alt="personaje" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top center'}}/>
             <button onClick={()=>setPersonaje('')} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',fontSize:13,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
             <div style={{position:'absolute',bottom:0,left:0,right:0,background:'rgba(0,0,0,.6)',padding:'4px 8px',fontSize:10,color:'white',textAlign:'center'}}>✅ Personaje seleccionado</div>
           </div>
