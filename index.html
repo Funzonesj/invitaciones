@@ -583,7 +583,7 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
             <pre style={{fontSize:11,color:'#334155',whiteSpace:'pre-wrap',wordBreak:'break-word',fontFamily:'monospace',lineHeight:1.5,margin:0,paddingRight:70}}>{prompt}</pre>
             <button onClick={copiar} style={{position:'absolute',top:8,right:8,...S.btn,padding:'5px 10px',fontSize:11,background:'#fff',border:'1px solid #e2e8f0',color:'#475569'}}>{copiado?'✓ Copiado':'📋 Copiar'}</button>
           </div>
-          <a href={resultUrl} download="personaje_catalogo.png" target="_blank" rel="noopener" style={{...S.btn,display:'block',textAlign:'center',background:'#fff',border:'1px solid #e2e8f0',color:'#1e293b',marginBottom:8,textDecoration:'none'}}>⬇️ Descargar imagen</a>
+          <button onClick={()=>{fetch(resultUrl).then(r=>r.blob()).then(blob=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='personaje_catalogo.png';document.body.appendChild(a);a.click();document.body.removeChild(a);}).catch(()=>window.open(resultUrl,'_blank'));}} style={{...S.btn,width:'100%',background:'#fff',border:'1px solid #e2e8f0',color:'#1e293b',marginBottom:8}}>⬇️ Descargar imagen</button>
           <button onClick={agregarATematicas} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white'}}>➕ Agregar a Portadas/Temáticas</button>
         </div>
       )}
