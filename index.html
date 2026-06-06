@@ -487,15 +487,13 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
   async function generar(){
     setErr('');setMsg('');
     if(!img){setErr('Subí una imagen primero');return;}
-    const p=opt==='3d'?prompt3D:promptEnhance;
+    const p=(opt==='3d'?prompt3D:promptEnhance)+' Mantené el MISMO personaje de la imagen (mismos rasgos, ropa y colores), no lo cambies por otro.';
     setPrompt(p);setCargando(true);setResultUrl('');
     try{
-      const isI2I=model==='fal-ai/flux-pro/kontext';
-      const size=ratio==='9:16'?{width:768,height:1366}:ratio==='1:1'?{width:1024,height:1024}:{width:1024,height:768};
-      const resp=await fetch('/api/generar-catalogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,image:img,model,size,isI2I})});
+      const resp=await fetch('/api/generar-catalogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p,images:[img],model:'fal-ai/nano-banana/edit',aspect_ratio:ratio})});
       const data=await resp.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
       if(!resp.ok)throw new Error(data.error||'No se pudo generar.');
-      if(!data.url)throw new Error('No se recibió imagen. Probá otro modelo.');
+      if(!data.url)throw new Error('No se recibió imagen. Probá de nuevo.');
       setResultUrl(data.url);
     }catch(e){setErr(String((e&&e.message)||e));}
     finally{setCargando(false);}
@@ -543,22 +541,13 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
         {optBtn('enhance','✨','Mejorar calidad','Mantiene el estilo')}
       </div>
 
-      <div style={{display:'flex',gap:8,marginBottom:14}}>
-        <label style={{flex:1}}><span style={S.label}>Modelo</span>
-          <select value={model} onChange={e=>setModel(e.target.value)} style={S.input}>
-            <option value="fal-ai/flux-pro/kontext/text-to-image">flux-pro kontext (texto→imagen)</option>
-            <option value="fal-ai/flux-pro/kontext/max/text-to-image">flux-pro kontext max (mejor)</option>
-            <option value="fal-ai/flux-pro/kontext">flux-pro kontext (imagen→imagen)</option>
-          </select>
-        </label>
-        <label style={{flex:1}}><span style={S.label}>Formato</span>
-          <select value={ratio} onChange={e=>setRatio(e.target.value)} style={S.input}>
-            <option value="9:16">9:16 vertical ✅</option>
-            <option value="1:1">1:1 cuadrado</option>
-            <option value="4:3">4:3 horizontal</option>
-          </select>
-        </label>
-      </div>
+      <label style={{display:'block',marginBottom:14}}><span style={S.label}>Formato</span>
+        <select value={ratio} onChange={e=>setRatio(e.target.value)} style={S.input}>
+          <option value="9:16">9:16 vertical ✅</option>
+          <option value="1:1">1:1 cuadrado</option>
+          <option value="4:3">4:3 horizontal</option>
+        </select>
+      </label>
 
       {err&&<div style={{background:'#FCEBEB',border:'1px solid #F09595',color:'#a32d2d',padding:'10px 14px',borderRadius:10,fontSize:12,marginBottom:12}}>{err}</div>}
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:10,fontSize:12,marginBottom:12,fontWeight:700}}>{msg}</div>}
