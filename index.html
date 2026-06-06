@@ -2009,6 +2009,11 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
               {selIdx===null?'👆 Elegí una imagen primero':'👁 Ver Tarjeta'}
             </button>
           )}
+          {tipo==='imagen'&&onDescartar&&(
+            <button onClick={()=>{if(window.confirm('¿Borrar TODAS las imágenes generadas de esta tarjeta? No se puede deshacer.'))onDescartar();}} style={{...S.btn,width:'100%',background:'#fef2f2',color:'#dc2626',fontSize:12,marginTop:10}}>
+              🗑 Borrar historial de imágenes
+            </button>
+          )}
         </div>
       )}
 
@@ -2630,7 +2635,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}))} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={verTarjeta} onBorrar={borrarIaImg}/>
+              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={verTarjeta} onBorrar={borrarIaImg}/>
             )}
             {modoPortada==='ia-video'&&(
               <IAUploadSection tipo="video" precio={iaConfig.precioVideo} resultados={form.iaVideos||[]} onPagar={()=>setPagoActivo('video')} onDescartar={()=>setForm(f=>({...f,iaVideos:[]}))} onUsar={idx=>setForm(f=>({...f,iaVideoSel:idx}))} selIdx={form.iaVideoSel} fotoNino={form.fotoNinoIAV||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIAV:v}))} personaje={form.personajeIAV||''} setPersonaje={v=>setForm(f=>({...f,personajeIAV:v}))} tematicas={tematicas}/>
