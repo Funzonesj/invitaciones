@@ -196,6 +196,15 @@ function App() {
     promptVideo:  'Video corto de 5 segundos con el personaje {tematica} saludando y diciendo ¡Feliz cumpleaños {nombre}! Estilo animación infantil, colorido y alegre.',
     precioImagen: 1500,
     precioVideo:  3500,
+    txtTarjeta: {
+      portadaSub:'¿Descubrí dónde es el evento?',
+      portadaBtn:'Abrir Invitación',
+      festejoEn:'Festejo en el salón',
+      cuentaRegresiva:'Cuenta regresiva',
+      ubicadoEn:'se encuentra ubicado en',
+      confTitulo:'Confirmar tu asistencia',
+      confSub:'es muy importante. ¡Muchas gracias!',
+    },
     apiImagen:    '',
     apiVideo:     '',
     promptMejora: 'Mejorá la foto del niño/a: balance de color, brillo, contraste y nitidez para que se vea profesional en la invitación.',
@@ -315,7 +324,7 @@ function App() {
   }
   function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
 
-  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-catalogo-ia','admin-mejorador','admin-config'].includes(vista);
+  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-catalogo-ia','admin-mejorador','admin-diseno','admin-config'].includes(vista);
   const isPapa  = ['papa-login','papa-creador'].includes(vista);
 
   // Mientras carga la base de datos en links de invitación/papá, mostrar cargando
@@ -409,6 +418,7 @@ function App() {
         {vista==='admin-ia'          && esSA && <AdminIA setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-catalogo'    && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-catalogo-ia' && esSA && <AdminCatalogoIA setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
+        {vista==='admin-diseno'      && esSA && <AdminDisenoTarjeta setVista={setVista} sucAct={sucAct} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-mejorador'   && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas} modo="mejorador"/>}
         {vista==='admin-config'      && esSA && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
@@ -416,8 +426,8 @@ function App() {
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso}/>}
         {vista==='papa-creador'      && papaSesion&&<PapaCreador setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs}/>}
-        {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
-        {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
+        {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
+        {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} iaConfig={iaConfig} volverInv={adminSesion?'admin-eventos':(papaSesion?'papa-creador':null)}/>}
       </main>
 
       {vista!=='invitado-portada'&&vista!=='invitado-web'&&(
@@ -648,6 +658,56 @@ function AdminCatalogoIA({setVista,tematicas,setTematicas}){
   );
 }
 
+/* ── ADMIN DISEÑO DE TARJETA ─────────────────────────────── */
+function AdminDisenoTarjeta({setVista,sucAct,iaConfig,setIaConfig}){
+  const def={portadaSub:'¿Descubrí dónde es el evento?',portadaBtn:'Abrir Invitación',festejoEn:'Festejo en el salón',cuentaRegresiva:'Cuenta regresiva',ubicadoEn:'se encuentra ubicado en',confTitulo:'Confirmar tu asistencia',confSub:'es muy importante. ¡Muchas gracias!'};
+  const T={...def,...((iaConfig&&iaConfig.txtTarjeta)||{})};
+  const col=sucAct.color||'#f97316';
+  const [editId,setEditId]=useState(null);
+  const [msg,setMsg]=useState('');
+  function set(k,v){setIaConfig(c=>({...c,txtTarjeta:{...def,...(c.txtTarjeta||{}),[k]:v}}));}
+  function ed(k,style){
+    if(editId===k)return <span onClick={e=>e.stopPropagation()} style={{display:'inline-flex',gap:4,alignItems:'center',flexWrap:'wrap',justifyContent:'center'}}><input value={T[k]} onChange={e=>set(k,e.target.value)} style={{...S.input,fontSize:13,width:210,color:'#1e293b'}} autoFocus/><button onClick={()=>{setEditId(null);setMsg('✓ Guardado');setTimeout(()=>setMsg(''),1500);}} style={{...S.btn,background:'#16a34a',color:'white',padding:'5px 9px',fontSize:11}}>✓</button></span>;
+    return <span onClick={()=>setEditId(k)} style={{...style,cursor:'pointer',display:'inline-block',borderRadius:6,padding:'1px 6px',outline:'1px dashed rgba(120,120,120,.4)'}}>{T[k]} ✏️</span>;
+  }
+  return(
+    <div className="fade-in" style={{maxWidth:520,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🎴 Diseño de Tarjeta</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:14}}>Así se ve la invitación. Tocá el ✏️ en cualquier texto para editarlo (se guarda solo).</p>
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'8px 12px',borderRadius:10,fontSize:12,marginBottom:12,fontWeight:700}}>{msg}</div>}
+      <div style={{borderRadius:18,overflow:'hidden',border:'1px solid #e2e8f0',boxShadow:'0 6px 24px rgba(0,0,0,.08)'}}>
+        <div style={{background:col,padding:'28px 18px',textAlign:'center',color:'white'}}>
+          <div style={{width:64,height:64,borderRadius:'50%',background:'white',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:30,marginBottom:10,overflow:'hidden'}}>{sucAct.logo?<img src={sucAct.logo} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:(sucAct.emoji||'🎪')}</div>
+          <p style={{fontSize:11,letterSpacing:1,textTransform:'uppercase',opacity:.9,margin:'0 0 6px'}}>{sucAct.portadaFrase||'Recibiste una invitación'}</p>
+          <div style={{fontSize:30,fontWeight:900,margin:'0 0 14px'}}>Nombre</div>
+          <div style={{margin:'0 0 16px'}}>{ed('portadaSub',{fontSize:14,color:'white'})}</div>
+          <div style={{display:'inline-block',background:'white',color:col,borderRadius:99,padding:'10px 22px',fontWeight:800}}>{ed('portadaBtn',{color:col})}</div>
+        </div>
+        <div style={{background:'white',padding:'18px',textAlign:'center'}}>
+          <div style={{borderTop:'1px solid #f0f0f0',borderBottom:'1px solid #f0f0f0',padding:'14px 0',marginBottom:12}}>
+            {ed('festejoEn',{fontSize:18,color:'#333'})}
+            <div style={{color:col,fontSize:22,fontWeight:900,textTransform:'uppercase',marginTop:6}}>{sucAct.nombre}</div>
+          </div>
+          <div style={{background:'#f8fafc',borderRadius:12,padding:12,marginBottom:12}}>
+            {ed('cuentaRegresiva',{fontSize:12,color:'#888',fontWeight:700})}
+            <div style={{display:'flex',justifyContent:'center',gap:8,marginTop:8}}>{['00','00','00','00'].map((v,i)=><div key={i} style={{background:'white',borderRadius:8,padding:'6px 10px',minWidth:42}}><div style={{fontSize:20,fontWeight:900,color:col}}>{v}</div></div>)}</div>
+          </div>
+          <div style={{borderTop:'1px solid #f0f0f0',paddingTop:12}}>
+            {ed('ubicadoEn',{fontSize:13,color:'#888'})}
+            <div style={{color:'#1e293b',fontWeight:700,marginTop:4}}>{sucAct.direccion||'Dirección del salón'}</div>
+          </div>
+          <div style={{borderTop:'1px solid #f0f0f0',marginTop:14,paddingTop:14}}>
+            <div style={{marginBottom:6}}>{ed('confTitulo',{fontSize:18,fontWeight:900,color:'#1e293b'})}</div>
+            {ed('confSub',{fontSize:13,color:'#888'})}
+          </div>
+        </div>
+      </div>
+      <p style={{fontSize:10,color:'#94a3b8',marginTop:12,textAlign:'center'}}>El nombre, la fecha y la cuenta regresiva se completan solos con los datos de cada evento.</p>
+    </div>
+  );
+}
+
 /* ── ADMIN DASHBOARD ─────────────────────────────────────── */
 function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaConfig}){
   const [edit,setEdit]=useState(false);
@@ -664,6 +724,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
     {e:'⚙️',t:'Usuarios & Sucursales',s:'Cuentas y salones',           v:'admin-usuarios',   bdr:'#94a3b8',ownerOnly:true},
     {e:'🍽️',t:'Menú Interactivo',      s:'Prompt y comidas',            v:'admin-menu',       bdr:'#f59e0b',ownerOnly:true},
     {e:'🎟️',t:'Formatos de Tarjeta',   s:'Por tipo de evento',          v:'admin-formatos',   bdr:'#ec4899',ownerOnly:true},
+    {e:'🎴',t:'Diseño de Tarjeta',     s:'Editar textos de la invitación',v:'admin-diseno',    bdr:'#d946ef',ownerOnly:true},
     {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a',ownerOnly:true},
     {e:'🤖',t:'IA & Precios',          s:'Prompts y API keys',          v:'admin-ia',         bdr:'#8b5cf6',ownerOnly:true},
     {e:'🎨',t:'Generador de imagen IA', s:'Crear en 3D o mejorar',        v:'admin-catalogo',   bdr:'#534AB7',ownerOnly:true},
@@ -2784,10 +2845,11 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
 
 /* ── INVITADO PORTADA ────────────────────────────────────── */
-function InvPortada({setVista,eventos,invEvId,sucursales,volverInv}){
+function InvPortada({setVista,eventos,invEvId,sucursales,iaConfig,volverInv}){
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
   const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
   const col=suc.color||'#f97316';
+  const T=(iaConfig&&iaConfig.txtTarjeta)||{};
   const tituloPortada = ev ? (ev.nombre||ev.tipo||'¡Te esperamos!') : '...';
   React.useEffect(()=>{
     const container=document.getElementById('confetti-container');
@@ -2814,9 +2876,9 @@ function InvPortada({setVista,eventos,invEvId,sucursales,volverInv}){
         {suc.logo?<img src={suc.logo} alt={suc.nombre} style={{width:90,height:90,borderRadius:'50%',objectFit:'cover',border:'4px solid white',boxShadow:'0 4px 20px rgba(0,0,0,.2)',marginBottom:24}}/>:<div style={{fontSize:52,marginBottom:20}}>{'🎉'}</div>}
         <p style={{color:'rgba(255,255,255,.9)',fontSize:13,fontWeight:600,letterSpacing:2,textTransform:'uppercase',margin:'0 0 10px'}}>{suc.portadaFrase||'Recibiste una invitacion de'}</p>
         <h1 style={{color:'white',fontSize:40,fontWeight:900,margin:'0 0 24px',textShadow:'0 2px 16px rgba(0,0,0,.25)',lineHeight:1.1}}>{tituloPortada}</h1>
-        <p style={{color:'rgba(255,255,255,.8)',fontSize:15,margin:'0 0 28px'}}>Descubri donde es el evento?</p>
+        <p style={{color:'rgba(255,255,255,.8)',fontSize:15,margin:'0 0 28px'}}>{T.portadaSub||'¿Descubrí dónde es el evento?'}</p>
         <button onClick={()=>setVista('invitado-web')} style={{background:'white',color:col,fontWeight:800,fontSize:16,border:'none',borderRadius:99,padding:'16px 48px',cursor:'pointer',boxShadow:'0 8px 32px rgba(0,0,0,.15)'}}>
-          Abrir Invitacion
+          {T.portadaBtn||'Abrir Invitación'}
         </button>
         <p style={{marginTop:36,color:'rgba(255,255,255,.35)',fontSize:11}}>{'by '+suc.nombre+' - Invitaciones Digitales'}</p>
       </div>
@@ -2825,7 +2887,8 @@ function InvPortada({setVista,eventos,invEvId,sucursales,volverInv}){
 }
 
 /* ── INVITADO WEB ─────────────────────────────────────────── */
-function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,volverInv}){
+function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,iaConfig,volverInv}){
+  const T=(iaConfig&&iaConfig.txtTarjeta)||{};
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
   const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
   const tem=tematicas.find(t=>t.id===ev?.temId)||tematicas[0];
@@ -2948,7 +3011,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
           </div>
         ):(
           <div style={{background:'#f8fafc',borderRadius:16,padding:'14px 10px',marginBottom:8}}>
-            <p style={{fontSize:12,color:'#888',margin:'0 0 8px',fontWeight:600}}>Cuenta regresiva</p>
+            <p style={{fontSize:12,color:'#888',margin:'0 0 8px',fontWeight:600}}>{T.cuentaRegresiva||'Cuenta regresiva'}</p>
             <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6}}>
               {[['dias',countdown.dias],['horas',countdown.horas],['min',countdown.mins],['seg',countdown.segs]].map(([lbl,val])=>(
                 <div key={lbl} style={{background:'white',borderRadius:12,padding:'10px 4px',boxShadow:'0 2px 8px rgba(0,0,0,.08)'}}>
@@ -2963,7 +3026,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
 
       {/* 8. FESTEJO EN EL SALON */}
       <div style={{textAlign:'center',padding:'16px 20px',borderTop:'1px solid #f0f0f0',borderBottom:'1px solid #f0f0f0'}}>
-        <p style={{color:'#333',fontSize:22,margin:'0 0 4px',fontWeight:400}}>Festejo en el salón</p>
+        <p style={{color:'#333',fontSize:22,margin:'0 0 4px',fontWeight:400}}>{T.festejoEn||'Festejo en el salón'}</p>
         <p style={{color:col,fontSize:28,fontWeight:900,margin:0,textTransform:'uppercase'}}>{suc.nombre}</p>
       </div>
 
@@ -2980,7 +3043,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
 
       {/* 10. DIRECCIÓN */}
       <div style={{padding:'20px',textAlign:'center',borderBottom:'1px solid #f0f0f0'}}>
-        <p style={{color:'#888',fontSize:14,margin:'0 0 4px'}}>se encuentra ubicado en</p>
+        <p style={{color:'#888',fontSize:14,margin:'0 0 4px'}}>{T.ubicadoEn||'se encuentra ubicado en'}</p>
         <a href={'https://maps.google.com/?q='+encodeURIComponent(suc.direccion||'')} target="_blank"
           style={{color:'#1e293b',fontSize:17,fontWeight:700,textDecoration:'underline',textDecorationColor:col,display:'block'}}>
           {suc.direccion}
@@ -3013,8 +3076,8 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
 
       {/* 12. CONFIRMAR ASISTENCIA */}
       <div style={{margin:'0 16px 12px',border:'2px dashed '+col,borderRadius:18,padding:'16px',textAlign:'center'}}>
-        <p style={{fontSize:24,fontWeight:900,color:'#1e293b',margin:'0 0 4px'}}>Confirmar tu asistencia</p>
-        <p style={{fontSize:14,color:'#888',margin:0}}>es muy importante. Muchas Gracias.</p>
+        <p style={{fontSize:24,fontWeight:900,color:'#1e293b',margin:'0 0 4px'}}>{T.confTitulo||'Confirmar tu asistencia'}</p>
+        <p style={{fontSize:14,color:'#888',margin:0}}>{T.confSub||'es muy importante. ¡Muchas gracias!'}</p>
       </div>
 
       {/* 13. FORM */}
