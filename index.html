@@ -1513,13 +1513,13 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
         <button onClick={()=>setEditando(e=>!e)} style={{...S.btn,background:editando?'#64748b':'#0ea5e9',color:'white',padding:'7px 14px',fontSize:12,whiteSpace:'nowrap'}}>{editando?'🔒 Bloquear':'✏️ Editar'}</button>
       </div>
 
-      {servicio('Imagen IA','🖼️','promptImagen','apiImagen','precioImagen','Una fotografía de {nombre}, {edad} años, con temática {tematica}...')}
+      {servicio('Imagen IA — Estilo "Amigos" (Prompt 1)','🤝','promptImagen','apiImagen','precioImagen','El niño/a junto a su personaje favorito...')}
 
       <div style={{...S.card,marginBottom:14,border:'1px solid #bae6fd'}}>
-        <h3 style={{fontWeight:900,fontSize:15,marginBottom:4}}>🖼️ Imagen IA — Segundo estilo (Prompt B)</h3>
-        <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Del pack de 6 imágenes, 3 se generan con el prompt de arriba (Prompt A) y 3 con este (Prompt B). Así el papá tiene más variedad para elegir.</p>
-        <label style={{display:'block',marginBottom:6}}><span style={S.label}>Prompt B (segundo estilo)</span>
-          <textarea value={cfg.promptImagen2||''} readOnly={!editando} onChange={e=>set('promptImagen2',e.target.value)} rows={6} style={{...S.input,resize:'vertical',fontFamily:'inherit',...lockStyle}} placeholder="Pegá aquí el segundo prompt (ej: transformar al niño/a en el personaje)..."/>
+        <h3 style={{fontWeight:900,fontSize:15,marginBottom:4}}>🎭 Imagen IA — Estilo "Disfraz" (Prompt 2)</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Del pack de 6 imágenes: <b>3 se generan con el estilo "Amigos"</b> (de arriba) y <b>3 con el estilo "Disfraz"</b> (este). Así el papá tiene más variedad para elegir.</p>
+        <label style={{display:'block',marginBottom:6}}><span style={S.label}>Prompt del estilo "Disfraz"</span>
+          <textarea value={cfg.promptImagen2||''} readOnly={!editando} onChange={e=>set('promptImagen2',e.target.value)} rows={6} style={{...S.input,resize:'vertical',fontFamily:'inherit',...lockStyle}} placeholder="Pegá aquí el prompt del disfraz (transformar al niño/a en el personaje)..."/>
           <span style={{fontSize:10,color:'#94a3b8'}}>Variables disponibles: {'{nombre}'}, {'{edad}'}, {'{personaje}'}. Podés escribirlo en inglés.</span>
         </label>
       </div>
