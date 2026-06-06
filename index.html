@@ -2338,7 +2338,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <p style={{fontSize:11,color:'#64748b',margin:0}}>{papaSesion.tipo||'Cumpleaños'} de <b>{papaSesion.nombre}</b> · {papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin} hs</p>
         </div>
         <div style={{display:'flex',gap:8}}>
-          <button onClick={()=>{setInvEvId(papaSesion.id);setVista('invitado-portada');}} style={{...S.btn,background:'#7c3aed',color:'white'}}>👁 Ver Tarjeta</button>
+          <button onClick={()=>{const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}} style={{...S.btn,background:'#7c3aed',color:'white'}}>👁 Ver Tarjeta</button>
           <button onClick={()=>{setPapaSesion(null);setVista('papa-login');}} style={{...S.btn,background:'#f1f5f9',color:'#64748b'}}>Salir</button>
         </div>
       </div>
