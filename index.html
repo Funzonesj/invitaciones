@@ -2840,8 +2840,8 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
   const fTitDest = ev && ev.fmtTitDest;
   const fotos=(suc.fotos||[]).filter(f=>f&&f.length>0);
   const [nom,setNom]=useState('');
-  const [ad,setAd]=useState(1);
-  const [ni,setNi]=useState(1);
+  const [ad,setAd]=useState('');
+  const [ni,setNi]=useState('');
   const [cel,setCel]=useState('');
   const [ok,setOk]=useState(false);
   const [countdown,setCountdown]=useState({dias:0,horas:0,mins:0,segs:0,llego:false});
@@ -2866,8 +2866,10 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
 
   function conf(e){
     e.preventDefault();
+    const nNi=+ni||0, nAd=+ad||0;
+    if(nNi+nAd<1){alert('Indicá al menos 1 invitado (niños o adultos).');return;}
     setConfs(prev=>{
-      const updated=[...prev,{id:'c-'+Date.now(),evId:ev.id,invitado:nom,adultos:ad,ninos:ni,cel}];
+      const updated=[...prev,{id:'c-'+Date.now(),evId:ev.id,invitado:nom,adultos:nAd,ninos:nNi,cel}];
       try{localStorage.setItem('fz_confs',JSON.stringify(updated));}catch(err){}
       return updated;
     });
@@ -2881,13 +2883,13 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
       nom+' confirma asistencia al '+ev.tipo+' de '+ev.nombre,
       'Fecha: '+fecha,
       '',
-      'Asistimos: '+ni+' ninos y '+ad+' adultos',
+      'Asistimos: '+nNi+' ninos y '+nAd+' adultos',
       '',
       'Invitacion: '+link,
     ];
     setTimeout(()=>{
       window.open('https://wa.me/'+waNum(ev.celPapa)+'?text='+encodeURIComponent(lineas.join('\n')),'_blank');
-      setNom('');setCel('');setAd(1);setNi(1);setOk(false);
+      setNom('');setCel('');setAd('');setNi('');setOk(false);
     },1800);
   }
 
@@ -3025,9 +3027,9 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,vo
             <input value={nom} onChange={e=>setNom(e.target.value)} placeholder="Tu nombre" required style={{...S.input,border:'1px solid '+col+'66',fontSize:14}}/>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
               <div><label style={{fontSize:11,color:'#888',display:'block',marginBottom:2}}>Ninos</label>
-                <input type="number" value={ni} onChange={e=>setNi(e.target.value)} min={0} style={{...S.input,border:'1px solid '+col+'66',textAlign:'center',fontSize:14}}/></div>
+                <input type="number" value={ni} onChange={e=>setNi(e.target.value)} min={0} placeholder="0" style={{...S.input,border:'1px solid '+col+'66',textAlign:'center',fontSize:14}}/></div>
               <div><label style={{fontSize:11,color:'#888',display:'block',marginBottom:2}}>Adultos</label>
-                <input type="number" value={ad} onChange={e=>setAd(e.target.value)} min={1} style={{...S.input,border:'1px solid '+col+'66',textAlign:'center',fontSize:14}}/></div>
+                <input type="number" value={ad} onChange={e=>setAd(e.target.value)} min={0} placeholder="0" style={{...S.input,border:'1px solid '+col+'66',textAlign:'center',fontSize:14}}/></div>
             </div>
             <input value={cel} onChange={e=>setCel(e.target.value)} placeholder="Tu celular" required style={{...S.input,border:'1px solid '+col+'66',fontSize:14}}/>
             <button type="submit" style={{...S.btn,background:col,color:'white',padding:12,fontSize:14,width:'100%'}}>Confirmar Asistencia</button>
