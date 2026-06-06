@@ -1776,7 +1776,7 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso}){
 }
 
 /* ── IA UPLOAD SECTION ───────────────────────────────────── */
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta,onBorrar}){
   const fotoRef=useRef();
   const persRef=useRef();
   function guardarFoto(src){
@@ -2021,7 +2021,10 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             <button onClick={()=>{onUsar(zoom.i);setZoom(null);}} style={{...S.btn,flex:2,background:selIdx===zoom.i?'#16a34a':'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'14px',fontSize:14,fontWeight:900}}>{selIdx===zoom.i?'✓ Es tu portada':'✓ Elegir para la tarjeta'}</button>
             <button onClick={()=>guardarFoto(zoom.src)} style={{...S.btn,flex:1,background:'rgba(255,255,255,.15)',color:'white',padding:'14px',fontSize:13,fontWeight:800}}>⬇️</button>
           </div>
-          <button onClick={(e)=>{e.stopPropagation();setZoom(null);}} style={{marginTop:12,background:'none',border:'none',color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Cerrar</button>
+          {onBorrar&&(
+            <button onClick={(e)=>{e.stopPropagation();if(window.confirm('¿Borrar esta imagen?')){onBorrar(zoom.i);setZoom(null);}}} style={{marginTop:12,background:'rgba(220,38,38,.85)',border:'none',borderRadius:10,color:'white',fontSize:13,fontWeight:800,cursor:'pointer',padding:'9px 18px'}}>🗑 Borrar esta imagen</button>
+          )}
+          <button onClick={(e)=>{e.stopPropagation();setZoom(null);}} style={{marginTop:10,background:'none',border:'none',color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Cerrar</button>
         </div>
       )}
     </div>
@@ -2260,6 +2263,15 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
   function guardar(e){e.preventDefault();const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvGuardada(true);alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');}
   function verTarjeta(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}
+  function borrarIaImg(i){
+    const arr=(form.iaImagenes||[]).filter((_,idx)=>idx!==i);
+    let sel=form.iaImagenSel;
+    if(sel===i) sel=arr.length?0:null;
+    else if(sel!=null&&sel>i) sel=sel-1;
+    const src=(sel!=null&&arr[sel])?arr[sel]:'';
+    setForm(f=>({...f,iaImagenes:arr,iaImagenSel:sel,portadaSrc:src}));
+    setPapaSesion(ps=>{const n={...ps,iaImagenes:arr,iaImagenSel:sel,portadaSrc:src};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:arr,iaImagenSel:sel,portadaSrc:src}:e));return n;});
+  }
   function descargarInvitacion(){
     const W=540,H=960;
     const canvas=document.createElement('canvas');
@@ -2618,7 +2630,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}))} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={verTarjeta}/>
+              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}))} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={verTarjeta} onBorrar={borrarIaImg}/>
             )}
             {modoPortada==='ia-video'&&(
               <IAUploadSection tipo="video" precio={iaConfig.precioVideo} resultados={form.iaVideos||[]} onPagar={()=>setPagoActivo('video')} onDescartar={()=>setForm(f=>({...f,iaVideos:[]}))} onUsar={idx=>setForm(f=>({...f,iaVideoSel:idx}))} selIdx={form.iaVideoSel} fotoNino={form.fotoNinoIAV||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIAV:v}))} personaje={form.personajeIAV||''} setPersonaje={v=>setForm(f=>({...f,personajeIAV:v}))} tematicas={tematicas}/>
