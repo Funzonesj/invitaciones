@@ -544,7 +544,7 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
     <div className="fade-in" style={{maxWidth:560,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
       <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>{esMejorador?'🪄 Mejorador de imagen':'🎨 Generador de Catálogo'}</h1>
-      <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>{esMejorador?'Subí una foto y mejorá su calidad (nitidez, color, resolución) con IA, sin cambiar el estilo.':'Subí un personaje y generá su versión para el catálogo (3D o mejorada) con fal.ai.'}</p>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>{esMejorador?'Subí una foto y mejorá su calidad (nitidez, color, resolución) con IA, sin cambiar el estilo.':'Subí un personaje y generá su versión en 3D estilo Pixar para el catálogo.'}</p>
 
       <label style={S.label}>Imagen del personaje</label>
       <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={onFile}/>
@@ -555,10 +555,8 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
       </div>
       <button type="button" onClick={pegarImagen} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#334155',marginBottom:14}}>📋 Pegar imagen del portapapeles</button>
 
-      <label style={S.label}>¿Qué querés hacer?</label>
-      <div style={{display:'flex',gap:8,marginBottom:14}}>
-        {optBtn('3d','🧊','Crear en 3D','Estilo Pixar HD')}
-        {optBtn('enhance','✨','Mejorar calidad','Mantiene el estilo')}
+      <div style={{background:esMejorador?'#e0f2fe':'#EEEDFE',border:'1px solid '+(esMejorador?'#bae6fd':'#ddd6fe'),borderRadius:10,padding:'10px 12px',marginBottom:14,fontSize:12,fontWeight:700,color:esMejorador?'#075985':'#3C3489'}}>
+        {esMejorador?'🪄 Mejora la calidad de la imagen (mantiene el estilo, la lleva a 9:16)':'🧊 Convierte el personaje a 3D estilo Pixar para el catálogo'}
       </div>
 
       <label style={{display:'block',marginBottom:14}}><span style={S.label}>Formato</span>
