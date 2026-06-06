@@ -193,6 +193,7 @@ function App() {
       {id:'escuela',  nombre:'Escuela / Jardín', edad:false, mostrarNombre:false, tituloDestacado:true, titulo:'¡Festejemos juntos el Día del Niño!',           dirigido:'Estimada maestra'},
     ],
     promptImagen: 'Creá una imagen tierna y divertida de cumpleaños infantil: el niño/a de la primera foto compartiendo con {personaje}, ambos contentos y sonriendo. Estilo alegre y familiar, colores vibrantes.',
+    promptImagen2: 'I have two images attached.\nImage 1 is the person (the real person whose face, hair, skin tone and body proportions must be preserved exactly).\nImage 2 is the character reference (the costume, accessories and background to apply).\nTASK: Dress the person from Image 1 in the exact costume from Image 2. This is a costume transformation — only the clothing changes.\nFACE AND HAIR: Keep the face, facial features, skin tone, hair color, hair style and expression from Image 1 exactly as they are. Do not apply any artistic style to the face. The result must look like a real photo of the same person wearing a costume.\nCOSTUME: Apply the exact outfit from Image 2 — same colors, same style, same details and accessories. Include all accessories shown on the character.\nBACKGROUND: Replace the background completely with the background from Image 2 — same setting, same colors, same atmosphere. The original background from Image 1 must not appear.\nHEAD PROPORTIONS: Ensure the head size is naturally proportional to the body — realistic human proportions.\nFACE QUALITY: The face must be sharp, clear and well-lit.\nFull body shot, vertical format, photorealistic, professional quality.',
     promptVideo:  'Video corto de 5 segundos con el personaje {tematica} saludando y diciendo ¡Feliz cumpleaños {nombre}! Estilo animación infantil, colorido y alegre.',
     precioImagen: 1500,
     precioVideo:  3500,
@@ -1513,6 +1514,16 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
       </div>
 
       {servicio('Imagen IA','🖼️','promptImagen','apiImagen','precioImagen','Una fotografía de {nombre}, {edad} años, con temática {tematica}...')}
+
+      <div style={{...S.card,marginBottom:14,border:'1px solid #bae6fd'}}>
+        <h3 style={{fontWeight:900,fontSize:15,marginBottom:4}}>🖼️ Imagen IA — Segundo estilo (Prompt B)</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Del pack de 6 imágenes, 3 se generan con el prompt de arriba (Prompt A) y 3 con este (Prompt B). Así el papá tiene más variedad para elegir.</p>
+        <label style={{display:'block',marginBottom:6}}><span style={S.label}>Prompt B (segundo estilo)</span>
+          <textarea value={cfg.promptImagen2||''} readOnly={!editando} onChange={e=>set('promptImagen2',e.target.value)} rows={6} style={{...S.input,resize:'vertical',fontFamily:'inherit',...lockStyle}} placeholder="Pegá aquí el segundo prompt (ej: transformar al niño/a en el personaje)..."/>
+          <span style={{fontSize:10,color:'#94a3b8'}}>Variables disponibles: {'{nombre}'}, {'{edad}'}, {'{personaje}'}. Podés escribirlo en inglés.</span>
+        </label>
+      </div>
+
       {servicio('Video IA','🎬','promptVideo','apiVideo','precioVideo','Video corto del personaje {tematica} saludando a {nombre}...')}
 
       <div style={{...S.card,marginBottom:14}}>
@@ -1808,7 +1819,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
           <span style={{fontSize:22}}>{emojiIA}</span>
           <div>
             <div style={{fontWeight:800,fontSize:14,color:colorIA}}>{tipo==='imagen'?'Imagen IA Personalizada':'Video IA Personalizado'}</div>
-            <div style={{fontSize:11,color:'#64748b'}}>Cargá las fotos y generamos 3 {tipo==='imagen'?'imágenes':'videos'} únicas con IA</div>
+            <div style={{fontSize:11,color:'#64748b'}}>{tipo==='imagen'?'Cargá las fotos y generamos 6 imágenes (2 estilos) para que elijas':'Cargá las fotos y generamos videos únicos con IA'}</div>
           </div>
         </div>
         <div style={{fontSize:11,color:'#475569',background:'white',borderRadius:8,padding:8,border:'1px solid #e2e8f0'}}>
@@ -1925,7 +1936,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             ?'⬆️ Cargá ambas fotos para continuar'
             :(tipo==='imagen'
               ?(restantesIA>0
-                ?(resultados.length>0?('✨ Generar otra imagen ('+restantesIA+' restantes)'):('✨ Generar imagen ('+restantesIA+' restantes)'))
+                ?('✨ Generar mis '+restantesIA+' imágenes')
                 :'💳 Pagar pack de 6 y generar')
               :'💳 Pagar y Generar con IA')}
         </button>
@@ -2051,11 +2062,13 @@ function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
 }
 
 /* ── GENERADOR IA ─────────────────────────────────────────── */
-function GeneradorIA({tipo,nombre,tematica,prompt,fotoNino,personaje,personajeNombre,edad,onResultado,onCerrar}){
+function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,cantidad,fotoNino,personaje,personajeNombre,edad,onResultado,onCerrar}){
   const [paso,setPaso]=useState('generando'); // generando | listo | error
   const [progreso,setProgreso]=useState(0);
   const [resultados,setResultados]=useState([]);
+  const [hechas,setHechas]=useState(0);
   const [errMsg,setErrMsg]=useState('');
+  const totalGen=tipo==='imagen'?Math.max(1,Math.min(cantidad||6,6)):2;
 
   // Animación de progreso (sube hasta 90% mientras espera la respuesta real)
   useEffect(()=>{
@@ -2072,18 +2085,25 @@ function GeneradorIA({tipo,nombre,tematica,prompt,fotoNino,personaje,personajeNo
         if(tipo==='imagen'){
           if(!fotoNino||!personaje) throw new Error('Faltan la foto del niño/a o el personaje.');
           const persNom=personajeNombre||tematica||'el personaje';
-          const base=(prompt||'').replace(/\{nombre\}/g,nombre||'').replace(/\{edad\}/g,edad||'').replace(/\{tematica\}/g,persNom).replace(/\{personaje\}/g,persNom);
-          const composed=base+' Usá las DOS imágenes adjuntas: conservá EXACTAMENTE la cara y el parecido de la persona de la PRIMERA imagen (no la cambies ni la estilices), y combinala con el/los personaje(s) de la SEGUNDA imagen. ENCUADRE: retrato de MEDIO CUERPO, de la CINTURA PARA ARRIBA, de ambos; los dos centrados, a la misma altura, del mismo tamaño y la misma escala (mismo plano de cámara). El personaje ABRAZANDO a la persona, con un brazo alrededor de su hombro, bien juntos y en contacto. Integrá a ambos en UNA SOLA escena cohesiva y realista, con la MISMA iluminación, sombras y estilo, de modo que NO parezca dos fotos pegadas o superpuestas, sino una sola foto tomada juntos. El fondo es el mundo/escenario del personaje; el personaje en estilo 3D animado; imagen vertical, alegre y apta para todo público; dejá un poco de espacio libre arriba; sin texto ni letras. ANATOMÍA CORRECTA Y COMPLETA: cada persona con exactamente dos brazos, dos manos (con cinco dedos cada una) y una sola cabeza; PROHIBIDO agregar extremidades, manos o dedos de más, duplicados o deformados; no recortes manos ni brazos en el borde; respetá la proporción y el tamaño entre ambos.';
-          // fal.ai nano-banana: combina las dos imágenes manteniendo la cara real
-          const resp=await fetch('/api/generar-catalogo',{
+          const repl=s=>(s||'').replace(/\{nombre\}/g,nombre||'').replace(/\{edad\}/g,edad||'').replace(/\{tematica\}/g,persNom).replace(/\{personaje\}/g,persNom);
+          // Prompt A: el personaje abrazando al niño/a (medio cuerpo)
+          const composedA=repl(prompt)+' Usá las DOS imágenes adjuntas: conservá EXACTAMENTE la cara y el parecido de la persona de la PRIMERA imagen (no la cambies ni la estilices), y combinala con el/los personaje(s) de la SEGUNDA imagen. ENCUADRE: retrato de MEDIO CUERPO, de la CINTURA PARA ARRIBA, de ambos; los dos centrados, a la misma altura, del mismo tamaño y la misma escala (mismo plano de cámara). El personaje ABRAZANDO a la persona, con un brazo alrededor de su hombro, bien juntos y en contacto. Integrá a ambos en UNA SOLA escena cohesiva y realista, con la MISMA iluminación, sombras y estilo, de modo que NO parezca dos fotos pegadas o superpuestas, sino una sola foto tomada juntos. El fondo es el mundo/escenario del personaje; el personaje en estilo 3D animado; imagen vertical, alegre y apta para todo público; dejá un poco de espacio libre arriba; sin texto ni letras. ANATOMÍA CORRECTA Y COMPLETA: cada persona con exactamente dos brazos, dos manos (con cinco dedos cada una) y una sola cabeza; PROHIBIDO agregar extremidades, manos o dedos de más, duplicados o deformados; no recortes manos ni brazos en el borde; respetá la proporción y el tamaño entre ambos.';
+          // Prompt B: segundo estilo configurable (ej: transformar al niño/a en el personaje)
+          const composedB=(prompt2&&prompt2.trim())?(repl(prompt2)+'\nUse the TWO attached images: Image 1 is the child (preserve the real face exactly), Image 2 is the character/costume reference. Vertical image, no text, no letters, no watermark.'):composedA;
+          // Repartir: mitad con prompt A, mitad con prompt B (ej: 6 → 3 y 3)
+          const n=Math.max(1,Math.min(totalGen,6));
+          const nA=Math.ceil(n/2);
+          const lista=[];for(let i=0;i<n;i++)lista.push(i<nA?composedA:composedB);
+          // Generar todas en paralelo, tolerando fallos individuales
+          const calls=lista.map(p=>fetch('/api/generar-catalogo',{
             method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({prompt:composed,images:[fotoNino,personaje],model:'fal-ai/nano-banana/edit',aspect_ratio:'9:16'})
-          });
-          const data=await resp.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
-          if(!resp.ok) throw new Error(data.error||'No se pudo generar la imagen.');
+            body:JSON.stringify({prompt:p,images:[fotoNino,personaje],model:'fal-ai/nano-banana/edit',aspect_ratio:'9:16'})
+          }).then(async r=>{const d=await r.json().catch(()=>({}));if(!cancel)setHechas(h=>h+1);return (r.ok&&d.url)?d.url:null;}).catch(()=>{if(!cancel)setHechas(h=>h+1);return null;}));
+          const settled=await Promise.all(calls);
           if(cancel)return;
-          if(!data.url) throw new Error('No se recibió imagen.');
-          setResultados([data.url]);setProgreso(100);setPaso('listo');
+          const urls=settled.filter(Boolean);
+          if(!urls.length) throw new Error('No se pudo generar ninguna imagen. Probá de nuevo.');
+          setResultados(urls);setProgreso(100);setPaso('listo');
         } else {
           // Video con IA: todavía no integrado → demostración
           await new Promise(r=>setTimeout(r,2200));
@@ -2103,13 +2123,14 @@ function GeneradorIA({tipo,nombre,tematica,prompt,fotoNino,personaje,personajeNo
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
       <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:28,textAlign:'center'}}>
         <div style={{fontSize:44,marginBottom:12}}>{tipo==='imagen'?'🖼️':'🎬'}</div>
-        <h3 style={{fontWeight:900,fontSize:17,marginBottom:6}}>Generando con IA...</h3>
+        <h3 style={{fontWeight:900,fontSize:17,marginBottom:6}}>Generando {tipo==='imagen'?totalGen+' imágenes':''} con IA...</h3>
         <p style={{fontSize:12,color:'#64748b',marginBottom:8}}>Creando la magia para <b>{nombre}</b> ✨</p>
         <div style={{height:8,background:'#e2e8f0',borderRadius:99,overflow:'hidden',marginBottom:8}}>
           <div style={{height:'100%',background:'linear-gradient(90deg,#7c3aed,#a855f7)',borderRadius:99,width:progreso+'%',transition:'width .3s'}}></div>
         </div>
         <p style={{fontSize:11,color:'#7c3aed',fontWeight:700}}>{progreso}%</p>
-        <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>Esto puede tardar entre 20 y 40 segundos. No cierres esta ventana.</p>
+        {tipo==='imagen'&&<p style={{fontSize:12,color:'#16a34a',fontWeight:800,marginTop:6}}>{hechas} de {totalGen} listas</p>}
+        <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>{tipo==='imagen'?'Estamos creando '+totalGen+' imágenes (varios estilos). Puede tardar 1 a 3 minutos. No cierres esta ventana.':'Esto puede tardar entre 20 y 40 segundos. No cierres esta ventana.'}</p>
       </div>
     </div>
   );
@@ -2916,7 +2937,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===(genActivo==='imagen'?form.personajeIA:form.personajeIAV))||{}).nombre||temA.nombre} onResultado={imgs=>{if(genActivo==='imagen'){setForm(f=>{const prev=f.iaImagenes||[];const merged=[...prev,...imgs];return {...f,iaImagenes:merged,iaImagenSel:prev.length,usarFoto:false,portadaSrc:imgs[0]||f.portadaSrc};});setPapaSesion(ps=>{const n={...ps,iaGenCount:((ps&&ps.iaGenCount)||0)+1};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaGenCount:n.iaGenCount}:e));return n;});}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===(genActivo==='imagen'?form.personajeIA:form.personajeIAV))||{}).nombre||temA.nombre} onResultado={imgs=>{if(genActivo==='imagen'){setForm(f=>{const prev=f.iaImagenes||[];const merged=[...prev,...imgs];return {...f,iaImagenes:merged,iaImagenSel:prev.length,usarFoto:false,portadaSrc:imgs[0]||f.portadaSrc};});setPapaSesion(ps=>{const n={...ps,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaGenCount:n.iaGenCount}:e));return n;});}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));setGenActivo(null);}} onCerrar={()=>setGenActivo(null)}/>}
     </div>
   );
 }
