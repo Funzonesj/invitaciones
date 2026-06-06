@@ -27,7 +27,9 @@ module.exports = async (req, res) => {
       ? { prompt, image_url: image, image_size: size }
       : { prompt, image_size: size, num_images: 1 };
 
-    const modelPath = String(model).replace('fal-ai/', '');
+    // fal.run necesita el ID COMPLETO del modelo (incluyendo "fal-ai/")
+    let modelPath = String(model).trim();
+    if (!modelPath.startsWith('fal-ai/')) modelPath = 'fal-ai/' + modelPath;
     const r = await fetch('https://fal.run/' + modelPath, {
       method: 'POST',
       headers: { Authorization: 'Key ' + key, 'Content-Type': 'application/json' },
