@@ -1776,9 +1776,20 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso}){
 }
 
 /* ── IA UPLOAD SECTION ───────────────────────────────────── */
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta}){
   const fotoRef=useRef();
   const persRef=useRef();
+  function guardarFoto(src){
+    const fname='imagen-'+((nombre||'fiesta').toLowerCase().replace(/[^a-z0-9]/g,'')||'fiesta')+'-'+Math.floor(performance.now())+'.png';
+    fetch(src).then(r=>r.blob()).then(blob=>{
+      const file=new File([blob],fname,{type:blob.type||'image/png'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:'Imagen',text:'¡Mirá la imagen!'}).catch(()=>{});
+      }else{
+        const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);
+      }
+    }).catch(()=>alert('No se pudo preparar la imagen.'));
+  }
   function componer9x16(src,accion){
     // La imagen sale limpia (sin cartel): el texto lo pone la invitación de la app.
     const fname='invitacion-'+((nombre||'fiesta').toLowerCase().replace(/[^a-z0-9]/g,'')||'fiesta')+'.png';
@@ -1955,45 +1966,45 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             <div style={{fontWeight:900,fontSize:13,color:colorIA}}>👆 Elegí la imagen para tu tarjeta</div>
             <div style={{fontSize:10,color:'#64748b',marginTop:2}}>Tocá para elegirla · Mantené presionada para verla grande</div>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:12}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:10,marginBottom:14}}>
             {resultados.map((src,i)=>(
-              <div key={i}
-                onPointerDown={()=>tipo==='imagen'?pressStart(src):null}
-                onPointerUp={()=>tipo==='imagen'?pressEnd(i):onUsar(i)}
-                onPointerLeave={()=>tipo==='imagen'?pressCancel():null}
-                onContextMenu={e=>e.preventDefault()}
-                style={{cursor:'pointer',borderRadius:12,overflow:'hidden',border:selIdx===i?'4px solid '+colorIA:'2px solid #e2e8f0',transition:'all .2s',position:'relative',userSelect:'none',WebkitUserSelect:'none',touchAction:'none'}}>
-                {tipo==='imagen'
-                  ?<div style={{aspectRatio:'9/16'}}>
-                    <img src={src} alt={`opción ${i+1}`} draggable={false} style={{width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}}/>
+              <div key={i} style={{display:'flex',flexDirection:'column',gap:6}}>
+                <div
+                  onPointerDown={()=>tipo==='imagen'?pressStart(src):null}
+                  onPointerUp={()=>tipo==='imagen'?pressEnd(i):onUsar(i)}
+                  onPointerLeave={()=>tipo==='imagen'?pressCancel():null}
+                  onContextMenu={e=>e.preventDefault()}
+                  style={{cursor:'pointer',borderRadius:12,overflow:'hidden',border:selIdx===i?'4px solid '+colorIA:'2px solid #e2e8f0',transition:'all .2s',position:'relative',userSelect:'none',WebkitUserSelect:'none',touchAction:'none'}}>
+                  {tipo==='imagen'
+                    ?<div style={{aspectRatio:'9/16'}}>
+                      <img src={src} alt={`opción ${i+1}`} draggable={false} style={{width:'100%',height:'100%',objectFit:'cover',pointerEvents:'none'}}/>
+                    </div>
+                    :<div style={{aspectRatio:'9/16',background:'#0f172a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
+                      <span style={{fontSize:22}}>🎬</span>
+                      <span style={{color:'#94a3b8',fontSize:9}}>Video {i+1}</span>
+                    </div>
+                  }
+                  {selIdx===i&&(
+                    <div style={{position:'absolute',top:6,right:6,background:colorIA,color:'white',borderRadius:'50%',width:24,height:24,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,boxShadow:'0 2px 6px rgba(0,0,0,.3)'}}>✓</div>
+                  )}
+                  <div style={{padding:'5px',textAlign:'center',background:selIdx===i?colorIA:'white',fontSize:11,fontWeight:selIdx===i?900:600,color:selIdx===i?'white':'#64748b'}}>
+                    {selIdx===i?'✓ Portada elegida':'Imagen '+(i+1)}
                   </div>
-                  :<div style={{aspectRatio:'9/16',background:'#0f172a',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
-                    <span style={{fontSize:22}}>🎬</span>
-                    <span style={{color:'#94a3b8',fontSize:9}}>Video {i+1}</span>
-                  </div>
-                }
-                {selIdx===i&&(
-                  <div style={{position:'absolute',top:6,right:6,background:colorIA,color:'white',borderRadius:'50%',width:24,height:24,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,boxShadow:'0 2px 6px rgba(0,0,0,.3)'}}>✓</div>
-                )}
-                <div style={{padding:'5px',textAlign:'center',background:selIdx===i?colorIA:'white',fontSize:11,fontWeight:selIdx===i?900:600,color:selIdx===i?'white':'#64748b'}}>
-                  {selIdx===i?'✓ Portada elegida':'Imagen '+(i+1)}
                 </div>
+                {tipo==='imagen'&&(
+                  <button onClick={()=>guardarFoto(src)} style={{...S.btn,background:'#f1f5f9',color:'#334155',padding:'9px',fontSize:12,fontWeight:800}}>⬇️ Descargar</button>
+                )}
               </div>
             ))}
           </div>
-          {selIdx!==null&&tipo==='imagen'&&resultados[selIdx]&&(
-            <div style={{display:'flex',gap:8,marginBottom:10}}>
-              <button onClick={()=>componer9x16(resultados[selIdx],'descargar')} style={{...S.btn,background:'linear-gradient(135deg,#ec4899,#7c3aed)',color:'white',flex:1}}>
-                ⬇️ Descargar
-              </button>
-              <button onClick={()=>componer9x16(resultados[selIdx],'compartir')} style={{...S.btn,background:'#22c55e',color:'white',flex:1}}>
-                📤 Compartir
-              </button>
-            </div>
+          {tipo==='imagen'&&onVerTarjeta&&(
+            <button onClick={onVerTarjeta} disabled={selIdx===null}
+              style={{...S.btn,width:'100%',padding:'15px',fontSize:16,fontWeight:900,
+                background:selIdx===null?'#e2e8f0':'linear-gradient(135deg,#7c3aed,#a855f7)',
+                color:selIdx===null?'#94a3b8':'white',cursor:selIdx===null?'not-allowed':'pointer'}}>
+              {selIdx===null?'👆 Elegí una imagen primero':'👁 Ver Tarjeta'}
+            </button>
           )}
-          <button onClick={onDescartar} style={{...S.btn,background:'#fef2f2',color:'#dc2626',width:'100%',fontSize:12}}>
-            🗑 Borrar todas y empezar de nuevo
-          </button>
         </div>
       )}
 
@@ -2238,6 +2249,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   function onFotoNino(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(x=>({...x,fotoNino:ev.target.result,fotoMejorada:'',usarFoto:true}));r.readAsDataURL(f);}
   function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
   function guardar(e){e.preventDefault();const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvGuardada(true);alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');}
+  function verTarjeta(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}
   function descargarInvitacion(){
     const W=540,H=960;
     const canvas=document.createElement('canvas');
@@ -2383,7 +2395,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <p style={{fontSize:11,color:'#64748b',margin:0}}>{papaSesion.tipo||'Cumpleaños'} de <b>{papaSesion.nombre}</b> · {papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin} hs</p>
         </div>
         <div style={{display:'flex',gap:8}}>
-          <button onClick={()=>{const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}} style={{...S.btn,background:'#7c3aed',color:'white'}}>👁 Ver Tarjeta</button>
+          <button onClick={verTarjeta} style={{...S.btn,background:'#7c3aed',color:'white'}}>👁 Ver Tarjeta</button>
           <button onClick={()=>{setPapaSesion(null);setVista('papa-login');}} style={{...S.btn,background:'#f1f5f9',color:'#64748b'}}>Salir</button>
         </div>
       </div>
@@ -2425,7 +2437,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'14px',fontSize:15,fontWeight:900}}>📲 Compartir invitación</button>
           </div>
           <div style={{display:'flex',gap:8,marginBottom:20}}>
-            <button onClick={()=>{const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'11px',fontSize:13,fontWeight:800}}>👁 Vista previa</button>
+            <button onClick={verTarjeta} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'11px',fontSize:13,fontWeight:800}}>👁 Vista previa</button>
             <button onClick={descargarInvitacion} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#475569',padding:'11px',fontSize:13,fontWeight:800}}>⬇️ Descargar JPG</button>
           </div>
           {/* Accesos (cuadrados) */}
@@ -2596,7 +2608,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}))} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA}/>
+              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}))} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={verTarjeta}/>
             )}
             {modoPortada==='ia-video'&&(
               <IAUploadSection tipo="video" precio={iaConfig.precioVideo} resultados={form.iaVideos||[]} onPagar={()=>setPagoActivo('video')} onDescartar={()=>setForm(f=>({...f,iaVideos:[]}))} onUsar={idx=>setForm(f=>({...f,iaVideoSel:idx}))} selIdx={form.iaVideoSel} fotoNino={form.fotoNinoIAV||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIAV:v}))} personaje={form.personajeIAV||''} setPersonaje={v=>setForm(f=>({...f,personajeIAV:v}))} tematicas={tematicas}/>
