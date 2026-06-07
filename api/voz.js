@@ -21,8 +21,10 @@ module.exports = async (req, res) => {
     const genero = body.genero;
     if (!text) { res.status(400).json({ error: 'Falta el texto a decir.' }); return; }
 
-    const VOICE_F = process.env.ELEVENLABS_VOICE_F || 'nfyTTmgO0f6GV9CKrMWL'; // femenina
-    const VOICE_M = process.env.ELEVENLABS_VOICE_M || 'htFfPSZGJwjBv1CL0aMD'; // masculina
+    // Voces INCORPORADas (premade) → funcionan con el plan GRATIS por API.
+    // Si la dueña pasa a un plan pago, puede setear ELEVENLABS_VOICE_F/M con voces de librería (argentinas).
+    const VOICE_F = process.env.ELEVENLABS_VOICE_F || '21m00Tcm4TlvDq8ikWAM'; // Rachel (femenina, premade)
+    const VOICE_M = process.env.ELEVENLABS_VOICE_M || 'pNInz6obpgDQGcFmaJgB'; // Adam (masculina, premade)
     const voice = (genero === 'f') ? VOICE_F : (genero === 'm') ? VOICE_M : VOICE_M;
 
     const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voice, {
