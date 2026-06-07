@@ -1825,6 +1825,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
   const [catTem,setCatTem]=useState('TODOS');
   const [zoom,setZoom]=useState(null); // imagen ampliada (se abre al tocar)
   const [aviso,setAviso]=useState(tipo==='imagen'); // pop-up informativo al entrar
+  const [fabClosed,setFabClosed]=useState(false); // botón flotante de video cerrado
   const listo=fotoNino&&personaje;
   // Personajes disponibles para el papá: los del Catálogo IA (si hay), si no todos
   const iaTem=(tematicas.some(t=>t.ia)?tematicas.filter(t=>t.ia):tematicas);
@@ -2029,13 +2030,11 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
               {selIdx===null?'👆 Elegí una imagen primero':'👁 Ver Tarjeta'}
             </button>
           )}
-          {/* Upsell: convertir la imagen elegida en video */}
+          {/* Upsell: aviso inline (la acción principal es el botón flotante) */}
           {tipo==='imagen'&&onVideoUpsell&&selIdx!==null&&resultados[selIdx]&&(
-            <div style={{marginTop:12,background:'linear-gradient(135deg,#e11d4815,#7c3aed10)',border:'1px solid #fbcfe8',borderRadius:14,padding:14,textAlign:'center'}}>
-              <div style={{fontSize:24,marginBottom:4}}>🎬✨</div>
-              <div style={{fontWeight:900,fontSize:14,color:'#1e293b'}}>¿La querés en VIDEO?</div>
-              <div style={{fontSize:11,color:'#64748b',margin:'4px 0 10px'}}>Convertí esta imagen en un video donde el personaje saluda y habla. <b>Lo mirás gratis</b> y, si te encanta, lo descargás.</div>
-              <button onClick={()=>onVideoUpsell(resultados[selIdx])} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#e11d48,#be123c)',color:'white',padding:'13px',fontSize:14,fontWeight:900}}>🎬 Generar video (gratis para ver)</button>
+            <div style={{marginTop:12,background:'linear-gradient(135deg,#e11d4815,#7c3aed10)',border:'1px solid #fbcfe8',borderRadius:14,padding:'12px 14px',textAlign:'center'}}>
+              <div style={{fontWeight:900,fontSize:13,color:'#1e293b'}}>🎬 ¿La querés en VIDEO?</div>
+              <div style={{fontSize:11,color:'#64748b',marginTop:2}}>Usá el botón <b>"Generá el video"</b> de abajo. Lo mirás gratis y, si te gusta, lo descargás.</div>
             </div>
           )}
           {tipo==='imagen'&&onDescartar&&(
@@ -2059,6 +2058,18 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             <button onClick={(e)=>{e.stopPropagation();if(window.confirm('¿Borrar esta imagen?')){onBorrar(zoom.i);setZoom(null);}}} style={{marginTop:12,background:'rgba(220,38,38,.85)',border:'none',borderRadius:10,color:'white',fontSize:13,fontWeight:800,cursor:'pointer',padding:'9px 18px'}}>🗑 Borrar esta imagen</button>
           )}
           <button onClick={(e)=>{e.stopPropagation();setZoom(null);}} style={{marginTop:10,background:'none',border:'none',color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Cerrar</button>
+        </div>
+      )}
+
+      {/* Botón FLOTANTE para generar el video (aparece al elegir una imagen) */}
+      {tipo==='imagen'&&onVideoUpsell&&selIdx!==null&&resultados[selIdx]&&!fabClosed&&!zoom&&(
+        <div style={{position:'fixed',left:0,right:0,bottom:14,zIndex:900,display:'flex',justifyContent:'center',padding:'0 12px',pointerEvents:'none'}}>
+          <div style={{pointerEvents:'auto',display:'flex',alignItems:'center',gap:4,background:'linear-gradient(135deg,#e11d48,#be123c)',borderRadius:99,padding:'4px 4px 4px 6px',boxShadow:'0 10px 30px rgba(225,29,72,.45)',maxWidth:420,width:'100%'}}>
+            <button onClick={()=>onVideoUpsell(resultados[selIdx])} style={{flex:1,background:'none',border:'none',color:'white',fontWeight:900,fontSize:15,cursor:'pointer',padding:'12px 8px',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              <span style={{fontSize:20}}>🎬</span> Generá el video
+            </button>
+            <button onClick={()=>setFabClosed(true)} title="Cerrar" style={{flexShrink:0,background:'rgba(255,255,255,.25)',border:'none',color:'white',borderRadius:'50%',width:38,height:38,fontSize:17,cursor:'pointer'}}>✕</button>
+          </div>
         </div>
       )}
     </div>
@@ -3096,7 +3107,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <button onClick={()=>setVideoUrl('')} style={{marginTop:12,background:'none',border:'none',color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Cerrar</button>
         </div>
       )}
-      {videoPagoMP&&<PagoMP tipo="video" precio={iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{setVideoPaga(true);setVideoPagoMP(false);}} onCancelar={()=>setVideoPagoMP(false)}/>}
+      {videoPagoMP&&<PagoMP tipo="video" precio={iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{setVideoPaga(true);setVideoPagoMP(false);const vu=videoUrl;setForm(f=>({...f,videoUrl:vu}));setPapaSesion(ps=>{const n={...ps,videoUrl:vu};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu}:e));return n;});}} onCancelar={()=>setVideoPagoMP(false)}/>}
     </div>
   );
 }
@@ -3286,6 +3297,14 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
           </div>
         )}
       </div>
+
+      {/* 7b. VIDEO DE INVITACIÓN (si el papá lo generó y pagó) */}
+      {ev&&ev.videoUrl&&(
+        <div style={{padding:'14px 16px',borderTop:'1px solid #f0f0f0'}}>
+          <p style={{color:col,fontSize:16,fontWeight:900,textAlign:'center',margin:'0 0 8px'}}>🎬 ¡Mirá el video!</p>
+          <video src={ev.videoUrl} controls playsInline style={{width:'100%',borderRadius:14,background:'#000',display:'block'}}></video>
+        </div>
+      )}
 
       {/* 8. FESTEJO EN EL SALON */}
       <div style={{textAlign:'center',padding:'16px 20px',borderTop:'1px solid #f0f0f0',borderBottom:'1px solid #f0f0f0'}}>
