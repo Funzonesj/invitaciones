@@ -1886,6 +1886,15 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
         </label>
       </div>
 
+      <div style={{...S.card,marginBottom:14}}>
+        <div style={{fontWeight:900,fontSize:13,marginBottom:4}}>🖼️ Imagen de ejemplo (al lado de "Editar con IA")</div>
+        <div style={{fontSize:11,color:'#64748b',marginBottom:10}}>Una foto de muestra para que los papás vean cómo queda la tarjeta con IA.</div>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          {cfg.ejemploIA?<img src={cfg.ejemploIA} alt="" style={{width:54,height:70,borderRadius:8,objectFit:'cover',border:'1px solid #e2e8f0'}}/>:<div style={{width:54,height:70,borderRadius:8,background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24}}>🖼️</div>}
+          <label style={{...S.btn,background:'#0f172a',color:'white',padding:'8px 12px',fontSize:12,cursor:'pointer'}}>📷 Subir ejemplo<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,500,data=>set('ejemploIA',data));}}/></label>
+          {cfg.ejemploIA&&<button type="button" onClick={()=>set('ejemploIA','')} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:16}}>🗑</button>}
+        </div>
+      </div>
       <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#8b5cf6,#7c3aed)',color:'white',padding:'13px 28px',fontSize:14}}>✓ Guardar cambios</button>
     </div>
   );
@@ -3096,7 +3105,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <div style={{fontWeight:900,fontSize:14,marginBottom:4,color:'#1e293b'}}>✨ Opción Premium con IA</div>
                 <div style={{fontSize:11,color:'#64748b',marginBottom:12}}>Creá la tarjeta de tu hijo/a con su personaje: imágenes + el video del personaje hablando, ¡todo junto en un solo pago! 🎬</div>
                 <button onClick={()=>setModoPortada('ia-imagen')} style={{width:'100%',textAlign:'left',cursor:'pointer',border:'1px solid #bae6fd',background:'linear-gradient(135deg,#0ea5e915,#0ea5e905)',borderRadius:16,padding:16,display:'flex',alignItems:'center',gap:12}}>
-                  <span style={{fontSize:34}}>🖼️</span>
+                  {iaConfig.ejemploIA?<img src={iaConfig.ejemploIA} alt="ejemplo" style={{width:48,height:64,borderRadius:8,objectFit:'cover',flexShrink:0}}/>:<span style={{fontSize:34}}>🖼️</span>}
                   <div style={{flex:1}}>
                     <div style={{fontWeight:900,fontSize:14,color:'#0369a1'}}>Tarjeta Premium con IA</div>
                     <div style={{fontSize:10,color:'#64748b',lineHeight:1.3}}>6 imágenes + video del personaje hablando</div>
