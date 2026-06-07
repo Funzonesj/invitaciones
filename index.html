@@ -162,12 +162,18 @@ let _ADMIN_SAVED=null;
 try{const s=localStorage.getItem('fz_admin_sesion');if(s)_ADMIN_SAVED=JSON.parse(s);}catch(e){}
 let _PAPA_SAVED=null;
 try{const raw=localStorage.getItem('fz_papa_sesion');if(raw){const o=JSON.parse(raw);if(o&&o.ev&&o.t&&(Date.now()-o.t<24*3600*1000)&&!estaVencido(o.ev))_PAPA_SAVED=o.ev;}}catch(e){}
+// Último panel en el que estuvo (admin o papa) para volver al mismo al recargar
+let _ULTIMO_MODO=null;
+try{_ULTIMO_MODO=localStorage.getItem('fz_ultimo_modo');}catch(e){}
+// Auto-restaurar: respeta el último panel usado si hay dos sesiones guardadas
+const _AUTO_VISTA = (_ULTIMO_MODO==='admin'&&_ADMIN_SAVED) ? 'admin-dashboard'
+  : (_ULTIMO_MODO==='papa'&&_PAPA_SAVED) ? 'papa-creador'
+  : (_PAPA_SAVED ? 'papa-creador'
+  : (_ADMIN_SAVED ? 'admin-dashboard' : 'admin-login'));
 const INIT_VISTA = _INV_PARAM ? 'invitado-portada'
   : (_PAPA_DATA ? 'papa-creador'
   : (_PAPA_PARAM ? 'papa-login'
-  : (_PAPA_SAVED ? 'papa-creador'
-  : (_ADMIN_SAVED ? 'admin-dashboard'
-  : 'admin-login'))));
+  : _AUTO_VISTA));
 
 // Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
 let _PAPA_NAV={};
@@ -304,6 +310,8 @@ function App() {
   React.useEffect(()=>{try{if(adminSesion)localStorage.setItem('fz_admin_sesion',JSON.stringify(adminSesion));else localStorage.removeItem('fz_admin_sesion');}catch(e){}},[adminSesion]);
   // Recordar sesión del papá por 24hs
   React.useEffect(()=>{try{if(papaSesion)localStorage.setItem('fz_papa_sesion',JSON.stringify({ev:papaSesion,t:Date.now()}));else localStorage.removeItem('fz_papa_sesion');}catch(e){}},[papaSesion]);
+  // Recordar el último panel usado (admin/papa) para volver al mismo al recargar
+  React.useEffect(()=>{try{if(vista&&vista.indexOf('admin')===0)localStorage.setItem('fz_ultimo_modo','admin');else if(vista&&vista.indexOf('papa')===0)localStorage.setItem('fz_ultimo_modo','papa');}catch(e){}},[vista]);
 
   const sucAct   = sucursales.find(s=>s.id===sucActId)||sucursales[0];
   const esSA     = adminSesion?.rol==='superadmin';
@@ -1110,22 +1118,33 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
 
 /* ── ADMIN TEMATICAS ─────────────────────────────────────── */
 function AdminTematicas({setVista,tematicas,setTematicas}){
-  const [form,setForm]=useState({nombre:'',emoji:'🎨',img:'',prev:'',cats:['INFANTILES']});
+  const [form,setForm]=useState({nombre:'',emoji:'🎨',imgs:[],cats:['TODOS']});
   const [nuevaCat,setNuevaCat]=useState('');
+  const [urlInput,setUrlInput]=useState('');
   const [allCats,setAllCats]=useState([...CATS]);
   const [msg,setMsg]=useState('');
+  const [editCat,setEditCat]=useState(null); // id de la imagen a la que se le editan categorías
   const fRef=useRef();
 
-  function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(x=>({...x,img:ev.target.result,prev:ev.target.result}));r.readAsDataURL(f);}
+  // Carga MÚLTIPLE: varias imágenes del mismo personaje de una sola vez
+  function onFile(e){
+    const files=Array.from(e.target.files||[]);if(!files.length)return;
+    files.forEach(f=>{const r=new FileReader();r.onload=ev=>setForm(x=>({...x,imgs:[...x.imgs,ev.target.result]}));r.readAsDataURL(f);});
+  }
+  function quitarImg(i){setForm(x=>({...x,imgs:x.imgs.filter((_,idx)=>idx!==i)}));}
+  function addUrl(){const u=urlInput.trim();if(!u)return;setForm(x=>({...x,imgs:[...x.imgs,u]}));setUrlInput('');}
   function toggleCat(c){setForm(f=>({...f,cats:f.cats.includes(c)?f.cats.filter(x=>x!==c):[...f.cats,c]}))}
   function addCat(e){if(e&&e.preventDefault)e.preventDefault();if(!nuevaCat.trim())return;const c=nuevaCat.trim().toUpperCase();if(!allCats.includes(c))setAllCats(p=>[...p,c]);setForm(f=>({...f,cats:[...f.cats,c]}));setNuevaCat('');}
+  // Editar categorías de una imagen ya cargada (siempre conserva TODOS)
+  function toggleCatTem(id,c){setTematicas(p=>p.map(x=>{if(x.id!==id)return x;const cur=x.cats||['TODOS'];const next=cur.includes(c)?cur.filter(y=>y!==c):[...cur,c];return {...x,cats:next.includes('TODOS')?next:['TODOS',...next]};}));}
   function sub(e){
     e.preventDefault();
-    if(!form.nombre||!form.img){setMsg('Completá nombre e imagen.');return;}
+    if(!form.nombre||!form.imgs.length){setMsg('Completá el nombre y subí al menos una imagen.');return;}
     const c=form.cats.includes('TODOS')?form.cats:['TODOS',...form.cats];
-    setTematicas(p=>[...p,{id:'t-'+Date.now(),nombre:form.nombre,cats:c,img:form.img,emoji:form.emoji}]);
-    setForm({nombre:'',emoji:'🎨',img:'',prev:'',cats:['INFANTILES']});
-    setMsg('¡Portada cargada!');setTimeout(()=>setMsg(''),3000);
+    const base=Date.now();
+    setTematicas(p=>[...p,...form.imgs.map((im,i)=>({id:'t-'+base+'-'+i,nombre:form.nombre+(form.imgs.length>1?(' '+(i+1)):''),cats:c,img:im,emoji:form.emoji}))]);
+    setMsg('¡'+form.imgs.length+' imagen'+(form.imgs.length>1?'es':'')+' cargada'+(form.imgs.length>1?'s':'')+'!');
+    setForm({nombre:'',emoji:'🎨',imgs:[],cats:['TODOS']});setTimeout(()=>setMsg(''),3000);
   }
 
   return(
@@ -1134,23 +1153,35 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
       <h1 style={{fontWeight:900,fontSize:20,marginBottom:18}}>🖼️ Catálogo de imágenes</h1>
       <div style={{display:'grid',gridTemplateColumns:'min(300px,100%) 1fr',gap:20,alignItems:'start'}} className="admin-tematicas-grid">
         <div style={S.card}>
-          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>Cargar Nueva Portada</h3>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>Cargar imágenes</h3>
           {msg&&<div style={{background:'#f0fdf4',color:'#166534',padding:10,borderRadius:10,fontSize:12,fontWeight:700,marginBottom:10}}>{msg}</div>}
           <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
-            <label><span style={S.label}>Nombre</span><input value={form.nombre} onChange={e=>setForm({...form,nombre:e.target.value})} style={S.input} placeholder="Ej: Spiderman" required/></label>
+            <label><span style={S.label}>Nombre del personaje</span><input value={form.nombre} onChange={e=>setForm({...form,nombre:e.target.value})} style={S.input} placeholder="Ej: Spiderman" required/></label>
             <label><span style={S.label}>Emoji</span><input value={form.emoji} onChange={e=>setForm({...form,emoji:e.target.value})} maxLength={2} style={{...S.input,width:60,fontSize:24,textAlign:'center'}}/></label>
             <div>
-              <span style={S.label}>Imagen (formato 9:16 ideal)</span>
+              <span style={S.label}>Imágenes (podés subir VARIAS del mismo personaje · 9:16 ideal)</span>
               <div onClick={()=>fRef.current.click()} style={{border:'2px dashed #c4b5fd',borderRadius:12,padding:14,textAlign:'center',cursor:'pointer',background:'#faf5ff'}}>
-                {form.prev
-                  ?<img src={form.prev} alt="" style={{width:'100%',aspectRatio:'9/16',objectFit:'cover',borderRadius:8}}/>
-                  :<div style={{color:'#7c3aed',fontSize:12,fontWeight:700}}>📤 Subir imagen<br/><span style={{fontSize:10,color:'#94a3b8',fontWeight:400}}>1080×1920px ideal · 9:16</span></div>}
+                <div style={{color:'#7c3aed',fontSize:12,fontWeight:700}}>📤 Subir imágenes (varias a la vez)<br/><span style={{fontSize:10,color:'#94a3b8',fontWeight:400}}>Seleccioná todas las que quieras · 1080×1920 ideal</span></div>
               </div>
-              <input ref={fRef} type="file" accept="image/*" onChange={onFile} style={{display:'none'}}/>
-              <input value={form.img.startsWith('data:')?'':form.img} onChange={e=>setForm({...form,img:e.target.value,prev:''})} placeholder="O pegá una URL" style={{...S.input,marginTop:6,fontSize:11}}/>
+              <input ref={fRef} type="file" accept="image/*" multiple onChange={onFile} style={{display:'none'}}/>
+              <div style={{display:'flex',gap:6,marginTop:6}}>
+                <input value={urlInput} onChange={e=>setUrlInput(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();addUrl();}}} placeholder="O pegá una URL y +" style={{...S.input,flex:1,marginTop:0,fontSize:11}}/>
+                <button type="button" onClick={addUrl} style={{...S.btn,background:'#7c3aed',color:'white',padding:'7px 12px'}}>+</button>
+              </div>
+              {form.imgs.length>0&&(
+                <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginTop:8}}>
+                  {form.imgs.map((im,i)=>(
+                    <div key={i} style={{position:'relative',aspectRatio:'9/16',borderRadius:8,overflow:'hidden',background:'#0f172a'}}>
+                      <img src={im} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                      <button type="button" onClick={()=>quitarImg(i)} style={{position:'absolute',top:2,right:2,background:'rgba(220,38,38,.92)',color:'white',border:'none',borderRadius:'50%',width:18,height:18,fontSize:10,cursor:'pointer',lineHeight:1}}>✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {form.imgs.length>0&&<div style={{fontSize:10,color:'#16a34a',fontWeight:700,marginTop:4}}>{form.imgs.length} imagen{form.imgs.length>1?'es':''} lista{form.imgs.length>1?'s':''} para cargar</div>}
             </div>
             <div>
-              <span style={S.label}>Categorías</span>
+              <span style={S.label}>Categorías <span style={{color:'#94a3b8',fontWeight:400}}>(por defecto: TODAS)</span></span>
               <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:8}}>
                 {allCats.map(c=><button type="button" key={c} onClick={()=>toggleCat(c)} style={{padding:'3px 10px',borderRadius:99,fontSize:10,fontWeight:700,border:'none',cursor:'pointer',background:form.cats.includes(c)?'#7c3aed':'#f1f5f9',color:form.cats.includes(c)?'white':'#64748b'}}>{c}</button>)}
               </div>
@@ -1159,7 +1190,7 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
                 <button type="button" onClick={()=>addCat()} style={{...S.btn,background:'#7c3aed',color:'white',padding:'7px 12px'}}>+</button>
               </div>
             </div>
-            <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',width:'100%',padding:12}}>✓ Guardar Portada</button>
+            <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',width:'100%',padding:12}}>✓ Guardar imágenes</button>
           </form>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10}}>
@@ -1172,6 +1203,16 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
                 {t.ia&&<span style={{position:'absolute',top:5,right:6,background:'#0ea5e9',color:'white',fontSize:8,padding:'2px 5px',borderRadius:5,fontWeight:800}}>IA</span>}
               </div>
               <button onClick={()=>setTematicas(tematicas.map(x=>x.id===t.id?{...x,ia:!x.ia}:x))} style={{width:'100%',padding:6,background:t.ia?'#e0f2fe':'none',border:'none',color:t.ia?'#0369a1':'#0ea5e9',cursor:'pointer',fontSize:11,fontWeight:700,borderTop:'1px solid #e2e8f0'}}>{t.ia?'✓ En Catálogo IA':'➕ Catálogo IA'}</button>
+              {editCat===t.id?(
+                <div style={{padding:6,borderTop:'1px solid #e2e8f0',background:'#faf5ff'}}>
+                  <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:6}}>
+                    {allCats.filter(c=>c!=='TODOS').map(c=><button key={c} onClick={()=>toggleCatTem(t.id,c)} style={{padding:'2px 7px',borderRadius:99,fontSize:9,fontWeight:700,border:'none',cursor:'pointer',background:(t.cats||[]).includes(c)?'#7c3aed':'#f1f5f9',color:(t.cats||[]).includes(c)?'white':'#64748b'}}>{c}</button>)}
+                  </div>
+                  <button onClick={()=>setEditCat(null)} style={{width:'100%',background:'#16a34a',color:'white',border:'none',borderRadius:6,padding:5,fontSize:10,fontWeight:800,cursor:'pointer'}}>✓ Listo</button>
+                </div>
+              ):(
+                <button onClick={()=>setEditCat(t.id)} style={{width:'100%',padding:6,background:'none',border:'none',color:'#7c3aed',cursor:'pointer',fontSize:11,fontWeight:700,borderTop:'1px solid #ede9fe'}}>🏷 Categorías</button>
+              )}
               <button onClick={()=>setTematicas(tematicas.filter(x=>x.id!==t.id))} style={{width:'100%',padding:6,background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:11,fontWeight:700,borderTop:'1px solid #fee2e2'}}>🗑 Eliminar</button>
             </div>
           ))}
@@ -2331,8 +2372,8 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
             if(vr.ok&&vd&&vd.audio)audioUri=vd.audio;
           }catch(e){/* sin voz EL → seguimos con el audio de Kling */}
           if(cancel)return;
-          // 2) Encolar el video: mudo si tenemos voz de ElevenLabs (la pegamos después); con audio de Kling si no
-          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:baseImg,prompt:baseV,duration:8,generate_audio:!audioUri})});
+          // 2) Encolar el video SIEMPRE con audio (así nunca queda mudo). Si el lip-sync con ElevenLabs funciona, reemplaza la voz; si no, queda la de Kling.
+          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:baseImg,prompt:baseV,duration:8,generate_audio:true})});
           const sd=await sub.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
           if(!sub.ok) throw new Error(sd.error||'No se pudo iniciar el video.');
           if(!sd.statusUrl||!sd.responseUrl) throw new Error('No se pudo iniciar el video.');
