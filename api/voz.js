@@ -21,11 +21,22 @@ module.exports = async (req, res) => {
     const genero = body.genero;
     if (!text) { res.status(400).json({ error: 'Falta el texto a decir.' }); return; }
 
-    // Voces INCORPORADas (premade) → funcionan con el plan GRATIS por API.
-    // Si la dueña pasa a un plan pago, puede setear ELEVENLABS_VOICE_F/M con voces de librería (argentinas).
-    const VOICE_F = process.env.ELEVENLABS_VOICE_F || 'EXAVITQu4vr4xnSDxMaL'; // Bella (femenina, premade)
-    const VOICE_M = process.env.ELEVENLABS_VOICE_M || 'pNInz6obpgDQGcFmaJgB'; // Adam (masculina, premade)
-    const voice = (genero === 'f') ? VOICE_F : (genero === 'm') ? VOICE_M : VOICE_M;
+    // Elegimos una voz INCLUIDA (premade) de la cuenta, según género (las premade funcionan en plan gratis).
+    // Si la dueña pasa a plan pago, puede setear ELEVENLABS_VOICE_F/M con voces de librería (argentinas).
+    const want = (genero === 'f') ? 'female' : 'male';
+    let voice = (genero === 'f') ? process.env.ELEVENLABS_VOICE_F : process.env.ELEVENLABS_VOICE_M;
+    if (!voice) {
+      try {
+        const lr = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': key } });
+        const ld = await lr.json().catch(() => ({}));
+        const voices = (ld && ld.voices) || [];
+        const premade = voices.filter(v => v.category === 'premade');
+        const pool = premade.length ? premade : voices;
+        const match = pool.find(v => v.labels && String(v.labels.gender || '').toLowerCase() === want) || pool[0];
+        if (match) voice = match.voice_id;
+      } catch (e) {}
+    }
+    if (!voice) voice = (genero === 'f') ? 'EXAVITQu4vr4xnSDxMaL' : 'pNInz6obpgDQGcFmaJgB';
 
     const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + voice, {
       method: 'POST',
