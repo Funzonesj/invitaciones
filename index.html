@@ -190,6 +190,43 @@ function flashOk(texto){
   }catch(e){}
 }
 // Prompt de video recomendado (fijo) + frase de saludo (editable aparte, se inserta en {frase})
+// Arma la imagen de la tarjeta (portada + datos del evento) y la comparte/descarga — SIN link ni panel (ideal escuelas/admin)
+function generarTarjetaImagen(ev, suc, tematicas, iaConfig, accion){
+  if(!ev) return;
+  const W=540,H=960;
+  const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const fecha=ev.dia+' de '+(meses[(+ev.mes)-1]||'')+' de '+ev.anio;
+  const nombre=ev.nombre||'';
+  const col=(suc&&suc.color)||'#7c3aed';
+  const F=fmtTipo(ev.tipo,iaConfig);
+  const portadaImg=ev.portadaSrc||((((tematicas||[]).find(t=>t.id===ev.temId))||{}).img)||'';
+  function dibujar(imgEl){
+    const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d');
+    ctx.fillStyle='#0f172a';ctx.fillRect(0,0,W,H);
+    if(imgEl){const iw=imgEl.width,ih=imgEl.height,sc=Math.max(W/iw,H/ih),dw=iw*sc,dh=ih*sc;ctx.drawImage(imgEl,(W-dw)/2,0,dw,dh);}
+    else{const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,'#1e0a4e');g.addColorStop(1,col);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);}
+    const og=ctx.createLinearGradient(0,H*0.4,0,H);og.addColorStop(0,'rgba(0,0,0,0)');og.addColorStop(1,'rgba(0,0,0,0.88)');ctx.fillStyle=og;ctx.fillRect(0,0,W,H);
+    ctx.textAlign='center';
+    ctx.fillStyle='#f43f5e';ctx.beginPath();ctx.roundRect(W/2-90,40,180,40,20);ctx.fill();ctx.fillStyle='white';ctx.font='bold 18px Arial';ctx.fillText('TE INVITO!',W/2,67);
+    let y=H-320;
+    if(F.fmtNombre!==false&&nombre){ctx.fillStyle='#fff';ctx.font='bold 64px Arial';if(ctx.measureText(nombre).width>490)ctx.font='bold 44px Arial';ctx.fillText(nombre,W/2,y);y+=54;}
+    const _u=(ev.edadUnidad||'años');
+    const tipoTxt=(F.fmtEdad&&_u!=='noaplica'&&ev.edad)?((ev.tipo||'')+' · '+ev.edad+' '+(_u==='meses'?'meses':'años')):(ev.tipo||'');
+    ctx.fillStyle='#fde68a';ctx.font='bold 24px Arial';ctx.fillText(tipoTxt,W/2,y);y+=46;
+    ctx.fillStyle='#fff';ctx.font='22px Arial';ctx.fillText(fecha,W/2,y);y+=32;ctx.fillText((ev.hIni||'')+' a '+(ev.hFin||'')+' hs',W/2,y);y+=42;
+    ctx.fillStyle='#fff';ctx.font='bold 26px Arial';ctx.fillText((suc&&suc.nombre)||'',W/2,y);y+=30;
+    ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font='16px Arial';const dir=(suc&&suc.direccion)||'';if(ctx.measureText(dir).width>490)ctx.font='13px Arial';ctx.fillText(dir,W/2,y);
+    canvas.toBlob(function(blob){
+      if(!blob){alert('No se pudo crear la imagen.');return;}
+      const fname='tarjeta-'+((nombre||'evento').toLowerCase().replace(/[^a-z0-9]/g,'')||'evento')+'.jpg';
+      const file=new File([blob],fname,{type:'image/jpeg'});
+      if(accion==='compartir'&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Invitación',text:'¡Te invito!'}).catch(function(){});}
+      else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);if(accion==='compartir')alert('Se descargó la tarjeta para que la compartas.');}
+    },'image/jpeg',0.92);
+  }
+  if(portadaImg){fetch(portadaImg).then(function(r){return r.blob();}).then(function(b){const u=URL.createObjectURL(b);const im=new Image();im.onload=function(){dibujar(im);URL.revokeObjectURL(u);};im.onerror=function(){dibujar(null);};im.src=u;}).catch(function(){dibujar(null);});}
+  else dibujar(null);
+}
 const PROMPT_VIDEO_DEF='The child and {personaje} are together facing the camera, side by side, both smiling and happy. {personaje} looks at the camera and speaks in Spanish with an enthusiastic and happy expression and good lip sync, saying EXACTLY these words, word by word, and nothing else: "{frase}". The child stays next to {personaje} smiling. Keep the child face identical to the image (do not change it). Same background, same lighting and same style as the image. The camera is completely STATIC and FIXED: no zoom, no panning, no camera movement; keep the same framing the whole video. No scene changes. Do not add any text, letters or watermarks. Preserve both faces and appearance identical throughout the entire video.';
 const FRASE_VIDEO_DEF='¡Hola! Soy {personaje} y vengo a invitarte a festejar el cumple de {nombre}. ¡Va a ser una fiesta increíble en {salon}! ¡Te esperamos!';
 
@@ -1167,6 +1204,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                   🔑 Enviar acceso por WhatsApp
                 </button>
                 <button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>🎁 Ver Invitación</button>
+                <button onClick={()=>generarTarjetaImagen(ev,sucAct,tematicas,iaConfig,'compartir')} style={{background:'#0ea5e9',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #0284c7'}}>📷 Compartir tarjeta (imagen, sin link)</button>
               </div>
             );
           })}
