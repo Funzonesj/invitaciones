@@ -178,7 +178,7 @@ const INIT_VISTA = _INV_PARAM ? 'invitado-portada'
 // Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
 let _PAPA_NAV={};
 // Prompt de video recomendado (fijo) + frase de saludo (editable aparte, se inserta en {frase})
-const PROMPT_VIDEO_DEF='The child and {personaje} are together facing the camera, side by side, both smiling and happy. {personaje} looks at the camera and speaks with an enthusiastic and happy expression, with good lip sync, saying in Spanish: "{frase}". The child stays next to {personaje} smiling. Keep the child face identical to the image (do not change it). Same background, same lighting and same style as the image. The camera is completely STATIC and FIXED: no zoom, no panning, no camera movement; keep the same framing the whole video. No scene changes. Do not add any text, letters or watermarks. Preserve both faces and appearance identical throughout the entire video.';
+const PROMPT_VIDEO_DEF='The child and {personaje} are together facing the camera, side by side, both smiling and happy. {personaje} looks at the camera and speaks in Spanish with an enthusiastic and happy expression and good lip sync, saying EXACTLY these words, word by word, and nothing else: "{frase}". The child stays next to {personaje} smiling. Keep the child face identical to the image (do not change it). Same background, same lighting and same style as the image. The camera is completely STATIC and FIXED: no zoom, no panning, no camera movement; keep the same framing the whole video. No scene changes. Do not add any text, letters or watermarks. Preserve both faces and appearance identical throughout the entire video.';
 const FRASE_VIDEO_DEF='¡Hola! Soy {personaje} y vengo a invitarte a festejar el cumple de {nombre}. ¡Va a ser una fiesta increíble en {salon}! ¡Te esperamos!';
 
 function App() {
@@ -1132,10 +1132,10 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
   if(filtCat==='RECIENTES'){const seen=new Set();const out=[];for(const t of listaMostrar){const b=_bn(t.nombre);if(!seen.has(b)){seen.add(b);out.push(t);}if(out.length>=10)break;}listaMostrar=out;}
   else if(filtCat!=='TODOS'){listaMostrar=listaMostrar.filter(t=>(t.cats||[]).includes(filtCat));}
 
-  // Carga MÚLTIPLE: varias imágenes del mismo personaje de una sola vez
+  // Carga MÚLTIPLE: varias imágenes del mismo personaje de una sola vez (achicadas para que se puedan guardar)
   function onFile(e){
     const files=Array.from(e.target.files||[]);if(!files.length)return;
-    files.forEach(f=>{const r=new FileReader();r.onload=ev=>setForm(x=>({...x,imgs:[...x.imgs,ev.target.result]}));r.readAsDataURL(f);});
+    files.forEach(f=>resizeImg(f,520,data=>setForm(x=>({...x,imgs:[...x.imgs,data]}))));
   }
   function quitarImg(i){setForm(x=>({...x,imgs:x.imgs.filter((_,idx)=>idx!==i)}));}
   function addUrl(){const u=urlInput.trim();if(!u)return;setForm(x=>({...x,imgs:[...x.imgs,u]}));setUrlInput('');}
