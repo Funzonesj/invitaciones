@@ -1973,7 +1973,7 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso}){
 }
 
 /* ── IA UPLOAD SECTION ───────────────────────────────────── */
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta,onBorrar,onVideoUpsell,videoUnlocked,precioVideo,videoExiste,videoListo,videoFreeOk}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta,onBorrar,conVideo=true,setConVideo}){
   const fotoRef=useRef();
   const persRef=useRef();
   function guardarFoto(src){
@@ -2151,6 +2151,12 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             <div style={{fontWeight:900,fontSize:20,color:'#1e293b'}}>${precio.toLocaleString('es-AR')}</div>
           </div>
         )}
+        {tipo==='imagen'&&(
+          <label style={{display:'flex',alignItems:'center',gap:10,background:'#faf5ff',border:'1px solid #e9d5ff',borderRadius:12,padding:'10px 12px',marginBottom:12,cursor:'pointer'}}>
+            <input type="checkbox" checked={conVideo} onChange={e=>setConVideo&&setConVideo(e.target.checked)} style={{width:20,height:20,accentColor:'#7c3aed',flexShrink:0}}/>
+            <span style={{fontSize:12,fontWeight:800,color:'#6b21a8',lineHeight:1.35}}>🎬 Incluir el video del personaje hablando en la portada <span style={{fontWeight:600,color:'#9333ea'}}>(ya viene incluido · destildá si solo querés la imagen)</span></span>
+          </label>
+        )}
         <button
           onClick={onPagar}
           disabled={!listo}
@@ -2216,9 +2222,8 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             <div className="fade-in" style={{background:'linear-gradient(135deg,#f0fdf4,#ede9fe)',border:'1px solid #bbf7d0',borderRadius:16,padding:16,textAlign:'center'}}>
               <div style={{fontSize:28,marginBottom:2}}>✅</div>
               <div style={{fontWeight:900,fontSize:16,color:'#1e293b'}}>¡Tu tarjeta está lista!</div>
-              <div style={{fontSize:12,color:'#64748b',margin:'4px 0 12px'}}>Elegiste tu imagen. Mirá cómo quedó tu tarjeta, o sumale un <b>video con IA</b>{precioVideo?(' por $'+Number(precioVideo).toLocaleString('es-AR')+' más'):''}. 🎬</div>
-              {onVerTarjeta&&<button onClick={onVerTarjeta} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginBottom:8}}>👁 Ver mi tarjeta</button>}
-              {onVideoUpsell&&<button onClick={()=>onVideoUpsell(resultados[selIdx])} style={{...S.btn,width:'100%',background:(!videoFreeOk&&videoExiste&&!videoListo)?'linear-gradient(135deg,#009ee3,#0070ba)':'linear-gradient(135deg,#e11d48,#be123c)',color:'white',padding:'13px',fontSize:14,fontWeight:900}}>{videoFreeOk?'🎬 Generar video':(videoListo?'🎬 Ver mi video':(videoExiste?'🔓 Desbloquear video':'🎬 Generar video'))}</button>}
+              <div style={{fontSize:12,color:'#64748b',margin:'4px 0 12px'}}>Elegiste tu imagen.{conVideo?' El video del personaje se está preparando y va a aparecer arriba en tu tarjeta. 🎬':' Mirá cómo quedó tu tarjeta.'}</div>
+              {onVerTarjeta&&<button onClick={onVerTarjeta} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'14px',fontSize:15,fontWeight:900}}>👁 Ver mi tarjeta</button>}
             </div>
           )}
           {tipo==='imagen'&&onDescartar&&(
@@ -2430,39 +2435,28 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
             return null;
           };
 
-          if(!audioUrl){
-            // ── Sin ElevenLabs: comportamiento clásico (un solo video, los dos juntos, voz nativa de Kling) ──
-            let baseV=repl((prompt||'').replace(/\{frase\}/g,(frase||'')));
-            if(genero==='f') baseV+=' The character speaks with a clearly female voice.';
-            else if(genero==='m') baseV+=' The character speaks with a clearly male voice.';
-            const urlVid=await genVid(baseImg,baseV,10,true,92);
-            if(cancel)return; if(!urlVid)return;
-            setProgreso(100);onResultado([urlVid],'⚠️ La voz exacta (ElevenLabs) no está configurada: el personaje improvisa el saludo.');
-          } else {
-            // ── Con ElevenLabs: DOS tomas (entrada con el niño + personaje solo diciendo las palabras EXACTAS) ──
-            // Imagen del personaje SOLO (para la toma que habla); la pasamos a URL si hace falta.
-            let persUrl=personaje||'';
-            if(persUrl&&persUrl.indexOf('data:')===0){
-              try{const ur=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:persUrl})});const ud=await ur.json().catch(()=>({}));if(ur.ok&&ud.url)persUrl=ud.url;}catch(e){}
-            }
-            // TOMA 1: el personaje viene CON el niño (la imagen elegida), sin voz
-            const promptEntrada='The character and the child appear together, happy and excited, smiling, gentle natural motion toward the camera, festive birthday party atmosphere, both clearly visible. No talking.';
-            const urlEntrada=await genVid(baseImg,promptEntrada,5,false,45);
-            if(cancel)return; if(!urlEntrada)return;
-            setProgreso(48);
-            // TOMA 2: el personaje SOLO de frente, hablando (después le ponemos la voz exacta)
-            const promptHabla='The character faces the camera, front view, upper body visible, looking directly at the camera and talking, mouth moving naturally as if speaking, warm friendly expression, gentle head movement, festive background, only the character in frame, no other people.';
-            const urlHabla=await genVid(persUrl||baseImg,promptHabla,10,false,72);
+          // Imagen del personaje SOLO (catálogo). La pasamos a URL si hace falta.
+          let talkImg=personaje||startImage||baseImg||'';
+          if(talkImg&&talkImg.indexOf('data:')===0){
+            try{const ur=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:talkImg})});const ud=await ur.json().catch(()=>({}));if(ur.ok&&ud.url)talkImg=ud.url;}catch(e){}
+          }
+          // El personaje SOLO, alegre y enérgico, hablando de frente a la cámara
+          const promptHabla='The character faces the camera, front view, upper body visible, talking directly to the camera in a cheerful, energetic and excited way, big happy smile, lively and enthusiastic expression, natural mouth movement as if speaking, friendly, with gentle lively head and hand movement, festive birthday party background, only the character in frame, no other people, no text or letters.';
+          if(audioUrl){
+            // Video mudo del personaje + voz exacta pegada con lip-sync (una sola cara → queda limpio)
+            const urlHabla=await genVid(talkImg,promptHabla,10,false,82);
             if(cancel)return; if(!urlHabla)return;
-            setProgreso(76);
-            // Pegar la voz exacta y sincronizar la boca (una sola cara → queda limpio)
-            const urlHablaVoz=(await colaWait('/api/lipsync',{video:urlHabla,audio:audioUrl},88))||urlHabla;
-            if(cancel)return;
-            setProgreso(90);
-            // Unir las dos tomas en un solo video
-            const urlFinal=(await colaWait('/api/unir-videos',{videos:[urlEntrada,urlHablaVoz]},97))||urlHablaVoz;
+            setProgreso(86);
+            const urlFinal=(await colaWait('/api/lipsync',{video:urlHabla,audio:audioUrl},97))||urlHabla;
             if(cancel)return;
             setProgreso(100);onResultado([urlFinal]);
+          } else {
+            // Respaldo sin ElevenLabs: voz nativa de Kling diciendo la frase
+            let pr=promptHabla+' The character says in Spanish EXACTLY these words and nothing else: "'+fraseSaludo+'".';
+            if(genero==='f') pr+=' Female voice.'; else if(genero==='m') pr+=' Male voice.';
+            const urlFinal=await genVid(talkImg,pr,10,true,97);
+            if(cancel)return; if(!urlFinal)return;
+            setProgreso(100);onResultado([urlFinal],'⚠️ La voz exacta (ElevenLabs) no está configurada: el personaje improvisa el saludo.');
           }
         }
       }catch(e){ if(cancel)return; setErrMsg(String((e&&e.message)||e));setPaso('error'); }
@@ -2552,6 +2546,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [genActivo,setGenActivo]=useState(null);
   // Upsell de video (animar la imagen elegida): ver gratis, pagar para descargar
   const [videoStartImg,setVideoStartImg]=useState(null);
+  const [conVideo,setConVideo]=useState(true); // el papá quiere el video del personaje en la portada (puede sacarlo)
   const [videoInfo,setVideoInfo]=useState(null); // imagen pendiente de confirmar antes de generar el video
   const [videoDiag,setVideoDiag]=useState(''); // nota de diagnóstico (si la voz de EL no se aplicó)
   const [videoUrl,setVideoUrl]=useState('');
@@ -2951,12 +2946,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             {(modoPortada==='tematica'||modoPortada==='foto')&&(
               <div className="fade-in" style={{marginTop:18,borderTop:'1px dashed #e2e8f0',paddingTop:16}}>
                 <div style={{fontWeight:900,fontSize:14,marginBottom:4,color:'#1e293b'}}>✨ Opción Premium con IA</div>
-                <div style={{fontSize:11,color:'#64748b',marginBottom:12}}>Creá una imagen única de tu hijo/a con su personaje favorito. Después podés convertirla en video. 🎬</div>
+                <div style={{fontSize:11,color:'#64748b',marginBottom:12}}>Creá la tarjeta de tu hijo/a con su personaje: imágenes + el video del personaje hablando, ¡todo junto en un solo pago! 🎬</div>
                 <button onClick={()=>setModoPortada('ia-imagen')} style={{width:'100%',textAlign:'left',cursor:'pointer',border:'1px solid #bae6fd',background:'linear-gradient(135deg,#0ea5e915,#0ea5e905)',borderRadius:16,padding:16,display:'flex',alignItems:'center',gap:12}}>
                   <span style={{fontSize:34}}>🖼️</span>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:900,fontSize:14,color:'#0369a1'}}>Tarjeta Premium con IA</div>
-                    <div style={{fontSize:10,color:'#64748b',lineHeight:1.3}}>6 imágenes para elegir · y opción de video después</div>
+                    <div style={{fontSize:10,color:'#64748b',lineHeight:1.3}}>6 imágenes + video del personaje hablando</div>
                   </div>
                   <div style={{textAlign:'right'}}>
                     <div style={{fontWeight:900,fontSize:18,color:'#0ea5e9'}}>${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</div>
@@ -2966,7 +2961,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} precioVideo={iaConfig.precioVideo} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} videoUnlocked={vistoTarjeta} onBorrar={borrarIaImg} onVideoUpsell={abrirVideoUpsell} videoExiste={!!videoGuardado} videoListo={videoYaPago} videoFreeOk={videoFreeDisponible}/>
+              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} conVideo={conVideo} setConVideo={setConVideo}/>
             )}
           </div>
         </div>
@@ -3319,7 +3314,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA,videoFreeDisponible:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas,videoFreeDisponible:true}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.nombre} startImage={genActivo==='video'?videoStartImg:null} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});}else{if(videoStartImg){const vu=imgs[0]||'';const pagado=genVideoPagadoRef.current;genVideoPagadoRef.current=false;setVideoUrl(vu);setVideoPaga(pagado);setVideoDiag(diag||'');setVideoStartImg(null);setPapaSesion(ps=>{const n={...ps,videoUrl:vu,videoFreeDisponible:false,videoPagado:pagado};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,videoFreeDisponible:false,videoPagado:pagado}:e));return n;});}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));}setGenActivo(null);}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.nombre} startImage={genActivo==='video'?videoStartImg:null} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});/* Si el papá quiere video (y hay personaje), lo generamos automático: va incluido en el pago */if(conVideo&&form.personajeIA){genVideoPagadoRef.current=true;setVideoStartImg(nuevoSrc);setGenActivo('video');}else setGenActivo(null);}else{const vu=imgs[0]||'';genVideoPagadoRef.current=false;setVideoStartImg(null);setVideoDiag(diag||'');setPapaSesion(ps=>{const n={...ps,videoUrl:vu,videoFreeDisponible:false,videoPagado:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,videoFreeDisponible:false,videoPagado:true}:e));return n;});setGenActivo(null);}}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
 
       {/* Cartel informativo del VIDEO (antes de generar): costo + paga si te gusta */}
       {videoInfo&&(
@@ -3435,6 +3430,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
   const tem=tematicas.find(t=>t.id===ev?.temId)||tematicas[0];
   const portada=(ev&&ev.portadaSrc)||(tem&&tem.img);
+  const [vidMuted,setVidMuted]=useState(true); // el video de portada arranca mudo (los celus no dejan audio automático)
   const col=suc.color||'#f97316';
   // Formato según tipo de evento (viaja guardado en el evento)
   const fEdad = (ev && ev.fmtEdad!==undefined) ? ev.fmtEdad : true;
@@ -3503,25 +3499,23 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const horario=ev?('de '+ev.hIni+' a '+ev.hFin+'hs'):'';
 
   return(
-    <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto',paddingBottom:(volverInv==='papa-creador'&&ev&&!ev.videoPagado)?72:0}}>
+    <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto'}}>
       {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>}
 
-      {/* CTA papá: generar / desbloquear video (debajo de la invitación) */}
-      {volverInv==='papa-creador'&&ev&&!ev.videoPagado&&(
-        <div style={{position:'fixed',left:0,right:0,bottom:0,zIndex:20,display:'flex',justifyContent:'center',padding:10,background:'linear-gradient(to top,rgba(255,255,255,.95),rgba(255,255,255,0))'}}>
-          {(ev.videoUrl&&!ev.videoFreeDisponible)?(
-            <button onClick={()=>{_PAPA_NAV={seccion:'tarjeta',modo:'ia-imagen',visto:true,desbloquear:true};setVista(volverInv);}} style={{maxWidth:440,width:'100%',background:'linear-gradient(135deg,#009ee3,#0070ba)',color:'white',border:'none',borderRadius:99,padding:'14px',fontSize:15,fontWeight:900,cursor:'pointer',boxShadow:'0 8px 24px rgba(0,158,227,.4)'}}>🔓 Desbloquear el video</button>
-          ):(
-            <button onClick={()=>{_PAPA_NAV={seccion:'tarjeta',modo:'ia-imagen',visto:true,genVideo:true};setVista(volverInv);}} style={{maxWidth:440,width:'100%',background:'linear-gradient(135deg,#e11d48,#be123c)',color:'white',border:'none',borderRadius:99,padding:'14px',fontSize:15,fontWeight:900,cursor:'pointer',boxShadow:'0 8px 24px rgba(225,29,72,.4)'}}>🎬 Generar video de esta tarjeta</button>
-          )}
-        </div>
-      )}
-
-      {/* 1. IMAGEN TEMATICA (banner compacto, muestra desde arriba para no cortar la cara) */}
-      <div style={{position:'relative',width:'100%',aspectRatio:'4/5',maxHeight:'58vh',overflow:'hidden'}}>
-        <img src={portada} alt={tem.nombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top center',display:'block'}}/>
-        <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)'}}></div>
-        <span style={{position:'absolute',top:14,left:14,background:'#f43f5e',color:'white',fontSize:12,padding:'5px 16px',borderRadius:99,fontWeight:900,letterSpacing:1}}>TE INVITO!</span>
+      {/* 1. PORTADA: si hay video del personaje, va el VIDEO (mudo + tocá para escuchar); si no, la imagen */}
+      <div style={{position:'relative',width:'100%',aspectRatio:'4/5',maxHeight:'58vh',overflow:'hidden',background:'#0f172a'}}>
+        {ev&&ev.videoUrl?(
+          <React.Fragment>
+            <video src={ev.videoUrl} autoPlay loop muted={vidMuted} playsInline style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top center',display:'block'}}></video>
+            {vidMuted&&(
+              <button onClick={(e)=>{const v=e.currentTarget.parentNode.querySelector('video');setVidMuted(false);if(v){v.muted=false;v.currentTime=0;v.play&&v.play();}}} style={{position:'absolute',bottom:14,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.7)',color:'white',border:'none',borderRadius:99,padding:'10px 18px',fontSize:14,fontWeight:900,cursor:'pointer',zIndex:3,boxShadow:'0 6px 20px rgba(0,0,0,.4)'}}>🔊 Tocá para escuchar</button>
+            )}
+          </React.Fragment>
+        ):(
+          <img src={portada} alt={tem.nombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top center',display:'block'}}/>
+        )}
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)',pointerEvents:'none'}}></div>
+        <span style={{position:'absolute',top:14,left:14,background:'#f43f5e',color:'white',fontSize:12,padding:'5px 16px',borderRadius:99,fontWeight:900,letterSpacing:1,zIndex:2}}>TE INVITO!</span>
       </div>
 
       {/* 2. LOGO centrado sobre la imagen */}
@@ -3578,11 +3572,11 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         )}
       </div>
 
-      {/* 7b. VIDEO DE INVITACIÓN (si el papá lo generó y pagó) */}
-      {ev&&ev.videoUrl&&ev.videoPagado&&(
+      {/* 7b. FOTO con IA (cuando arriba va el video, la imagen del personaje con el niño aparece acá al desplazar) */}
+      {ev&&ev.videoUrl&&portada&&(
         <div style={{padding:'14px 16px',borderTop:'1px solid #f0f0f0'}}>
-          <p style={{color:col,fontSize:16,fontWeight:900,textAlign:'center',margin:'0 0 8px'}}>🎬 ¡Mirá el video!</p>
-          <video src={ev.videoUrl} controls playsInline style={{width:'100%',borderRadius:14,background:'#000',display:'block'}}></video>
+          <p style={{color:col,fontSize:16,fontWeight:900,textAlign:'center',margin:'0 0 8px'}}>📸 ¡Mirá la foto!</p>
+          <img src={portada} alt="" style={{width:'100%',borderRadius:14,display:'block'}}/>
         </div>
       )}
 
