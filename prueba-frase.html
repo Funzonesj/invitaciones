@@ -52,6 +52,11 @@
   <div class="card">
     <label>Frase a decir (escribila como suena para que la pronuncie bien)</label>
     <textarea id="frase" placeholder="¡Hola! Te espero en mi fiesta. ¡Va a estar buenísima!"></textarea>
+    <label style="margin-top:12px">Escena</label>
+    <select id="escena">
+      <option value="dos">Los dos entran caminando y habla SOLO el personaje</option>
+      <option value="solo">Solo el personaje hablando</option>
+    </select>
     <div class="row" style="margin-top:10px">
       <div>
         <label>Voz</label>
@@ -96,11 +101,18 @@ async function post(path,body){
   return d;
 }
 
-// Mismo prompt que usa la app (Kling, voz nativa, acento argentino)
-function buildPrompt(frase, genero){
-  let pr='The character is alone, facing the camera, front view, upper body visible, cheerful, very energetic, excited and playful, big happy smile, fun and lively expression with animated friendly gestures. The character looks straight at the camera and speaks in neutral Latin American Spanish with a natural Argentine (Rioplatense) accent — NOT Spain Spanish — at a slightly faster, upbeat and playful pace, in a fun and entertaining tone full of energy, like talking excitedly to a child, while STILL pronouncing every word clearly and understandably with accurate natural lip sync, saying exactly these words and nothing else: "'+frase+'". Only this character is in the scene and only this character talks. The camera is completely STATIC and FIXED: no zoom, no panning, no camera movement; keep the exact same framing the whole video. Same background, same lighting and same art style as the image. No scene changes. Do not add any text, letters or watermarks. Keep the character appearance identical to the image throughout the entire video.';
-  if(genero==='f') pr+=' The character speaks with a clearly female voice.';
-  else if(genero==='m') pr+=' The character speaks with a clearly male voice.';
+// Mismo motor que la app (Kling, voz nativa, acento argentino). Dos escenas posibles.
+function buildPrompt(frase, genero, escena){
+  let pr;
+  if(escena==='dos'){
+    // Los dos (niño + personaje) entran caminando y riendo; se paran y habla SOLO el personaje
+    pr='The image shows a real child together with a cartoon/animated character. They both walk in together from behind toward the camera, side by side, laughing, happy and excited. After about 3 seconds they stop and face the camera directly. Then ONLY the cartoon character speaks: the cartoon character looks straight at the camera and speaks in neutral Latin American Spanish with a natural Argentine (Rioplatense) accent — NOT Spain Spanish — at a slightly faster, fun, upbeat and playful pace, full of energy, with accurate natural lip sync, pronouncing every word clearly and understandably, saying exactly these words and nothing else: "'+frase+'". VERY IMPORTANT: only the cartoon character talks and moves its mouth; the real child does NOT talk and keeps the mouth closed, just smiling happily next to the character. Keep both the child and the character faces and appearance identical to the image. Same background, same lighting and same art style as the image. Do not add any text, letters or watermarks.';
+  } else {
+    // Solo el personaje, de frente, hablando
+    pr='The character is alone, facing the camera, front view, upper body visible, cheerful, very energetic, excited and playful, big happy smile, fun and lively expression with animated friendly gestures. The character looks straight at the camera and speaks in neutral Latin American Spanish with a natural Argentine (Rioplatense) accent — NOT Spain Spanish — at a slightly faster, upbeat and playful pace, in a fun and entertaining tone full of energy, like talking excitedly to a child, while STILL pronouncing every word clearly and understandably with accurate natural lip sync, saying exactly these words and nothing else: "'+frase+'". Only this character is in the scene and only this character talks. The camera is completely STATIC and FIXED: no zoom, no panning, no camera movement; keep the exact same framing the whole video. Same background, same lighting and same art style as the image. No scene changes. Do not add any text, letters or watermarks. Keep the character appearance identical to the image throughout the entire video.';
+  }
+  if(genero==='f') pr+=' The cartoon character speaks with a clearly female voice.';
+  else if(genero==='m') pr+=' The cartoon character speaks with a clearly male voice.';
   return pr;
 }
 
@@ -108,7 +120,7 @@ $('go').onclick=async()=>{
   const frase=$('frase').value.trim();
   if(!imgData){alert('Primero elegí el personaje.');return;}
   if(!frase){alert('Escribí la frase.');return;}
-  const genero=$('genero').value, dur=$('dur').value;
+  const genero=$('genero').value, dur=$('dur').value, escena=$('escena').value;
   $('go').disabled=true;$('err').innerHTML='';
   const t0=Date.now?0:0; let secs=0;
   const tick=setInterval(()=>{secs++;$('status').innerHTML='<span class="spin">⚙️</span> Generando… '+secs+'s (tarda ~1-3 min)';},1000);
@@ -116,7 +128,7 @@ $('go').onclick=async()=>{
     // Subir imagen solo si cambió / no está subida
     if(!imgUrl||imgDirty){$('status').textContent='Subiendo el personaje…';const u=await post('/api/subir',{image:imgData});imgUrl=u.url;imgDirty=false;}
     // Encolar el video en Kling
-    const sub=await post('/api/generar-video',{image:imgUrl,prompt:buildPrompt(frase,genero),duration:dur,generate_audio:true});
+    const sub=await post('/api/generar-video',{image:imgUrl,prompt:buildPrompt(frase,genero,escena),duration:dur,generate_audio:true});
     if(!sub.statusUrl||!sub.responseUrl)throw new Error('No se pudo iniciar el video.');
     let url='';
     for(let i=0;i<90;i++){await sleep(4000);const st=await post('/api/generar-video',{action:'status',statusUrl:sub.statusUrl,responseUrl:sub.responseUrl});if(st.done&&st.url){url=st.url;break;}}
