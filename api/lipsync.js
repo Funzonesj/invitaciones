@@ -6,7 +6,7 @@
 // Clave: FAL_KEY (Vercel).
 // ────────────────────────────────────────────────────────────────
 
-const MODEL = 'fal-ai/sync-lipsync';
+const MODEL = 'fal-ai/sync-lipsync/v2/pro';
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
