@@ -169,6 +169,8 @@ const INIT_VISTA = _INV_PARAM ? 'invitado-portada'
   : (_ADMIN_SAVED ? 'admin-dashboard'
   : 'admin-login'))));
 
+// Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
+let _PAPA_NAV={};
 // Prompt de video recomendado (fijo) + frase de saludo (editable aparte, se inserta en {frase})
 const PROMPT_VIDEO_DEF='The child and {personaje} are walking together from the back toward the camera, side by side, both smiling and excited. After 4 seconds they stop and face the camera directly. {personaje} opens their mouth and speaks in Spanish, looking straight at the camera with an enthusiastic and happy expression, with good lip sync, saying exactly: "{frase}" The child stands next to {personaje} smiling. Same background, same lighting, same setting as the image. No camera shake. No scene changes. Do not add any objects, accessories or elements that are not in the original image. Preserve both characters faces and appearance throughout the entire video.';
 const FRASE_VIDEO_DEF='¡Hola! Soy {personaje} y vengo a invitarte a festejar el cumple de {nombre}. ¡Va a ser una fiesta increíble en {salon}! ¡Te esperamos!';
@@ -1846,7 +1848,7 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso}){
 }
 
 /* ── IA UPLOAD SECTION ───────────────────────────────────── */
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta,onBorrar,onVideoUpsell,precioVideo}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta,onBorrar,onVideoUpsell,videoUnlocked,precioVideo}){
   const fotoRef=useRef();
   const persRef=useRef();
   function guardarFoto(src){
@@ -2089,8 +2091,8 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
               {selIdx===null?'👆 Elegí una imagen primero':'👁 Ver Tarjeta'}
             </button>
           )}
-          {/* Upsell: botón fijo abajo (siempre disponible, aunque cierren el flotante) */}
-          {tipo==='imagen'&&onVideoUpsell&&selIdx!==null&&resultados[selIdx]&&(
+          {/* Upsell de video: aparece RECIÉN después de ver la tarjeta (paso siguiente) */}
+          {tipo==='imagen'&&onVideoUpsell&&videoUnlocked&&selIdx!==null&&resultados[selIdx]&&(
             <div style={{marginTop:12,background:'linear-gradient(135deg,#e11d4815,#7c3aed10)',border:'1px solid #fbcfe8',borderRadius:14,padding:'14px',textAlign:'center'}}>
               <div style={{fontSize:22,marginBottom:2}}>🎬✨</div>
               <div style={{fontWeight:900,fontSize:14,color:'#1e293b'}}>¿La querés en VIDEO?</div>
@@ -2122,14 +2124,14 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
         </div>
       )}
 
-      {/* Botón FLOTANTE para generar el video (aparece al elegir una imagen) */}
-      {tipo==='imagen'&&onVideoUpsell&&selIdx!==null&&resultados[selIdx]&&!fabClosed&&!zoom&&(
+      {/* Botón FLOTANTE por pasos: 1º "Ver Tarjeta", y después de verla → "Generá el video" */}
+      {tipo==='imagen'&&selIdx!==null&&resultados[selIdx]&&!zoom&&(!videoUnlocked?onVerTarjeta:(onVideoUpsell&&!fabClosed))&&(
         <div style={{position:'fixed',left:0,right:0,bottom:14,zIndex:900,display:'flex',justifyContent:'center',padding:'0 12px',pointerEvents:'none'}}>
-          <div style={{pointerEvents:'auto',display:'flex',alignItems:'center',gap:4,background:'linear-gradient(135deg,#e11d48,#be123c)',borderRadius:99,padding:'4px 4px 4px 6px',boxShadow:'0 10px 30px rgba(225,29,72,.45)',maxWidth:420,width:'100%'}}>
-            <button onClick={()=>onVideoUpsell(resultados[selIdx])} style={{flex:1,background:'none',border:'none',color:'white',fontWeight:900,fontSize:15,cursor:'pointer',padding:'12px 8px',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-              <span style={{fontSize:20}}>🎬</span> Generá el video
+          <div style={{pointerEvents:'auto',display:'flex',alignItems:'center',gap:4,background:videoUnlocked?'linear-gradient(135deg,#e11d48,#be123c)':'linear-gradient(135deg,#7c3aed,#a855f7)',borderRadius:99,padding:'4px 4px 4px 6px',boxShadow:'0 10px 30px rgba(0,0,0,.35)',maxWidth:420,width:'100%'}}>
+            <button onClick={()=>{if(videoUnlocked)onVideoUpsell(resultados[selIdx]);else onVerTarjeta();}} style={{flex:1,background:'none',border:'none',color:'white',fontWeight:900,fontSize:15,cursor:'pointer',padding:'12px 8px',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              <span style={{fontSize:20}}>{videoUnlocked?'🎬':'👁'}</span> {videoUnlocked?'Generá el video':'Ver Tarjeta'}
             </button>
-            <button onClick={()=>setFabClosed(true)} title="Cerrar" style={{flexShrink:0,background:'rgba(255,255,255,.25)',border:'none',color:'white',borderRadius:'50%',width:38,height:38,fontSize:17,cursor:'pointer'}}>✕</button>
+            {videoUnlocked&&<button onClick={()=>setFabClosed(true)} title="Cerrar" style={{flexShrink:0,background:'rgba(255,255,255,.25)',border:'none',color:'white',borderRadius:'50%',width:38,height:38,fontSize:17,cursor:'pointer'}}>✕</button>}
           </div>
         </div>
       )}
@@ -2350,7 +2352,9 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
 function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,tematicas,sucursales,setInvEvId,iaConfig,confs,setConfs}){
   const [form,setForm]=useState({nombre:papaSesion.nombre,tipo:papaSesion.tipo||'Cumpleaños',edad:papaSesion.edad,celPapa:papaSesion.celPapa,temId:papaSesion.temId||'t-3',fotoNino:'',fotoMejorada:'',usarMejorada:true,usarFoto:false,portadaSrc:papaSesion.portadaSrc||'',iaImagenes:papaSesion.iaImagenes||[],iaImagenSel:(papaSesion.iaImagenSel!=null?papaSesion.iaImagenSel:null),fotoNinoIA:papaSesion.fotoNinoIA||'',personajeIA:papaSesion.personajeIA||'',iaVideos:[],iaVideoSel:null,fotoNinoIAV:'',personajeIAV:''});
   const [ftxt,setFtxt]=useState('');const [fcat,setFcat]=useState('TODOS');
-  const [modoPortada,setModoPortada]=useState('tematica');
+  const [modoPortada,setModoPortada]=useState(_PAPA_NAV.modo||'tematica');
+  const [vistoTarjeta,setVistoTarjeta]=useState(!!_PAPA_NAV.visto); // ya vio la tarjeta → habilita el paso del video
+  React.useEffect(()=>{_PAPA_NAV={};},[]);
   const [mejora,setMejora]=useState({brillo:110,contraste:115,saturacion:120,calidez:0,aplicado:false});
   const fotoRef=useRef();const canvasRef=useRef();
   const [pagoActivo,setPagoActivo]=useState(null);
@@ -2377,7 +2381,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     if(restantesIA>0) setGenActivo(tipo);      // ya pagó este pack → genera
     else setPagoActivo(tipo);                  // necesita pagar otro pack de 6
   }
-  const [seccion,setSeccion]=useState('home');
+  const [seccion,setSeccion]=useState(_PAPA_NAV.seccion||'home');
   const [kidActivo,setKidActivo]=useState(1);
   const [shortLinkLoading,setShortLinkLoading]=useState(false);
   function acortarYCompartir(longUrl,nombre,fecha,salon){
@@ -2415,7 +2419,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   function onFotoNino(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(x=>({...x,fotoNino:ev.target.result,fotoMejorada:'',usarFoto:true}));r.readAsDataURL(f);}
   function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
   function guardar(e){e.preventDefault();const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvGuardada(true);alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');}
-  function verTarjeta(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}
+  function verTarjeta(opts){_PAPA_NAV=opts||{seccion:'home'};const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}
   function borrarIaImg(i){
     const arr=(form.iaImagenes||[]).filter((_,idx)=>idx!==i);
     let sel=form.iaImagenSel;
@@ -2571,7 +2575,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <p style={{fontSize:11,color:'#64748b',margin:0}}>{papaSesion.tipo||'Cumpleaños'} de <b>{papaSesion.nombre}</b> · {papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin} hs</p>
         </div>
         <div style={{display:'flex',gap:8}}>
-          <button onClick={verTarjeta} style={{...S.btn,background:'#7c3aed',color:'white'}}>👁 Ver Tarjeta</button>
+          <button onClick={()=>verTarjeta({seccion:'home'})} style={{...S.btn,background:'#7c3aed',color:'white'}}>👁 Ver Tarjeta</button>
           <button onClick={()=>{setPapaSesion(null);setVista('papa-login');}} style={{...S.btn,background:'#f1f5f9',color:'#64748b'}}>Salir</button>
         </div>
       </div>
@@ -2613,7 +2617,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'14px',fontSize:15,fontWeight:900}}>📲 Compartir invitación</button>
           </div>
           <div style={{display:'flex',gap:8,marginBottom:20}}>
-            <button onClick={verTarjeta} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'11px',fontSize:13,fontWeight:800}}>👁 Vista previa</button>
+            <button onClick={()=>verTarjeta({seccion:'home'})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'11px',fontSize:13,fontWeight:800}}>👁 Vista previa</button>
             <button onClick={descargarInvitacion} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#475569',padding:'11px',fontSize:13,fontWeight:800}}>⬇️ Descargar JPG</button>
           </div>
           {/* Accesos (cuadrados) */}
@@ -2779,7 +2783,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={verTarjeta} onBorrar={borrarIaImg} onVideoUpsell={img=>{setVideoUrl('');setVideoPaga(false);setVideoStartImg(img);setGenActivo('video');}}/>
+              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} videoUnlocked={vistoTarjeta} onBorrar={borrarIaImg} onVideoUpsell={img=>{setVideoUrl('');setVideoPaga(false);setVideoStartImg(img);setGenActivo('video');}}/>
             )}
           </div>
         </div>
@@ -3194,7 +3198,7 @@ function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volv
   },[]);
   return(
     <div style={{minHeight:'100vh',background:col,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,textAlign:'center',position:'relative',overflow:'hidden'}}>
-      {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.55)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>← Volver al panel</button>}
+      {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.55)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>}
       {temImg&&<div style={{position:'absolute',inset:0,backgroundImage:'url('+temImg+')',backgroundSize:'cover',backgroundPosition:'center',filter:'blur(22px)',transform:'scale(1.18)'}}></div>}
       <div style={{position:'absolute',inset:0,background:col,opacity:temImg?0.8:1}}></div>
       <div id="confetti-container" style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:0}}></div>
@@ -3290,7 +3294,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
 
   return(
     <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto'}}>
-      {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>← Volver al panel</button>}
+      {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>}
 
       {/* 1. IMAGEN TEMATICA (banner compacto, muestra desde arriba para no cortar la cara) */}
       <div style={{position:'relative',width:'100%',aspectRatio:'4/5',maxHeight:'58vh',overflow:'hidden'}}>
