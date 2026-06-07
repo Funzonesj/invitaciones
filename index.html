@@ -2302,6 +2302,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
   const [resultados,setResultados]=useState([]);
   const [hechas,setHechas]=useState(0);
   const [errMsg,setErrMsg]=useState('');
+  const [mini,setMini]=useState(false); // minimizado: seguir usando la app mientras genera
   const totalGen=tipo==='imagen'?Math.max(1,Math.min(cantidad||6,6)):2;
 
   // Animación de progreso (sube hasta 90% mientras espera la respuesta real)
@@ -2418,7 +2419,15 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
     return()=>{cancel=true;};
   },[]);
 
-  if(paso==='generando') return(
+  if(paso==='generando') return mini ? (
+    <div style={{position:'fixed',left:0,right:0,bottom:14,zIndex:999,display:'flex',justifyContent:'center',padding:'0 12px',pointerEvents:'none'}}>
+      <div onClick={()=>setMini(false)} style={{pointerEvents:'auto',cursor:'pointer',display:'flex',alignItems:'center',gap:10,background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',borderRadius:99,padding:'10px 16px',boxShadow:'0 10px 30px rgba(124,58,237,.45)',maxWidth:420,width:'100%'}}>
+        <span className="spin" style={{fontSize:18}}>⚙️</span>
+        <div style={{flex:1,fontSize:13,fontWeight:800}}>{tipo==='imagen'?'Generando imágenes':'Generando tu video'}… {progreso}%</div>
+        <span style={{fontSize:12,fontWeight:900,background:'rgba(255,255,255,.25)',borderRadius:99,padding:'4px 10px'}}>Ver</span>
+      </div>
+    </div>
+  ) : (
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
       <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:28,textAlign:'center'}}>
         <div style={{fontSize:44,marginBottom:12}}>{tipo==='imagen'?'🖼️':'🎬'}</div>
@@ -2429,7 +2438,9 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
         </div>
         <p style={{fontSize:11,color:'#7c3aed',fontWeight:700}}>{progreso}%</p>
         {tipo==='imagen'&&<p style={{fontSize:12,color:'#16a34a',fontWeight:800,marginTop:6}}>{hechas} de {totalGen} listas</p>}
-        <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>{tipo==='imagen'?('Estamos creando '+totalGen+' imágenes. Puede tardar 1 a 3 minutos. No cierres esta ventana.'):'El video puede tardar 1 a 3 minutos. No cierres esta ventana.'}</p>
+        <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>{tipo==='imagen'?('Estamos creando '+totalGen+' imágenes. Puede tardar 1 a 3 minutos.'):'El video puede tardar unos minutos.'}</p>
+        <button onClick={()=>setMini(true)} style={{...S.btn,marginTop:16,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'12px',fontSize:14,fontWeight:900}}>➖ Seguir usando la app (sigue generando)</button>
+        <p style={{fontSize:9,color:'#94a3b8',marginTop:8}}>Podés moverte por la app. No cierres ni recargues esta página hasta que termine.</p>
       </div>
     </div>
   );
