@@ -1964,7 +1964,7 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso}){
 }
 
 /* ── IA UPLOAD SECTION ───────────────────────────────────── */
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta,onBorrar,onVideoUpsell,videoUnlocked,precioVideo}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta,onBorrar,onVideoUpsell,videoUnlocked,precioVideo,videoExiste,videoListo}){
   const fotoRef=useRef();
   const persRef=useRef();
   function guardarFoto(src){
@@ -2209,7 +2209,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
               <div style={{fontWeight:900,fontSize:16,color:'#1e293b'}}>¡Tu tarjeta está lista!</div>
               <div style={{fontSize:12,color:'#64748b',margin:'4px 0 12px'}}>Elegiste tu imagen. Mirá cómo quedó tu tarjeta, o sumale un <b>video con IA</b>{precioVideo?(' por $'+Number(precioVideo).toLocaleString('es-AR')+' más'):''}. 🎬</div>
               {onVerTarjeta&&<button onClick={onVerTarjeta} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginBottom:8}}>👁 Ver mi tarjeta</button>}
-              {onVideoUpsell&&<button onClick={()=>onVideoUpsell(resultados[selIdx])} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#e11d48,#be123c)',color:'white',padding:'13px',fontSize:14,fontWeight:900}}>🎬 Generar video {precioVideo?('(+$'+Number(precioVideo).toLocaleString('es-AR')+')'):''}</button>}
+              {onVideoUpsell&&<button onClick={()=>onVideoUpsell(resultados[selIdx])} style={{...S.btn,width:'100%',background:videoExiste&&!videoListo?'linear-gradient(135deg,#009ee3,#0070ba)':'linear-gradient(135deg,#e11d48,#be123c)',color:'white',padding:'13px',fontSize:14,fontWeight:900}}>{videoListo?'🎬 Ver mi video':(videoExiste?'🔓 Desbloquear video':'🎬 Generar video')}</button>}
             </div>
           )}
           {tipo==='imagen'&&onDescartar&&(
@@ -2477,11 +2477,14 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [modoPortada,setModoPortada]=useState(_PAPA_NAV.modo||'tematica');
   const [vistoTarjeta,setVistoTarjeta]=useState(!!_PAPA_NAV.visto); // ya vio la tarjeta → habilita el paso del video
   const _navGenVideo=!!_PAPA_NAV.genVideo;
+  const _navDesbloq=!!_PAPA_NAV.desbloquear;
   React.useEffect(()=>{
-    if(_navGenVideo){
+    if(_navDesbloq&&papaSesion.videoUrl){
+      setVideoDiag('');setVideoUrl(papaSesion.videoUrl);setVideoPaga(!!papaSesion.videoPagado);
+    }else if(_navGenVideo){
       const arr=(form.iaImagenes||[]);
       const img=arr[(form.iaImagenSel!=null?form.iaImagenSel:0)];
-      if(img){setVideoInfo(img);}
+      if(img){abrirVideoUpsell(img);}
     }
     _PAPA_NAV={};
   },[]);
@@ -2495,7 +2498,19 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [videoDiag,setVideoDiag]=useState(''); // nota de diagnóstico (si la voz de EL no se aplicó)
   const [videoUrl,setVideoUrl]=useState('');
   const [videoPaga,setVideoPaga]=useState(false);
-  const [videoPagoMP,setVideoPagoMP]=useState(false);
+  const [videoPagoMP,setVideoPagoMP]=useState(false); // false | 'unlock' | 'genpay'
+  const [videoPendImg,setVideoPendImg]=useState(null);
+  const genVideoPagadoRef=useRef(false);
+  // Estado del video del padre (1 generación gratis por evento)
+  const videoFreeUsado=!!(papaSesion&&papaSesion.iaVideoFreeUsado);
+  const videoGuardado=(papaSesion&&papaSesion.videoUrl)||'';
+  const videoYaPago=!!(papaSesion&&papaSesion.videoPagado);
+  // Decide qué hacer al tocar "Generar/Ver video"
+  function abrirVideoUpsell(img){
+    if(videoGuardado){ setVideoDiag('');setVideoUrl(videoGuardado);setVideoPaga(videoYaPago); } // ya hay un video → abrirlo (pagar si no pagó)
+    else if(!videoFreeUsado){ setVideoInfo(img); }                                              // primera vez: gratis
+    else { setVideoPendImg(img);setVideoPagoMP('genpay'); }                                       // ya usó la gratis → pagar para generar otro
+  }
   function guardarVideoArchivo(src){
     fetch(src).then(r=>r.blob()).then(blob=>{
       const fname='video-'+((papaSesion.nombre||'fiesta').toLowerCase().replace(/[^a-z0-9]/g,'')||'fiesta')+'.mp4';
@@ -2915,7 +2930,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} precioVideo={iaConfig.precioVideo} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} videoUnlocked={vistoTarjeta} onBorrar={borrarIaImg} onVideoUpsell={img=>setVideoInfo(img)}/>
+              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} precioVideo={iaConfig.precioVideo} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} videoUnlocked={vistoTarjeta} onBorrar={borrarIaImg} onVideoUpsell={abrirVideoUpsell} videoExiste={!!videoGuardado} videoListo={videoYaPago}/>
             )}
           </div>
         </div>
@@ -3268,7 +3283,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.nombre} startImage={genActivo==='video'?videoStartImg:null} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});}else{if(videoStartImg){setVideoUrl(imgs[0]||'');setVideoPaga(false);setVideoDiag(diag||'');setVideoStartImg(null);}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));}setGenActivo(null);}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.nombre} startImage={genActivo==='video'?videoStartImg:null} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});}else{if(videoStartImg){const vu=imgs[0]||'';const pagado=genVideoPagadoRef.current;genVideoPagadoRef.current=false;setVideoUrl(vu);setVideoPaga(pagado);setVideoDiag(diag||'');setVideoStartImg(null);setPapaSesion(ps=>{const n={...ps,videoUrl:vu,iaVideoFreeUsado:true,videoPagado:pagado};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,iaVideoFreeUsado:true,videoPagado:pagado}:e));return n;});}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));}setGenActivo(null);}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
 
       {/* Cartel informativo del VIDEO (antes de generar): costo + paga si te gusta */}
       {videoInfo&&(
@@ -3310,14 +3325,22 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <button onClick={()=>guardarVideoArchivo(videoUrl)} style={{...S.btn,width:'100%',maxWidth:380,background:'#22c55e',color:'white',padding:'15px',fontSize:16,fontWeight:900}}>⬇️ Descargar / Compartir video</button>
           ):(
             <div style={{width:'100%',maxWidth:380,textAlign:'center'}}>
-              <button onClick={()=>setVideoPagoMP(true)} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#009ee3,#0070ba)',color:'white',padding:'15px',fontSize:16,fontWeight:900}}>🔓 Desbloquear video — ${(iaConfig.precioVideo||0).toLocaleString('es-AR')}</button>
+              <button onClick={()=>setVideoPagoMP('unlock')} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#009ee3,#0070ba)',color:'white',padding:'15px',fontSize:16,fontWeight:900}}>🔓 Desbloquear video — ${(iaConfig.precioVideo||0).toLocaleString('es-AR')}</button>
               <div style={{fontSize:11,color:'rgba(255,255,255,.7)',marginTop:8}}>Lo viste gratis 😊 Si te gustó, desbloquealo: se va la marca de agua y lo descargás. Si no, no pagás nada.</div>
             </div>
           )}
           <button onClick={()=>setVideoUrl('')} style={{marginTop:12,background:'none',border:'none',color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Cerrar</button>
         </div>
       )}
-      {videoPagoMP&&<PagoMP tipo="video" precio={iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{setVideoPaga(true);setVideoPagoMP(false);const vu=videoUrl;setForm(f=>({...f,videoUrl:vu}));setPapaSesion(ps=>{const n={...ps,videoUrl:vu};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu}:e));return n;});}} onCancelar={()=>setVideoPagoMP(false)}/>}
+      {videoPagoMP&&<PagoMP tipo="video" precio={iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{
+        if(videoPagoMP==='genpay'){
+          // Pagó para generar OTRO video → genera (queda desbloqueado)
+          const img=videoPendImg;setVideoPagoMP(false);setVideoPendImg(null);genVideoPagadoRef.current=true;setVideoUrl('');setVideoPaga(false);setVideoDiag('');setVideoStartImg(img);setGenActivo('video');
+        }else{
+          // Desbloquear el video ya generado
+          setVideoPaga(true);setVideoPagoMP(false);const vu=videoUrl;setPapaSesion(ps=>{const n={...ps,videoUrl:vu,videoPagado:true,iaVideoFreeUsado:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,videoPagado:true,iaVideoFreeUsado:true}:e));return n;});
+        }
+      }} onCancelar={()=>{setVideoPagoMP(false);setVideoPendImg(null);}}/>}
     </div>
   );
 }
@@ -3444,13 +3467,17 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const horario=ev?('de '+ev.hIni+' a '+ev.hFin+'hs'):'';
 
   return(
-    <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto',paddingBottom:(volverInv==='papa-creador'&&ev&&!ev.videoUrl)?72:0}}>
+    <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto',paddingBottom:(volverInv==='papa-creador'&&ev&&!ev.videoPagado)?72:0}}>
       {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>}
 
-      {/* CTA papá: generar video de esta tarjeta (solo si todavía no tiene video) */}
-      {volverInv==='papa-creador'&&ev&&!ev.videoUrl&&(
+      {/* CTA papá: generar / desbloquear video (debajo de la invitación) */}
+      {volverInv==='papa-creador'&&ev&&!ev.videoPagado&&(
         <div style={{position:'fixed',left:0,right:0,bottom:0,zIndex:20,display:'flex',justifyContent:'center',padding:10,background:'linear-gradient(to top,rgba(255,255,255,.95),rgba(255,255,255,0))'}}>
-          <button onClick={()=>{_PAPA_NAV={seccion:'tarjeta',modo:'ia-imagen',visto:true,genVideo:true};setVista(volverInv);}} style={{maxWidth:440,width:'100%',background:'linear-gradient(135deg,#e11d48,#be123c)',color:'white',border:'none',borderRadius:99,padding:'14px',fontSize:15,fontWeight:900,cursor:'pointer',boxShadow:'0 8px 24px rgba(225,29,72,.4)'}}>🎬 Generar video de esta tarjeta</button>
+          {ev.videoUrl?(
+            <button onClick={()=>{_PAPA_NAV={seccion:'tarjeta',modo:'ia-imagen',visto:true,desbloquear:true};setVista(volverInv);}} style={{maxWidth:440,width:'100%',background:'linear-gradient(135deg,#009ee3,#0070ba)',color:'white',border:'none',borderRadius:99,padding:'14px',fontSize:15,fontWeight:900,cursor:'pointer',boxShadow:'0 8px 24px rgba(0,158,227,.4)'}}>🔓 Desbloquear el video</button>
+          ):(
+            <button onClick={()=>{_PAPA_NAV={seccion:'tarjeta',modo:'ia-imagen',visto:true,genVideo:true};setVista(volverInv);}} style={{maxWidth:440,width:'100%',background:'linear-gradient(135deg,#e11d48,#be123c)',color:'white',border:'none',borderRadius:99,padding:'14px',fontSize:15,fontWeight:900,cursor:'pointer',boxShadow:'0 8px 24px rgba(225,29,72,.4)'}}>🎬 Generar video de esta tarjeta</button>
+          )}
         </div>
       )}
 
@@ -3516,7 +3543,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
       </div>
 
       {/* 7b. VIDEO DE INVITACIÓN (si el papá lo generó y pagó) */}
-      {ev&&ev.videoUrl&&(
+      {ev&&ev.videoUrl&&ev.videoPagado&&(
         <div style={{padding:'14px 16px',borderTop:'1px solid #f0f0f0'}}>
           <p style={{color:col,fontSize:16,fontWeight:900,textAlign:'center',margin:'0 0 8px'}}>🎬 ¡Mirá el video!</p>
           <video src={ev.videoUrl} controls playsInline style={{width:'100%',borderRadius:14,background:'#000',display:'block'}}></video>
