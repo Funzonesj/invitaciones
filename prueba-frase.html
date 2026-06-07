@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Prueba de frases · Video del personaje (Kling)</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(160deg,#1a1033,#2d1b4e);color:#fff;min-height:100vh;padding:16px}
+  .wrap{max-width:520px;margin:0 auto}
+  h1{font-size:20px;font-weight:900;text-align:center}
+  .sub{font-size:12.5px;opacity:.82;text-align:center;margin:4px 0 16px;line-height:1.45}
+  .card{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:14px;margin-bottom:12px}
+  label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+  textarea,select{width:100%;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:11px;color:#fff;font-size:15px;font-family:inherit}
+  textarea{resize:vertical;min-height:70px}
+  .imgbox{display:flex;gap:10px;align-items:center}
+  .thumb{width:78px;height:98px;border-radius:12px;object-fit:cover;object-position:top center;background:rgba(0,0,0,.3);flex:none;border:1px solid rgba(255,255,255,.15)}
+  .filebtn{flex:1}
+  .filebtn input{display:none}
+  .filebtn span{display:block;background:rgba(255,255,255,.12);border:1px dashed rgba(255,255,255,.3);border-radius:12px;padding:13px;text-align:center;font-size:13px;cursor:pointer}
+  .row{display:flex;gap:10px}
+  .row>div{flex:1}
+  .go{width:100%;background:linear-gradient(135deg,#ff5fa2,#a64bff);color:#fff;border:none;border-radius:99px;padding:15px;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 8px 24px rgba(166,75,255,.4)}
+  .go:disabled{opacity:.5;cursor:default}
+  .status{font-size:13px;text-align:center;margin-top:10px;min-height:18px;font-weight:700}
+  .err{background:rgba(255,80,80,.18);border:1px solid rgba(255,120,120,.5);border-radius:12px;padding:11px;font-size:13px;margin-top:10px;line-height:1.45}
+  .hist h2{font-size:14px;font-weight:900;margin:6px 0 8px;opacity:.9}
+  .vid{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px;margin-bottom:10px}
+  .vid .frase{font-size:13px;font-weight:700;margin-bottom:8px;line-height:1.4}
+  .vid video{width:100%;border-radius:10px;background:#000;display:block}
+  .vid .meta{font-size:11px;opacity:.6;margin-top:6px;display:flex;justify-content:space-between;align-items:center}
+  .vid a{color:#a5b4fc;font-weight:700;text-decoration:none}
+  .reuse{font-size:11px;opacity:.7;margin-top:6px}
+  .spin{display:inline-block;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎬 Prueba de frases</h1>
+  <p class="sub">Subí el personaje <b>una vez</b>. Después escribí una frase → generá → escuchá. Cambiá la frase y volvé a generar, hasta que la pronuncie bien. Cada intento queda guardado abajo.</p>
+
+  <div class="card">
+    <label>Personaje (subilo una sola vez)</label>
+    <div class="imgbox">
+      <img id="thumb" class="thumb" alt="" />
+      <label class="filebtn"><input id="file" type="file" accept="image/*"><span>📷 Elegir personaje</span></label>
+    </div>
+    <div class="reuse" id="reuse"></div>
+  </div>
+
+  <div class="card">
+    <label>Frase a decir (escribila como suena para que la pronuncie bien)</label>
+    <textarea id="frase" placeholder="¡Hola! Te espero en mi fiesta. ¡Va a estar buenísima!"></textarea>
+    <div class="row" style="margin-top:10px">
+      <div>
+        <label>Voz</label>
+        <select id="genero"><option value="m">Masculina</option><option value="f">Femenina</option></select>
+      </div>
+      <div>
+        <label>Duración</label>
+        <select id="dur"><option value="5">5 seg (más rápido)</option><option value="10" selected>10 seg</option></select>
+      </div>
+    </div>
+  </div>
+
+  <button id="go" class="go">✨ Generar video</button>
+  <div class="status" id="status"></div>
+  <div id="err"></div>
+
+  <div class="hist" id="histWrap" style="display:none">
+    <h2>🗂️ Tus intentos</h2>
+    <div id="hist"></div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let imgData = null;     // data URI achicado
+let imgUrl = null;      // URL subida a fal (se reusa)
+let imgDirty = false;   // cambió la imagen → hay que re-subir
+
+// Lee y ACHICA la foto (máx 1024px) para subir liviano
+function readImg(file, cb){
+  const r=new FileReader();
+  r.onload=e=>{const im=new Image();im.onload=()=>{const max=1024;let w=im.width,h=im.height;if(w>max||h>max){const s=max/Math.max(w,h);w=Math.round(w*s);h=Math.round(h*s);}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);cb(c.toDataURL('image/jpeg',0.85));};im.onerror=()=>cb(e.target.result);im.src=e.target.result;};
+  r.readAsDataURL(file);
+}
+$('file').onchange=e=>{const f=e.target.files[0];if(f)readImg(f,d=>{imgData=d;imgUrl=null;imgDirty=true;$('thumb').src=d;$('reuse').textContent='Personaje listo. Se sube en la primera generación y después se reutiliza (rápido).';});};
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function post(path,body){
+  let r;try{r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){throw new Error('No se pudo conectar con '+path);}
+  const t=await r.text().catch(()=> '');let d={};try{d=t?JSON.parse(t):{};}catch(_){}
+  if(!r.ok)throw new Error(path+' → '+(d.error||t.slice(0,150)||('código '+r.status)));
+  return d;
+}
+
+// Mismo prompt que usa la app (Kling, voz nativa, acento argentino)
+function buildPrompt(frase, genero){
+  let pr='The character is alone, facing the camera, front view, upper body visible, cheerful, energetic and excited, big happy smile, lively and enthusiastic expression. The character looks straight at the camera and speaks in neutral Latin American Spanish with a natural Argentine (Rioplatense) accent — NOT Spain Spanish — with accurate natural lip sync, pronouncing every word clearly and correctly, saying exactly these words and nothing else: "'+frase+'". Only this character is in the scene and only this character talks. The camera is completely STATIC and FIXED: no zoom, no panning, no camera movement; keep the exact same framing the whole video. Same background, same lighting and same art style as the image. No scene changes. Do not add any text, letters or watermarks. Keep the character appearance identical to the image throughout the entire video.';
+  if(genero==='f') pr+=' The character speaks with a clearly female voice.';
+  else if(genero==='m') pr+=' The character speaks with a clearly male voice.';
+  return pr;
+}
+
+$('go').onclick=async()=>{
+  const frase=$('frase').value.trim();
+  if(!imgData){alert('Primero elegí el personaje.');return;}
+  if(!frase){alert('Escribí la frase.');return;}
+  const genero=$('genero').value, dur=$('dur').value;
+  $('go').disabled=true;$('err').innerHTML='';
+  const t0=Date.now?0:0; let secs=0;
+  const tick=setInterval(()=>{secs++;$('status').innerHTML='<span class="spin">⚙️</span> Generando… '+secs+'s (tarda ~1-3 min)';},1000);
+  try{
+    // Subir imagen solo si cambió / no está subida
+    if(!imgUrl||imgDirty){$('status').textContent='Subiendo el personaje…';const u=await post('/api/subir',{image:imgData});imgUrl=u.url;imgDirty=false;}
+    // Encolar el video en Kling
+    const sub=await post('/api/generar-video',{image:imgUrl,prompt:buildPrompt(frase,genero),duration:dur,generate_audio:true});
+    if(!sub.statusUrl||!sub.responseUrl)throw new Error('No se pudo iniciar el video.');
+    let url='';
+    for(let i=0;i<90;i++){await sleep(4000);const st=await post('/api/generar-video',{action:'status',statusUrl:sub.statusUrl,responseUrl:sub.responseUrl});if(st.done&&st.url){url=st.url;break;}}
+    if(!url)throw new Error('Tardó demasiado. Probá de nuevo.');
+    addHist(frase,genero,dur,url,secs);
+    $('status').textContent='✅ Listo ('+secs+'s)';
+  }catch(e){
+    const d=document.createElement('div');d.className='err';d.textContent='⚠️ '+(e.message||e);$('err').appendChild(d);
+    $('status').textContent='';
+  }finally{clearInterval(tick);$('go').disabled=false;}
+};
+
+function addHist(frase,genero,dur,url,secs){
+  $('histWrap').style.display='block';
+  const div=document.createElement('div');div.className='vid';
+  div.innerHTML='<div class="frase">🗣️ "'+frase.replace(/</g,'&lt;')+'"</div>';
+  const v=document.createElement('video');v.src=url;v.controls=true;v.playsInline=true;div.appendChild(v);
+  const meta=document.createElement('div');meta.className='meta';
+  meta.innerHTML='<span>'+(genero==='f'?'Voz femenina':'Voz masculina')+' · '+dur+'s · '+secs+'s en generar</span>';
+  const a=document.createElement('a');a.href=url;a.target='_blank';a.textContent='⬇️ Descargar';meta.appendChild(a);
+  div.appendChild(meta);
+  $('hist').insertBefore(div,$('hist').firstChild); // el más nuevo arriba
+}
+</script>
+</body>
+</html>
