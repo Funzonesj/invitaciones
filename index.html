@@ -768,6 +768,9 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
   const [edit,setEdit]=useState(false);
   const [editId,setEditId]=useState(null);
   const dragRef=useRef(null);
+  const [saldoIA,setSaldoIA]=useState(null); // número o null
+  React.useEffect(()=>{fetch('/api/saldo').then(r=>r.json()).then(d=>{if(d&&typeof d.balance==='number')setSaldoIA(d.balance);}).catch(()=>{});},[]);
+  const UMBRAL_IA=10;
   const custom=(iaConfig&&iaConfig.dashCustom)||{};
   const orden=(iaConfig&&iaConfig.dashOrden)||[];
   const base=[
@@ -793,6 +796,16 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
   function reordenar(from,to){if(!from||from===to)return;const vis=items.map(x=>x.v);const fi=vis.indexOf(from);if(fi<0)return;vis.splice(fi,1);const ti=vis.indexOf(to);vis.splice(ti<0?vis.length:ti,0,from);guardar(undefined,vis);}
   return(
     <div className="fade-in" style={{maxWidth:700,margin:'0 auto',padding:'24px 16px'}}>
+      {/* Alerta de crédito IA bajo (la ven todas apenas abren el panel) */}
+      {typeof saldoIA==='number'&&saldoIA<UMBRAL_IA&&(
+        <div style={{background:'#fef2f2',border:'2px solid #fecaca',borderRadius:14,padding:'14px 16px',marginBottom:16,display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:30}}>⚠️</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:900,fontSize:14,color:'#dc2626'}}>¡Crédito de IA bajo! (US${saldoIA.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})})</div>
+            <div style={{fontSize:12,color:'#991b1b'}}>Hay que recargar en fal.ai para que sigan andando las imágenes y videos con IA. Avisá a la dueña.</div>
+          </div>
+        </div>
+      )}
       <div style={{...S.card,display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,padding:20}}>
         <div style={{display:'flex',alignItems:'center',gap:14}}>
           <div style={{width:54,height:54,borderRadius:16,background:`linear-gradient(135deg,${sucAct.color},#7c3aed)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>{sucAct.emoji}</div>
