@@ -178,7 +178,7 @@ const INIT_VISTA = _INV_PARAM ? 'invitado-portada'
 // Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
 let _PAPA_NAV={};
 // Prompt de video recomendado (fijo) + frase de saludo (editable aparte, se inserta en {frase})
-const PROMPT_VIDEO_DEF='{personaje} stands facing the camera, smiling, friendly and welcoming. {personaje} looks straight at the camera and speaks in neutral Latin American Spanish with a natural Argentine (Rioplatense) accent — NOT Spain Spanish — with accurate natural lip sync, pronouncing every word clearly and correctly, saying exactly: "{frase}". Only this character is in the scene and only this character talks. The camera is completely STATIC and FIXED: no zoom in, no zoom out, no panning, no camera movement; keep the exact same framing during the whole video. Same background, same lighting and same art style as the image. No scene changes. Do not add any text, letters or watermarks. Keep the character appearance identical to the image throughout the entire video.';
+const PROMPT_VIDEO_DEF='The child and {personaje} are together facing the camera, side by side, both smiling and happy. {personaje} looks at the camera and speaks with an enthusiastic and happy expression, with good lip sync, saying in Spanish: "{frase}". The child stays next to {personaje} smiling. Keep the child face identical to the image (do not change it). Same background, same lighting and same style as the image. The camera is completely STATIC and FIXED: no zoom, no panning, no camera movement; keep the same framing the whole video. No scene changes. Do not add any text, letters or watermarks. Preserve both faces and appearance identical throughout the entire video.';
 const FRASE_VIDEO_DEF='¡Hola! Soy {personaje} y vengo a invitarte a festejar el cumple de {nombre}. ¡Va a ser una fiesta increíble en {salon}! ¡Te esperamos!';
 
 function App() {
@@ -2383,23 +2383,12 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
             baseImg=idata.url;
           }
           setProgreso(20);
-          // Texto que DICE el personaje (frase de saludo con variables reemplazadas)
-          const fraseTxt=repl(frase||'');
-          // Prompt visual del video (con {frase} reemplazada por la frase, para que mueva la boca acorde)
+          // Prompt del video con la frase de saludo (voz nativa de Kling)
           let baseV=repl((prompt||'').replace(/\{frase\}/g,(frase||'')));
           if(genero==='f') baseV+=' The character speaks with a clearly female voice.';
           else if(genero==='m') baseV+=' The character speaks with a clearly male voice.';
-          // 1) Voz con ElevenLabs (si está configurada). Si no, usamos el audio nativo de Kling.
-          let audioUri=null,vozErr='';
-          try{
-            const vr=await fetch('/api/voz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:fraseTxt,genero})});
-            const vd=await vr.json().catch(()=>({}));
-            if(vr.ok&&vd&&(vd.audioUrl||vd.audio))audioUri=vd.audioUrl||vd.audio;
-            else vozErr=(vd&&vd.error)||(vd&&vd.configured===false?'ElevenLabs no configurado':'sin audio');
-          }catch(e){vozErr='ElevenLabs no respondió';}
-          if(cancel)return;
-          // 2) Encolar el video SIEMPRE con audio (así nunca queda mudo). Si el lip-sync con ElevenLabs funciona, reemplaza la voz; si no, queda la de Kling.
-          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:baseImg,prompt:baseV,duration:12,generate_audio:true})});
+          // Encolar el video con audio nativo de Kling (nene + personaje juntos)
+          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:baseImg,prompt:baseV,duration:10,generate_audio:true})});
           const sd=await sub.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
           if(!sub.ok) throw new Error(sd.error||'No se pudo iniciar el video.');
           if(!sd.statusUrl||!sd.responseUrl) throw new Error('No se pudo iniciar el video.');
@@ -2412,38 +2401,11 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
               const pd=await ps.json().catch(()=>({}));
               if(pd&&pd.done&&pd.url){urlVid=pd.url;break;}
             }catch(e){}
-            setProgreso(p=>p<75?p+2:p);
+            setProgreso(p=>p<92?p+2:p);
           }
           if(cancel)return;
           if(!urlVid) throw new Error('El video está tardando más de lo normal. Probá de nuevo en un rato.');
-          setProgreso(80);
-          // 3) Lip-sync: pegar la voz argentina al video y sincronizar la boca (si hay voz EL)
-          let lipOK=false,lipErr='';
-          if(audioUri){
-            try{
-              const ls=await fetch('/api/lipsync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({video:urlVid,audio:audioUri})});
-              const lsd=await ls.json().catch(()=>({}));
-              if(ls.ok&&lsd.statusUrl&&lsd.responseUrl){
-                for(let i=0;i<40;i++){
-                  await new Promise(r=>setTimeout(r,5000));
-                  if(cancel)return;
-                  try{
-                    const ps2=await fetch('/api/lipsync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:lsd.statusUrl,responseUrl:lsd.responseUrl})});
-                    const pd2=await ps2.json().catch(()=>({}));
-                    if(pd2&&pd2.done&&pd2.url){urlVid=pd2.url;lipOK=true;break;}
-                    if(pd2&&pd2.error)lipErr=String(pd2.error);
-                  }catch(e){}
-                  setProgreso(p=>p<97?p+1:p);
-                }
-                if(!lipOK&&!lipErr)lipErr='tardó demasiado';
-              }else{lipErr=(lsd&&lsd.error)||'no se pudo iniciar';}
-            }catch(e){lipErr='error de conexión';}
-          }
-          if(cancel)return;
-          const diag = lipOK ? '' : (audioUri
-            ? ('⚠️ La voz de ElevenLabs se generó pero el lip-sync falló: '+lipErr+'. Quedó la voz de Kling.')
-            : ('⚠️ No se usó ElevenLabs: '+(vozErr||'sin audio')+'. Quedó la voz de Kling.'));
-          setProgreso(100);onResultado([urlVid],diag);
+          setProgreso(100);onResultado([urlVid]);
         }
       }catch(e){ if(cancel)return; setErrMsg(String((e&&e.message)||e));setPaso('error'); }
     })();
@@ -3306,7 +3268,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.nombre} startImage={genActivo==='video'?form.personajeIA:null} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});}else{if(videoStartImg){setVideoUrl(imgs[0]||'');setVideoPaga(false);setVideoDiag(diag||'');setVideoStartImg(null);}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));}setGenActivo(null);}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.nombre} startImage={genActivo==='video'?videoStartImg:null} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});}else{if(videoStartImg){setVideoUrl(imgs[0]||'');setVideoPaga(false);setVideoDiag(diag||'');setVideoStartImg(null);}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));}setGenActivo(null);}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
 
       {/* Cartel informativo del VIDEO (antes de generar): costo + paga si te gusta */}
       {videoInfo&&(
