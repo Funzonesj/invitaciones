@@ -1143,14 +1143,23 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
   function addCat(e){if(e&&e.preventDefault)e.preventDefault();if(!nuevaCat.trim())return;const c=nuevaCat.trim().toUpperCase();if(!allCats.includes(c))setAllCats(p=>[...p,c]);setForm(f=>({...f,cats:[...f.cats,c]}));setNuevaCat('');}
   // Editar categorías de una imagen ya cargada (siempre conserva TODOS)
   function toggleCatTem(id,c){setTematicas(p=>p.map(x=>{if(x.id!==id)return x;const cur=x.cats||['TODOS'];const next=cur.includes(c)?cur.filter(y=>y!==c):[...cur,c];return {...x,cats:next.includes('TODOS')?next:['TODOS',...next]};}));}
-  function sub(e){
+  async function sub(e){
     e.preventDefault();
     if(!form.nombre||!form.imgs.length){setMsg('Completá el nombre y subí al menos una imagen.');return;}
     const c=form.cats.includes('TODOS')?form.cats:['TODOS',...form.cats];
     const base=Date.now();
-    setTematicas(p=>[...p,...form.imgs.map((im,i)=>({id:'t-'+base+'-'+i,nombre:form.nombre+(form.imgs.length>1?(' '+(i+1)):''),cats:c,img:im,emoji:form.emoji}))]);
-    setMsg('¡'+form.imgs.length+' imagen'+(form.imgs.length>1?'es':'')+' cargada'+(form.imgs.length>1?'s':'')+'!');
-    setForm({nombre:'',emoji:'🎨',imgs:[],cats:['TODOS']});setTimeout(()=>setMsg(''),3000);
+    const nom=form.nombre, emo=form.emoji, imgs=form.imgs.slice();
+    // Subimos cada imagen a la nube y guardamos el ENLACE (liviano). Si falla, queda la imagen igual.
+    const urls=[];
+    for(let i=0;i<imgs.length;i++){
+      setMsg('Subiendo imágenes… '+(i+1)+'/'+imgs.length);
+      let u=imgs[i];
+      try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:imgs[i]})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(err){}
+      urls.push(u);
+    }
+    setTematicas(p=>[...p,...urls.map((u,i)=>({id:'t-'+base+'-'+i,nombre:nom+(urls.length>1?(' '+(i+1)):''),cats:c,img:u,emoji:emo}))]);
+    setMsg('✅ '+urls.length+' imagen'+(urls.length>1?'es':'')+' guardada'+(urls.length>1?'s':''));
+    setForm({nombre:'',emoji:'🎨',imgs:[],cats:['TODOS']});setTimeout(()=>setMsg(''),4000);
   }
 
   return(
