@@ -421,6 +421,7 @@ function App() {
         {vista==='admin-ia'          && esSA && <AdminIA setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-catalogo'    && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-catalogo-ia' && esSA && <AdminCatalogoIA setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
+        {vista==='admin-papabotones' && esSA && <AdminPapaBotones setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-diseno'      && esSA && <AdminDisenoTarjeta setVista={setVista} sucAct={sucAct} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-mejorador'   && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas} modo="mejorador"/>}
         {vista==='admin-config'      && esSA && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
@@ -716,6 +717,45 @@ function AdminDisenoTarjeta({setVista,sucAct,iaConfig,setIaConfig}){
   );
 }
 
+/* ── ADMIN BOTONES DEL PAPÁ ──────────────────────────────── */
+function AdminPapaBotones({setVista,iaConfig,setIaConfig}){
+  const PT=(iaConfig&&iaConfig.papaTiles)||{};
+  const base=[
+    ['tarjeta','🎨','Editar Tarjeta'],
+    ['confirmaciones','👥','Confirmados'],
+    ['descargables','📦','Descargas'],
+    ['menu','🍽️','Menú IA'],
+    ['faq','💬','Consultas'],
+    ['adicionales','➕','Adicionales'],
+    ['reglas','📋','Reglas del Salón'],
+  ];
+  const [msg,setMsg]=useState('');
+  function setCampo(v,campo,val){setIaConfig(c=>({...c,papaTiles:{...(c.papaTiles||{}),[v]:{...((c.papaTiles||{})[v]||{}),[campo]:val}}}));setMsg('✓ Guardado');setTimeout(()=>setMsg(''),1200);}
+  function restaurar(v){setIaConfig(c=>{const p={...(c.papaTiles||{})};delete p[v];return {...c,papaTiles:p};});setMsg('✓ Restaurado');setTimeout(()=>setMsg(''),1200);}
+  return(
+    <div className="fade-in" style={{maxWidth:560,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>👪 Botones del Papá</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:14}}>Cambiá el nombre o el ícono de cada botón de la app del papá, u ocultá los que no uses. Se guarda solo.</p>
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'8px 12px',borderRadius:10,fontSize:12,marginBottom:12,fontWeight:700}}>{msg}</div>}
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {base.map(([v,de,dt])=>{
+          const e=(PT[v]&&PT[v].e)||de;const t=(PT[v]&&PT[v].t!==undefined&&PT[v].t!=='')?PT[v].t:dt;const oc=!!(PT[v]&&PT[v].oculto);
+          return(
+            <div key={v} style={{...S.card,display:'flex',alignItems:'center',gap:10,padding:12,opacity:oc?0.55:1}}>
+              <input value={e} onChange={ev=>setCampo(v,'e',ev.target.value)} maxLength={2} style={{...S.input,width:54,fontSize:24,textAlign:'center',marginBottom:0,padding:'6px'}}/>
+              <input value={t} onChange={ev=>setCampo(v,'t',ev.target.value)} style={{...S.input,flex:1,fontWeight:700,marginBottom:0}}/>
+              <button onClick={()=>setCampo(v,'oculto',!oc)} title={oc?'Mostrar':'Ocultar'} style={{...S.btn,background:oc?'#fef2f2':'#f0fdf4',color:oc?'#dc2626':'#16a34a',padding:'8px 10px',fontSize:12,fontWeight:800,whiteSpace:'nowrap'}}>{oc?'🙈 Oculto':'👁 Visible'}</button>
+              {PT[v]&&<button onClick={()=>restaurar(v)} title="Volver al original" style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'8px',fontSize:12}}>↺</button>}
+            </div>
+          );
+        })}
+      </div>
+      <p style={{fontSize:10,color:'#94a3b8',marginTop:14}}>Estos son los accesos que ve el papá en su panel de inicio. El botón "Editar Tarjeta" conviene dejarlo visible.</p>
+    </div>
+  );
+}
+
 /* ── ADMIN DASHBOARD ─────────────────────────────────────── */
 function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaConfig}){
   const [edit,setEdit]=useState(false);
@@ -737,6 +777,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
     {e:'🤖',t:'IA & Precios',          s:'Prompts y API keys',          v:'admin-ia',         bdr:'#8b5cf6',ownerOnly:true},
     {e:'🎨',t:'Generador de imagen IA', s:'Crear en 3D o mejorar',        v:'admin-catalogo',   bdr:'#534AB7',ownerOnly:true},
     {e:'🤖',t:'Catálogo IA',           s:'Personajes para los papás',     v:'admin-catalogo-ia',bdr:'#0ea5e9',ownerOnly:true},
+    {e:'👪',t:'Botones del Papá',      s:'Editar la app del papá',        v:'admin-papabotones',bdr:'#f97316',ownerOnly:true},
     {e:'🛠️',t:'Configuración',         s:'Año vigente y sitio',          v:'admin-config',     bdr:'#0ea5e9',ownerOnly:true},
   ].filter(c=>esSA||!c.ownerOnly).map(c=>({...c, e:(custom[c.v]&&custom[c.v].e)||c.e, t:(custom[c.v]&&custom[c.v].t)||c.t}));
   const items=[...base].sort((a,b)=>{const ia=orden.indexOf(a.v),ib=orden.indexOf(b.v);if(ia<0&&ib<0)return 0;if(ia<0)return 1;if(ib<0)return -1;return ia-ib;});
@@ -2485,6 +2526,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     },1500);
   }
 
+  const _PT=(iaConfig&&iaConfig.papaTiles)||{};
   const SECCIONES=[
     ['tarjeta','🎨','Editar Tarjeta','#7c3aed'],
     ['confirmaciones','👥','Confirmados','#06b6d4'],
@@ -2493,7 +2535,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     ['faq','💬','Consultas','#e11d48'],
     ['adicionales','➕','Adicionales','#8b5cf6'],
     ['reglas','📋','Reglas del Salón','#0ea5e9'],
-  ];
+  ].map(([v,e,l,c])=>[v,(_PT[v]&&_PT[v].e)||e,(_PT[v]&&_PT[v].t!==undefined&&_PT[v].t!=='')?_PT[v].t:l,c]).filter(([v])=>!(_PT[v]&&_PT[v].oculto));
   const tituloSeccion=(SECCIONES.find(s=>s[0]===seccion)||['','','',''])[2];
   function compartirInvitacionWA(){
     const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
