@@ -2872,16 +2872,17 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     acortarYCompartir(longUrl,(form.nombre||papaSesion.nombre),fecha,suc.nombre);
   }
 
-  // Opt-in obligatorio: antes de entrar al panel, el papá acepta recibir la invitación y novedades por WhatsApp
+  // Opt-in: el papá nos escribe por WhatsApp (paso 1) y después entra (paso 2). No se traba si WhatsApp no abre.
   if(!papaSesion.optinWA){
     return(
       <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:20,background:'linear-gradient(160deg,#faf5ff,#eef2ff)'}}>
         <div className="fade-in" style={{...S.card,maxWidth:400,width:'100%',padding:28,textAlign:'center'}}>
           <div style={{fontSize:52,marginBottom:10}}>📲</div>
           <h2 style={{fontWeight:900,fontSize:20,marginBottom:10}}>¡Hola! Antes de empezar</h2>
-          <p style={{fontSize:14,color:'#475569',lineHeight:1.6,marginBottom:18}}>Para usar tu invitación, aceptá recibir la <b>invitación y las novedades</b> de <b>{suc.nombre}</b> por WhatsApp.</p>
-          <button onClick={()=>{ if(suc.tel){window.open('https://wa.me/'+waNum(suc.tel)+'?text='+encodeURIComponent('¡Hola '+suc.nombre+'! 🎉 Quiero recibir la invitación y las novedades por WhatsApp.'),'_blank');} setPapaSesion(ps=>{const n={...ps,optinWA:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,optinWA:true}:e));return n;}); }} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'15px',fontSize:15,fontWeight:900}}>✅ Acepto y abro WhatsApp</button>
-          <p style={{fontSize:11,color:'#94a3b8',marginTop:10}}>Se abre WhatsApp para confirmar. Después entrás a tu invitación.</p>
+          <p style={{fontSize:14,color:'#475569',lineHeight:1.6,marginBottom:16}}>Recibí tu <b>invitación y las novedades</b> de <b>{suc.nombre}</b> por WhatsApp:</p>
+          {suc.tel&&<a href={'https://wa.me/'+waNum(suc.tel)+'?text='+encodeURIComponent('¡Hola '+suc.nombre+'! 🎉 Quiero recibir la invitación y las novedades por WhatsApp.')} target="_blank" rel="noopener" style={{display:'block',background:'#25d366',color:'white',borderRadius:14,padding:'14px',fontSize:15,fontWeight:900,textDecoration:'none',marginBottom:10}}>📲 1) Escribirnos por WhatsApp</a>}
+          <button onClick={()=>{setPapaSesion(ps=>{const n={...ps,optinWA:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,optinWA:true}:e));return n;});}} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'14px',fontSize:15,fontWeight:900}}>✅ 2) Listo, entrar a mi invitación</button>
+          <p style={{fontSize:11,color:'#94a3b8',marginTop:10}}>Tocá "Escribirnos", mandanos el mensaje y volvé. Después tocá "Entrar". (El botón verde abre tu WhatsApp.)</p>
         </div>
       </div>
     );
