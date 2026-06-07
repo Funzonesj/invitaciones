@@ -169,6 +169,10 @@ const INIT_VISTA = _INV_PARAM ? 'invitado-portada'
   : (_ADMIN_SAVED ? 'admin-dashboard'
   : 'admin-login'))));
 
+// Prompt de video recomendado (fijo) + frase de saludo (editable aparte, se inserta en {frase})
+const PROMPT_VIDEO_DEF='The child and {personaje} are walking together from the back toward the camera, side by side, both smiling and excited. After 4 seconds they stop and face the camera directly. {personaje} opens their mouth and speaks in Spanish, looking straight at the camera with an enthusiastic and happy expression, with good lip sync, saying exactly: "{frase}" The child stands next to {personaje} smiling. Same background, same lighting, same setting as the image. No camera shake. No scene changes. Do not add any objects, accessories or elements that are not in the original image. Preserve both characters faces and appearance throughout the entire video.';
+const FRASE_VIDEO_DEF='¡Hola! Soy {personaje} y vengo a invitarte a festejar el cumple de {nombre}. ¡Va a ser una fiesta increíble en {salon}! ¡Te esperamos!';
+
 function App() {
   function loadLS(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch(e){return def;}}
   const [sucursales,  setSucursales]  = useState(()=>loadLS('fz_sucursales',SUCURSALES0));
@@ -196,7 +200,8 @@ function App() {
     promptImagen2: 'I have two images attached.\nImage 1 is the person (the real person whose face, hair, skin tone and body proportions must be preserved exactly).\nImage 2 is the character reference (the costume, accessories and background to apply).\nTASK: Dress the person from Image 1 in the exact costume from Image 2. This is a costume transformation — only the clothing changes.\nFACE AND HAIR: Keep the face, facial features, skin tone, hair color, hair style and expression from Image 1 exactly as they are. Do not apply any artistic style to the face. The result must look like a real photo of the same person wearing a costume.\nCOSTUME: Apply the exact outfit from Image 2 — same colors, same style, same details and accessories. Include all accessories shown on the character.\nBACKGROUND: Replace the background completely with the background from Image 2 — same setting, same colors, same atmosphere. The original background from Image 1 must not appear.\nHEAD PROPORTIONS: Ensure the head size is naturally proportional to the body — realistic human proportions.\nFACE QUALITY: The face must be sharp, clear and well-lit.\nFull body shot, vertical format, photorealistic, professional quality.',
     modelImagen:  'fal-ai/nano-banana/edit',
     modelImagen2: 'fal-ai/nano-banana/edit',
-    promptVideo:  'The child and {personaje} are walking together toward the camera, side by side, both smiling and excited. After 4 seconds they stop and face the camera directly. {personaje} opens their mouth and speaks in Spanish, looking straight at the camera with an enthusiastic and happy expression, with good lip sync, saying exactly: "¡Hola! Soy {personaje} y vengo a invitarte a festejar el cumple de {nombre}. ¡Va a ser una fiesta increíble en {salon}! ¡Te esperamos!" The child stands next to {personaje} smiling. Same background, same lighting, same setting as the image. No camera shake. No scene changes. Do not add any objects, accessories or elements that are not in the original image. Preserve both characters faces and appearance throughout the entire video.',
+    promptVideo:  PROMPT_VIDEO_DEF,
+    fraseVideo:   FRASE_VIDEO_DEF,
     precioImagen: 1500,
     precioVideo:  3500,
     txtTarjeta: {
@@ -1579,7 +1584,17 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
         </label>
       </div>
 
-      {servicio('Video IA','🎬','promptVideo','apiVideo','precioVideo','Video corto del personaje {tematica} saludando a {nombre}...')}
+      {servicio('Video IA','🎬','promptVideo','apiVideo','precioVideo','Pegá el prompt técnico del video (en inglés). Usá {frase} donde va el saludo...')}
+
+      <div style={{...S.card,marginBottom:14,border:'1px solid #fbcfe8'}}>
+        <h3 style={{fontWeight:900,fontSize:15,marginBottom:4}}>🗣️ Frase de saludo del video</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Lo que <b>dice el personaje</b> en el video. Se inserta sola dentro del prompt de arriba (en el lugar que dice <code>{'{frase}'}</code>). No toques el prompt técnico: cambiá solo esta frase.</p>
+        <label style={{display:'block',marginBottom:10}}><span style={S.label}>Frase</span>
+          <textarea value={cfg.fraseVideo||''} readOnly={!editando} onChange={e=>set('fraseVideo',e.target.value)} rows={3} style={{...S.input,resize:'vertical',fontFamily:'inherit',...lockStyle}} placeholder='¡Hola! Soy {personaje} y vengo a invitarte a festejar el cumple de {nombre}...'/>
+          <span style={{fontSize:10,color:'#94a3b8'}}>Variables: {'{personaje}'}, {'{nombre}'}, {'{salon}'}. Dejá las llaves y se completan solas.</span>
+        </label>
+        <button onClick={()=>{if(!editando)return;set('promptVideo',PROMPT_VIDEO_DEF);set('fraseVideo',FRASE_VIDEO_DEF);setMsg('✓ Prompt y frase restaurados (acordate de Guardar)');setTimeout(()=>setMsg(''),3000);}} disabled={!editando} style={{...S.btn,background:editando?'#0ea5e9':'#e2e8f0',color:editando?'white':'#94a3b8',padding:'9px 12px',fontSize:12,fontWeight:800,cursor:editando?'pointer':'not-allowed'}}>↺ Restaurar prompt y frase recomendados</button>
+      </div>
 
       <div style={{...S.card,marginBottom:14}}>
         <h3 style={{fontWeight:900,fontSize:15,marginBottom:4}}>🪄 Mejorador de foto</h3>
@@ -2191,7 +2206,7 @@ function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
 }
 
 /* ── GENERADOR IA ─────────────────────────────────────────── */
-function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,modelA,modelB,cantidad,fotoNino,personaje,personajeNombre,genero,salon,edad,startImage,onResultado,onCerrar}){
+function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,modelA,modelB,cantidad,fotoNino,personaje,personajeNombre,genero,salon,edad,startImage,onResultado,onCerrar}){
   const [paso,setPaso]=useState('generando'); // generando | listo | error
   const [progreso,setProgreso]=useState(0);
   const [resultados,setResultados]=useState([]);
@@ -2253,7 +2268,8 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,modelA
             baseImg=idata.url;
           }
           setProgreso(28);
-          let baseV=repl(prompt);
+          // Insertamos la frase de saludo en el prompt ({frase}) y luego reemplazamos variables
+          let baseV=repl((prompt||'').replace(/\{frase\}/g,(frase||'')));
           if(genero==='f') baseV+=' The character speaks with a clearly female voice.';
           else if(genero==='m') baseV+=' The character speaks with a clearly male voice.';
           // Encolar el video animando esa imagen (8 segundos)
@@ -3116,7 +3132,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===((genActivo==='imagen')?form.personajeIA:(videoStartImg?form.personajeIA:form.personajeIAV)))||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===((genActivo==='imagen')?form.personajeIA:(videoStartImg?form.personajeIA:form.personajeIAV)))||{}).genero||''} salon={suc.nombre} startImage={genActivo==='video'?videoStartImg:null} onResultado={imgs=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});}else{if(videoStartImg){setVideoUrl(imgs[0]||'');setVideoPaga(false);setVideoStartImg(null);}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));}setGenActivo(null);}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:iaConfig.promptVideo} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={genActivo==='imagen'?form.fotoNinoIA:form.fotoNinoIAV} personaje={genActivo==='imagen'?form.personajeIA:form.personajeIAV} personajeNombre={(tematicas.find(t=>t.img===((genActivo==='imagen')?form.personajeIA:(videoStartImg?form.personajeIA:form.personajeIAV)))||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===((genActivo==='imagen')?form.personajeIA:(videoStartImg?form.personajeIA:form.personajeIAV)))||{}).genero||''} salon={suc.nombre} startImage={genActivo==='video'?videoStartImg:null} onResultado={imgs=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});}else{if(videoStartImg){setVideoUrl(imgs[0]||'');setVideoPaga(false);setVideoStartImg(null);}else setForm(f=>({...f,iaVideos:[...(f.iaVideos||[]),...imgs]}));}setGenActivo(null);}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
 
       {/* Upsell de video: preview gratis, pago para descargar */}
       {videoUrl&&(
