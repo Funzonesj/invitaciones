@@ -2355,9 +2355,9 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
           const persNom=personajeNombre||tematica||'el personaje';
           const repl=s=>(s||'').replace(/\{nombre\}/g,nombre||'').replace(/\{edad\}/g,edad||'').replace(/\{tematica\}/g,persNom).replace(/\{personaje\}/g,persNom).replace(/\{salon\}/g,salon||'');
           // Prompt A: el personaje abrazando al niño/a (medio cuerpo)
-          const composedA=repl(prompt)+' Usá las DOS imágenes adjuntas: conservá EXACTAMENTE la cara y el parecido de la persona de la PRIMERA imagen (no la cambies ni la estilices), y combinala con el/los personaje(s) de la SEGUNDA imagen. ENCUADRE: retrato de MEDIO CUERPO, de la CINTURA PARA ARRIBA, de ambos; los dos centrados, a la misma altura, del mismo tamaño y la misma escala (mismo plano de cámara). El personaje ABRAZANDO a la persona, con un brazo alrededor de su hombro, bien juntos y en contacto. Integrá a ambos en UNA SOLA escena cohesiva y realista, con la MISMA iluminación, sombras y estilo, de modo que NO parezca dos fotos pegadas o superpuestas, sino una sola foto tomada juntos. El fondo es el mundo/escenario del personaje; el personaje en estilo 3D animado; imagen vertical, alegre y apta para todo público; dejá un poco de espacio libre arriba; sin texto ni letras. ANATOMÍA CORRECTA Y COMPLETA: cada persona con exactamente dos brazos, dos manos (con cinco dedos cada una) y una sola cabeza; PROHIBIDO agregar extremidades, manos o dedos de más, duplicados o deformados; no recortes manos ni brazos en el borde; respetá la proporción y el tamaño entre ambos.';
+          const composedA=repl(prompt)+' Usá las DOS imágenes adjuntas: conservá EXACTAMENTE la cara y el parecido de la persona de la PRIMERA imagen (no la cambies ni la estilices), y combinala con el/los personaje(s) de la SEGUNDA imagen. ENCUADRE: retrato de MEDIO CUERPO, de la CINTURA PARA ARRIBA, de ambos; los dos centrados, a la misma altura, del mismo tamaño y la misma escala (mismo plano de cámara). El personaje ABRAZANDO a la persona, con un brazo alrededor de su hombro, bien juntos y en contacto. Integrá a ambos en UNA SOLA escena cohesiva y realista, con la MISMA iluminación, sombras y estilo, de modo que NO parezca dos fotos pegadas o superpuestas, sino una sola foto tomada juntos. El fondo es el mundo/escenario del personaje; el personaje en estilo 3D animado; imagen vertical, alegre y apta para todo público. ENCUADRE CERRADO: ambos ocupan casi toda la altura de la imagen, con las CABEZAS cerca del borde SUPERIOR y MUY POCO espacio vacío arriba (nada de cielo/techo de relleno), pero SIN recortar ni cortar las cabezas. PROHIBIDO TODO TEXTO: no escribas ninguna palabra, letra, número, cartel, logo ni marca de agua, en ningún idioma; la imagen NO debe contener texto de ningún tipo. ANATOMÍA CORRECTA Y COMPLETA: cada persona con exactamente dos brazos, dos manos (con cinco dedos cada una) y una sola cabeza; PROHIBIDO agregar extremidades, manos o dedos de más, duplicados o deformados; no recortes manos ni brazos en el borde; respetá la proporción y el tamaño entre ambos.';
           // Prompt B: segundo estilo configurable (ej: transformar al niño/a en el personaje)
-          const composedB=(prompt2&&prompt2.trim())?(repl(prompt2)+'\nUse the TWO attached images: Image 1 is the child (preserve the real face exactly), Image 2 is the character/costume reference. Vertical image, no text, no letters, no watermark.'):composedA;
+          const composedB=(prompt2&&prompt2.trim())?(repl(prompt2)+'\nUse the TWO attached images: Image 1 is the child (preserve the real face exactly), Image 2 is the character/costume reference. Vertical image, close framing with the heads near the TOP edge and very little empty space above (do NOT cut the heads). ABSOLUTELY NO text, no letters, no words, no numbers, no captions, no logo, no watermark anywhere in the image, in any language.'):composedA;
           // Repartir: mitad con prompt A, mitad con prompt B (ej: 6 → 3 y 3)
           const n=Math.max(1,Math.min(totalGen,6));
           // "Disfraz" (Prompt B) desactivado por ahora → todas con "Amigos" (Prompt A). Para reactivar: const nA=Math.ceil(n/2);
@@ -2783,7 +2783,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           {/* Tarjeta central */}
           <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:14}}>
             <div style={{position:'relative',aspectRatio:'4/5',maxHeight:'48vh',background:'#0f172a',overflow:'hidden'}}>
-              <img src={portadaImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 78%'}}/>
+              <img src={portadaImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top center'}}/>
               <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.78) 0%,transparent 55%)'}}></div>
               <span style={{position:'absolute',top:12,left:12,background:'#f43f5e',color:'white',fontSize:11,padding:'4px 14px',borderRadius:99,fontWeight:900,letterSpacing:1}}>TE INVITO!</span>
               <div style={{position:'absolute',bottom:14,left:0,right:0,textAlign:'center',color:'white',padding:'0 14px'}}>
@@ -2854,7 +2854,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             {/* Mini preview de la tarjeta */}
             <div style={{...S.card,padding:0,overflow:'hidden'}}>
               <div style={{position:'relative',aspectRatio:'4/5',maxHeight:'42vh',background:'#0f172a',overflow:'hidden'}}>
-                <img src={portadaImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 78%'}}/>
+                <img src={portadaImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top center'}}/>
                 <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.75) 0%,transparent 50%)'}}></div>
                 <span style={{position:'absolute',top:10,left:10,background:'#f43f5e',color:'white',fontSize:9,padding:'3px 10px',borderRadius:99,fontWeight:900}}>TE INVITO!</span>
                 <div style={{position:'absolute',bottom:10,left:0,right:0,textAlign:'center',color:'white'}}>
@@ -3519,7 +3519,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
 
       {/* 1. IMAGEN TEMATICA (banner compacto, muestra desde arriba para no cortar la cara) */}
       <div style={{position:'relative',width:'100%',aspectRatio:'4/5',maxHeight:'58vh',overflow:'hidden'}}>
-        <img src={portada} alt={tem.nombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 78%',display:'block'}}/>
+        <img src={portada} alt={tem.nombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'top center',display:'block'}}/>
         <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)'}}></div>
         <span style={{position:'absolute',top:14,left:14,background:'#f43f5e',color:'white',fontSize:12,padding:'5px 16px',borderRadius:99,fontWeight:900,letterSpacing:1}}>TE INVITO!</span>
       </div>
