@@ -197,7 +197,7 @@ $('go').onclick = async () => {
     const [videoA, videoB] = await Promise.all([
       colaEsperar('/api/generar-video', {image:urlA, prompt:promptA(movA), duration:'5', generate_audio:false}, 'toma 1')
         .then(u=>{ step('a','Toma 1 lista','done'); return u; }),
-      colaEsperar('/api/generar-video', {image:urlB, prompt:PROMPT_B, duration:'5', generate_audio:false}, 'toma 2')
+      colaEsperar('/api/generar-video', {image:urlB, prompt:PROMPT_B, duration:'10', generate_audio:false}, 'toma 2')
         .then(u=>{ step('b','Toma 2 lista','done'); return u; }),
     ]);
 
