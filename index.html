@@ -2030,11 +2030,13 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
               {selIdx===null?'👆 Elegí una imagen primero':'👁 Ver Tarjeta'}
             </button>
           )}
-          {/* Upsell: aviso inline (la acción principal es el botón flotante) */}
+          {/* Upsell: botón fijo abajo (siempre disponible, aunque cierren el flotante) */}
           {tipo==='imagen'&&onVideoUpsell&&selIdx!==null&&resultados[selIdx]&&(
-            <div style={{marginTop:12,background:'linear-gradient(135deg,#e11d4815,#7c3aed10)',border:'1px solid #fbcfe8',borderRadius:14,padding:'12px 14px',textAlign:'center'}}>
-              <div style={{fontWeight:900,fontSize:13,color:'#1e293b'}}>🎬 ¿La querés en VIDEO?</div>
-              <div style={{fontSize:11,color:'#64748b',marginTop:2}}>Usá el botón <b>"Generá el video"</b> de abajo. Lo mirás gratis y, si te gusta, lo descargás.</div>
+            <div style={{marginTop:12,background:'linear-gradient(135deg,#e11d4815,#7c3aed10)',border:'1px solid #fbcfe8',borderRadius:14,padding:'14px',textAlign:'center'}}>
+              <div style={{fontSize:22,marginBottom:2}}>🎬✨</div>
+              <div style={{fontWeight:900,fontSize:14,color:'#1e293b'}}>¿La querés en VIDEO?</div>
+              <div style={{fontSize:11,color:'#64748b',margin:'4px 0 10px'}}>El personaje saluda y habla. <b>Lo mirás gratis</b> y, si te gusta, lo descargás.</div>
+              <button onClick={()=>onVideoUpsell(resultados[selIdx])} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#e11d48,#be123c)',color:'white',padding:'13px',fontSize:14,fontWeight:900}}>🎬 Generar video</button>
             </div>
           )}
           {tipo==='imagen'&&onDescartar&&(
