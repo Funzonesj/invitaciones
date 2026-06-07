@@ -1556,6 +1556,8 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
   const [saldoCargando,setSaldoCargando]=useState(true);
   function cargarSaldo(){setSaldoCargando(true);setSaldoErr('');fetch('/api/saldo').then(r=>r.json()).then(d=>{if(d&&typeof d.balance==='number'){setSaldo(d);}else{setSaldoErr((d&&d.error)||'No disponible');}}).catch(()=>setSaldoErr('No se pudo consultar')).finally(()=>setSaldoCargando(false));}
   React.useEffect(()=>{cargarSaldo();},[]);
+  const [vozMsg,setVozMsg]=useState('');
+  function probarVoz(g){setVozMsg('Probando la voz…');fetch('/api/voz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'Hola, soy una prueba de voz para Fun Zone. ¡Va a ser una fiesta increíble!',genero:g})}).then(async r=>{const d=await r.json().catch(()=>({}));if(r.ok&&d&&d.audio){try{const a=new Audio(d.audio);a.play();}catch(e){}setVozMsg('✅ Voz '+(g==='f'?'femenina':'masculina')+' OK — deberías escucharla. ¡ElevenLabs anda!');}else if(d&&d.configured===false){setVozMsg('⚠️ Falta cargar ELEVENLABS_API_KEY en Vercel y hacer Redeploy.');}else{setVozMsg('⚠️ '+((d&&d.error)||'No funcionó. Fijate que la clave tenga permiso de "Texto a voz".'));}}).catch(()=>setVozMsg('⚠️ No se pudo consultar el servicio de voz.'));}
   function set(k,v){setCfg(c=>({...c,[k]:v}));}
   function guardar(){setIaConfig(cfg);setEditando(false);setMsg('✓ Cambios guardados');setTimeout(()=>setMsg(''),2500);}
   const lockStyle=editando?{}:{background:'#f1f5f9',color:'#475569',cursor:'not-allowed'};
@@ -1637,6 +1639,14 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
           <span style={{fontSize:10,color:'#94a3b8'}}>Variables: {'{personaje}'}, {'{nombre}'}, {'{salon}'}. Dejá las llaves y se completan solas.</span>
         </label>
         <button onClick={()=>{if(!editando)return;set('promptVideo',PROMPT_VIDEO_DEF);set('fraseVideo',FRASE_VIDEO_DEF);setMsg('✓ Prompt y frase restaurados (acordate de Guardar)');setTimeout(()=>setMsg(''),3000);}} disabled={!editando} style={{...S.btn,background:editando?'#0ea5e9':'#e2e8f0',color:editando?'white':'#94a3b8',padding:'9px 12px',fontSize:12,fontWeight:800,cursor:editando?'pointer':'not-allowed'}}>↺ Restaurar prompt y frase recomendados</button>
+        <div style={{marginTop:14,borderTop:'1px solid #f1f5f9',paddingTop:12}}>
+          <div style={{fontSize:12,fontWeight:800,color:'#334155',marginBottom:6}}>🔊 Probar la voz de ElevenLabs</div>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={()=>probarVoz('f')} style={{...S.btn,flex:1,background:'#fce7f3',color:'#be185d',padding:'10px',fontSize:12,fontWeight:800}}>♀ Probar voz femenina</button>
+            <button onClick={()=>probarVoz('m')} style={{...S.btn,flex:1,background:'#dbeafe',color:'#1d4ed8',padding:'10px',fontSize:12,fontWeight:800}}>♂ Probar voz masculina</button>
+          </div>
+          {vozMsg&&<div style={{marginTop:8,fontSize:12,fontWeight:700,color:vozMsg.startsWith('✅')?'#16a34a':(vozMsg.startsWith('⚠️')?'#dc2626':'#64748b')}}>{vozMsg}</div>}
+        </div>
       </div>
 
       <div style={{...S.card,marginBottom:14}}>
