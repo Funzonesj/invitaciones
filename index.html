@@ -3796,6 +3796,16 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         </button>
       </div>
 
+      {/* 11b. RECIBIR NOVEDADES (opt-in: el papá nos escribe primero → permiso válido para promos) */}
+      {suc.tel&&(
+        <div style={{padding:'0 16px 16px'}}>
+          <a href={'https://wa.me/'+waNum(suc.tel)+'?text='+encodeURIComponent('¡Hola '+suc.nombre+'! 🎉 Quiero recibir las novedades y promociones por WhatsApp.')} target="_blank" rel="noopener" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,background:'#25d366',color:'white',borderRadius:14,padding:'13px',fontSize:13.5,fontWeight:900,textDecoration:'none'}}>
+            📲 Recibir novedades y promos de {suc.nombre}
+          </a>
+          <p style={{fontSize:10,color:'#94a3b8',textAlign:'center',marginTop:6}}>Te abre WhatsApp para escribirnos. ¡Así te enterás de las promos! 🎁</p>
+        </div>
+      )}
+
       {/* 12. CONFIRMAR ASISTENCIA */}
       <div style={{margin:'0 16px 12px',border:'2px dashed '+col,borderRadius:18,padding:'16px',textAlign:'center'}}>
         <p style={{fontSize:24,fontWeight:900,color:'#1e293b',margin:'0 0 4px'}}>{T.confTitulo||'Confirmar tu asistencia'}</p>
