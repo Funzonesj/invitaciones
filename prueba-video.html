@@ -131,9 +131,19 @@ function showErr(msg){
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 async function post(path, body){
-  const r = await fetch(API+path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-  const d = await r.json().catch(()=>({}));
-  if(!r.ok) throw new Error(d.error || ('Error en '+path));
+  let r;
+  try {
+    r = await fetch(API+path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  } catch(netErr){
+    throw new Error('No se pudo conectar con '+path+' ('+(netErr.message||netErr)+')');
+  }
+  const txt = await r.text().catch(()=> '');
+  let d = {};
+  try { d = txt ? JSON.parse(txt) : {}; } catch(_){ /* respuesta no-JSON */ }
+  if(!r.ok){
+    const detalle = d.error || (txt ? txt.slice(0,200) : '') || ('código '+r.status);
+    throw new Error(path+' → '+detalle);
+  }
   return d;
 }
 
