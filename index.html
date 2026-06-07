@@ -755,7 +755,7 @@ function AdminDisenoTarjeta({setVista,sucAct,iaConfig,setIaConfig}){
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'8px 12px',borderRadius:10,fontSize:12,marginBottom:12,fontWeight:700}}>{msg}</div>}
       <div style={{borderRadius:18,overflow:'hidden',border:'1px solid #e2e8f0',boxShadow:'0 6px 24px rgba(0,0,0,.08)'}}>
         <div style={{background:col,padding:'28px 18px',textAlign:'center',color:'white'}}>
-          <div style={{width:64,height:64,borderRadius:'50%',background:'white',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:30,marginBottom:10,overflow:'hidden'}}>{sucAct.logo?<img src={sucAct.logo} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:(sucAct.emoji||'🎪')}</div>
+          <div style={{width:64,height:64,borderRadius:'50%',background:'white',display:'inline-flex',alignItems:'center',justifyContent:'center',fontSize:30,marginBottom:10,overflow:'hidden'}}>{(sucAct.iconoImg||sucAct.logo)?<img src={sucAct.iconoImg||sucAct.logo} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:(sucAct.emoji||'🎪')}</div>
           <p style={{fontSize:11,letterSpacing:1,textTransform:'uppercase',opacity:.9,margin:'0 0 6px'}}>{sucAct.portadaFrase||'Recibiste una invitación'}</p>
           <div style={{fontSize:30,fontWeight:900,margin:'0 0 14px'}}>Nombre</div>
           <div style={{margin:'0 0 16px'}}>{ed('portadaSub',{fontSize:14,color:'white'})}</div>
@@ -913,7 +913,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
       )}
       <div style={{...S.card,display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:24,padding:20}}>
         <div style={{display:'flex',alignItems:'center',gap:14}}>
-          <div style={{width:54,height:54,borderRadius:16,background:`linear-gradient(135deg,${sucAct.color},#7c3aed)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>{sucAct.emoji}</div>
+          <div style={{width:54,height:54,borderRadius:16,background:`linear-gradient(135deg,${sucAct.color},#7c3aed)`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,overflow:'hidden'}}>{sucAct.iconoImg?<img src={sucAct.iconoImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:sucAct.emoji}</div>
           <div><div style={{fontWeight:900,fontSize:20}}>{sucAct.nombre}</div><div style={{fontSize:11,color:'#64748b'}}>Panel de Control</div></div>
         </div>
         <button onClick={()=>{setEdit(!edit);setEditId(null);}} style={{...S.btn,background:edit?'#16a34a':'#f1f5f9',color:edit?'white':'#475569',padding:'7px 12px',fontSize:12}}>{edit?'✓ Listo':'✏️ Editar panel'}</button>
@@ -1625,7 +1625,7 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
                 {!editing?(
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                     <div style={{display:'flex',alignItems:'center',gap:8}}>
-                      <div style={{width:32,height:32,borderRadius:8,background:s.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16}}>{s.emoji}</div>
+                      <div style={{width:32,height:32,borderRadius:8,background:s.color,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,overflow:'hidden'}}>{s.iconoImg?<img src={s.iconoImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:s.emoji}</div>
                       <div><b style={{fontSize:13}}>{s.nombre}</b><p style={{fontSize:10,color:'#94a3b8',margin:0}}>{s.direccion}</p></div>
                     </div>
                     <div style={{display:'flex',gap:6}}>
@@ -1645,7 +1645,18 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
                       ))}
                       <label style={{display:'block',marginBottom:6}}><span style={S.label}>Nombre para la VOZ del video (cómo se pronuncia)</span><input value={ed.vozNombre||''} onChange={e=>setEd({...ed,vozNombre:e.target.value})} style={S.input} placeholder="Ej: pleypoint, fanzon"/><span style={{fontSize:10,color:'#94a3b8'}}>Así lo dice el personaje en el video. Si lo dejás vacío, usa el nombre normal.</span></label>
                       <div style={{display:'flex',gap:10,alignItems:'flex-end',marginTop:4}}>
-                        <label style={{width:84}}><span style={S.label}>Icono</span><input value={ed.emoji||''} onChange={e=>setEd({...ed,emoji:e.target.value})} maxLength={2} style={{...S.input,fontSize:22,textAlign:'center'}}/></label>
+                        <div style={{width:128}}>
+                          <span style={S.label}>Icono</span>
+                          <div style={{display:'flex',alignItems:'center',gap:6}}>
+                            {ed.iconoImg
+                              ? <img src={ed.iconoImg} alt="" style={{width:40,height:40,borderRadius:8,objectFit:'cover',border:'2px solid #e2e8f0',flexShrink:0}}/>
+                              : <input value={ed.emoji||''} onChange={e=>setEd({...ed,emoji:e.target.value})} maxLength={2} style={{...S.input,width:44,fontSize:22,textAlign:'center'}} placeholder="🎪"/>}
+                            <label style={{...S.btn,background:'#0f172a',color:'white',padding:'7px 9px',fontSize:11,cursor:'pointer'}} title="Subir imagen de ícono">📷
+                              <input type="file" accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;resizeImg(file,200,data=>setEd(prev=>({...prev,iconoImg:data})));}}/>
+                            </label>
+                            {ed.iconoImg&&<button type="button" onClick={()=>setEd(prev=>({...prev,iconoImg:''}))} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14}}>🗑</button>}
+                          </div>
+                        </div>
                         <div style={{flex:1}}>
                           <span style={S.label}>Logo (imagen)</span>
                           <div style={{display:'flex',alignItems:'center',gap:8}}>
