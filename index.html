@@ -1124,7 +1124,13 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
   const [allCats,setAllCats]=useState([...CATS]);
   const [msg,setMsg]=useState('');
   const [editCat,setEditCat]=useState(null); // id de la imagen a la que se le editan categorías
+  const [filtCat,setFiltCat]=useState('RECIENTES'); // filtro de la grilla
   const fRef=useRef();
+  // Lista a mostrar: más nuevas primero. "RECIENTES" = 10, una por personaje.
+  const _bn=n=>String(n||'').replace(/\s*\d+$/,'').trim();
+  let listaMostrar=tematicas.slice().reverse();
+  if(filtCat==='RECIENTES'){const seen=new Set();const out=[];for(const t of listaMostrar){const b=_bn(t.nombre);if(!seen.has(b)){seen.add(b);out.push(t);}if(out.length>=10)break;}listaMostrar=out;}
+  else if(filtCat!=='TODOS'){listaMostrar=listaMostrar.filter(t=>(t.cats||[]).includes(filtCat));}
 
   // Carga MÚLTIPLE: varias imágenes del mismo personaje de una sola vez
   function onFile(e){
@@ -1193,8 +1199,18 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
             <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',width:'100%',padding:12}}>✓ Guardar imágenes</button>
           </form>
         </div>
+        <div>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+          <span style={{fontSize:12,fontWeight:800,color:'#64748b'}}>Mostrar:</span>
+          <select value={filtCat} onChange={e=>setFiltCat(e.target.value)} style={{...S.input,width:'auto',marginBottom:0,fontWeight:700,fontSize:12,padding:'7px 10px'}}>
+            <option value="RECIENTES">🆕 Recientes (1 por personaje)</option>
+            <option value="TODOS">📂 Todas</option>
+            {CATS.filter(c=>c!=='TODOS').map(c=><option key={c} value={c}>{c}</option>)}
+          </select>
+          <span style={{fontSize:11,color:'#94a3b8'}}>{listaMostrar.length} imagen{listaMostrar.length!==1?'es':''}</span>
+        </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10}}>
-          {tematicas.map(t=>(
+          {listaMostrar.map(t=>(
             <div key={t.id} style={{background:'#fff',borderRadius:14,overflow:'hidden',border:'1px solid #e2e8f0'}}>
               <div style={{aspectRatio:'9/16',background:'#0f172a',position:'relative',overflow:'hidden'}}>
                 <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
@@ -1203,6 +1219,13 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
                 {t.ia&&<span style={{position:'absolute',top:5,right:6,background:'#0ea5e9',color:'white',fontSize:8,padding:'2px 5px',borderRadius:5,fontWeight:800}}>IA</span>}
               </div>
               <button onClick={()=>setTematicas(tematicas.map(x=>x.id===t.id?{...x,ia:!x.ia}:x))} style={{width:'100%',padding:6,background:t.ia?'#e0f2fe':'none',border:'none',color:t.ia?'#0369a1':'#0ea5e9',cursor:'pointer',fontSize:11,fontWeight:700,borderTop:'1px solid #e2e8f0'}}>{t.ia?'✓ En Catálogo IA':'➕ Catálogo IA'}</button>
+              {t.ia&&(
+                <div style={{display:'flex',borderTop:'1px solid #e0f2fe'}}>
+                  {[['f','♀ Voz','#db2777'],['m','♂ Voz','#2563eb']].map(([g,l,c])=>(
+                    <button key={g} onClick={()=>setTematicas(p=>p.map(x=>x.id===t.id?{...x,genero:(x.genero===g?'':g)}:x))} title="Voz del video" style={{flex:1,padding:5,background:t.genero===g?c:'none',border:'none',color:t.genero===g?'white':c,cursor:'pointer',fontSize:10,fontWeight:800}}>{l}</button>
+                  ))}
+                </div>
+              )}
               {editCat===t.id?(
                 <div style={{padding:6,borderTop:'1px solid #e2e8f0',background:'#faf5ff'}}>
                   <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:6}}>
@@ -1216,6 +1239,7 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
               <button onClick={()=>setTematicas(tematicas.filter(x=>x.id!==t.id))} style={{width:'100%',padding:6,background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:11,fontWeight:700,borderTop:'1px solid #fee2e2'}}>🗑 Eliminar</button>
             </div>
           ))}
+        </div>
         </div>
       </div>
     </div>
