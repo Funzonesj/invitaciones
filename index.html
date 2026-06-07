@@ -229,7 +229,7 @@ function generarTarjetaImagen(ev, suc, tematicas, iaConfig, accion){
   else dibujar(null);
 }
 const PROMPT_VIDEO_DEF='The child and {personaje} are together facing the camera, side by side, both smiling and happy. {personaje} looks at the camera and speaks in Spanish with an enthusiastic and happy expression and good lip sync, saying EXACTLY these words, word by word, and nothing else: "{frase}". The child stays next to {personaje} smiling. Keep the child face identical to the image (do not change it). Same background, same lighting and same style as the image. The camera is completely STATIC and FIXED: no zoom, no panning, no camera movement; keep the same framing the whole video. No scene changes. Do not add any text, letters or watermarks. Preserve both faces and appearance identical throughout the entire video.';
-const FRASE_VIDEO_DEF='¡No puedes faltar! Te esperamos para vivir el cumpleaños más divertido en {salon}';
+const FRASE_VIDEO_DEF='¡No puedes faltar! Te esperamos para vivir el mejor cumpleaños en {salon}';
 
 function App() {
   function loadLS(key,def){try{const v=localStorage.getItem(key);return v?JSON.parse(v):def;}catch(e){return def;}}
@@ -338,7 +338,7 @@ function App() {
           return [...d.eventos, ...extra];
         });
         setConfs(d.confs);
-        if(d.cfgIa)  setIaConfig(prev=>{const m={...prev,...d.cfgIa};if(!m.promptVideo||!String(m.promptVideo).includes('{frase}'))m.promptVideo=PROMPT_VIDEO_DEF;if(!m.fraseVideo)m.fraseVideo=FRASE_VIDEO_DEF;if(m.fraseVideo&&m.fraseVideo.indexOf('vengo a invitarte')>=0)m.fraseVideo=FRASE_VIDEO_DEF;return m;});
+        if(d.cfgIa)  setIaConfig(prev=>{const m={...prev,...d.cfgIa};if(!m.promptVideo||!String(m.promptVideo).includes('{frase}'))m.promptVideo=PROMPT_VIDEO_DEF;if(!m.fraseVideo)m.fraseVideo=FRASE_VIDEO_DEF;if(m.fraseVideo&&(m.fraseVideo.indexOf('vengo a invitarte')>=0||m.fraseVideo.indexOf('más divertido')>=0))m.fraseVideo=FRASE_VIDEO_DEF;return m;});
         if(d.cfgTem && d.cfgTem.length) setTematicas(d.cfgTem);
         if(d.cfgSuc && d.cfgSuc.length) setSucursales(d.cfgSuc);
         if(d.cfgUsr) setUsuarios(d.cfgUsr);
