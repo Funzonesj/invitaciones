@@ -123,6 +123,7 @@ function buildPrompt(frase, genero, escena){
       ? ' The character FIRST finishes saying the whole sentence completely; only AFTER finishing, as the final action, the character happily claps and gives a thumbs up toward the camera.'
       : ' The character FIRST finishes saying the whole sentence completely; only AFTER finishing, as the final action, the character happily waves goodbye with the hand.';
   }
+  pr += ' VERY IMPORTANT: the character does NOT wave, greet or do any hand gesture WHILE talking; it keeps talking the message until the very last word. The greeting / wave / high-five happens ONLY at the end, AFTER the last word is completely spoken, never before.';
   return pr;
 }
 
