@@ -177,6 +177,17 @@ const INIT_VISTA = _INV_PARAM ? 'invitado-portada'
 
 // Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
 let _PAPA_NAV={};
+// Cartel verde flotante de confirmación (se ve siempre, en cualquier pantalla)
+function flashOk(texto){
+  try{
+    const d=document.createElement('div');
+    d.textContent=texto||'✓ ¡Guardado!';
+    d.style.cssText='position:fixed;top:18px;left:50%;transform:translateX(-50%) translateY(-8px);background:#16a34a;color:#fff;font-weight:900;font-size:15px;padding:13px 24px;border-radius:99px;box-shadow:0 10px 34px rgba(0,0,0,.35);z-index:99999;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;max-width:90vw;text-align:center';
+    document.body.appendChild(d);
+    requestAnimationFrame(()=>{d.style.opacity='1';d.style.transform='translateX(-50%) translateY(0)';});
+    setTimeout(()=>{d.style.opacity='0';d.style.transform='translateX(-50%) translateY(-8px)';setTimeout(()=>{try{d.remove();}catch(e){}},250);},1800);
+  }catch(e){}
+}
 // Prompt de video recomendado (fijo) + frase de saludo (editable aparte, se inserta en {frase})
 const PROMPT_VIDEO_DEF='The child and {personaje} are together facing the camera, side by side, both smiling and happy. {personaje} looks at the camera and speaks in Spanish with an enthusiastic and happy expression and good lip sync, saying EXACTLY these words, word by word, and nothing else: "{frase}". The child stays next to {personaje} smiling. Keep the child face identical to the image (do not change it). Same background, same lighting and same style as the image. The camera is completely STATIC and FIXED: no zoom, no panning, no camera movement; keep the same framing the whole video. No scene changes. Do not add any text, letters or watermarks. Preserve both faces and appearance identical throughout the entire video.';
 const FRASE_VIDEO_DEF='¡Hola! Soy {personaje} y vengo a invitarte a festejar el cumple de {nombre}. ¡Va a ser una fiesta increíble en {salon}! ¡Te esperamos!';
@@ -560,7 +571,7 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
     // Bajar y achicar la imagen para guardarla liviana
     fetch(resultUrl).then(r=>r.blob()).then(blob=>{
       const burl=URL.createObjectURL(blob);const im=new Image();
-      im.onload=()=>{try{const sc=Math.min(1,500/im.width);const cv=document.createElement('canvas');cv.width=Math.round(im.width*sc);cv.height=Math.round(im.height*sc);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);const data=cv.toDataURL('image/jpeg',0.72);setTematicas(p=>[...p,{id:'t-'+Date.now(),nombre:gNombre.trim(),cats,img:data,emoji:'🎨',ia:true}]);setMsg('✅ Guardado en el Catálogo IA');setGuardarOpen(false);setGNombre('');setGCats(['TODOS']);setTimeout(()=>setMsg(''),3500);}catch(err){setMsg('No se pudo guardar. Descargala y subila manualmente en Portadas.');}URL.revokeObjectURL(burl);};
+      im.onload=()=>{try{const sc=Math.min(1,500/im.width);const cv=document.createElement('canvas');cv.width=Math.round(im.width*sc);cv.height=Math.round(im.height*sc);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);const data=cv.toDataURL('image/jpeg',0.72);setTematicas(p=>[...p,{id:'t-'+Date.now(),nombre:gNombre.trim(),cats,img:data,emoji:'🎨',ia:true}]);setMsg('✅ Guardado en el Catálogo IA');flashOk('✓ ¡Guardado en el catálogo!');setGuardarOpen(false);setGNombre('');setGCats(['TODOS']);setTimeout(()=>setMsg(''),3500);}catch(err){setMsg('No se pudo guardar. Descargala y subila manualmente en Portadas.');}URL.revokeObjectURL(burl);};
       im.onerror=()=>{setMsg('No se pudo guardar. Descargala y subila manualmente en Portadas.');};
       im.src=burl;
     }).catch(()=>setMsg('No se pudo descargar la imagen. Usá el botón Descargar y subila en Portadas.'));
@@ -691,7 +702,7 @@ function AdminDisenoTarjeta({setVista,sucAct,iaConfig,setIaConfig}){
   const [msg,setMsg]=useState('');
   function set(k,v){setIaConfig(c=>({...c,txtTarjeta:{...def,...(c.txtTarjeta||{}),[k]:v}}));}
   function ed(k,style){
-    if(editId===k)return <span onClick={e=>e.stopPropagation()} style={{display:'inline-flex',gap:4,alignItems:'center',flexWrap:'wrap',justifyContent:'center'}}><input value={T[k]} onChange={e=>set(k,e.target.value)} style={{...S.input,fontSize:13,width:210,color:'#1e293b'}} autoFocus/><button onClick={()=>{setEditId(null);setMsg('✓ Guardado');setTimeout(()=>setMsg(''),1500);}} style={{...S.btn,background:'#16a34a',color:'white',padding:'5px 9px',fontSize:11}}>✓</button></span>;
+    if(editId===k)return <span onClick={e=>e.stopPropagation()} style={{display:'inline-flex',gap:4,alignItems:'center',flexWrap:'wrap',justifyContent:'center'}}><input value={T[k]} onChange={e=>set(k,e.target.value)} style={{...S.input,fontSize:13,width:210,color:'#1e293b'}} autoFocus/><button onClick={()=>{setEditId(null);setMsg('✓ Guardado');flashOk('✓ ¡Guardado!');setTimeout(()=>setMsg(''),1500);}} style={{...S.btn,background:'#16a34a',color:'white',padding:'5px 9px',fontSize:11}}>✓</button></span>;
     return <span onClick={()=>setEditId(k)} style={{...style,cursor:'pointer',display:'inline-block',borderRadius:6,padding:'1px 6px',outline:'1px dashed rgba(120,120,120,.4)'}}>{T[k]} ✏️</span>;
   }
   return(
@@ -914,7 +925,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     if(editId){setEventos(eventos.map(x=>x.id===editId?{...x,...form,...fmt}:x));setEditId(null);}
     else{setEventos(prev=>[...prev,{...form,...fmt,id:'ev-'+Date.now().toString(16),sucId:sucAct.id}]);}
     setForm(ef);setOpen(false);
-    setMsgOk('✅ Se guardó correctamente');setTimeout(()=>setMsgOk(''),3500);
+    setMsgOk('✅ Se guardó correctamente');flashOk('✓ ¡Guardado!');setTimeout(()=>setMsgOk(''),3500);
     window.scrollTo(0,0);
   }
   function copiarLink(id){navigator.clipboard?.writeText(window.location.href.split('?')[0]+'?inv='+id);alert('¡Enlace copiado!');}
@@ -1158,7 +1169,7 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
       urls.push(u);
     }
     setTematicas(p=>[...p,...urls.map((u,i)=>({id:'t-'+base+'-'+i,nombre:nom+(urls.length>1?(' '+(i+1)):''),cats:c,img:u,emoji:emo}))]);
-    setMsg('✅ '+urls.length+' imagen'+(urls.length>1?'es':'')+' guardada'+(urls.length>1?'s':''));
+    setMsg('✅ '+urls.length+' imagen'+(urls.length>1?'es':'')+' guardada'+(urls.length>1?'s':''));flashOk('✓ ¡Imágenes guardadas!');
     setForm({nombre:'',emoji:'🎨',imgs:[],cats:['TODOS']});setTimeout(()=>setMsg(''),4000);
   }
 
@@ -1436,11 +1447,11 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
     e.preventDefault();
     const dup=usuarios.find(x=>x.usuario.toLowerCase()===fu.usuario.trim().toLowerCase() && x.id!==editUid);
     if(dup){setMu('Ese usuario ya existe.');return;}
-    if(editUid){setUsuarios(usuarios.map(x=>x.id===editUid?{...x,...fu,rol:'encargada'}:x));setMu('✅ Cambios guardados.');}
-    else{setUsuarios([...usuarios,{...fu,rol:'encargada',id:'ua-'+Date.now()}]);setMu('✅ Encargada creada.');}
+    if(editUid){setUsuarios(usuarios.map(x=>x.id===editUid?{...x,...fu,rol:'encargada'}:x));setMu('✅ Cambios guardados.');flashOk('✓ ¡Guardado!');}
+    else{setUsuarios([...usuarios,{...fu,rol:'encargada',id:'ua-'+Date.now()}]);setMu('✅ Encargada creada.');flashOk('✓ ¡Encargada creada!');}
     setFu(eu);setEditUid(null);setTimeout(()=>setMu(''),3000);
   }
-  function addS(e){e.preventDefault();setSucursales([...sucursales,{...fs,id:'sz-'+Date.now()}]);setFs(es);setMs('✅ Sucursal creada.');setTimeout(()=>setMs(''),3000);}
+  function addS(e){e.preventDefault();setSucursales([...sucursales,{...fs,id:'sz-'+Date.now()}]);setFs(es);setMs('✅ Sucursal creada.');flashOk('✓ ¡Sucursal creada!');setTimeout(()=>setMs(''),3000);}
   return(
     <div className="fade-in" style={{maxWidth:800,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
@@ -1604,7 +1615,7 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
                     </div>
 
                     <div style={{display:'flex',gap:8}}>
-                      <button onClick={()=>{setSucursales(sucursales.map(x=>x.id===s.id?{...x,...ed}:x));setEditing(false);}} style={{...S.btn,background:'#16a34a',color:'white',flex:1,padding:'10px'}}>Guardar</button>
+                      <button onClick={()=>{setSucursales(sucursales.map(x=>x.id===s.id?{...x,...ed}:x));setEditing(false);flashOk('✓ ¡Guardado!');}} style={{...S.btn,background:'#16a34a',color:'white',flex:1,padding:'10px'}}>Guardar</button>
                       <button onClick={()=>setEditing(false)} style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'10px'}}>Cancelar</button>
                     </div>
                   </div>
@@ -1633,7 +1644,7 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
   const [vozMsg,setVozMsg]=useState('');
   function probarVoz(g){setVozMsg('Probando la voz…');fetch('/api/voz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'Hola, soy una prueba de voz para Fun Zone. ¡Va a ser una fiesta increíble!',genero:g})}).then(async r=>{const d=await r.json().catch(()=>({}));if(r.ok&&d&&d.audio){try{const a=new Audio(d.audio);a.play();}catch(e){}setVozMsg('✅ Voz '+(g==='f'?'femenina':'masculina')+' OK — deberías escucharla. ¡ElevenLabs anda!');}else if(d&&d.configured===false){setVozMsg('⚠️ Falta cargar ELEVENLABS_API_KEY en Vercel y hacer Redeploy.');}else{setVozMsg('⚠️ '+((d&&d.error)||'No funcionó. Fijate que la clave tenga permiso de "Texto a voz".'));}}).catch(()=>setVozMsg('⚠️ No se pudo consultar el servicio de voz.'));}
   function set(k,v){setCfg(c=>({...c,[k]:v}));}
-  function guardar(){setIaConfig(cfg);setEditando(false);setMsg('✓ Cambios guardados');setTimeout(()=>setMsg(''),2500);}
+  function guardar(){setIaConfig(cfg);setEditando(false);setMsg('✓ Cambios guardados');flashOk('✓ ¡Cambios guardados!');setTimeout(()=>setMsg(''),2500);}
   const lockStyle=editando?{}:{background:'#f1f5f9',color:'#475569',cursor:'not-allowed'};
   const servicio=(titulo,emoji,kPrompt,kApi,kPrecio,phPrompt)=>(
     <div style={{...S.card,marginBottom:14}}>
