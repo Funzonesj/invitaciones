@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
 
     // Voces INCORPORADas (premade) → funcionan con el plan GRATIS por API.
     // Si la dueña pasa a un plan pago, puede setear ELEVENLABS_VOICE_F/M con voces de librería (argentinas).
-    const VOICE_F = process.env.ELEVENLABS_VOICE_F || '21m00Tcm4TlvDq8ikWAM'; // Rachel (femenina, premade)
+    const VOICE_F = process.env.ELEVENLABS_VOICE_F || 'EXAVITQu4vr4xnSDxMaL'; // Bella (femenina, premade)
     const VOICE_M = process.env.ELEVENLABS_VOICE_M || 'pNInz6obpgDQGcFmaJgB'; // Adam (masculina, premade)
     const voice = (genero === 'f') ? VOICE_F : (genero === 'm') ? VOICE_M : VOICE_M;
 
