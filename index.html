@@ -2399,7 +2399,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
           }catch(e){vozErr='ElevenLabs no respondió';}
           if(cancel)return;
           // 2) Encolar el video SIEMPRE con audio (así nunca queda mudo). Si el lip-sync con ElevenLabs funciona, reemplaza la voz; si no, queda la de Kling.
-          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:baseImg,prompt:baseV,duration:10,generate_audio:true})});
+          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:baseImg,prompt:baseV,duration:12,generate_audio:true})});
           const sd=await sub.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
           if(!sub.ok) throw new Error(sd.error||'No se pudo iniciar el video.');
           if(!sd.statusUrl||!sd.responseUrl) throw new Error('No se pudo iniciar el video.');
