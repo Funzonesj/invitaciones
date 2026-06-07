@@ -2401,67 +2401,31 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
             baseImg=idata.url;
           }
           setProgreso(15);
-          // El texto EXACTO que va a decir el personaje (con nombre/salón ya reemplazados)
-          const fraseSaludo=repl(frase||'');
-          // ¿Está disponible la voz exacta (ElevenLabs)? La consultamos primero (es rápido).
-          let audioUrl=null;
-          try{
-            const vr=await fetch('/api/voz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:fraseSaludo,genero:genero})});
-            const vd=await vr.json().catch(()=>({}));
-            if(vd&&vd.configured!==false) audioUrl=vd.audioUrl||vd.audio||null;
-          }catch(e){}
-
-          // Helper: encolar un video en Kling y esperar el resultado
-          const genVid=async (img,pr,dur,aud,topePct)=>{
-            const s=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:img,prompt:pr,duration:dur,generate_audio:aud})});
-            const sj=await s.json().catch(()=>({}));
-            if(!s.ok) throw new Error(sj.error||'No se pudo iniciar el video.');
-            if(!sj.statusUrl||!sj.responseUrl) throw new Error('No se pudo iniciar el video.');
-            for(let i=0;i<60;i++){
-              await new Promise(r=>setTimeout(r,6000));
-              if(cancel)return null;
-              try{const ps=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:sj.statusUrl,responseUrl:sj.responseUrl})});const pd=await ps.json().catch(()=>({}));if(pd&&pd.done&&pd.url)return pd.url;}catch(e){}
-              setProgreso(p=>p<topePct?p+1:p);
-            }
-            throw new Error('El video está tardando más de lo normal. Probá de nuevo en un rato.');
-          };
-          // Helper: encolar lip-sync / unión de videos y esperar
-          const colaWait=async (path,payload,topePct)=>{
-            const s=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.assign({action:'submit'},payload))});
-            const sj=await s.json().catch(()=>({}));
-            if(!s.ok||!sj.statusUrl||!sj.responseUrl) throw new Error((sj&&sj.error)||'No se pudo procesar.');
-            for(let i=0;i<100;i++){
-              await new Promise(r=>setTimeout(r,3000));
-              if(cancel)return null;
-              try{const ps=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:sj.statusUrl,responseUrl:sj.responseUrl})});const pd=await ps.json().catch(()=>({}));if(pd&&pd.done&&pd.url)return pd.url;}catch(e){}
-              setProgreso(p=>p<topePct?p+1:p);
-            }
-            return null;
-          };
-
           // Imagen del personaje SOLO (catálogo). La pasamos a URL si hace falta.
           let talkImg=personaje||startImage||baseImg||'';
           if(talkImg&&talkImg.indexOf('data:')===0){
             try{const ur=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:talkImg})});const ud=await ur.json().catch(()=>({}));if(ur.ok&&ud.url)talkImg=ud.url;}catch(e){}
           }
-          // El personaje SOLO, alegre y enérgico, hablando de frente a la cámara
-          const promptHabla='The character faces the camera, front view, upper body visible, talking directly to the camera in a cheerful, energetic and excited way, big happy smile, lively and enthusiastic expression, natural mouth movement as if speaking, friendly, with gentle lively head and hand movement, festive birthday party background, only the character in frame, no other people, no text or letters.';
-          if(audioUrl){
-            // Video mudo del personaje + voz exacta pegada con lip-sync (una sola cara → queda limpio)
-            const urlHabla=await genVid(talkImg,promptHabla,10,false,82);
-            if(cancel)return; if(!urlHabla)return;
-            setProgreso(86);
-            const urlFinal=(await colaWait('/api/lipsync',{video:urlHabla,audio:audioUrl},97))||urlHabla;
+          if(!talkImg) throw new Error('Falta la imagen del personaje para el video.');
+          // El texto que va a decir (con nombre/salón ya reemplazados). Se ajusta desde el panel (Frase de saludo).
+          const fraseSaludo=repl(frase||'');
+          // Kling habla DIRECTO con su voz nativa. Una sola generación = rápido. Sin ElevenLabs ni lip-sync.
+          let pr='The character is alone, facing the camera, front view, upper body visible, cheerful, energetic and excited, big happy smile, lively and enthusiastic expression. The character looks straight at the camera and speaks in neutral Latin American Spanish with a natural Argentine (Rioplatense) accent — NOT Spain Spanish — with accurate natural lip sync, pronouncing every word clearly and correctly, saying exactly these words and nothing else: "'+fraseSaludo+'". Only this character is in the scene and only this character talks. The camera is completely STATIC and FIXED: no zoom, no panning, no camera movement; keep the exact same framing the whole video. Same background, same lighting and same art style as the image. No scene changes. Do not add any text, letters or watermarks. Keep the character appearance identical to the image throughout the entire video.';
+          if(genero==='f') pr+=' The character speaks with a clearly female voice.'; else if(genero==='m') pr+=' The character speaks with a clearly male voice.';
+          const s=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:talkImg,prompt:pr,duration:10,generate_audio:true})});
+          const sj=await s.json().catch(()=>({}));
+          if(!s.ok) throw new Error(sj.error||'No se pudo iniciar el video.');
+          if(!sj.statusUrl||!sj.responseUrl) throw new Error('No se pudo iniciar el video.');
+          let urlVid='';
+          for(let i=0;i<60;i++){
+            await new Promise(r=>setTimeout(r,6000));
             if(cancel)return;
-            setProgreso(100);onResultado([urlFinal]);
-          } else {
-            // Respaldo sin ElevenLabs: voz nativa de Kling diciendo la frase
-            let pr=promptHabla+' The character says in Spanish EXACTLY these words and nothing else: "'+fraseSaludo+'".';
-            if(genero==='f') pr+=' Female voice.'; else if(genero==='m') pr+=' Male voice.';
-            const urlFinal=await genVid(talkImg,pr,10,true,97);
-            if(cancel)return; if(!urlFinal)return;
-            setProgreso(100);onResultado([urlFinal],'⚠️ La voz exacta (ElevenLabs) no está configurada: el personaje improvisa el saludo.');
+            try{const ps=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:sj.statusUrl,responseUrl:sj.responseUrl})});const pd=await ps.json().catch(()=>({}));if(pd&&pd.done&&pd.url){urlVid=pd.url;break;}}catch(e){}
+            setProgreso(p=>p<96?p+2:p);
           }
+          if(cancel)return;
+          if(!urlVid) throw new Error('El video está tardando más de lo normal. Probá de nuevo en un rato.');
+          setProgreso(100);onResultado([urlVid]);
         }
       }catch(e){ if(cancel)return; setErrMsg(String((e&&e.message)||e));setPaso('error'); }
     })();
