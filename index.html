@@ -221,8 +221,8 @@ function generarTarjetaImagen(ev, suc, tematicas, iaConfig, accion){
       if(!blob){alert('No se pudo crear la imagen.');return;}
       const fname='tarjeta-'+((nombre||'evento').toLowerCase().replace(/[^a-z0-9]/g,'')||'evento')+'.jpg';
       const file=new File([blob],fname,{type:'image/jpeg'});
-      if(accion==='compartir'&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Invitación',text:'¡Te invito!'}).catch(function(){});}
-      else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);if(accion==='compartir')alert('Se descargó la tarjeta para que la compartas.');}
+      if(accion==='compartir'&&/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Invitación',text:'¡Te invito!'}).catch(function(){});}
+      else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);if(accion==='compartir')alert('📷 La tarjeta se descargó como imagen en tu compu. Ahora abrí WhatsApp (o WhatsApp Web) y adjuntá esa imagen para enviarla.');}
     },'image/jpeg',0.92);
   }
   if(portadaImg){fetch(portadaImg).then(function(r){return r.blob();}).then(function(b){const u=URL.createObjectURL(b);const im=new Image();im.onload=function(){dibujar(im);URL.revokeObjectURL(u);};im.onerror=function(){dibujar(null);};im.src=u;}).catch(function(){dibujar(null);});}
@@ -2782,8 +2782,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         if(!blob){alert('No se pudo crear la imagen.');return;}
         const fname='tarjeta-'+((nombre||'evento').toLowerCase().replace(/[^a-z0-9]/g,'')||'evento')+'.jpg';
         const file=new File([blob],fname,{type:'image/jpeg'});
-        if(accion==='compartir'&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Invitación',text:'¡Te invito!'}).catch(function(){});}
-        else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);if(accion==='compartir')alert('Se descargó la tarjeta para que la compartas.');}
+        if(accion==='compartir'&&/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Invitación',text:'¡Te invito!'}).catch(function(){});}
+        else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);if(accion==='compartir')alert('📷 La tarjeta se descargó como imagen en tu compu. Ahora abrí WhatsApp (o WhatsApp Web) y adjuntá esa imagen para enviarla.');}
       },'image/jpeg',0.92);
     }
     if(portadaImg){fetch(portadaImg).then(function(r){return r.blob();}).then(function(b){const u=URL.createObjectURL(b);const im=new Image();im.onload=function(){dibujar(im);URL.revokeObjectURL(u);};im.onerror=function(){dibujar(null);};im.src=u;}).catch(function(){dibujar(null);});}
