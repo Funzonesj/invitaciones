@@ -2585,65 +2585,41 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     setForm(f=>({...f,iaImagenes:arr,iaImagenSel:sel,portadaSrc:src}));
     setPapaSesion(ps=>{const n={...ps,iaImagenes:arr,iaImagenSel:sel,portadaSrc:src};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:arr,iaImagenSel:sel,portadaSrc:src}:e));return n;});
   }
-  function descargarInvitacion(){
+  function tarjetaImagen(accion){
     const W=540,H=960;
-    const canvas=document.createElement('canvas');
-    canvas.width=W;canvas.height=H;
-    const ctx=canvas.getContext('2d');
     const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const fecha=papaSesion.dia+' de '+(meses[(+papaSesion.mes)-1]||'')+' de '+papaSesion.anio;
-    // Fondo degradado (no depende de imágenes externas)
-    const grad=ctx.createLinearGradient(0,0,W,H);
-    grad.addColorStop(0,'#1e0a4e');
-    grad.addColorStop(0.5,'#7c3aed');
-    grad.addColorStop(1,'#c2410c');
-    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
-    // Círculos decorativos
-    ctx.fillStyle='rgba(255,255,255,0.06)';
-    ctx.beginPath();ctx.arc(W*0.8,H*0.2,180,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(W*0.1,H*0.7,140,0,Math.PI*2);ctx.fill();
-    // Badge superior
-    ctx.fillStyle='#f43f5e';
-    ctx.beginPath();ctx.roundRect(W/2-90,44,180,40,20);ctx.fill();
-    ctx.fillStyle='white';ctx.font='bold 18px Arial';ctx.textAlign='center';
-    ctx.fillText('TE INVITO!',W/2,71);
-    // Salon name
-    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.font='16px Arial';
-    ctx.fillText(suc.nombre,W/2,140);
-    // Nombre del festejado
     const nombre=form.nombre||papaSesion.nombre||'';
-    ctx.fillStyle='#fef9c3';ctx.font='bold 70px Arial';ctx.textAlign='center';
-    // Wrap if long
-    if(ctx.measureText(nombre).width>480){ctx.font='bold 50px Arial';}
-    ctx.fillText(nombre,W/2,H/2-60);
-    // tipo + edad
-    ctx.fillStyle='white';ctx.font='bold 26px Arial';
-    const _u=(papaSesion.edadUnidad||form.edadUnidad||'años');
-    ctx.fillText((fmtTipo(form.tipo,iaConfig).fmtEdad && _u!=='noaplica' && (form.edad||papaSesion.edad)) ? ((form.tipo||'Cumpleanos')+' · '+(form.edad||papaSesion.edad)+' '+(_u==='meses'?'meses':'anos')) : (form.tipo||'Evento'),W/2,H/2);
-    // Línea divisora
-    ctx.fillStyle='rgba(255,255,255,0.25)';ctx.fillRect(60,H/2+30,W-120,1);
-    // Detalles del evento
-    ctx.fillStyle='rgba(255,255,255,0.9)';ctx.font='22px Arial';
-    ctx.fillText(fecha,W/2,H/2+80);
-    ctx.fillText(papaSesion.hIni+' a '+papaSesion.hFin+' hs',W/2,H/2+115);
-    // Caja lugar
-    ctx.fillStyle='rgba(255,255,255,0.12)';
-    ctx.beginPath();ctx.roundRect(40,H/2+148,W-80,100,20);ctx.fill();
-    ctx.fillStyle='white';ctx.font='bold 24px Arial';
-    ctx.fillText(suc.nombre,W/2,H/2+195);
-    ctx.fillStyle='rgba(255,255,255,0.7)';ctx.font='17px Arial';
-    const dir=suc.direccion||'';
-    if(ctx.measureText(dir).width>440){ctx.font='14px Arial';}
-    ctx.fillText(dir,W/2,H/2+225);
-    // Footer
-    ctx.fillStyle='rgba(255,255,255,0.3)';ctx.font='13px Arial';
-    ctx.fillText('Invitaciones Digitales · '+suc.nombre,W/2,H-30);
-    // Descargar
-    const a=document.createElement('a');
-    a.href=canvas.toDataURL('image/jpeg',0.93);
-    a.download='invitacion-'+(nombre||'evento').replace(/\s/g,'-')+'.jpg';
-    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    const col=suc.color||'#7c3aed';
+    const F=fmtTipo(form.tipo,iaConfig);
+    function dibujar(imgEl){
+      const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d');
+      ctx.fillStyle='#0f172a';ctx.fillRect(0,0,W,H);
+      if(imgEl){const iw=imgEl.width,ih=imgEl.height,sc=Math.max(W/iw,H/ih),dw=iw*sc,dh=ih*sc;ctx.drawImage(imgEl,(W-dw)/2,0,dw,dh);}
+      else{const g=ctx.createLinearGradient(0,0,W,H);g.addColorStop(0,'#1e0a4e');g.addColorStop(1,col);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);}
+      const og=ctx.createLinearGradient(0,H*0.4,0,H);og.addColorStop(0,'rgba(0,0,0,0)');og.addColorStop(1,'rgba(0,0,0,0.88)');ctx.fillStyle=og;ctx.fillRect(0,0,W,H);
+      ctx.textAlign='center';
+      ctx.fillStyle='#f43f5e';ctx.beginPath();ctx.roundRect(W/2-90,40,180,40,20);ctx.fill();ctx.fillStyle='white';ctx.font='bold 18px Arial';ctx.fillText('TE INVITO!',W/2,67);
+      let y=H-320;
+      if(F.fmtNombre!==false&&nombre){ctx.fillStyle='#fff';ctx.font='bold 64px Arial';if(ctx.measureText(nombre).width>490)ctx.font='bold 44px Arial';ctx.fillText(nombre,W/2,y);y+=54;}
+      const _u=(papaSesion.edadUnidad||'años');
+      const tipoTxt=(F.fmtEdad&&_u!=='noaplica'&&(form.edad||papaSesion.edad))?((form.tipo||'')+' · '+(form.edad||papaSesion.edad)+' '+(_u==='meses'?'meses':'años')):(form.tipo||'');
+      ctx.fillStyle='#fde68a';ctx.font='bold 24px Arial';ctx.fillText(tipoTxt,W/2,y);y+=46;
+      ctx.fillStyle='#fff';ctx.font='22px Arial';ctx.fillText(fecha,W/2,y);y+=32;ctx.fillText(papaSesion.hIni+' a '+papaSesion.hFin+' hs',W/2,y);y+=42;
+      ctx.fillStyle='#fff';ctx.font='bold 26px Arial';ctx.fillText(suc.nombre,W/2,y);y+=30;
+      ctx.fillStyle='rgba(255,255,255,0.85)';ctx.font='16px Arial';const dir=suc.direccion||'';if(ctx.measureText(dir).width>490)ctx.font='13px Arial';ctx.fillText(dir,W/2,y);
+      canvas.toBlob(function(blob){
+        if(!blob){alert('No se pudo crear la imagen.');return;}
+        const fname='tarjeta-'+((nombre||'evento').toLowerCase().replace(/[^a-z0-9]/g,'')||'evento')+'.jpg';
+        const file=new File([blob],fname,{type:'image/jpeg'});
+        if(accion==='compartir'&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:'Invitación',text:'¡Te invito!'}).catch(function(){});}
+        else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);if(accion==='compartir')alert('Se descargó la tarjeta para que la compartas.');}
+      },'image/jpeg',0.92);
+    }
+    if(portadaImg){fetch(portadaImg).then(function(r){return r.blob();}).then(function(b){const u=URL.createObjectURL(b);const im=new Image();im.onload=function(){dibujar(im);URL.revokeObjectURL(u);};im.onerror=function(){dibujar(null);};im.src=u;}).catch(function(){dibujar(null);});}
+    else dibujar(null);
   }
+  function descargarInvitacion(){tarjetaImagen('descargar');}
   function calcularMenu(){
     const a=+menuAdultos||0;const n=+menuNinos||0;const t=a+n;
     if(!t)return alert('Ingresá la cantidad de adultos y niños.');
@@ -2770,8 +2746,10 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           </div>
           {/* Compartir */}
           <div style={{display:'flex',gap:8,marginBottom:8}}>
-            <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'14px',fontSize:15,fontWeight:900}}>📲 Compartir invitación</button>
+            <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'14px',fontSize:14,fontWeight:900}}>🔗 Compartir con link</button>
+            <button onClick={()=>tarjetaImagen('compartir')} style={{...S.btn,flex:1,background:'#0ea5e9',color:'white',padding:'14px',fontSize:14,fontWeight:900}}>📷 Compartir tarjeta</button>
           </div>
+          <div style={{fontSize:10,color:'#94a3b8',textAlign:'center',marginBottom:8}}>"Compartir tarjeta" envía solo la imagen (sin link ni panel) — ideal para escuelas.</div>
           <div style={{display:'flex',gap:8,marginBottom:20}}>
             <button onClick={()=>verTarjeta({seccion:'home'})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'11px',fontSize:13,fontWeight:800}}>👁 Vista previa</button>
             <button onClick={descargarInvitacion} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#475569',padding:'11px',fontSize:13,fontWeight:800}}>⬇️ Descargar JPG</button>
