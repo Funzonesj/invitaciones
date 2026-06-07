@@ -1538,6 +1538,11 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
   const [cfg,setCfg]=useState(iaConfig);
   const [msg,setMsg]=useState('');
   const [editando,setEditando]=useState(false);
+  const [saldo,setSaldo]=useState(null);   // {balance,currency} | null
+  const [saldoErr,setSaldoErr]=useState('');
+  const [saldoCargando,setSaldoCargando]=useState(true);
+  function cargarSaldo(){setSaldoCargando(true);setSaldoErr('');fetch('/api/saldo').then(r=>r.json()).then(d=>{if(d&&typeof d.balance==='number'){setSaldo(d);}else{setSaldoErr((d&&d.error)||'No disponible');}}).catch(()=>setSaldoErr('No se pudo consultar')).finally(()=>setSaldoCargando(false));}
+  React.useEffect(()=>{cargarSaldo();},[]);
   function set(k,v){setCfg(c=>({...c,[k]:v}));}
   function guardar(){setIaConfig(cfg);setEditando(false);setMsg('✓ Cambios guardados');setTimeout(()=>setMsg(''),2500);}
   const lockStyle=editando?{}:{background:'#f1f5f9',color:'#475569',cursor:'not-allowed'};
@@ -1561,6 +1566,29 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
       <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🤖 IA & Precios</h1>
       <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>Prompts, API keys y precios de los servicios de IA</p>
+
+      {/* Saldo de crédito IA (fal.ai) con alerta */}
+      {(()=>{const bal=saldo&&saldo.balance;const bajo=typeof bal==='number'&&bal<10;const col=bajo?'#dc2626':'#16a34a';const bg=bajo?'#fef2f2':'#f0fdf4';const bd=bajo?'#fecaca':'#bbf7d0';
+        return(
+        <div style={{background:bg,border:'1px solid '+bd,borderRadius:14,padding:'12px 14px',marginBottom:14}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
+            <div>
+              <div style={{fontSize:11,fontWeight:800,color:'#64748b'}}>💳 Crédito disponible en IA (fal.ai)</div>
+              {saldoCargando?(
+                <div style={{fontSize:14,fontWeight:900,color:'#64748b'}}>Consultando…</div>
+              ):typeof bal==='number'?(
+                <div style={{fontSize:24,fontWeight:900,color:col}}>US${bal.toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+              ):(
+                <div style={{fontSize:12,fontWeight:700,color:'#b45309'}}>No disponible {saldoErr?('· '+saldoErr):''}</div>
+              )}
+            </div>
+            <button onClick={cargarSaldo} style={{...S.btn,background:'#fff',color:'#334155',border:'1px solid #e2e8f0',padding:'7px 12px',fontSize:12}}>↻ Actualizar</button>
+          </div>
+          {bajo&&<div style={{marginTop:8,fontSize:12,color:'#dc2626',fontWeight:800}}>⚠️ Crédito bajo. Recargá en fal.ai para no quedarte sin generaciones.</div>}
+          {typeof bal==='number'&&!bajo&&<div style={{marginTop:6,fontSize:10,color:'#94a3b8'}}>Aprox.: ~{Math.floor(bal/0.04)} imágenes o ~{Math.floor(bal/0.9)} videos con este saldo.</div>}
+        </div>
+        );})()}
+
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msg}</div>}
 
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,background:editando?'#fef9c3':'#f1f5f9',border:'1px solid '+(editando?'#fde047':'#e2e8f0'),borderRadius:12,padding:'10px 14px',marginBottom:14}}>
@@ -2083,21 +2111,17 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             ))}
           </div>
           )}
-          {tipo==='imagen'&&onVerTarjeta&&(
-            <button onClick={onVerTarjeta} disabled={selIdx===null}
-              style={{...S.btn,width:'100%',padding:'15px',fontSize:16,fontWeight:900,
-                background:selIdx===null?'#e2e8f0':'linear-gradient(135deg,#7c3aed,#a855f7)',
-                color:selIdx===null?'#94a3b8':'white',cursor:selIdx===null?'not-allowed':'pointer'}}>
-              {selIdx===null?'👆 Elegí una imagen primero':'👁 Ver Tarjeta'}
-            </button>
+          {/* Confirmación: tarjeta lista + opciones (ver / video) */}
+          {tipo==='imagen'&&selIdx===null&&(
+            <div style={{background:'#f8fafc',border:'1px dashed #cbd5e1',borderRadius:14,padding:'14px',textAlign:'center',fontSize:13,color:'#64748b',fontWeight:700}}>👆 Tocá una imagen para elegirla como tu tarjeta</div>
           )}
-          {/* Upsell de video: aparece RECIÉN después de ver la tarjeta (paso siguiente) */}
-          {tipo==='imagen'&&onVideoUpsell&&videoUnlocked&&selIdx!==null&&resultados[selIdx]&&(
-            <div style={{marginTop:12,background:'linear-gradient(135deg,#e11d4815,#7c3aed10)',border:'1px solid #fbcfe8',borderRadius:14,padding:'14px',textAlign:'center'}}>
-              <div style={{fontSize:22,marginBottom:2}}>🎬✨</div>
-              <div style={{fontWeight:900,fontSize:14,color:'#1e293b'}}>¿La querés en VIDEO?</div>
-              <div style={{fontSize:11,color:'#64748b',margin:'4px 0 10px'}}>El personaje saluda y habla. <b>Lo mirás gratis</b> y, si te gusta, lo descargás.</div>
-              <button onClick={()=>onVideoUpsell(resultados[selIdx])} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#e11d48,#be123c)',color:'white',padding:'13px',fontSize:14,fontWeight:900}}>🎬 Generar video</button>
+          {tipo==='imagen'&&selIdx!==null&&resultados[selIdx]&&(
+            <div className="fade-in" style={{background:'linear-gradient(135deg,#f0fdf4,#ede9fe)',border:'1px solid #bbf7d0',borderRadius:16,padding:16,textAlign:'center'}}>
+              <div style={{fontSize:28,marginBottom:2}}>✅</div>
+              <div style={{fontWeight:900,fontSize:16,color:'#1e293b'}}>¡Tu tarjeta está lista!</div>
+              <div style={{fontSize:12,color:'#64748b',margin:'4px 0 12px'}}>Elegiste tu imagen. Mirá cómo quedó tu tarjeta, o sumale un <b>video con IA</b>{precioVideo?(' por $'+Number(precioVideo).toLocaleString('es-AR')+' más'):''}. 🎬</div>
+              {onVerTarjeta&&<button onClick={onVerTarjeta} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginBottom:8}}>👁 Ver mi tarjeta</button>}
+              {onVideoUpsell&&<button onClick={()=>onVideoUpsell(resultados[selIdx])} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#e11d48,#be123c)',color:'white',padding:'13px',fontSize:14,fontWeight:900}}>🎬 Generar video {precioVideo?('(+$'+Number(precioVideo).toLocaleString('es-AR')+')'):''}</button>}
             </div>
           )}
           {tipo==='imagen'&&onDescartar&&(
@@ -2124,14 +2148,14 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
         </div>
       )}
 
-      {/* Botón FLOTANTE por pasos: 1º "Ver Tarjeta", y después de verla → "Generá el video" */}
-      {tipo==='imagen'&&selIdx!==null&&resultados[selIdx]&&!zoom&&(!videoUnlocked?onVerTarjeta:(onVideoUpsell&&!fabClosed))&&(
+      {/* Botón FLOTANTE: ver la tarjeta (acceso rápido al elegir una imagen) */}
+      {tipo==='imagen'&&onVerTarjeta&&selIdx!==null&&resultados[selIdx]&&!zoom&&!fabClosed&&(
         <div style={{position:'fixed',left:0,right:0,bottom:14,zIndex:900,display:'flex',justifyContent:'center',padding:'0 12px',pointerEvents:'none'}}>
-          <div style={{pointerEvents:'auto',display:'flex',alignItems:'center',gap:4,background:videoUnlocked?'linear-gradient(135deg,#e11d48,#be123c)':'linear-gradient(135deg,#7c3aed,#a855f7)',borderRadius:99,padding:'4px 4px 4px 6px',boxShadow:'0 10px 30px rgba(0,0,0,.35)',maxWidth:420,width:'100%'}}>
-            <button onClick={()=>{if(videoUnlocked)onVideoUpsell(resultados[selIdx]);else onVerTarjeta();}} style={{flex:1,background:'none',border:'none',color:'white',fontWeight:900,fontSize:15,cursor:'pointer',padding:'12px 8px',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-              <span style={{fontSize:20}}>{videoUnlocked?'🎬':'👁'}</span> {videoUnlocked?'Generá el video':'Ver Tarjeta'}
+          <div style={{pointerEvents:'auto',display:'flex',alignItems:'center',gap:4,background:'linear-gradient(135deg,#7c3aed,#a855f7)',borderRadius:99,padding:'4px 4px 4px 6px',boxShadow:'0 10px 30px rgba(0,0,0,.35)',maxWidth:420,width:'100%'}}>
+            <button onClick={onVerTarjeta} style={{flex:1,background:'none',border:'none',color:'white',fontWeight:900,fontSize:15,cursor:'pointer',padding:'12px 8px',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              <span style={{fontSize:20}}>👁</span> Ver mi tarjeta
             </button>
-            {videoUnlocked&&<button onClick={()=>setFabClosed(true)} title="Cerrar" style={{flexShrink:0,background:'rgba(255,255,255,.25)',border:'none',color:'white',borderRadius:'50%',width:38,height:38,fontSize:17,cursor:'pointer'}}>✕</button>}
+            <button onClick={()=>setFabClosed(true)} title="Cerrar" style={{flexShrink:0,background:'rgba(255,255,255,.25)',border:'none',color:'white',borderRadius:'50%',width:38,height:38,fontSize:17,cursor:'pointer'}}>✕</button>
           </div>
         </div>
       )}
@@ -2354,7 +2378,15 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [ftxt,setFtxt]=useState('');const [fcat,setFcat]=useState('TODOS');
   const [modoPortada,setModoPortada]=useState(_PAPA_NAV.modo||'tematica');
   const [vistoTarjeta,setVistoTarjeta]=useState(!!_PAPA_NAV.visto); // ya vio la tarjeta → habilita el paso del video
-  React.useEffect(()=>{_PAPA_NAV={};},[]);
+  const _navGenVideo=!!_PAPA_NAV.genVideo;
+  React.useEffect(()=>{
+    if(_navGenVideo){
+      const arr=(form.iaImagenes||[]);
+      const img=arr[(form.iaImagenSel!=null?form.iaImagenSel:0)];
+      if(img){setVideoUrl('');setVideoPaga(false);setVideoStartImg(img);setGenActivo('video');}
+    }
+    _PAPA_NAV={};
+  },[]);
   const [mejora,setMejora]=useState({brillo:110,contraste:115,saturacion:120,calidez:0,aplicado:false});
   const fotoRef=useRef();const canvasRef=useRef();
   const [pagoActivo,setPagoActivo]=useState(null);
@@ -2783,7 +2815,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} videoUnlocked={vistoTarjeta} onBorrar={borrarIaImg} onVideoUpsell={img=>{setVideoUrl('');setVideoPaga(false);setVideoStartImg(img);setGenActivo('video');}}/>
+              <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} precioVideo={iaConfig.precioVideo} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} videoUnlocked={vistoTarjeta} onBorrar={borrarIaImg} onVideoUpsell={img=>{setVideoUrl('');setVideoPaga(false);setVideoStartImg(img);setGenActivo('video');}}/>
             )}
           </div>
         </div>
@@ -3159,8 +3191,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <button onClick={()=>guardarVideoArchivo(videoUrl)} style={{...S.btn,width:'100%',maxWidth:380,background:'#22c55e',color:'white',padding:'15px',fontSize:16,fontWeight:900}}>⬇️ Descargar / Compartir video</button>
           ):(
             <div style={{width:'100%',maxWidth:380,textAlign:'center'}}>
-              <button onClick={()=>setVideoPagoMP(true)} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#009ee3,#0070ba)',color:'white',padding:'15px',fontSize:16,fontWeight:900}}>🔒 Pagar ${(iaConfig.precioVideo||0).toLocaleString('es-AR')} para descargar</button>
-              <div style={{fontSize:11,color:'rgba(255,255,255,.7)',marginTop:8}}>Lo viste gratis 😊 Pagá solo si te gustó, y lo descargás sin marca.</div>
+              <button onClick={()=>setVideoPagoMP(true)} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#009ee3,#0070ba)',color:'white',padding:'15px',fontSize:16,fontWeight:900}}>🔓 Desbloquear video — ${(iaConfig.precioVideo||0).toLocaleString('es-AR')}</button>
+              <div style={{fontSize:11,color:'rgba(255,255,255,.7)',marginTop:8}}>Lo viste gratis 😊 Si te gustó, desbloquealo: se va la marca de agua y lo descargás. Si no, no pagás nada.</div>
             </div>
           )}
           <button onClick={()=>setVideoUrl('')} style={{marginTop:12,background:'none',border:'none',color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Cerrar</button>
@@ -3293,8 +3325,15 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const horario=ev?('de '+ev.hIni+' a '+ev.hFin+'hs'):'';
 
   return(
-    <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto'}}>
+    <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto',paddingBottom:(volverInv==='papa-creador'&&ev&&!ev.videoUrl)?72:0}}>
       {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>}
+
+      {/* CTA papá: generar video de esta tarjeta (solo si todavía no tiene video) */}
+      {volverInv==='papa-creador'&&ev&&!ev.videoUrl&&(
+        <div style={{position:'fixed',left:0,right:0,bottom:0,zIndex:20,display:'flex',justifyContent:'center',padding:10,background:'linear-gradient(to top,rgba(255,255,255,.95),rgba(255,255,255,0))'}}>
+          <button onClick={()=>{_PAPA_NAV={seccion:'tarjeta',modo:'ia-imagen',visto:true,genVideo:true};setVista(volverInv);}} style={{maxWidth:440,width:'100%',background:'linear-gradient(135deg,#e11d48,#be123c)',color:'white',border:'none',borderRadius:99,padding:'14px',fontSize:15,fontWeight:900,cursor:'pointer',boxShadow:'0 8px 24px rgba(225,29,72,.4)'}}>🎬 Generar video de esta tarjeta</button>
+        </div>
+      )}
 
       {/* 1. IMAGEN TEMATICA (banner compacto, muestra desde arriba para no cortar la cara) */}
       <div style={{position:'relative',width:'100%',aspectRatio:'4/5',maxHeight:'58vh',overflow:'hidden'}}>
