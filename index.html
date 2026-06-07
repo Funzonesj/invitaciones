@@ -1933,7 +1933,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
   const [busqTem,setBusqTem]=useState('');
   const [catTem,setCatTem]=useState('TODOS');
   const [zoom,setZoom]=useState(null); // imagen ampliada (se abre al tocar)
-  const [aviso,setAviso]=useState(tipo==='imagen'); // pop-up informativo al entrar
+  const [aviso,setAviso]=useState(tipo==='imagen'&&(resultados||[]).length===0); // pop-up informativo solo al entrar sin imágenes
   const [fabClosed,setFabClosed]=useState(false); // botón flotante de video cerrado
   const listo=fotoNino&&personaje;
   // Personajes disponibles para el papá: los del Catálogo IA (si hay), si no todos
