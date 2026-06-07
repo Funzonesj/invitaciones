@@ -113,6 +113,16 @@ function buildPrompt(frase, genero, escena){
   }
   if(genero==='f') pr+=' The cartoon character speaks with a clearly female voice.';
   else if(genero==='m') pr+=' The cartoon character speaks with a clearly male voice.';
+  // Acción final después de hablar: obliga a terminar la frase antes de que se corte (y queda lindo el cierre)
+  if(escena==='dos'){
+    pr += (genero==='m')
+      ? ' The character FIRST finishes saying the whole sentence completely; only AFTER finishing, as the final action, the cartoon character and the child happily high-five each other.'
+      : ' The character FIRST finishes saying the whole sentence completely; only AFTER finishing, as the final action, the cartoon character and the child happily wave goodbye with their hands.';
+  } else {
+    pr += (genero==='m')
+      ? ' The character FIRST finishes saying the whole sentence completely; only AFTER finishing, as the final action, the character happily claps and gives a thumbs up toward the camera.'
+      : ' The character FIRST finishes saying the whole sentence completely; only AFTER finishing, as the final action, the character happily waves goodbye with the hand.';
+  }
   return pr;
 }
 
