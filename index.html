@@ -2001,6 +2001,9 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
                   <div style={{aspectRatio:'9/16'}}>
                     <img src={src} alt={`opción ${i+1}`} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                   </div>
+                  {onBorrar&&(
+                    <button onClick={e=>{e.stopPropagation();if(window.confirm('¿Borrar esta imagen?'))onBorrar(i);}} title="Borrar esta imagen" style={{position:'absolute',top:6,left:6,background:'rgba(220,38,38,.92)',color:'white',border:'none',borderRadius:'50%',width:28,height:28,fontSize:14,cursor:'pointer',zIndex:2,display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 6px rgba(0,0,0,.3)'}}>🗑</button>
+                  )}
                   {selIdx===i&&(
                     <div style={{position:'absolute',top:6,right:6,background:colorIA,color:'white',borderRadius:'50%',width:24,height:24,display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,boxShadow:'0 2px 6px rgba(0,0,0,.3)'}}>✓</div>
                   )}
@@ -2620,9 +2623,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           {/* Portada selector */}
           <div style={S.card}>
             <div style={{background:'#f0f9ff',border:'1px solid #bae6fd',borderRadius:14,padding:'12px 14px',marginBottom:16}}>
-              <p style={{fontSize:12,color:'#0369a1',margin:0}}><b>Personalizá tu tarjeta:</b> elegí una temática o subí una foto de tu hijo/a. Más abajo podés sumar la <b>Tarjeta Premium</b> o el <b>Video Premium</b> con IA.</p>
+              <p style={{fontSize:12,color:'#0369a1',margin:0}}><b>Personalizá tu tarjeta:</b> elegí una temática o subí una foto de tu hijo/a. Más abajo podés sumar la <b>Tarjeta Premium con IA</b> (y después el video 🎬).</p>
             </div>
-            {(modoPortada==='ia-imagen'||modoPortada==='ia-video')&&(
+            {modoPortada==='ia-imagen'&&(
               <button onClick={()=>setModoPortada('tematica')} style={{...S.btn,background:'#f1f5f9',color:'#334155',padding:'8px 14px',fontSize:12,fontWeight:800,marginBottom:14}}>← Volver a edición</button>
             )}
             {(modoPortada==='tematica'||modoPortada==='foto')&&(
@@ -2699,34 +2702,26 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <canvas ref={canvasRef} style={{display:'none'}}/>
               </div>
             )}
-            {/* Premium: Tarjeta IA y Video IA */}
+            {/* Premium: Tarjeta IA (el video se ofrece después de elegir la imagen) */}
             {(modoPortada==='tematica'||modoPortada==='foto')&&(
               <div className="fade-in" style={{marginTop:18,borderTop:'1px dashed #e2e8f0',paddingTop:16}}>
-                <div style={{fontWeight:900,fontSize:14,marginBottom:4,color:'#1e293b'}}>✨ Opciones Premium</div>
-                <div style={{fontSize:11,color:'#64748b',marginBottom:12}}>Personalizá tu tarjeta con inteligencia artificial.</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
-                  <button onClick={()=>setModoPortada('ia-imagen')} style={{textAlign:'left',cursor:'pointer',border:'1px solid #bae6fd',background:'linear-gradient(135deg,#0ea5e915,#0ea5e905)',borderRadius:16,padding:14,display:'flex',flexDirection:'column',gap:6}}>
-                    <span style={{fontSize:28}}>🖼️</span>
-                    <span style={{fontWeight:900,fontSize:13,color:'#0369a1'}}>Tarjeta Premium</span>
-                    <span style={{fontSize:10,color:'#64748b',lineHeight:1.3}}>Imagen única de tu hijo/a con su personaje favorito.</span>
-                    <span style={{fontWeight:900,fontSize:16,color:'#0ea5e9',marginTop:2}}>${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</span>
-                    <span style={{fontSize:9,color:'#94a3b8'}}>Pack de 6 imágenes</span>
-                  </button>
-                  <button onClick={()=>setModoPortada('ia-video')} style={{textAlign:'left',cursor:'pointer',border:'1px solid #fecdd3',background:'linear-gradient(135deg,#e11d4815,#e11d4805)',borderRadius:16,padding:14,display:'flex',flexDirection:'column',gap:6}}>
-                    <span style={{fontSize:28}}>🎬</span>
-                    <span style={{fontWeight:900,fontSize:13,color:'#be123c'}}>Video Premium</span>
-                    <span style={{fontSize:10,color:'#64748b',lineHeight:1.3}}>Video animado de saludo con el personaje y la temática.</span>
-                    <span style={{fontWeight:900,fontSize:16,color:'#e11d48',marginTop:2}}>${(iaConfig.precioVideo||0).toLocaleString('es-AR')}</span>
-                    <span style={{fontSize:9,color:'#94a3b8'}}>Por video</span>
-                  </button>
-                </div>
+                <div style={{fontWeight:900,fontSize:14,marginBottom:4,color:'#1e293b'}}>✨ Opción Premium con IA</div>
+                <div style={{fontSize:11,color:'#64748b',marginBottom:12}}>Creá una imagen única de tu hijo/a con su personaje favorito. Después podés convertirla en video. 🎬</div>
+                <button onClick={()=>setModoPortada('ia-imagen')} style={{width:'100%',textAlign:'left',cursor:'pointer',border:'1px solid #bae6fd',background:'linear-gradient(135deg,#0ea5e915,#0ea5e905)',borderRadius:16,padding:16,display:'flex',alignItems:'center',gap:12}}>
+                  <span style={{fontSize:34}}>🖼️</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:900,fontSize:14,color:'#0369a1'}}>Tarjeta Premium con IA</div>
+                    <div style={{fontSize:10,color:'#64748b',lineHeight:1.3}}>6 imágenes para elegir · y opción de video después</div>
+                  </div>
+                  <div style={{textAlign:'right'}}>
+                    <div style={{fontWeight:900,fontSize:18,color:'#0ea5e9'}}>${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</div>
+                    <div style={{fontSize:9,color:'#94a3b8'}}>pack de 6</div>
+                  </div>
+                </button>
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
               <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={verTarjeta} onBorrar={borrarIaImg} onVideoUpsell={img=>{setVideoUrl('');setVideoPaga(false);setVideoStartImg(img);setGenActivo('video');}}/>
-            )}
-            {modoPortada==='ia-video'&&(
-              <IAUploadSection tipo="video" precio={iaConfig.precioVideo} resultados={form.iaVideos||[]} onPagar={()=>setPagoActivo('video')} onDescartar={()=>setForm(f=>({...f,iaVideos:[]}))} onUsar={idx=>setForm(f=>({...f,iaVideoSel:idx}))} selIdx={form.iaVideoSel} fotoNino={form.fotoNinoIAV||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIAV:v}))} personaje={form.personajeIAV||''} setPersonaje={v=>setForm(f=>({...f,personajeIAV:v}))} tematicas={tematicas}/>
             )}
           </div>
         </div>
