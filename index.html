@@ -172,7 +172,7 @@ const INIT_VISTA = _INV_PARAM ? 'invitado-portada'
 // Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
 let _PAPA_NAV={};
 // Prompt de video recomendado (fijo) + frase de saludo (editable aparte, se inserta en {frase})
-const PROMPT_VIDEO_DEF='The child and {personaje} are standing together facing the camera, side by side, both smiling and excited, and they take a few steps FORWARD toward the camera (always facing front, never turning their backs). After 4 seconds they stop and look straight at the camera. {personaje} opens their mouth and speaks in Spanish (Argentina), looking straight at the camera with an enthusiastic and happy expression, with accurate natural lip sync, saying exactly: "{frase}" The child stands next to {personaje} smiling. CRITICAL: keep the child face EXACTLY identical to the start image — same facial features, same identity, same skin tone and hair; do NOT alter, morph, beautify or change the child face at any moment of the video. Same background, same lighting, same setting as the image. No camera shake. No scene changes. Do not add any objects, accessories or elements that are not in the original image. Preserve both characters faces and appearance identical throughout the entire video.';
+const PROMPT_VIDEO_DEF='The child and {personaje} are standing together facing the camera, side by side, both smiling and excited, and they take a few steps FORWARD toward the camera (always facing front, never turning their backs). After 4 seconds they stop and look straight at the camera. {personaje} opens their mouth and speaks in neutral Latin American Spanish with a natural Argentine (Rioplatense) accent — NOT Spain Spanish — looking straight at the camera with an enthusiastic and happy expression, with accurate natural lip sync, pronouncing every word clearly and correctly, saying exactly: "{frase}" The child stands next to {personaje} smiling. CRITICAL: keep the child face EXACTLY identical to the start image — same facial features, same identity, same skin tone and hair; do NOT alter, morph, beautify or change the child face at any moment of the video. Same background, same lighting, same setting as the image. The camera is completely STATIC and FIXED: no zoom in, no zoom out, no panning, no camera movement; keep the exact same framing and distance during the whole video. No scene changes. Do not add any objects, accessories or elements that are not in the original image. Preserve both characters faces and appearance identical throughout the entire video.';
 const FRASE_VIDEO_DEF='¡Hola! Soy {personaje} y vengo a invitarte a festejar el cumple de {nombre}. ¡Va a ser una fiesta increíble en {salon}! ¡Te esperamos!';
 
 function App() {
@@ -3208,12 +3208,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <button onClick={()=>setVideoUrl('')} style={{position:'absolute',top:14,right:14,background:'rgba(255,255,255,.2)',color:'white',border:'none',borderRadius:'50%',width:42,height:42,fontSize:20,cursor:'pointer'}}>✕</button>
           <div style={{fontWeight:900,fontSize:18,color:'white',marginBottom:10,textAlign:'center'}}>🎬 ¡Mirá el video de {form.nombre}!</div>
           <div style={{position:'relative',width:'100%',maxWidth:380,marginBottom:14}}>
-            <video src={videoUrl} controls autoPlay playsInline style={{width:'100%',borderRadius:14,background:'#000',display:'block'}}></video>
+            <video src={videoUrl} controls autoPlay playsInline disablePictureInPicture controlsList="nofullscreen noremoteplayback nodownload" style={{width:'100%',borderRadius:14,background:'#000',display:'block'}}></video>
             {!videoPaga&&(
-              <div style={{position:'absolute',inset:0,pointerEvents:'none',overflow:'hidden',borderRadius:14}}>
+              <div style={{position:'absolute',inset:0,pointerEvents:'none',overflow:'hidden',borderRadius:14,zIndex:3}}>
                 <div style={{position:'absolute',top:'-20%',left:'-20%',width:'140%',height:'140%',transform:'rotate(-22deg)',display:'flex',flexDirection:'column',justifyContent:'space-around'}}>
                   {[0,1,2,3,4,5,6].map(i=>(
-                    <div key={i} style={{whiteSpace:'nowrap',color:'rgba(255,255,255,.30)',fontWeight:900,fontSize:16,letterSpacing:1,textShadow:'0 1px 2px rgba(0,0,0,.3)'}}>{('  '+((suc&&suc.nombre)||'VISTA PREVIA')+' · VISTA PREVIA ').repeat(5)}</div>
+                    <div key={i} style={{whiteSpace:'nowrap',color:'rgba(255,255,255,.35)',fontWeight:900,fontSize:16,letterSpacing:1,textShadow:'0 1px 2px rgba(0,0,0,.3)'}}>{('  '+((suc&&suc.nombre)||'VISTA PREVIA')+' · VISTA PREVIA ').repeat(5)}</div>
                   ))}
                 </div>
               </div>
