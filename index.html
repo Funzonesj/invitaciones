@@ -2969,6 +2969,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <div style={{display:'flex',gap:4,overflowX:'auto',paddingBottom:8,marginBottom:12}} className="scrollbar-none">
                   {CATS.map(c=><button key={c} onClick={()=>setFcat(c)} style={{padding:'4px 10px',borderRadius:8,fontSize:10,fontWeight:900,border:'none',cursor:'pointer',whiteSpace:'nowrap',background:fcat===c?'#7c3aed':'#f1f5f9',color:fcat===c?'white':'#64748b'}}>{c}</button>)}
                 </div>
+                <button onClick={()=>setPedirOpen(true)} style={{...S.btn,width:'100%',marginBottom:12,background:'#fff7ed',color:'#9a3412',border:'1px dashed #fb923c',fontSize:13,fontWeight:900,padding:'12px'}}>📩 ¿No encontrás tu personaje? Pedilo acá</button>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,maxHeight:420,overflowY:'auto'}} className="scrollbar-none">
                   {tFilt.map(t=>{const sel=form.temId===t.id;return(
                     <div key={t.id} onClick={()=>setForm({...form,temId:t.id,usarFoto:false,portadaSrc:''})} style={{borderRadius:12,overflow:'hidden',border:sel?'3px solid #7c3aed':'2px solid #e2e8f0',cursor:'pointer',boxShadow:sel?'0 0 0 3px #c4b5fd':'none',transition:'all .15s'}}>
@@ -3048,7 +3049,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             {modoPortada==='ia-imagen'&&(
               <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo}/>
             )}
-            {(modoPortada==='tematica'||modoPortada==='foto'||modoPortada==='ia-imagen')&&(
+            {(modoPortada==='foto'||modoPortada==='ia-imagen')&&(
               <button onClick={()=>setPedirOpen(true)} style={{...S.btn,width:'100%',marginTop:12,background:'#fff7ed',color:'#9a3412',border:'1px dashed #fed7aa',fontSize:12.5,fontWeight:800,padding:'11px'}}>📩 ¿No está el personaje que querés? Pedilo</button>
             )}
           </div>
