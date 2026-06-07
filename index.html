@@ -1018,6 +1018,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     window.scrollTo(0,0);
   }
   function copiarLink(id){navigator.clipboard?.writeText(window.location.href.split('?')[0]+'?inv='+id);alert('¡Enlace copiado!');}
+  function compartirLinkInv(ev){const link=window.location.href.split('?')[0]+'?inv='+ev.id;const txt='¡Te invito al '+(ev.tipo||'cumpleaños')+' de '+ev.nombre+'! Abrí la tarjeta acá: '+link;window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
 
   return(
     <div className="fade-in" style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
@@ -1224,6 +1225,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                   🔑 Enviar acceso por WhatsApp
                 </button>
                 <button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>🎁 Ver Invitación</button>
+                <button onClick={()=>compartirLinkInv(ev)} style={{background:'#25d366',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #1ebe57'}}>🔗 Compartir link (abre solo la tarjeta)</button>
                 <button onClick={()=>generarTarjetaImagen(ev,sucAct,tematicas,iaConfig,'compartir')} style={{background:'#0ea5e9',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #0284c7'}}>📷 Compartir tarjeta (imagen, sin link)</button>
               </div>
             );
