@@ -93,9 +93,22 @@ const API = '';
 const $ = id => document.getElementById(id);
 let imgA = null, imgB = null;
 
+// Lee la foto y la ACHICA (máx 1024px, JPEG) para que no pese demasiado al subir
 function readImg(file, cb){
   const r = new FileReader();
-  r.onload = e => cb(e.target.result);
+  r.onload = e => {
+    const im = new Image();
+    im.onload = () => {
+      const max = 1024;
+      let w = im.width, h = im.height;
+      if(w > max || h > max){ const s = max/Math.max(w,h); w = Math.round(w*s); h = Math.round(h*s); }
+      const c = document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(im, 0, 0, w, h);
+      cb(c.toDataURL('image/jpeg', 0.85));
+    };
+    im.onerror = () => cb(e.target.result);
+    im.src = e.target.result;
+  };
   r.readAsDataURL(file);
 }
 $('fileA').onchange = e => { const f=e.target.files[0]; if(f) readImg(f, d=>{imgA=d; $('thumbA').src=d;}); };
