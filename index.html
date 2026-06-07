@@ -2306,17 +2306,26 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
             if(cancel)return;
             baseImg=idata.url;
           }
-          setProgreso(28);
-          // Insertamos la frase de saludo en el prompt ({frase}) y luego reemplazamos variables
+          setProgreso(20);
+          // Texto que DICE el personaje (frase de saludo con variables reemplazadas)
+          const fraseTxt=repl(frase||'');
+          // Prompt visual del video (con {frase} reemplazada por la frase, para que mueva la boca acorde)
           let baseV=repl((prompt||'').replace(/\{frase\}/g,(frase||'')));
           if(genero==='f') baseV+=' The character speaks with a clearly female voice.';
           else if(genero==='m') baseV+=' The character speaks with a clearly male voice.';
-          // Encolar el video animando esa imagen (8 segundos)
-          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:baseImg,prompt:baseV,duration:8})});
+          // 1) Voz con ElevenLabs (si está configurada). Si no, usamos el audio nativo de Kling.
+          let audioUri=null;
+          try{
+            const vr=await fetch('/api/voz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:fraseTxt,genero})});
+            const vd=await vr.json().catch(()=>({}));
+            if(vr.ok&&vd&&vd.audio)audioUri=vd.audio;
+          }catch(e){/* sin voz EL → seguimos con el audio de Kling */}
+          if(cancel)return;
+          // 2) Encolar el video: mudo si tenemos voz de ElevenLabs (la pegamos después); con audio de Kling si no
+          const sub=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:baseImg,prompt:baseV,duration:8,generate_audio:!audioUri})});
           const sd=await sub.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
           if(!sub.ok) throw new Error(sd.error||'No se pudo iniciar el video.');
           if(!sd.statusUrl||!sd.responseUrl) throw new Error('No se pudo iniciar el video.');
-          // 2) Consultar estado cada 6s (hasta ~5 min)
           let urlVid='';
           for(let i=0;i<50;i++){
             await new Promise(r=>setTimeout(r,6000));
@@ -2325,11 +2334,32 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
               const ps=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:sd.statusUrl,responseUrl:sd.responseUrl})});
               const pd=await ps.json().catch(()=>({}));
               if(pd&&pd.done&&pd.url){urlVid=pd.url;break;}
-            }catch(e){/* reintenta */}
-            setProgreso(p=>p<92?p+2:p);
+            }catch(e){}
+            setProgreso(p=>p<75?p+2:p);
           }
           if(cancel)return;
           if(!urlVid) throw new Error('El video está tardando más de lo normal. Probá de nuevo en un rato.');
+          setProgreso(80);
+          // 3) Lip-sync: pegar la voz argentina al video y sincronizar la boca (si hay voz EL)
+          if(audioUri){
+            try{
+              const ls=await fetch('/api/lipsync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({video:urlVid,audio:audioUri})});
+              const lsd=await ls.json().catch(()=>({}));
+              if(ls.ok&&lsd.statusUrl&&lsd.responseUrl){
+                for(let i=0;i<40;i++){
+                  await new Promise(r=>setTimeout(r,5000));
+                  if(cancel)return;
+                  try{
+                    const ps2=await fetch('/api/lipsync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:lsd.statusUrl,responseUrl:lsd.responseUrl})});
+                    const pd2=await ps2.json().catch(()=>({}));
+                    if(pd2&&pd2.done&&pd2.url){urlVid=pd2.url;break;}
+                  }catch(e){}
+                  setProgreso(p=>p<97?p+1:p);
+                }
+              }
+            }catch(e){/* si falla el lip-sync, queda el video de Kling */}
+          }
+          if(cancel)return;
           setProgreso(100);onResultado([urlVid]);
         }
       }catch(e){ if(cancel)return; setErrMsg(String((e&&e.message)||e));setPaso('error'); }
