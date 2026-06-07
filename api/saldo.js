@@ -9,8 +9,10 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
-  const key = process.env.FAL_KEY;
-  if (!key) { res.status(500).json({ error: 'Falta la clave de fal en Vercel (FAL_KEY).' }); return; }
+  // El saldo (billing) necesita una clave con permiso de administración.
+  // Usamos FAL_ADMIN_KEY si existe; si no, probamos con FAL_KEY.
+  const key = process.env.FAL_ADMIN_KEY || process.env.FAL_KEY;
+  if (!key) { res.status(500).json({ error: 'Falta la clave de fal en Vercel (FAL_ADMIN_KEY o FAL_KEY).' }); return; }
 
   try {
     const r = await fetch('https://api.fal.ai/v1/account/billing?expand=credits', {
@@ -18,8 +20,18 @@ module.exports = async (req, res) => {
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
-      const msg = (d && (d.detail || d.error)) || 'No se pudo leer el saldo (puede que la clave no tenga permiso de facturación).';
-      res.status(r.status).json({ error: typeof msg === 'string' ? msg : JSON.stringify(msg).slice(0, 200) });
+      let raw = '';
+      if (d) {
+        if (typeof d.detail === 'string') raw = d.detail;
+        else if (d.detail && d.detail.message) raw = d.detail.message;
+        else if (d.message) raw = d.message;
+        else if (typeof d.error === 'string') raw = d.error;
+      }
+      const esPermiso = /not permitted|authorization|permission|forbidden/i.test(raw) || r.status === 401 || r.status === 403;
+      const msg = esPermiso
+        ? 'La clave de fal no tiene permiso para ver el saldo. Necesitás una clave Admin (cargala en Vercel como FAL_ADMIN_KEY).'
+        : (raw || 'No se pudo leer el saldo.');
+      res.status(r.status).json({ error: msg });
       return;
     }
     const bal = d && d.credits && d.credits.current_balance;
