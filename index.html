@@ -65,6 +65,7 @@ async function sbLoadAll(){
   }catch(e){ return null; }
 }
 function sbUpsertEvento(ev){ if(SB&&ev&&ev.id){ try{ SB.from('eventos').upsert({id:ev.id,data:ev}).then(function(){},function(){}); }catch(e){} } }
+function sbDeleteEvento(id){ if(SB&&id){ try{ SB.from('eventos').delete().eq('id',id).then(function(){},function(){}); }catch(e){} } }
 function sbUpsertConf(c){ if(SB&&c&&c.id){ try{ SB.from('confs').upsert({id:c.id,data:c}).then(function(){},function(){}); }catch(e){} } }
 function sbUpsertConfig(key,data){ if(SB){ try{ SB.from('eventos').upsert({id:key,data:data}).then(function(){},function(){}); }catch(e){} } }
 
@@ -988,6 +989,8 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   const listFiltrada=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fDia||e.dia===fDia));
 
   const [alertaSup,setAlertaSup]=useState(null); // {ev, accion}
+  const [borrarEv,setBorrarEv]=useState(null); // evento a borrar (pide confirmación)
+  function confirmarBorrar(){ if(!borrarEv)return; const id=borrarEv.id; setEventos(eventos.filter(x=>x.id!==id)); sbDeleteEvento(id); setBorrarEv(null); flashOk('✓ Tarjeta borrada'); }
   function sub(e){
     e.preventDefault();
     // Detectar superposición de horarios en la misma sucursal y día
@@ -1158,6 +1161,22 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
         </div>
       )}
 
+      {/* Confirmación de borrado de tarjeta */}
+      {borrarEv&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
+          <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:26,textAlign:'center'}}>
+            <div style={{fontSize:46,marginBottom:8}}>🗑️</div>
+            <h3 style={{fontWeight:900,fontSize:18,marginBottom:6}}>¿Borrar esta tarjeta?</h3>
+            <p style={{fontSize:13,color:'#475569',marginBottom:4}}><b>{borrarEv.nombre}</b> · {borrarEv.dia}/{borrarEv.mes}/{borrarEv.anio}</p>
+            <p style={{fontSize:12,color:'#dc2626',marginBottom:18}}>Esta acción no se puede deshacer.</p>
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={()=>setBorrarEv(null)} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#64748b',padding:12}}>Cancelar</button>
+              <button onClick={confirmarBorrar} style={{...S.btn,flex:1,background:'#dc2626',color:'white',padding:12,fontWeight:900}}>Sí, borrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Tarjetas */}
       {listFiltrada.length===0
         ?<div style={{textAlign:'center',color:'#94a3b8',padding:48}}>No hay cumpleaños para esa fecha.</div>
@@ -1198,6 +1217,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                     👥<span style={{position:'absolute',top:0,right:0,background:'#7c3aed',color:'white',fontSize:8,borderRadius:99,width:13,height:13,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{cnt}</span>
                   </button>
                   <button onClick={()=>{setForm({...ev});setEditId(ev.id);setOpen(true);window.scrollTo(0,0);}} title="Editar" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>✏️</button>
+                  <button onClick={()=>setBorrarEv(ev)} title="Borrar tarjeta" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>🗑</button>
                 </div>
                 {/* Botón envío credenciales destacado */}
                 <button onClick={()=>enviarCredsWA(ev)} style={{background:'#16a34a',color:'white',border:'none',padding:'7px',fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #15803d'}}>
