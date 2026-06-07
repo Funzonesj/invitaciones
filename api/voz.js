@@ -54,7 +54,26 @@ module.exports = async (req, res) => {
     }
     const buf = Buffer.from(await r.arrayBuffer());
     const b64 = buf.toString('base64');
-    res.status(200).json({ configured: true, audio: 'data:audio/mpeg;base64,' + b64 });
+    // Subimos el audio a fal para obtener una URL real (el lip-sync necesita URL, no data URI)
+    let audioUrl = null;
+    const falKey = process.env.FAL_KEY;
+    if (falKey) {
+      try {
+        const init = await fetch('https://rest.alpha.fal.ai/storage/upload/initiate', {
+          method: 'POST',
+          headers: { Authorization: 'Key ' + falKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content_type: 'audio/mpeg', file_name: 'voz-' + Math.floor(Date.now()) + '.mp3' }),
+        });
+        if (init.ok) {
+          const id = await init.json().catch(() => ({}));
+          if (id && id.upload_url && id.file_url) {
+            const up = await fetch(id.upload_url, { method: 'PUT', headers: { 'Content-Type': 'audio/mpeg' }, body: buf });
+            if (up.ok) audioUrl = id.file_url;
+          }
+        }
+      } catch (e) { /* si falla, usamos el data URI */ }
+    }
+    res.status(200).json({ configured: true, audioUrl: audioUrl, audio: 'data:audio/mpeg;base64,' + b64 });
   } catch (e) {
     res.status(500).json({ error: String((e && e.message) || e) });
   }

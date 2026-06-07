@@ -2369,7 +2369,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
           try{
             const vr=await fetch('/api/voz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:fraseTxt,genero})});
             const vd=await vr.json().catch(()=>({}));
-            if(vr.ok&&vd&&vd.audio)audioUri=vd.audio;
+            if(vr.ok&&vd)audioUri=vd.audioUrl||vd.audio||null; // preferimos la URL real (mejor para el lip-sync)
           }catch(e){/* sin voz EL → seguimos con el audio de Kling */}
           if(cancel)return;
           // 2) Encolar el video SIEMPRE con audio (así nunca queda mudo). Si el lip-sync con ElevenLabs funciona, reemplaza la voz; si no, queda la de Kling.
