@@ -770,7 +770,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
   const dragRef=useRef(null);
   const [saldoIA,setSaldoIA]=useState(null); // número o null
   React.useEffect(()=>{fetch('/api/saldo').then(r=>r.json()).then(d=>{if(d&&typeof d.balance==='number')setSaldoIA(d.balance);}).catch(()=>{});},[]);
-  const UMBRAL_IA=10;
+  const UMBRAL_IA=20;
   const custom=(iaConfig&&iaConfig.dashCustom)||{};
   const orden=(iaConfig&&iaConfig.dashOrden)||[];
   const base=[
@@ -1581,7 +1581,7 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
       <p style={{fontSize:11,color:'#64748b',marginBottom:18}}>Prompts, API keys y precios de los servicios de IA</p>
 
       {/* Saldo de crédito IA (fal.ai) con alerta */}
-      {(()=>{const bal=saldo&&saldo.balance;const bajo=typeof bal==='number'&&bal<10;const col=bajo?'#dc2626':'#16a34a';const bg=bajo?'#fef2f2':'#f0fdf4';const bd=bajo?'#fecaca':'#bbf7d0';
+      {(()=>{const bal=saldo&&saldo.balance;const bajo=typeof bal==='number'&&bal<20;const col=bajo?'#dc2626':'#16a34a';const bg=bajo?'#fef2f2':'#f0fdf4';const bd=bajo?'#fecaca':'#bbf7d0';
         return(
         <div style={{background:bg,border:'1px solid '+bd,borderRadius:14,padding:'12px 14px',marginBottom:14}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'}}>
