@@ -3166,6 +3166,24 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                     )}
                     <button type="button" onClick={()=>setForm(f=>({...f,usarFoto:true,portadaSrc:(f.usarMejorada&&f.fotoMejorada)?f.fotoMejorada:f.fotoNino}))} style={{...S.btn,width:'100%',background:form.usarFoto?'#16a34a':'#0f172a',color:'white',padding:12,fontSize:13}}>{form.usarFoto?'✓ Usando esta foto':'Usar esta foto'}</button>
                     <button type="button" onClick={()=>setForm(f=>({...f,fotoNino:'',fotoMejorada:'',usarFoto:false,portadaSrc:''}))} style={{...S.btn,width:'100%',background:'#fef2f2',color:'#dc2626',padding:9,fontSize:12,marginTop:8}}>🗑 Quitar foto</button>
+                    {form.usarFoto&&form.portadaSrc&&(
+                      <div style={{...S.card,padding:0,overflow:'hidden',marginTop:12,border:'2px solid #16a34a'}}>
+                        <div style={{padding:'8px',fontSize:11,fontWeight:900,color:'#16a34a',textAlign:'center'}}>✓ Así queda tu tarjeta</div>
+                        <div style={{position:'relative',aspectRatio:'4/5',maxHeight:'42vh',background:'#0f172a',overflow:'hidden'}}>
+                          <img src={portadaImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+portadaPos+'%'}}/>
+                          <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.75) 0%,transparent 50%)'}}></div>
+                          <span style={{position:'absolute',top:10,left:10,background:'#f43f5e',color:'white',fontSize:9,padding:'3px 10px',borderRadius:99,fontWeight:900}}>TE INVITO!</span>
+                          <div style={{position:'absolute',bottom:10,left:0,right:0,textAlign:'center',color:'white'}}>
+                            <div style={{fontSize:22,fontWeight:900,textShadow:'0 2px 8px rgba(0,0,0,.5)'}}>{form.nombre||papaSesion.nombre}</div>
+                            <div style={{fontSize:11,opacity:.8}}>{papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin}hs</div>
+                          </div>
+                        </div>
+                        <div style={{padding:'8px 14px 12px'}}>
+                          <div style={{fontSize:10,color:'#64748b',marginBottom:4,textAlign:'center',fontWeight:700}}>↕ Acomodá la foto</div>
+                          <input type="range" min="0" max="100" value={portadaPos} onChange={e=>setPortadaPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 <canvas ref={canvasRef} style={{display:'none'}}/>
