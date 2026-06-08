@@ -1052,7 +1052,10 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   const esDeHoy=ev=>{ const ms=evCreadoMs(ev); if(!ms) return false; const d=new Date(ms); return (d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate())===_hoyKey; };
   const creadasHoy=evsLocal.filter(esDeHoy).sort((a,b)=>evCreadoMs(b)-evCreadoMs(a));
   const historial=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fAnio||String(e.anio)===String(fAnio))&&(!fDia||String(e.dia)===String(fDia))).sort((a,b)=>evCreadoMs(b)-evCreadoMs(a));
-  const aniosDisp=Array.from(new Set(evsLocal.map(e=>String(e.anio)).filter(Boolean))).sort((a,b)=>b-a);
+  const _anioActual=new Date().getFullYear();
+  const _aniosSet=new Set(evsLocal.map(e=>String(e.anio)).filter(Boolean));
+  for(let y=_anioActual+1;y>=2023;y--)_aniosSet.add(String(y));
+  const aniosDisp=Array.from(_aniosSet).sort((a,b)=>b-a);
   // Dibuja una tarjeta de evento. small=true => versión chica para el historial (3-4 por hilera)
   function tarjetaEvento(ev, small){
     const tem=tematicas.find(t=>t.id===ev.temId)||tematicas[0]||{};
