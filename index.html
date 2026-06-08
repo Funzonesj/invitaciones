@@ -2711,6 +2711,19 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [verEjemploVid,setVerEjemploVid]=useState(false); // reproductor del video de ejemplo
   const [editPanel,setEditPanel]=useState(_PAPA_NAV.editPanel||null); // null=inicio (cuadraditos) | 'datos' | 'tematica' | 'foto'
   function guardarYVolver(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setEditPanel(null);flashOk('✓ ¡Guardado!');}
+  // Qué versión va en la tarjeta (y se comparte): 'foto' | 'tematica' | 'ia'
+  const portadaTipo=(papaSesion&&papaSesion.portadaTipo)||(form.usarFoto?'foto':(((form.iaImagenes||[]).indexOf(form.portadaSrc)>=0)?'ia':'tematica'));
+  function elegirPortada(tipo){
+    const fotoSrc=(form.usarMejorada&&form.fotoMejorada)?form.fotoMejorada:form.fotoNino;
+    const iaSrc=(form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||'';
+    let src=form.portadaSrc,uf=form.usarFoto;
+    if(tipo==='foto'){uf=true;src=fotoSrc;}
+    else if(tipo==='tematica'){uf=false;src='';}
+    else if(tipo==='ia'){uf=false;src=iaSrc||form.portadaSrc;}
+    setForm(f=>({...f,usarFoto:uf,portadaSrc:src}));
+    setPapaSesion(ps=>{const uv=(tipo==='ia')?(ps.usarVideo!==false):false;const n={...ps,portadaSrc:src,usarFoto:uf,portadaTipo:tipo,usarVideo:uv};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,portadaSrc:src,usarFoto:uf,portadaTipo:tipo,usarVideo:uv}:e));return n;});
+    flashOk('✓ Portada actualizada');
+  }
   // Pedir un personaje a la encargada (nombre + foto de referencia)
   const [pedirOpen,setPedirOpen]=useState(false);
   const [pedNombre,setPedNombre]=useState('');
@@ -3035,6 +3048,19 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <div style={{padding:'2px 14px 12px'}}>
                   <div style={{fontSize:10,color:'#64748b',marginBottom:4,textAlign:'center',fontWeight:700}}>↕ Acomodá la foto (movela para sacar el espacio de arriba)</div>
                   <input type="range" min="0" max="100" value={portadaPos} onChange={e=>setPortadaPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
+                </div>
+              </div>
+              <div style={{background:'#faf5ff',border:'2px solid #e9d5ff',borderRadius:16,padding:14,marginBottom:16}}>
+                <div style={{fontSize:13,fontWeight:900,color:'#6b21a8',marginBottom:3}}>¿Qué querés que vaya en tu tarjeta?</div>
+                <div style={{fontSize:11,color:'#7c3aed',marginBottom:10}}>Tildá una. Eso es lo que se ve y lo que se comparte.</div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {[['foto','📸','Foto del niño/a',!!form.fotoNino],['tematica','🎨','Foto con personaje (temática)',true],['ia','✨','Generado por IA (imagen o video)',((form.iaImagenes||[]).length>0||!!videoGuardado)]].map(([t,ic,l,disp])=>(
+                    <button key={t} onClick={()=>{if(disp)elegirPortada(t);}} disabled={!disp} style={{display:'flex',alignItems:'center',gap:10,padding:'11px 12px',borderRadius:12,border:'2px solid '+(portadaTipo===t?'#7c3aed':'#e2e8f0'),background:portadaTipo===t?'#ede9fe':(disp?'white':'#f8fafc'),cursor:disp?'pointer':'not-allowed',opacity:disp?1:.55,textAlign:'left',width:'100%'}}>
+                      <span style={{width:22,height:22,borderRadius:'50%',border:'2px solid '+(portadaTipo===t?'#7c3aed':'#cbd5e1'),background:portadaTipo===t?'#7c3aed':'white',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:900,flexShrink:0}}>{portadaTipo===t?'✓':''}</span>
+                      <span style={{fontSize:21}}>{ic}</span>
+                      <span style={{fontSize:13,fontWeight:800,color:'#334155',flex:1}}>{l}{!disp&&<span style={{fontSize:10,color:'#94a3b8',fontWeight:600}}> · todavía no la tenés</span>}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
               <div style={{display:'flex',gap:8,marginBottom:16}}>
