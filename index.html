@@ -3557,7 +3557,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:18}}>
           <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:24}}>
             <div style={{textAlign:'center',marginBottom:6}}><div style={{fontSize:40}}>📩</div><h3 style={{fontWeight:900,fontSize:18}}>Pedir un personaje</h3></div>
-            <p style={{fontSize:12,color:'#64748b',textAlign:'center',marginBottom:14,lineHeight:1.5}}>Decinos qué personaje querés y, si tenés, una foto de referencia. El salón lo va a recibir y agregar. 🙌</p>
+            <p style={{fontSize:12,color:'#64748b',textAlign:'center',marginBottom:12,lineHeight:1.5}}>Decinos qué personaje querés y, si tenés, una foto de referencia. El salón lo va a recibir y agregar. 🙌</p>
+            <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:12,padding:'10px 12px',marginBottom:14,fontSize:11.5,color:'#1d4ed8',lineHeight:1.5,textAlign:'center'}}>📅 En unos <b>2 días</b> revisá en <b>"Editar temática"</b>: ahí va a estar tu personaje listo para elegir. ✨</div>
             <label style={{fontSize:12,fontWeight:800,color:'#334155'}}>Nombre del personaje</label>
             <input value={pedNombre} onChange={e=>setPedNombre(e.target.value)} placeholder="Ej: Bluey, Goku, Elsa..." style={{...S.input,marginBottom:12}}/>
             <label style={{fontSize:12,fontWeight:800,color:'#334155'}}>Foto de referencia (opcional)</label>
