@@ -98,15 +98,15 @@ function waNum(n){
 }
 // ¿Estamos en una compu (no celular)? Para abrir WhatsApp de la mejor forma en cada caso.
 function esEscritorioWA(){ try{ return !/Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent); }catch(e){ return false; } }
-// Abre WhatsApp con un mensaje (y opcionalmente un número). En la compu abre la app de
-// escritorio DIRECTO (whatsapp://), sin la página intermedia de WhatsApp. En el celular usa wa.me.
+// Abre WhatsApp con un mensaje (y opcionalmente un número). En la COMPU abre WhatsApp WEB
+// (web.whatsapp.com) en una pestaña — así usa la cuenta vinculada en el navegador (p.ej. Business),
+// y NO abre la app de escritorio del WhatsApp normal. En el CELULAR usa wa.me (abre la app).
 function abrirWA(phone, text){
   const t = text ? encodeURIComponent(text) : '';
   const p = phone ? String(phone) : '';
   if(esEscritorioWA()){
-    const url = 'whatsapp://send?'+(p?('phone='+p):'')+(p&&t?'&':'')+(t?('text='+t):'');
-    try{ const a=document.createElement('a'); a.href=url; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>{try{a.remove();}catch(e){}},1500); }
-    catch(e){ window.open('https://wa.me/'+p+(t?('?text='+t):''),'_blank'); }
+    const url = 'https://web.whatsapp.com/send?'+(p?('phone='+p):'')+(p&&t?'&':'')+(t?('text='+t):'');
+    window.open(url,'_blank');
   } else {
     window.open('https://wa.me/'+p+(t?('?text='+t):''),'_blank');
   }
