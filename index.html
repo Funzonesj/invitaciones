@@ -2125,14 +2125,14 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
   const [msg,setMsg]=useState('');
   const cats=[['ninos','🧒 Niños'],['adultos','🧑 Adultos'],['snacks','🍿 Snacks'],['postres','🍰 Postres'],['bebidas','🥤 Bebidas']];
   // Valores de arranque por categoría: cuánto come/toma 1 niño y 1 adulto (editables)
-  const DEF_RATE={ninos:{pn:3,pa:1,u:'u'},adultos:{pn:1,pa:3,u:'u'},snacks:{pn:0.08,pa:0.08,u:'kg'},postres:{pn:1,pa:1,u:'porción'},bebidas:{pn:0.3,pa:0.5,u:'L'}};
+  const DEF_RATE={ninos:{pn:4,pa:1,u:'u'},adultos:{pn:1,pa:6,u:'porc.'},snacks:{pn:0.02,pa:0.02,u:'bolsa'},postres:{pn:1,pa:1,u:'porción'},bebidas:{pn:0.4,pa:0.4,u:'L'}};
   function guardar(){setIaConfig(c=>({...c,menuConfig:cfg}));setMsg('✓ Menú guardado');setTimeout(()=>setMsg(''),2500);}
   function quitar(cat,id){setCfg(c=>({...c,[cat]:(c[cat]||[]).filter(i=>i.id!==id)}));}
   function updItem(cat,id,k,v){setCfg(c=>({...c,[cat]:(c[cat]||[]).map(i=>i.id===id?{...i,[k]:v}:i)}));}
   function agregar(cat){
     const n=nuevo[cat]||{}; if(!n.nombre||!n.nombre.trim())return;
-    const dr=DEF_RATE[cat]||{pn:1,pa:1};
-    const item={id:cat+'-'+Math.floor(Math.random()*1e6),nombre:n.nombre.trim(),emoji:(n.emoji||'🍽️').trim(),pn:dr.pn,pa:dr.pa};
+    const dr=DEF_RATE[cat]||{pn:1,pa:1,u:'u'};
+    const item={id:cat+'-'+Math.floor(Math.random()*1e6),nombre:n.nombre.trim(),emoji:(n.emoji||'🍽️').trim(),pn:dr.pn,pa:dr.pa,u:dr.u};
     setCfg(c=>({...c,[cat]:[...(c[cat]||[]),item]}));
     setNuevo(x=>({...x,[cat]:{nombre:'',emoji:''}}));
   }
@@ -2152,16 +2152,17 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
       {cats.map(([k,lbl])=>(
         <div key={k} style={{...S.card,marginBottom:14}}>
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>{lbl}</h3>
-          <div style={{fontSize:10,color:'#94a3b8',marginBottom:8}}>Cantidad que come/toma 1 niño y 1 adulto ({(DEF_RATE[k]||{}).u||'u'}). Editá los números con tu experiencia.</div>
+          <div style={{fontSize:10,color:'#94a3b8',marginBottom:8}}>Por cada comida: 👶 cuánto come 1 niño · 🧑 cuánto 1 adulto · y la <b>unidad</b> (u, porc., bolsa, L…). Editá con tu experiencia.</div>
           <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:10}}>
             {(cfg[k]||[]).map(it=>(
-              <div key={it.id} style={{display:'flex',alignItems:'center',gap:6,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'6px 8px'}}>
+              <div key={it.id} style={{display:'flex',alignItems:'center',gap:5,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'6px 8px',flexWrap:'wrap'}}>
                 <span style={{fontSize:16}}>{it.emoji}</span>
-                <span style={{fontSize:12,fontWeight:700,flex:1,minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{it.nombre}</span>
+                <span style={{fontSize:12,fontWeight:700,flex:1,minWidth:80,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{it.nombre}</span>
                 <span style={{fontSize:11,color:'#64748b'}}>👶</span>
-                <input type="number" step="any" min="0" value={it.pn!=null?it.pn:((DEF_RATE[k]||{}).pn||0)} onChange={e=>updItem(k,it.id,'pn',e.target.value===''?'':+e.target.value)} style={{...S.input,width:56,padding:'5px 6px',fontSize:12}}/>
+                <input type="number" step="any" min="0" value={it.pn!=null?it.pn:((DEF_RATE[k]||{}).pn||0)} onChange={e=>updItem(k,it.id,'pn',e.target.value===''?'':+e.target.value)} style={{...S.input,width:50,padding:'5px 5px',fontSize:12}}/>
                 <span style={{fontSize:11,color:'#64748b'}}>🧑</span>
-                <input type="number" step="any" min="0" value={it.pa!=null?it.pa:((DEF_RATE[k]||{}).pa||0)} onChange={e=>updItem(k,it.id,'pa',e.target.value===''?'':+e.target.value)} style={{...S.input,width:56,padding:'5px 6px',fontSize:12}}/>
+                <input type="number" step="any" min="0" value={it.pa!=null?it.pa:((DEF_RATE[k]||{}).pa||0)} onChange={e=>updItem(k,it.id,'pa',e.target.value===''?'':+e.target.value)} style={{...S.input,width:50,padding:'5px 5px',fontSize:12}}/>
+                <input value={it.u!=null?it.u:((DEF_RATE[k]||{}).u||'u')} onChange={e=>updItem(k,it.id,'u',e.target.value)} title="Unidad" style={{...S.input,width:58,padding:'5px 5px',fontSize:11,textAlign:'center'}}/>
                 <button onClick={()=>quitar(k,it.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900,padding:'0 2px',lineHeight:1}}>✕</button>
               </div>
             ))}
@@ -2973,35 +2974,36 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     const cfg=iaConfig.menuConfig||{};
     // Season multipliers
     const bMult=menuEstacion==='Verano'?1.3:menuEstacion==='Invierno'?0.8:1.0;
-    const hMult=h<=3?0.85:h===4?1.0:h===5?1.15:1.3;
-    const DEFR={ninos:{pn:3,pa:1,u:'u'},adultos:{pn:1,pa:3,u:'u'},snacks:{pn:0.08,pa:0.08,u:'kg'},postres:{pn:1,pa:1,u:'porción'},bebidas:{pn:0.3,pa:0.5,u:'L'}};
+    const hMult=h<=3?1.0:h===4?1.15:h===5?1.3:1.45; // base = 3 hs (los datos cargados se asumen para 3 hs)
+    const DEFR={ninos:{pn:4,pa:1,u:'u'},adultos:{pn:1,pa:6,u:'porc.'},snacks:{pn:0.02,pa:0.02,u:'bolsa'},postres:{pn:1,pa:1,u:'porción'},bebidas:{pn:0.4,pa:0.4,u:'L'}};
     // Multiplicador por franja: mediodía/noche = comida completa; tarde (merienda) = menos salado y más dulce.
     function frMult(cat){ if(menuFranja==='tarde'){ if(cat==='postres')return 1.3; if(cat==='ninos'||cat==='adultos'||cat==='snacks')return 0.65; } return 1; }
     setMenuGen(true);
     setTimeout(()=>{
       const results=[];
       const shopping=[];
-      function addItems(cat,unit){
+      function addItems(cat){
         const items=cfg[cat]||[];
         const sel=(menuSel[cat]||{});
         const selItems=items.filter(i=>sel[i.id]);
         if(!selItems.length)return;
-        const dr=DEFR[cat]||{pn:1,pa:1};
+        const dr=DEFR[cat]||{pn:1,pa:1,u:'u'};
         const fm=frMult(cat);
         const season=(cat==='bebidas')?bMult:1;
         selItems.forEach(item=>{
           const pn=(item.pn!=null&&item.pn!=='')?+item.pn:dr.pn;
           const pa=(item.pa!=null&&item.pa!=='')?+item.pa:dr.pa;
+          const unit=(item.u!=null&&item.u!=='')?item.u:dr.u;
           const total=Math.ceil((n*pn + a*pa)*hMult*fm*season);
           results.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:unit,cat});
           shopping.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:unit});
         });
       }
-      addItems('ninos','u');
-      addItems('adultos','u');
-      addItems('snacks','kg');
-      addItems('postres','porción');
-      addItems('bebidas','L');
+      addItems('ninos');
+      addItems('adultos');
+      addItems('snacks');
+      addItems('postres');
+      addItems('bebidas');
       setMenuResult({items:results,shopping,adultos:a,ninos:n,horas:h,estacion:menuEstacion,franja:menuFranja});
       setMenuGen(false);
     },2500);
