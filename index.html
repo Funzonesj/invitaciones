@@ -190,6 +190,17 @@ function flashOk(texto){
     setTimeout(()=>{d.style.opacity='0';d.style.transform='translateX(-50%) translateY(-8px)';setTimeout(()=>{try{d.remove();}catch(e){}},250);},1800);
   }catch(e){}
 }
+// Ordena temáticas con las MÁS RECIENTES primero (por la fecha guardada en el id "t-<fecha>...",
+// o por el campo .ts si existe; como desempate, lo último cargado va primero).
+function ordenarRecientes(arr){
+  return (arr||[]).map((t,i)=>[t,i]).sort((A,B)=>{
+    const a=A[0],b=B[0];
+    const fa=(a&&a.ts)||parseInt(String((a&&a.id)||'').replace(/^t-/,'').split('-')[0].replace(/[^0-9]/g,''))||0;
+    const fb=(b&&b.ts)||parseInt(String((b&&b.id)||'').replace(/^t-/,'').split('-')[0].replace(/[^0-9]/g,''))||0;
+    if(fb!==fa)return fb-fa;
+    return B[1]-A[1];
+  }).map(x=>x[0]);
+}
 // Prompt de video recomendado (fijo) + frase de saludo (editable aparte, se inserta en {frase})
 // Arma la imagen de la tarjeta (portada + datos del evento) y la comparte/descarga — SIN link ni panel (ideal escuelas/admin)
 function generarTarjetaImagen(ev, suc, tematicas, iaConfig, accion){
@@ -1086,7 +1097,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                 <input value={busqTema} onChange={e=>setBusqTema(e.target.value)} placeholder="🔍 Buscar personaje..." style={{...S.input,flex:1,minWidth:140}}/>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(90px,1fr))',gap:8,maxHeight:230,overflowY:'auto'}} className="scrollbar-none">
-                {tematicas.filter(t=>(catTema==='TODOS'||(t.cats||[]).includes(catTema))&&t.nombre.toLowerCase().includes(busqTema.toLowerCase())).map(t=>(
+                {ordenarRecientes(tematicas.filter(t=>(catTema==='TODOS'||(t.cats||[]).includes(catTema))&&t.nombre.toLowerCase().includes(busqTema.toLowerCase()))).map(t=>(
                   <div key={t.id} onClick={()=>setForm({...form,temId:t.id})} style={{borderRadius:10,overflow:'hidden',cursor:'pointer',border:form.temId===t.id?'3px solid #06b6d4':'2px solid #e2e8f0'}}>
                     <div style={{aspectRatio:'9/16',maxHeight:120,background:'#0f172a',position:'relative',overflow:'hidden'}}>
                       <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
@@ -1254,7 +1265,7 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
   const fRef=useRef();
   // Lista a mostrar: más nuevas primero. "RECIENTES" = 10, una por personaje.
   const _bn=n=>String(n||'').replace(/\s*\d+$/,'').trim();
-  let listaMostrar=tematicas.slice().reverse();
+  let listaMostrar=ordenarRecientes(tematicas);
   if(filtCat==='RECIENTES'){const seen=new Set();const out=[];for(const t of listaMostrar){const b=_bn(t.nombre);if(!seen.has(b)){seen.add(b);out.push(t);}if(out.length>=10)break;}listaMostrar=out;}
   else if(filtCat!=='TODOS'){listaMostrar=listaMostrar.filter(t=>(t.cats||[]).includes(filtCat));}
 
@@ -2185,7 +2196,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
   const [fabClosed,setFabClosed]=useState(false); // botón flotante de video cerrado
   const listo=fotoNino&&personaje;
   // Personajes disponibles para el papá: los del Catálogo IA (si hay), si no todos
-  const iaTem=(tematicas.some(t=>t.ia)?tematicas.filter(t=>t.ia):tematicas);
+  const iaTem=ordenarRecientes(tematicas.some(t=>t.ia)?tematicas.filter(t=>t.ia):tematicas);
   const catsDisp=['TODOS',...CATS.filter(c=>c!=='TODOS'&&iaTem.some(t=>(t.cats||[]).includes(c)))];
 
   function onPickFoto(e){
@@ -2803,7 +2814,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
   const suc=sucursales.find(s=>s.id===papaSesion.sucId)||sucursales[0];
   const temA=tematicas.find(t=>t.id===form.temId)||tematicas[0];
-  const tFilt=tematicas.filter(t=>t.nombre.toLowerCase().includes(ftxt.toLowerCase())&&(fcat==='TODOS'||t.cats.includes(fcat))).slice().sort((a,b)=>((parseInt(String(b.id).replace(/[^0-9]/g,''))||0)-(parseInt(String(a.id).replace(/[^0-9]/g,''))||0)));
+  const tFilt=ordenarRecientes(tematicas.filter(t=>t.nombre.toLowerCase().includes(ftxt.toLowerCase())&&(fcat==='TODOS'||t.cats.includes(fcat))));
   const cssFilter=`brightness(${mejora.brillo}%) contrast(${mejora.contraste}%) saturate(${mejora.saturacion}%) sepia(${mejora.calidez}%)`;
   const fotoElegida=(form.usarMejorada&&form.fotoMejorada)?form.fotoMejorada:form.fotoNino;
   const portadaImg=form.portadaSrc||temA.img;
