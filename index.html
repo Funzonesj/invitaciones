@@ -3048,18 +3048,30 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           {/* Portada selector */}
           <div style={S.card}>
             <div style={{background:'#f0f9ff',border:'1px solid #bae6fd',borderRadius:14,padding:'12px 14px',marginBottom:16}}>
-              <p style={{fontSize:12,color:'#0369a1',margin:0}}><b>Personalizá tu tarjeta:</b> elegí una temática o subí una foto de tu hijo/a. Más abajo podés sumar la <b>Tarjeta Premium con IA</b> (y después el video 🎬).</p>
+              <p style={{fontSize:12,color:'#0369a1',margin:0}}><b>Elegí cómo crear tu tarjeta:</b> con <b>IA</b> (imagen + video del personaje), con una <b>temática</b> del catálogo, o con una <b>foto</b> de tu hijo/a. 🎬</p>
             </div>
             {modoPortada==='ia-imagen'&&(
               <button onClick={()=>setModoPortada('tematica')} style={{...S.btn,background:'#f1f5f9',color:'#334155',padding:'8px 14px',fontSize:12,fontWeight:800,marginBottom:14}}>← Volver a edición</button>
             )}
             {(modoPortada==='tematica'||modoPortada==='foto')&&(
-              <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:6,background:'#f1f5f9',borderRadius:14,padding:4,marginBottom:18}}>
-                {[['tematica','🎨','Temática','#7c3aed'],['foto','📸','Foto del niño/a','#f97316']].map(([v,e,l,c])=>(
-                  <button key={v} onClick={()=>setModoPortada(v)} style={{padding:'10px 4px',borderRadius:10,fontSize:12,fontWeight:800,border:'none',cursor:'pointer',background:modoPortada===v?c:'transparent',color:modoPortada===v?'white':'#64748b',transition:'all .2s',display:'flex',flexDirection:'column',alignItems:'center',gap:3}}>
-                    <span style={{fontSize:18}}>{e}</span>{l}
-                  </button>
-                ))}
+              <div className="fade-in" style={{marginBottom:18}}>
+                {/* Destacada: Editar con IA */}
+                <button onClick={()=>setModoPortada('ia-imagen')} style={{width:'100%',textAlign:'left',cursor:'pointer',border:'2px solid #0ea5e9',background:'linear-gradient(135deg,#0ea5e918,#a855f710)',borderRadius:18,padding:16,display:'flex',alignItems:'center',gap:12,marginBottom:10,boxShadow:'0 6px 20px rgba(14,165,233,.18)'}}>
+                  {iaConfig.ejemploIA?<img src={iaConfig.ejemploIA} alt="" style={{width:60,height:78,borderRadius:10,objectFit:'cover',flexShrink:0}}/>:<span style={{fontSize:40}}>✨</span>}
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:900,fontSize:16,color:'#0369a1'}}>✨ Editar con IA (Premium)</div>
+                    <div style={{fontSize:11,color:'#64748b',lineHeight:1.35,marginTop:2}}>La foto de tu hijo/a con su personaje + video del personaje hablando 🎬</div>
+                    <div style={{fontSize:12,fontWeight:900,color:'#0ea5e9',marginTop:4}}>Con costo: ${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</div>
+                  </div>
+                </button>
+                {iaConfig.ejemploVideo&&<button onClick={()=>setVerEjemploVid(true)} style={{...S.btn,width:'100%',marginBottom:12,background:'#0ea5e9',color:'white',fontSize:12,fontWeight:800,padding:'10px'}}>▶️ Ver ejemplo del video</button>}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                  {[['tematica','🎨','Editar temática','#7c3aed'],['foto','📸','Foto del niño/a','#f97316']].map(([v,e,l,c])=>(
+                    <button key={v} onClick={()=>setModoPortada(v)} style={{padding:'14px 4px',borderRadius:12,fontSize:12.5,fontWeight:800,border:'2px solid '+(modoPortada===v?c:'#e2e8f0'),cursor:'pointer',background:modoPortada===v?c:'white',color:modoPortada===v?'white':'#64748b',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                      <span style={{fontSize:22}}>{e}</span>{l}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
             {modoPortada==='tematica'&&(
@@ -3126,25 +3138,6 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   </div>
                 )}
                 <canvas ref={canvasRef} style={{display:'none'}}/>
-              </div>
-            )}
-            {/* Premium: Tarjeta IA (el video se ofrece después de elegir la imagen) */}
-            {(modoPortada==='tematica'||modoPortada==='foto')&&(
-              <div className="fade-in" style={{marginTop:18,borderTop:'1px dashed #e2e8f0',paddingTop:16}}>
-                <div style={{fontWeight:900,fontSize:14,marginBottom:4,color:'#1e293b'}}>✨ Opción Premium con IA</div>
-                <div style={{fontSize:11,color:'#64748b',marginBottom:12}}>Creá la tarjeta de tu hijo/a con su personaje: imágenes + el video del personaje hablando, ¡todo junto en un solo pago! 🎬</div>
-                <button onClick={()=>setModoPortada('ia-imagen')} style={{width:'100%',textAlign:'left',cursor:'pointer',border:'1px solid #bae6fd',background:'linear-gradient(135deg,#0ea5e915,#0ea5e905)',borderRadius:16,padding:16,display:'flex',alignItems:'center',gap:12}}>
-                  {iaConfig.ejemploIA?<img src={iaConfig.ejemploIA} alt="ejemplo" style={{width:48,height:64,borderRadius:8,objectFit:'cover',flexShrink:0}}/>:<span style={{fontSize:34}}>🖼️</span>}
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:900,fontSize:14,color:'#0369a1'}}>Tarjeta Premium con IA</div>
-                    <div style={{fontSize:10,color:'#64748b',lineHeight:1.3}}>6 imágenes + video del personaje hablando</div>
-                  </div>
-                  <div style={{textAlign:'right'}}>
-                    <div style={{fontWeight:900,fontSize:18,color:'#0ea5e9'}}>${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</div>
-                    <div style={{fontSize:9,color:'#94a3b8'}}>pack de 6</div>
-                  </div>
-                </button>
-                {iaConfig.ejemploVideo&&<button onClick={()=>setVerEjemploVid(true)} style={{...S.btn,width:'100%',marginTop:8,background:'#0ea5e9',color:'white',fontSize:12,fontWeight:800,padding:'10px'}}>▶️ Ver ejemplo del video</button>}
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
