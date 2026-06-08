@@ -481,7 +481,7 @@ function App() {
       <main style={{flex:1}}>
         {vista==='admin-login'       && <AdminLogin     onLogin={loginAdmin}/>}
         {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} tematicas={tematicas} esSA={esSA} iaConfig={iaConfig} setIaConfig={setIaConfig} pedidos={pedidos} setPedidos={setPedidos} refrescarPedidos={refrescarPedidos}/>}
-        {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig} setIaConfig={setIaConfig} setPapaSesion={setPapaSesion}/>}
         {vista==='admin-tematicas'   && <AdminTematicas setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-excel'       && <AdminExcel     setVista={setVista} sucActId={sucActId} eventos={eventos} setEventos={setEventos}/>}
         {vista==='admin-asistencias' && <AdminAsistencias setVista={setVista} evsLocal={evsLocal} confs={confs}/>}
@@ -954,7 +954,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
 }
 
 /* ── ADMIN EVENTOS ───────────────────────────────────────── */
-function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,setInvEvId,confs,iaConfig,setIaConfig}){
+function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,setInvEvId,confs,iaConfig,setIaConfig,setPapaSesion}){
   function enviarCredsWA(ev){
     const salon=sucAct.nombre;
     const base=window.location.href.split('?')[0];
@@ -1230,6 +1230,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                   🔑 Enviar acceso por WhatsApp
                 </button>
                 <button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>🎁 Ver Invitación</button>
+                {setPapaSesion&&<button onClick={()=>{setPapaSesion({...ev,optinWA:true});setVista('papa-creador');}} style={{background:'#0f172a',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>👨‍👦 Entrar como papá (sin contraseña)</button>}
                 <button onClick={()=>compartirLinkInv(ev)} style={{background:'#25d366',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #1ebe57'}}>🔗 Compartir link (abre solo la tarjeta)</button>
                 <button onClick={()=>generarTarjetaImagen(ev,sucAct,tematicas,iaConfig,'compartir')} style={{background:'#0ea5e9',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #0284c7'}}>📷 Compartir tarjeta (imagen, sin link)</button>
               </div>
