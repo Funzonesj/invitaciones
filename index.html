@@ -2607,8 +2607,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
         <p style={{fontSize:11,color:'#7c3aed',fontWeight:700}}>{progreso}%</p>
         {tipo==='imagen'&&<p style={{fontSize:12,color:'#16a34a',fontWeight:800,marginTop:6}}>{hechas} de {totalGen} listas</p>}
         <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>{tipo==='imagen'?('Estamos creando '+totalGen+' imágenes. Puede tardar 1 a 3 minutos.'):'El video puede tardar unos minutos.'}</p>
-        <button onClick={()=>setMini(true)} style={{...S.btn,marginTop:16,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'12px',fontSize:14,fontWeight:900}}>➖ Seguir usando la app (sigue generando)</button>
-        <p style={{fontSize:9,color:'#94a3b8',marginTop:8}}>Podés moverte por la app. No cierres ni recargues esta página hasta que termine.</p>
+        <div style={{marginTop:16,background:'#fef2f2',border:'1px solid #fecaca',borderRadius:12,padding:'12px',color:'#b91c1c',fontSize:13,fontWeight:800,lineHeight:1.45}}>⚠️ No cierres ni recargues esta página mientras se genera. Esperá acá hasta que termine. 🙏</div>
       </div>
     </div>
   );
