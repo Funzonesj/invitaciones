@@ -1900,6 +1900,16 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
           {cfg.ejemploIA&&<button type="button" onClick={()=>set('ejemploIA','')} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:16}}>🗑</button>}
         </div>
       </div>
+      <div style={{...S.card,marginBottom:14}}>
+        <div style={{fontWeight:900,fontSize:13,marginBottom:4}}>🎬 Video de ejemplo (al lado de "Editar con IA")</div>
+        <div style={{fontSize:11,color:'#64748b',marginBottom:10}}>Un video corto de muestra que el papá puede tocar para ver. Pegá el link de un video, o subí uno cortito.</div>
+        <input value={cfg.ejemploVideo||''} onChange={e=>set('ejemploVideo',e.target.value)} placeholder="https://...video.mp4" style={{...S.input,marginBottom:8}}/>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <label style={{...S.btn,background:'#0f172a',color:'white',padding:'8px 12px',fontSize:12,cursor:'pointer'}}>📹 Subir video<input type="file" accept="video/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=async ev=>{try{const resp=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:ev.target.result})});const d=await resp.json().catch(()=>({}));if(resp.ok&&d.url){set('ejemploVideo',d.url);flashOk('✓ Video subido');}else{alert((d&&d.error)||'No se pudo subir (quizás el video es muy pesado). Probá uno más corto o pegá un link.');}}catch(err){alert('No se pudo subir el video.');}};r.readAsDataURL(file);}}/></label>
+          {cfg.ejemploVideo&&<button type="button" onClick={()=>set('ejemploVideo','')} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:16}}>🗑</button>}
+        </div>
+        {cfg.ejemploVideo&&<video src={cfg.ejemploVideo} controls playsInline style={{width:'100%',maxHeight:200,borderRadius:8,background:'#000',marginTop:8,display:'block'}}></video>}
+      </div>
       <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#8b5cf6,#7c3aed)',color:'white',padding:'13px 28px',fontSize:14}}>✓ Guardar cambios</button>
     </div>
   );
@@ -2617,9 +2627,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
         <p style={{fontSize:11,color:'#7c3aed',fontWeight:700}}>{progreso}%</p>
         {tipo==='imagen'&&<p style={{fontSize:12,color:'#16a34a',fontWeight:800,marginTop:6}}>{hechas} de {totalGen} listas</p>}
         <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>{tipo==='imagen'?('Estamos creando '+totalGen+' imágenes. Puede tardar 1 a 3 minutos.'):'El video puede tardar unos minutos.'}</p>
-        {tipo==='video'
-          ? (<div><button onClick={()=>setMini(true)} style={{...S.btn,marginTop:16,width:'100%',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'12px',fontSize:14,fontWeight:900}}>➖ Seguir usando la app (el video sigue generándose)</button><p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>El video tarda unos minutos. Podés moverte por la app; cuando termine aparece en el panel. No cierres la app.</p></div>)
-          : (<div style={{marginTop:16,background:'#fef2f2',border:'1px solid #fecaca',borderRadius:12,padding:'12px',color:'#b91c1c',fontSize:13,fontWeight:800,lineHeight:1.45}}>⚠️ No cierres ni recargues esta página mientras se genera. Es rápido, esperá acá. 🙏</div>)}
+        <div style={{marginTop:16,background:'#fef2f2',border:'1px solid #fecaca',borderRadius:12,padding:'12px',color:'#b91c1c',fontSize:13,fontWeight:800,lineHeight:1.45}}>⚠️ No cierres ni recargues esta página mientras se genera{tipo==='video'?' — el video puede tardar unos minutos, esperá acá 🙏':'. Es rápido, esperá acá 🙏'}</div>
       </div>
     </div>
   );
@@ -2686,6 +2694,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const portadaPos=(papaSesion&&typeof papaSesion.portadaPos==='number')?papaSesion.portadaPos:0;
   function setPortadaPos(v){setPapaSesion(ps=>{const n={...ps,portadaPos:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,portadaPos:v}:e));return n;});}
   const [regaloVideo,setRegaloVideo]=useState(false); // cartel "te regalamos un video" tras generar las imágenes
+  const [verEjemploVid,setVerEjemploVid]=useState(false); // reproductor del video de ejemplo
   // Pedir un personaje a la encargada (nombre + foto de referencia)
   const [pedirOpen,setPedirOpen]=useState(false);
   const [pedNombre,setPedNombre]=useState('');
@@ -3134,6 +3143,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                     <div style={{fontSize:9,color:'#94a3b8'}}>pack de 6</div>
                   </div>
                 </button>
+                {iaConfig.ejemploVideo&&<button onClick={()=>setVerEjemploVid(true)} style={{...S.btn,width:'100%',marginTop:8,background:'#0ea5e9',color:'white',fontSize:12,fontWeight:800,padding:'10px'}}>▶️ Ver ejemplo del video</button>}
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
@@ -3505,6 +3515,15 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <button onClick={()=>{setRegaloVideo(false);genVideoPagadoRef.current=true;setVideoStartImg((form.iaImagenes||[])[form.iaImagenSel||0]||form.portadaSrc);setGenActivo('video');}} style={{...S.btn,width:'100%',padding:'14px',fontSize:15,fontWeight:900,background:'linear-gradient(135deg,#e11d48,#be123c)',color:'white',marginBottom:8}}>🎬 ¡Sí, quiero mi video!</button>
             <button onClick={()=>{setRegaloVideo(false);setUsarVideo(false);}} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#64748b',padding:'11px',fontSize:13,fontWeight:700}}>Solo la foto por ahora</button>
           </div>
+        </div>
+      )}
+
+      {/* Reproductor del video de ejemplo */}
+      {verEjemploVid&&iaConfig.ejemploVideo&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.88)',zIndex:1000,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div style={{fontWeight:900,fontSize:15,color:'white',marginBottom:10}}>🎬 Así queda el video</div>
+          <video src={iaConfig.ejemploVideo} controls autoPlay playsInline style={{width:'100%',maxWidth:380,borderRadius:14,background:'#000'}}></video>
+          <button onClick={()=>setVerEjemploVid(false)} style={{...S.btn,marginTop:14,background:'white',color:'#1e293b',padding:'10px 26px',fontWeight:800}}>Cerrar</button>
         </div>
       )}
 
