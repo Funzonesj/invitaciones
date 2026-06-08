@@ -3157,7 +3157,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                     <input type="range" min="0" max="100" value={portadaPos} onChange={e=>setPortadaPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
                   </div>
                 </div>
-                <h2 style={{fontWeight:900,fontSize:17,marginBottom:8}}>🎨 {(tematicas||[]).length.toLocaleString('es-AR')} Temáticas para elegir</h2>
+                <h2 style={{fontWeight:900,fontSize:17,marginBottom:8}}>🎨 {((tematicas||[]).length>=50)?('¡Más de '+(Math.floor((tematicas||[]).length/50)*50).toLocaleString('es-AR')+' Temáticas!'):((tematicas||[]).length+' Temáticas para elegir')}</h2>
                 <input value={ftxt} onChange={e=>setFtxt(e.target.value)} placeholder="🔍 Buscar..." style={{...S.input,marginBottom:10}}/>
                 <div style={{display:'flex',gap:4,overflowX:'auto',paddingBottom:8,marginBottom:12}} className="scrollbar-none">
                   {CATS.map(c=><button key={c} onClick={()=>setFcat(c)} style={{padding:'4px 10px',borderRadius:8,fontSize:10,fontWeight:900,border:'none',cursor:'pointer',whiteSpace:'nowrap',background:fcat===c?'#7c3aed':'#f1f5f9',color:fcat===c?'white':'#64748b'}}>{c}</button>)}
