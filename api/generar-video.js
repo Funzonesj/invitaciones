@@ -32,8 +32,22 @@ module.exports = async (req, res) => {
         const rr = await fetch(responseUrl, { headers: { Authorization: 'Key ' + key } });
         const rd = await rr.json().catch(() => ({}));
         const url = rd && rd.video && rd.video.url;
-        if (!url) { res.status(502).json({ error: 'El video terminó pero no se recibió el archivo.' }); return; }
+        if (!url) { res.status(200).json({ failed: true, error: 'El video terminó pero no se recibió el archivo. Probá generarlo de nuevo.' }); return; }
         res.status(200).json({ done: true, url: url });
+        return;
+      }
+      // Si Kling falló (ERROR/FAILED), traemos el detalle y avisamos en vez de esperar para siempre.
+      if (sd && (sd.status === 'ERROR' || sd.status === 'FAILED')) {
+        let detalle = '';
+        try { const rr = await fetch(responseUrl, { headers: { Authorization: 'Key ' + key } }); const rd = await rr.json().catch(() => ({})); detalle = (rd && (rd.detail || rd.error || rd.message)) || ''; if (typeof detalle !== 'string') detalle = JSON.stringify(detalle).slice(0, 200); } catch (e) {}
+        const low = String(detalle).toLowerCase();
+        let msg = 'El video no se pudo generar.';
+        if (low.indexOf('moderat') >= 0 || low.indexOf('nsfw') >= 0 || low.indexOf('policy') >= 0 || low.indexOf('content') >= 0 || low.indexOf('sensitive') >= 0) {
+          msg = 'El video fue rechazado por el filtro de contenido (a veces pasa con fotos de chicos). Probá con OTRA foto del niño/a (cara bien visible, con buena luz) o con otra imagen elegida.';
+        } else if (detalle) {
+          msg = 'El video no se pudo generar: ' + detalle;
+        }
+        res.status(200).json({ failed: true, error: msg });
         return;
       }
       res.status(200).json({ done: false, status: (sd && sd.status) || 'IN_QUEUE' });

@@ -2677,14 +2677,15 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
           const sj=await s.json().catch(()=>({}));
           if(!s.ok) throw new Error(sj.error||'No se pudo iniciar el video.');
           if(!sj.statusUrl||!sj.responseUrl) throw new Error('No se pudo iniciar el video.');
-          let urlVid='';
-          for(let i=0;i<60;i++){
+          let urlVid='';let failMsg='';
+          for(let i=0;i<100;i++){
             await new Promise(r=>setTimeout(r,6000));
             if(cancel)return;
-            try{const ps=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:sj.statusUrl,responseUrl:sj.responseUrl})});const pd=await ps.json().catch(()=>({}));if(pd&&pd.done&&pd.url){urlVid=pd.url;break;}}catch(e){}
-            setProgreso(p=>p<96?p+2:p);
+            try{const ps=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:sj.statusUrl,responseUrl:sj.responseUrl})});const pd=await ps.json().catch(()=>({}));if(pd&&pd.done&&pd.url){urlVid=pd.url;break;}if(pd&&pd.failed){failMsg=pd.error||'El video no se pudo generar.';break;}}catch(e){}
+            setProgreso(p=>p<96?p+1:p);
           }
           if(cancel)return;
+          if(failMsg) throw new Error(failMsg);
           if(!urlVid) throw new Error('El video está tardando más de lo normal. Probá de nuevo en un rato.');
           setProgreso(100);onResultado([urlVid]);
         }
