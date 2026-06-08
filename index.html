@@ -2706,7 +2706,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   function setPortadaPos(v){setPapaSesion(ps=>{const n={...ps,portadaPos:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,portadaPos:v}:e));return n;});}
   const [regaloVideo,setRegaloVideo]=useState(false); // cartel "te regalamos un video" tras generar las imágenes
   const [verEjemploVid,setVerEjemploVid]=useState(false); // reproductor del video de ejemplo
-  const [editPanel,setEditPanel]=useState(null); // null=inicio (cuadraditos) | 'datos' | 'tematica' | 'foto'
+  const [editPanel,setEditPanel]=useState(_PAPA_NAV.editPanel||null); // null=inicio (cuadraditos) | 'datos' | 'tematica' | 'foto'
   function guardarYVolver(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setEditPanel(null);flashOk('✓ ¡Guardado!');}
   // Pedir un personaje a la encargada (nombre + foto de referencia)
   const [pedirOpen,setPedirOpen]=useState(false);
@@ -2944,7 +2944,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <p style={{fontSize:11,color:'#64748b',margin:0}}>{papaSesion.tipo||'Cumpleaños'} de <b>{papaSesion.nombre}</b> · {papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin} hs</p>
         </div>
         <div style={{display:'flex',gap:8}}>
-          <button onClick={()=>verTarjeta({seccion:'home'})} style={{...S.btn,background:'#7c3aed',color:'white'}}>👁 Ver Tarjeta</button>
+          <button onClick={()=>verTarjeta({seccion:seccion,modo:modoPortada,editPanel:editPanel,visto:true})} style={{...S.btn,background:'#7c3aed',color:'white'}}>👁 Ver Tarjeta</button>
           <button onClick={()=>{setPapaSesion(null);setVista('papa-login');}} style={{...S.btn,background:'#f1f5f9',color:'#64748b'}}>Salir</button>
         </div>
       </div>
