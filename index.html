@@ -3169,7 +3169,6 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               <div style={{display:'flex',gap:8,marginBottom:16}}>
                 <button onClick={()=>verTarjeta({seccion:'tarjeta'})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'12px',fontSize:13,fontWeight:900}}>👁 Ver tarjeta</button>
                 <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'12px',fontSize:13,fontWeight:900}}>🔗 Compartir</button>
-                <button onClick={()=>tarjetaImagen('compartir')} style={{...S.btn,flex:1,background:'#0ea5e9',color:'white',padding:'12px',fontSize:13,fontWeight:900}}>📷 Imagen</button>{videoGuardado&&<button onClick={()=>guardarVideoArchivo(videoGuardado)} style={{...S.btn,flex:1,background:'#e11d48',color:'white',padding:'12px',fontSize:13,fontWeight:900}}>🎬 Video</button>}
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:16}}>
                 {[['datos','✏️','Editar datos'],['tematica','🎨','Editar temática'],['foto','📸','Foto del niño/a']].map(([v,e,l])=>(
@@ -3196,7 +3195,6 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <div style={{display:'flex',gap:8}}>
               <button onClick={()=>verTarjeta({seccion:seccion,modo:modoPortada,editPanel:editPanel,visto:true})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'10px',fontSize:12,fontWeight:900}}>👁 Ver</button>
               <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'10px',fontSize:12,fontWeight:900}}>🔗 Link</button>
-              <button onClick={()=>tarjetaImagen('compartir')} style={{...S.btn,flex:1,background:'#0ea5e9',color:'white',padding:'10px',fontSize:12,fontWeight:900}}>📷 Imagen</button>{videoGuardado&&<button onClick={()=>guardarVideoArchivo(videoGuardado)} style={{...S.btn,flex:1,background:'#e11d48',color:'white',padding:'10px',fontSize:12,fontWeight:900}}>🎬 Video</button>}
             </div>
             <div style={S.card}>
               <h2 style={{fontWeight:900,fontSize:15,color:'#f97316',marginBottom:14}}>Datos de la Invitación</h2>
@@ -3226,7 +3224,6 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <button onClick={()=>{if(editPanel){guardarYVolver();}else{setEditPanel(null);}setModoPortada('tematica');}} style={{...S.btn,background:'#7c3aed',color:'white',padding:'11px 22px',fontSize:14,fontWeight:900,marginBottom:12,boxShadow:'0 4px 14px rgba(124,58,237,.35)'}}>← Volver</button>
             <div style={{display:'flex',gap:8,marginBottom:14}}>
               {modoPortada!=='ia-imagen'&&<button onClick={()=>verTarjeta({seccion:seccion,modo:modoPortada,editPanel:editPanel,visto:true})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'10px',fontSize:12,fontWeight:900}}>👁 Ver</button>}
-              <button onClick={()=>tarjetaImagen('compartir')} style={{...S.btn,flex:1,background:'#0ea5e9',color:'white',padding:'10px',fontSize:12,fontWeight:900}}>📷 Imagen</button>{videoGuardado&&<button onClick={()=>guardarVideoArchivo(videoGuardado)} style={{...S.btn,flex:1,background:'#e11d48',color:'white',padding:'10px',fontSize:12,fontWeight:900}}>🎬 Video</button>}
             </div>
             {modoPortada==='tematica'&&(
               <div className="fade-in">
