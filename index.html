@@ -2124,11 +2124,15 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
   const [nuevo,setNuevo]=useState({});
   const [msg,setMsg]=useState('');
   const cats=[['ninos','🧒 Niños'],['adultos','🧑 Adultos'],['snacks','🍿 Snacks'],['postres','🍰 Postres'],['bebidas','🥤 Bebidas']];
+  // Valores de arranque por categoría: cuánto come/toma 1 niño y 1 adulto (editables)
+  const DEF_RATE={ninos:{pn:3,pa:1,u:'u'},adultos:{pn:1,pa:3,u:'u'},snacks:{pn:0.08,pa:0.08,u:'kg'},postres:{pn:1,pa:1,u:'porción'},bebidas:{pn:0.3,pa:0.5,u:'L'}};
   function guardar(){setIaConfig(c=>({...c,menuConfig:cfg}));setMsg('✓ Menú guardado');setTimeout(()=>setMsg(''),2500);}
   function quitar(cat,id){setCfg(c=>({...c,[cat]:(c[cat]||[]).filter(i=>i.id!==id)}));}
+  function updItem(cat,id,k,v){setCfg(c=>({...c,[cat]:(c[cat]||[]).map(i=>i.id===id?{...i,[k]:v}:i)}));}
   function agregar(cat){
     const n=nuevo[cat]||{}; if(!n.nombre||!n.nombre.trim())return;
-    const item={id:cat+'-'+Math.floor(Math.random()*1e6),nombre:n.nombre.trim(),emoji:(n.emoji||'🍽️').trim()};
+    const dr=DEF_RATE[cat]||{pn:1,pa:1};
+    const item={id:cat+'-'+Math.floor(Math.random()*1e6),nombre:n.nombre.trim(),emoji:(n.emoji||'🍽️').trim(),pn:dr.pn,pa:dr.pa};
     setCfg(c=>({...c,[cat]:[...(c[cat]||[]),item]}));
     setNuevo(x=>({...x,[cat]:{nombre:'',emoji:''}}));
   }
@@ -2147,13 +2151,19 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
 
       {cats.map(([k,lbl])=>(
         <div key={k} style={{...S.card,marginBottom:14}}>
-          <h3 style={{fontWeight:900,fontSize:14,marginBottom:10}}>{lbl}</h3>
-          <div style={{display:'flex',flexWrap:'wrap',gap:8,marginBottom:10}}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>{lbl}</h3>
+          <div style={{fontSize:10,color:'#94a3b8',marginBottom:8}}>Cantidad que come/toma 1 niño y 1 adulto ({(DEF_RATE[k]||{}).u||'u'}). Editá los números con tu experiencia.</div>
+          <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:10}}>
             {(cfg[k]||[]).map(it=>(
-              <span key={it.id} style={{display:'inline-flex',alignItems:'center',gap:6,background:'#f1f5f9',borderRadius:99,padding:'6px 10px',fontSize:12,fontWeight:700}}>
-                <span>{it.emoji}</span>{it.nombre}
-                <button onClick={()=>quitar(k,it.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:13,fontWeight:900,padding:0,lineHeight:1}}>✕</button>
-              </span>
+              <div key={it.id} style={{display:'flex',alignItems:'center',gap:6,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'6px 8px'}}>
+                <span style={{fontSize:16}}>{it.emoji}</span>
+                <span style={{fontSize:12,fontWeight:700,flex:1,minWidth:0,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{it.nombre}</span>
+                <span style={{fontSize:11,color:'#64748b'}}>👶</span>
+                <input type="number" step="any" min="0" value={it.pn!=null?it.pn:((DEF_RATE[k]||{}).pn||0)} onChange={e=>updItem(k,it.id,'pn',e.target.value===''?'':+e.target.value)} style={{...S.input,width:56,padding:'5px 6px',fontSize:12}}/>
+                <span style={{fontSize:11,color:'#64748b'}}>🧑</span>
+                <input type="number" step="any" min="0" value={it.pa!=null?it.pa:((DEF_RATE[k]||{}).pa||0)} onChange={e=>updItem(k,it.id,'pa',e.target.value===''?'':+e.target.value)} style={{...S.input,width:56,padding:'5px 6px',fontSize:12}}/>
+                <button onClick={()=>quitar(k,it.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900,padding:'0 2px',lineHeight:1}}>✕</button>
+              </div>
             ))}
             {(!cfg[k]||cfg[k].length===0)&&<span style={{fontSize:11,color:'#94a3b8'}}>Sin opciones todavía.</span>}
           </div>
@@ -2891,6 +2901,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [menuEstacion,setMenuEstacion]=useState('Primavera');
   const [menuHoras,setMenuHoras]=useState('');
   const [menuSel,setMenuSel]=useState({ninos:{},adultos:{},snacks:{},postres:{},bebidas:{}});
+  // Franja del evento (mediodía / tarde / noche). Se auto-detecta por el horario y se puede cambiar.
+  const _frAuto=(()=>{const h=parseInt(String(papaSesion.hIni||'').split(':')[0],10)||0; if(h>=11&&h<15)return 'mediodia'; if(h>=15&&h<19)return 'tarde'; return 'noche';})();
+  const [menuFranja,setMenuFranja]=useState(_frAuto);
   // FAQ chat
   const [faqQ,setFaqQ]=useState('');
   const [faqChat,setFaqChat]=useState([]);
@@ -2961,37 +2974,35 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     // Season multipliers
     const bMult=menuEstacion==='Verano'?1.3:menuEstacion==='Invierno'?0.8:1.0;
     const hMult=h<=3?0.85:h===4?1.0:h===5?1.15:1.3;
+    const DEFR={ninos:{pn:3,pa:1,u:'u'},adultos:{pn:1,pa:3,u:'u'},snacks:{pn:0.08,pa:0.08,u:'kg'},postres:{pn:1,pa:1,u:'porción'},bebidas:{pn:0.3,pa:0.5,u:'L'}};
+    // Multiplicador por franja: mediodía/noche = comida completa; tarde (merienda) = menos salado y más dulce.
+    function frMult(cat){ if(menuFranja==='tarde'){ if(cat==='postres')return 1.3; if(cat==='ninos'||cat==='adultos'||cat==='snacks')return 0.65; } return 1; }
     setMenuGen(true);
     setTimeout(()=>{
       const results=[];
       const shopping=[];
-      // Helper: calc per item
-      function addItems(cat,items,baseN,baseA,unit){
+      function addItems(cat,unit){
+        const items=cfg[cat]||[];
         const sel=(menuSel[cat]||{});
         const selItems=items.filter(i=>sel[i.id]);
         if(!selItems.length)return;
-        const perItem=selItems.length;
+        const dr=DEFR[cat]||{pn:1,pa:1};
+        const fm=frMult(cat);
+        const season=(cat==='bebidas')?bMult:1;
         selItems.forEach(item=>{
-          const rawN=n*(baseN/perItem)*hMult;
-          const rawA=a*(baseA/perItem)*hMult;
-          const total=Math.ceil(rawN+rawA);
+          const pn=(item.pn!=null&&item.pn!=='')?+item.pn:dr.pn;
+          const pa=(item.pa!=null&&item.pa!=='')?+item.pa:dr.pa;
+          const total=Math.ceil((n*pn + a*pa)*hMult*fm*season);
           results.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:unit,cat});
           shopping.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:unit});
         });
       }
-      addItems('ninos',cfg.ninos||[]  , 2.5, 0.5, 'unidades');
-      addItems('adultos',cfg.adultos||[], 0.5, 2.0, 'unidades');
-      addItems('snacks',cfg.snacks||[]  , 0.3, 0.2, 'kg');
-      addItems('postres',cfg.postres||[], 0.15,0.1, 'porción');
-      // Bebidas with season multiplier
-      const bSel=(menuSel.bebidas||{});
-      const bItems=(cfg.bebidas||[]).filter(i=>bSel[i.id]);
-      bItems.forEach(item=>{
-        const total=Math.ceil(t*0.35*bMult*hMult);
-        results.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:'litros',cat:'bebidas'});
-        shopping.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:'litros'});
-      });
-      setMenuResult({items:results,shopping,adultos:a,ninos:n,horas:h,estacion:menuEstacion});
+      addItems('ninos','u');
+      addItems('adultos','u');
+      addItems('snacks','kg');
+      addItems('postres','porción');
+      addItems('bebidas','L');
+      setMenuResult({items:results,shopping,adultos:a,ninos:n,horas:h,estacion:menuEstacion,franja:menuFranja});
       setMenuGen(false);
     },2500);
   }
@@ -3427,6 +3438,13 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   <select value={menuHoras} onChange={e=>setMenuHoras(e.target.value)} style={S.input}>
                     <option value="">Seleccioná...</option>
                     {(iaConfig.menuConfig?.horas||[3,4,5,6]).map(h=><option key={h} value={h}>{h} horas</option>)}
+                  </select>
+                </label>
+                <label style={{gridColumn:'1 / -1'}}><span style={S.label}>🕐 Franja del evento</span>
+                  <select value={menuFranja} onChange={e=>setMenuFranja(e.target.value)} style={S.input}>
+                    <option value="mediodia">🌞 Mediodía (almuerzo — comida fuerte)</option>
+                    <option value="tarde">🧁 Tarde (merienda — más dulce, menos salado)</option>
+                    <option value="noche">🌙 Noche (cena — comida fuerte)</option>
                   </select>
                 </label>
               </div>
