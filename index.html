@@ -2213,15 +2213,15 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
           </div>
         </div>
       )}
-      <div style={{background:'linear-gradient(135deg,'+colorIA+'15,'+colorIA+'08)',border:'1px solid '+colorIA+'30',borderRadius:14,padding:16,marginBottom:14}}>
-        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
-          <span style={{fontSize:22}}>{emojiIA}</span>
+      <div style={{background:'linear-gradient(135deg,#0ea5e9,#7c3aed)',borderRadius:18,padding:18,marginBottom:16,boxShadow:'0 8px 24px rgba(14,165,233,.28)'}}>
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10}}>
+          <span style={{fontSize:28}}>{emojiIA}</span>
           <div>
-            <div style={{fontWeight:800,fontSize:14,color:colorIA}}>{tipo==='imagen'?'Imagen IA Personalizada':'Video IA Personalizado'}</div>
-            <div style={{fontSize:11,color:'#64748b'}}>{tipo==='imagen'?'Cargá las fotos y generamos 6 imágenes para que elijas':'Cargá las fotos y generamos tu video con IA'}</div>
+            <div style={{fontWeight:900,fontSize:16,color:'white'}}>{tipo==='imagen'?'Imagen IA Personalizada':'Video IA Personalizado'}</div>
+            <div style={{fontSize:11.5,color:'rgba(255,255,255,.92)'}}>{tipo==='imagen'?'Cargá las fotos y generamos 6 imágenes para que elijas':'Cargá las fotos y generamos tu video con IA'}</div>
           </div>
         </div>
-        <div style={{fontSize:11,color:'#475569',background:'white',borderRadius:8,padding:8,border:'1px solid #e2e8f0'}}>
+        <div style={{fontSize:11.5,color:'white',background:'rgba(255,255,255,.2)',borderRadius:12,padding:'10px 12px',lineHeight:1.5}}>
           {tipo==='imagen'
             ?'📌 La IA crea imágenes artísticas con el personaje elegido. No modifica el rostro del niño/a.'
             :'📌 La IA genera un video corto de saludo con el personaje y el entorno de la temática elegida.'
