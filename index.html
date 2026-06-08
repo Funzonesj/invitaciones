@@ -2997,8 +2997,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     const DEFR={ninos:{pn:4,pa:1,u:'u'},adultos:{pn:1,pa:6,u:'porc.'},snacks:{pn:0.02,pa:0.02,u:'bolsa'},postres:{pn:1,pa:1,u:'porción'},bebidas:{pn:0.4,pa:0.4,u:'L'}};
     // Multiplicador por franja: mediodía/noche = comida fuerte (se come más); tarde (merienda) = menos salado y más dulce.
     function frMult(cat){
-      if(menuFranja==='tarde'){ if(cat==='postres')return 1+(+AJ.tardeDulce||0)/100; if(esSalado(cat))return 1-(+AJ.tardeSalado||0)/100; return 1; }
-      if(esSalado(cat))return 1+(+AJ.comidaFuerte||0)/100; // mediodía / noche
+      const comida=(cat==='ninos'||cat==='adultos'); // los snacks van igual siempre
+      if(menuFranja==='tarde'){ if(cat==='postres')return 1+(+AJ.tardeDulce||0)/100; if(comida)return 1-(+AJ.tardeSalado||0)/100; return 1; }
+      if(comida)return 1+(+AJ.comidaFuerte||0)/100; // mediodía / noche
       return 1;
     }
     setMenuGen(true);
