@@ -2475,7 +2475,10 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
               <div style={{fontSize:28,marginBottom:2}}>✅</div>
               <div style={{fontWeight:900,fontSize:16,color:'#1e293b'}}>¡Tu tarjeta está lista!</div>
               {videoFreeOk
-                ? <div style={{fontSize:13,color:'#9a3412',margin:'4px 0 12px',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:12,padding:'10px',lineHeight:1.5}}>🎁 <b>¡Ya elegiste tu imagen!</b> Te regalamos un <b>video del personaje hablando</b> para tu tarjeta, ¡sin costo extra! 🎬</div>
+                ? <React.Fragment>
+                    <div style={{fontSize:13,color:'#9a3412',margin:'4px 0 8px',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:12,padding:'10px',lineHeight:1.5}}>🎁 <b>¡Ya elegiste tu imagen!</b> Te regalamos un <b>video del personaje hablando</b> para tu tarjeta, ¡sin costo extra! 🎬</div>
+                    <div style={{fontSize:11,color:'#64748b',margin:'0 0 12px',lineHeight:1.45}}>🎙️ <b>Nota:</b> la voz del video es <b>genérica/de dibujo animado</b>. En personajes de <b>personas reales</b> (ej: Messi, cantantes) <b>no</b> es la voz real de la persona.</div>
+                  </React.Fragment>
                 : (videoUrl?<div style={{fontSize:12,color:'#64748b',margin:'4px 0 12px'}}>Elegiste tu imagen. Arriba está tu <b>video</b>; con el tilde elegís si lo usás en la tarjeta. 🎬</div>:null)}
               {onVerTarjeta&&<button onClick={onVerTarjeta} style={{...S.btn,width:'100%',background:'#7c3aed',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginBottom:8}}>👁 Ver mi tarjeta</button>}
               {videoFreeOk&&onGenerarVideo&&<button onClick={onGenerarVideo} style={{...S.btn,width:'100%',background:'#e11d48',color:'white',padding:'13px',fontSize:14,fontWeight:900}}>{videoUrl?'🎬 Generar otro video (gratis)':'🎬 Generar mi video (gratis)'}</button>}
