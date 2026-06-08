@@ -2993,7 +2993,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     const esSalado=cat=>(cat==='ninos'||cat==='adultos'||cat==='snacks');
     // Bebida según estación (verano se toma más; invierno menos).
     const bMult=menuEstacion==='Verano'?(1+(+AJ.veranoBeb||0)/100):menuEstacion==='Invierno'?(1-(+AJ.inviernoBeb||0)/100):1.0;
-    const hMult=h<=3?1.0:h===4?1.15:h===5?1.3:1.45; // base = 3 hs (los datos cargados se asumen para 3 hs)
+    const hMult=h<=4?1.0:h===5?1.15:1.3; // base = 3 a 4 hs (igual); 5 hs +15%, 6+ +30%
     const DEFR={ninos:{pn:4,pa:1,u:'u'},adultos:{pn:1,pa:6,u:'porc.'},snacks:{pn:0.02,pa:0.02,u:'bolsa'},postres:{pn:1,pa:1,u:'porción'},bebidas:{pn:0.4,pa:0.4,u:'L'}};
     // Multiplicador por franja: mediodía/noche = comida fuerte (se come más); tarde (merienda) = menos salado y más dulce.
     function frMult(cat){
