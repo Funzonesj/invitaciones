@@ -3074,11 +3074,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             </div>
           </div>
           {/* Compartir */}
-          <div style={{display:'flex',gap:8,marginBottom:8}}>
-            <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'14px',fontSize:14,fontWeight:900}}>🔗 Compartir con link</button>
-            <button onClick={()=>tarjetaImagen('compartir')} style={{...S.btn,flex:1,background:'#0ea5e9',color:'white',padding:'14px',fontSize:14,fontWeight:900}}>📷 Compartir tarjeta</button>
-          </div>
-          <div style={{fontSize:10,color:'#94a3b8',textAlign:'center',marginBottom:8}}>"Compartir tarjeta" envía solo la imagen (sin link ni panel) — ideal para escuelas.</div>
+          <button onClick={compartirInvitacionWA} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'16px',fontSize:16,fontWeight:900,marginBottom:10,boxShadow:'0 4px 14px rgba(37,211,102,.35)'}}>🔗 Compartir tu invitación</button>
           <div style={{display:'flex',gap:8,marginBottom:20}}>
             <button onClick={()=>verTarjeta({seccion:'home'})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'11px',fontSize:13,fontWeight:800}}>👁 Vista previa</button>
             <button onClick={descargarInvitacion} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#475569',padding:'11px',fontSize:13,fontWeight:800}}>⬇️ Descargar JPG</button>
@@ -3166,10 +3162,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 </div>
               </div>
               )}
-              <div style={{display:'flex',gap:8,marginBottom:16}}>
-                <button onClick={()=>verTarjeta({seccion:'tarjeta'})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'12px',fontSize:13,fontWeight:900}}>👁 Ver tarjeta</button>
-                <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'12px',fontSize:13,fontWeight:900}}>🔗 Compartir</button>
-              </div>
+              <button onClick={()=>verTarjeta({seccion:'tarjeta'})} style={{...S.btn,width:'100%',background:'#ede9fe',color:'#7c3aed',padding:'12px',fontSize:13,fontWeight:900,marginBottom:8}}>👁 Ver tarjeta</button>
+              <button onClick={compartirInvitacionWA} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'16px',fontSize:16,fontWeight:900,marginBottom:16,boxShadow:'0 4px 14px rgba(37,211,102,.35)'}}>🔗 Compartir tu invitación</button>
               <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:16}}>
                 {[['datos','✏️','Editar datos'],['tematica','🎨','Editar temática'],['foto','📸','Foto del niño/a']].map(([v,e,l])=>(
                   <button key={v} onClick={()=>{setEditPanel(v);if(v==='tematica')setModoPortada('tematica');if(v==='foto')setModoPortada('foto');}} style={{aspectRatio:'1',borderRadius:16,border:'1px solid #eef1f6',cursor:'pointer',background:'#fff',boxShadow:'0 1px 3px rgba(15,23,42,.06)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,padding:8,transition:'all .15s'}}
