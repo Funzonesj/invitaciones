@@ -486,6 +486,13 @@ function App() {
               <button onClick={()=>{setVista('admin-dashboard');setMenuOpen(false);}} style={{width:'100%',textAlign:'left',padding:'12px 14px',background:isAdmin?'#1e3a5f':'transparent',border:'none',color:isAdmin?'#06b6d4':'#94a3b8',borderRadius:10,cursor:'pointer',fontSize:14,fontWeight:isAdmin?900:400,marginBottom:2}}>💼 Panel Admin</button>
             )}
             <button onClick={()=>{papaSesion?setVista('papa-creador'):setVista('papa-login');setMenuOpen(false);}} style={{width:'100%',textAlign:'left',padding:'12px 14px',background:isPapa?'#7c2d12':'transparent',border:'none',color:isPapa?'#f97316':'#94a3b8',borderRadius:10,cursor:'pointer',fontSize:14,fontWeight:isPapa?900:400,marginBottom:2}}>👪 Acceso Papás</button>
+            {papaSesion&&(
+              <div style={{marginLeft:10,paddingLeft:8,borderLeft:'2px solid #334155',marginBottom:6}}>
+                {[['panel','🏠 Panel principal'],['datos','✏️ Editar datos'],['tematica','🎨 Editar temática'],['foto','📸 Editar con foto'],['ia','✨ Editar con IA']].map(([t,l])=>(
+                  <button key={t} onClick={()=>{_PAPA_NAV={};if(t==='panel'){_PAPA_NAV={seccion:'home'};}else if(t==='datos'){_PAPA_NAV={seccion:'tarjeta',editPanel:'datos',modo:'tematica'};}else if(t==='tematica'){_PAPA_NAV={seccion:'tarjeta',editPanel:'tematica',modo:'tematica'};}else if(t==='foto'){_PAPA_NAV={seccion:'tarjeta',editPanel:'foto',modo:'foto'};}else if(t==='ia'){_PAPA_NAV={seccion:'tarjeta',modo:'ia-imagen'};} if(window.__papaNav)window.__papaNav(t); setVista('papa-creador'); setMenuOpen(false);}} style={{width:'100%',textAlign:'left',padding:'9px 12px',background:'transparent',border:'none',color:'#cbd5e1',borderRadius:8,cursor:'pointer',fontSize:13,fontWeight:600,marginBottom:1}}>{l}</button>
+                ))}
+              </div>
+            )}
             <button onClick={()=>{setVista('invitado-portada');setMenuOpen(false);}} style={{width:'100%',textAlign:'left',padding:'12px 14px',background:(vista==='invitado-portada'||vista==='invitado-web')?'#3b1f7c':'transparent',border:'none',color:(vista==='invitado-portada'||vista==='invitado-web')?'#a78bfa':'#94a3b8',borderRadius:10,cursor:'pointer',fontSize:14,fontWeight:900,marginBottom:2}}>🎁 Ver Invitación</button>
             {adminSesion&&esSA&&(
               <div style={{marginTop:12,paddingTop:12,borderTop:'1px solid #334155'}}>
@@ -2852,6 +2859,18 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     else setPagoActivo(tipo);                  // necesita pagar otro pack de 6
   }
   const [seccion,setSeccion]=useState(_PAPA_NAV.seccion||'home');
+  // Navegación desde el menú de las rayitas (☰): permite ir directo a cada sector del papá.
+  React.useEffect(()=>{
+    window.__papaNav=(t)=>{
+      if(t==='panel'){setSeccion('home');setEditPanel(null);}
+      else if(t==='datos'){setSeccion('tarjeta');setEditPanel('datos');setModoPortada('tematica');}
+      else if(t==='tematica'){setSeccion('tarjeta');setEditPanel('tematica');setModoPortada('tematica');}
+      else if(t==='foto'){setSeccion('tarjeta');setEditPanel('foto');setModoPortada('foto');}
+      else if(t==='ia'){setSeccion('tarjeta');setEditPanel(null);setModoPortada('ia-imagen');}
+      try{window.scrollTo(0,0);}catch(e){}
+    };
+    return ()=>{ try{ delete window.__papaNav; }catch(e){} };
+  },[]);
   const [kidActivo,setKidActivo]=useState(1);
   const [shortLinkLoading,setShortLinkLoading]=useState(false);
   function acortarYCompartir(longUrl,nombre,fecha,salon){
