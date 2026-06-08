@@ -2915,7 +2915,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [menuNinos,setMenuNinos]=useState('');
   const [menuResult,setMenuResult]=useState(null);
   const [menuGen,setMenuGen]=useState(false);
-  const [menuEstacion,setMenuEstacion]=useState('Primavera');
+  // Estación auto-detectada por la fecha (hemisferio sur / Argentina)
+  const _estAuto=(()=>{try{const d=new Date();const md=(d.getMonth()+1)*100+d.getDate();if(md>=1221||md<=320)return 'Verano';if(md<=620)return 'Otoño';if(md<=920)return 'Invierno';return 'Primavera';}catch(e){return 'Primavera';}})();
+  const [menuEstacion,setMenuEstacion]=useState(_estAuto);
   const [menuHoras,setMenuHoras]=useState('');
   const [menuSel,setMenuSel]=useState({ninos:{},adultos:{},snacks:{},postres:{},bebidas:{}});
   // Franja del evento (mediodía / tarde / noche). Se auto-detecta por el horario y se puede cambiar.
