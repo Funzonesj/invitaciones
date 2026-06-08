@@ -2975,8 +2975,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     acortarYCompartir(longUrl,(form.nombre||papaSesion.nombre),fecha,suc.nombre);
   }
 
-  // Autorización OBLIGATORIA: al apretar "Autorizo" queda registrado el permiso (con fecha) y se abre WhatsApp. Sin autorizar, no entra.
-  if(!papaSesion.optinWA){
+  // Autorización OBLIGATORIA (DESACTIVADA por ahora — para reactivarla, cambiar "false &&" por nada).
+  if(false && !papaSesion.optinWA){
     return(
       <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:20,background:'linear-gradient(160deg,#faf5ff,#eef2ff)'}}>
         <div className="fade-in" style={{...S.card,maxWidth:400,width:'100%',padding:28,textAlign:'center'}}>
