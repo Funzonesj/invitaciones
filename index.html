@@ -1005,7 +1005,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   }
   const ef={nombre:'',tipo:'Cumpleaños',edad:'',edadUnidad:'años',dia:'',mes:'',anio:String((iaConfig&&iaConfig.anioVigente)||2026),hIni:'',hFin:'',celPapa:'',dni:'',nomPapa:'',user:'',pass:'',temId:((iaConfig&&iaConfig.temDefault)||'t-3'),doble:false,nombre2:'',edad2:'',temId2:'t-1',nomPapa2:'',celPapa2:''};
   const [form,setForm]=useState(ef); const [editId,setEditId]=useState(null); const [open,setOpen]=useState(false);
-  const [fMes,setFMes]=useState(''); const [fDia,setFDia]=useState(''); const [msgOk,setMsgOk]=useState('');
+  const [fMes,setFMes]=useState(''); const [fDia,setFDia]=useState(''); const [fAnio,setFAnio]=useState(''); const [msgOk,setMsgOk]=useState('');
   const [busqTema,setBusqTema]=useState(''); const [catTema,setCatTema]=useState('TODOS'); const [temOpen,setTemOpen]=useState(false);
 
   function autoCredenciales(){
@@ -1046,24 +1046,66 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   function copiarLink(id){navigator.clipboard?.writeText(window.location.href.split('?')[0]+'?inv='+id);alert('¡Enlace copiado!');}
   function compartirLinkInv(ev){const link=window.location.href.split('?')[0]+'?inv='+ev.id;const txt='¡Te invito al '+(ev.tipo||'cumpleaños')+' de '+ev.nombre+'! Abrí la tarjeta acá: '+link;abrirWA('', txt);}
 
+  // ¿Cuándo se creó la tarjeta? (marca 'creado' o la fecha codificada en el id)
+  const evCreadoMs=ev=>{ if(ev&&ev.creado) return ev.creado; const m=String((ev&&ev.id)||'').match(/^ev-([0-9a-f]+)$/); return m?parseInt(m[1],16):0; };
+  const _hoy=new Date(); const _hoyKey=_hoy.getFullYear()+'-'+_hoy.getMonth()+'-'+_hoy.getDate();
+  const esDeHoy=ev=>{ const ms=evCreadoMs(ev); if(!ms) return false; const d=new Date(ms); return (d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate())===_hoyKey; };
+  const creadasHoy=evsLocal.filter(esDeHoy).sort((a,b)=>evCreadoMs(b)-evCreadoMs(a));
+  const historial=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fAnio||String(e.anio)===String(fAnio))&&(!fDia||String(e.dia)===String(fDia))).sort((a,b)=>evCreadoMs(b)-evCreadoMs(a));
+  const aniosDisp=Array.from(new Set(evsLocal.map(e=>String(e.anio)).filter(Boolean))).sort((a,b)=>b-a);
+  // Dibuja una tarjeta de evento. small=true => versión chica para el historial (3-4 por hilera)
+  function tarjetaEvento(ev, small){
+    const tem=tematicas.find(t=>t.id===ev.temId)||tematicas[0]||{};
+    const cnt=confs.filter(c=>c.evId===ev.id).length;
+    return(
+      <div key={ev.id} style={{background:'#fff',borderRadius:16,overflow:'hidden',border:'1px solid #eef1f6',boxShadow:'0 1px 3px rgba(15,23,42,.06)',display:'flex',flexDirection:'column'}}>
+        <div style={{background:'#0ea5e9',padding:small?'9px 11px':'14px 16px',color:'white',position:'relative'}}>
+          <div style={{position:'absolute',right:small?9:14,top:small?8:12,background:'rgba(255,255,255,.2)',borderRadius:10,width:small?34:46,height:small?34:46,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',border:'1px solid rgba(255,255,255,.3)'}}>
+            <span style={{fontWeight:900,fontSize:small?14:18,lineHeight:1}}>{ev.dia}</span>
+            <span style={{fontSize:small?7:8,textTransform:'uppercase',fontWeight:700}}>{(MESES[+ev.mes]||'').slice(0,3)}</span>
+          </div>
+          <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+            <span style={{fontSize:small?8:9,background:'rgba(0,0,0,.2)',padding:'2px 8px',borderRadius:99,fontWeight:700}}>{ev.tipo}</span>
+            {ev.doble&&<span style={{fontSize:small?8:9,background:'#f97316',color:'white',padding:'2px 8px',borderRadius:99,fontWeight:900}}>🎂🎂</span>}
+          </div>
+          <div style={{fontWeight:900,fontSize:small?14:20,marginTop:4,paddingRight:small?34:46,lineHeight:1.1}}>{ev.nombre}{ev.doble&&ev.nombre2?<span style={{fontSize:small?10:13,fontWeight:600,opacity:.85}}> & {ev.nombre2}</span>:''}</div>
+          <div style={{fontSize:small?9:11,opacity:.85}}>{ev.hIni} a {ev.hFin} hs</div>
+        </div>
+        <div style={{height:small?60:90,background:'#0f172a',position:'relative',overflow:'hidden'}}>
+          <img src={tem.img} alt="" style={{width:'100%',height:'100%',objectFit:'cover',opacity:.85}}/>
+          <span style={{position:'absolute',bottom:5,left:8,background:'rgba(0,0,0,.75)',color:'white',fontSize:small?8:9,padding:'2px 6px',borderRadius:5,fontWeight:700}}>{tem.nombre}</span>
+        </div>
+        {!small&&<div style={{padding:'10px 14px',fontSize:11,flex:1}}>
+          <p><b>Papá/Mamá:</b> {ev.nomPapa}</p>
+          <p><b>Celular:</b> {ev.celPapa}</p>
+          <div style={{background:'#f8fafc',borderRadius:10,padding:'6px 10px',display:'flex',justifyContent:'space-between',marginTop:6}}>
+            <span>👤 <b>{ev.user}</b></span><span>🔑 <b>{ev.pass}</b></span>
+          </div>
+        </div>}
+        <div style={{borderTop:'1px solid #f1f5f9',padding:small?'6px 8px':'8px 12px',display:'flex',gap:4,justifyContent:'space-around',background:'#fafafa',flexWrap:'wrap'}}>
+          <button onClick={()=>enviarCredsWA(ev)} title="Enviar acceso al papá" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>🔑</button>
+          <button onClick={()=>copiarLink(ev.id)} title="Copiar link invitado" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>🔗</button>
+          <button onClick={()=>{setInvEvId(ev.id);setVista('admin-asistencias');}} title="Ver asistentes" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18,position:'relative'}}>👥<span style={{position:'absolute',top:0,right:0,background:'#7c3aed',color:'white',fontSize:7,borderRadius:99,width:12,height:12,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{cnt}</span></button>
+          <button onClick={()=>{setForm({...ev});setEditId(ev.id);setOpen(true);setTemOpen(false);window.scrollTo(0,0);}} title="Editar" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>✏️</button>
+          <button onClick={()=>setBorrarEv(ev)} title="Borrar tarjeta" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>🗑</button>
+        </div>
+        {!small&&<button onClick={()=>enviarCredsWA(ev)} style={{background:'#16a34a',color:'white',border:'none',padding:'7px',fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #15803d'}}>🔑 Enviar acceso por WhatsApp</button>}
+        {!small&&<button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>🎁 Ver Invitación</button>}
+        {!small&&setPapaSesion&&<button onClick={()=>{setPapaSesion({...ev,optinWA:true});setVista('papa-creador');}} style={{background:'#0f172a',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>👨‍👦 Entrar como papá (sin contraseña)</button>}
+        {!small&&<button onClick={()=>compartirLinkInv(ev)} style={{background:'#25d366',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #1ebe57'}}>🔗 Compartir link (abre solo la tarjeta)</button>}
+        {!small&&<button onClick={()=>generarTarjetaImagen(ev,sucAct,tematicas,iaConfig,'compartir')} style={{background:'#0ea5e9',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #0284c7'}}>📷 Compartir tarjeta (imagen, sin link)</button>}
+        {small&&<button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:7,fontWeight:700,fontSize:10,cursor:'pointer'}}>🎁 Ver invitación</button>}
+      </div>
+    );
+  }
+
   return(
     <div className="fade-in" style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
       {msgOk&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msgOk}</div>}
       <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:18}}>
-        <div><h1 style={{fontWeight:900,fontSize:22}}>Eventos — {sucAct.nombre}</h1><p style={{fontSize:11,color:'#64748b'}}>{evsLocal.length} evento(s)</p></div>
-        <button style={{...S.btn,background:'#06b6d4',color:'#0f172a'}} onClick={()=>{setOpen(!open);setEditId(null);setForm(ef);setTemOpen(false);}}>{open?'✕ Cancelar':'+ Cargar Evento'}</button>
-      </div>
-
-      {/* Filtros */}
-      <div style={{...S.card,display:'flex',gap:12,flexWrap:'wrap',alignItems:'center',marginBottom:14,padding:'10px 16px'}}>
-        <span style={{fontSize:11,fontWeight:700,color:'#64748b'}}>🔍 Filtrar:</span>
-        <select value={fMes} onChange={e=>setFMes(e.target.value)} style={{padding:'6px 10px',border:'1px solid #e2e8f0',borderRadius:10,fontSize:12,fontWeight:700}}>
-          <option value=''>— Todos los meses —</option>
-          {MESES.slice(1).map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
-        </select>
-        <input placeholder="Día" value={fDia} onChange={e=>setFDia(e.target.value)} style={{...S.input,width:90,padding:'6px 10px'}}/>
-        <span style={{fontSize:11,color:'#94a3b8'}}>{listFiltrada.length} resultado(s)</span>
+        <div><h1 style={{fontWeight:900,fontSize:22}}>Tarjetas — {sucAct.nombre}</h1><p style={{fontSize:11,color:'#64748b'}}>{evsLocal.length} en total</p></div>
+        <button style={{...S.btn,background:open?'#ef4444':'#06b6d4',color:open?'white':'#0f172a',padding:'12px 22px',fontSize:15,fontWeight:900}} onClick={()=>{setOpen(!open);setEditId(null);setForm(ef);setTemOpen(false);}}>{open?'✕ Cancelar':'➕ Crear tarjeta'}</button>
       </div>
 
       {/* Formulario */}
@@ -1223,59 +1265,37 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
         </div>
       )}
 
-      {/* Tarjetas */}
-      {listFiltrada.length===0
-        ?<div style={{textAlign:'center',color:'#94a3b8',padding:48}}>No hay cumpleaños para esa fecha.</div>
-        :<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:16}}>
-          {listFiltrada.map(ev=>{
-            const tem=tematicas.find(t=>t.id===ev.temId)||tematicas[0];
-            const cnt=confs.filter(c=>c.evId===ev.id).length;
-            return(
-              <div key={ev.id} style={{background:'#fff',borderRadius:20,overflow:'hidden',border:'1px solid #e2e8f0',display:'flex',flexDirection:'column'}}>
-                <div style={{background:'linear-gradient(135deg,#0088cc,#06b6d4)',padding:'14px 16px',color:'white',position:'relative'}}>
-                  <div style={{position:'absolute',right:14,top:12,background:'rgba(255,255,255,.2)',backdropFilter:'blur(8px)',borderRadius:12,width:46,height:46,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',border:'1px solid rgba(255,255,255,.3)'}}>
-                    <span style={{fontWeight:900,fontSize:18,lineHeight:1}}>{ev.dia}</span>
-                    <span style={{fontSize:8,textTransform:'uppercase',fontWeight:700}}>{MESES[+ev.mes]?.slice(0,3)}</span>
-                  </div>
-                  <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
-                    <span style={{fontSize:9,background:'rgba(0,0,0,.2)',padding:'2px 8px',borderRadius:99,fontWeight:700}}>{ev.tipo}</span>
-                    {ev.doble&&<span style={{fontSize:9,background:'#f97316',color:'white',padding:'2px 8px',borderRadius:99,fontWeight:900}}>🎂🎂 DOBLE</span>}
-                  </div>
-                  <div style={{fontWeight:900,fontSize:20,marginTop:4}}>{ev.nombre}{ev.doble&&ev.nombre2?<span style={{fontSize:13,fontWeight:600,opacity:.85}}> & {ev.nombre2}</span>:''}</div>
-                  <div style={{fontSize:11,opacity:.85}}>{ev.hIni} a {ev.hFin} hs</div>
-                </div>
-                <div style={{height:90,background:'#0f172a',position:'relative',overflow:'hidden'}}>
-                  <img src={tem.img} alt="" style={{width:'100%',height:'100%',objectFit:'cover',opacity:.8}}/>
-                  <span style={{position:'absolute',bottom:5,left:8,background:'rgba(0,0,0,.75)',color:'white',fontSize:9,padding:'2px 6px',borderRadius:5,fontWeight:700}}>{tem.nombre}</span>
-                </div>
-                <div style={{padding:'10px 14px',fontSize:11,flex:1}}>
-                  <p><b>Papá/Mamá:</b> {ev.nomPapa}</p>
-                  <p><b>Celular:</b> {ev.celPapa}</p>
-                  <div style={{background:'#f8fafc',borderRadius:10,padding:'6px 10px',display:'flex',justifyContent:'space-between',marginTop:6}}>
-                    <span>👤 <b>{ev.user}</b></span><span>🔑 <b>{ev.pass}</b></span>
-                  </div>
-                </div>
-                <div style={{borderTop:'1px solid #f1f5f9',padding:'8px 12px',display:'flex',gap:6,justifyContent:'space-around',background:'#fafafa'}}>
-                  <a href={`tel:${ev.celPapa}`} title="Llamar" style={{padding:6,borderRadius:8,color:'#0088cc',textDecoration:'none',fontSize:18}}>📞</a>
-                  <button onClick={()=>enviarCredsWA(ev)} title="Enviar acceso por WhatsApp al papá" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>🔑</button>
-                  <button onClick={()=>copiarLink(ev.id)} title="Copiar link invitado" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>🔗</button>
-                  <button onClick={()=>{setInvEvId(ev.id);setVista('admin-asistencias');}} title="Ver asistentes" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18,position:'relative'}}>
-                    👥<span style={{position:'absolute',top:0,right:0,background:'#7c3aed',color:'white',fontSize:8,borderRadius:99,width:13,height:13,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{cnt}</span>
-                  </button>
-                  <button onClick={()=>{setForm({...ev});setEditId(ev.id);setOpen(true);setTemOpen(false);window.scrollTo(0,0);}} title="Editar" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>✏️</button>
-                  <button onClick={()=>setBorrarEv(ev)} title="Borrar tarjeta" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>🗑</button>
-                </div>
-                {/* Botón envío credenciales destacado */}
-                <button onClick={()=>enviarCredsWA(ev)} style={{background:'#16a34a',color:'white',border:'none',padding:'7px',fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #15803d'}}>
-                  🔑 Enviar acceso por WhatsApp
-                </button>
-                <button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>🎁 Ver Invitación</button>
-                {setPapaSesion&&<button onClick={()=>{setPapaSesion({...ev,optinWA:true});setVista('papa-creador');}} style={{background:'#0f172a',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>👨‍👦 Entrar como papá (sin contraseña)</button>}
-                <button onClick={()=>compartirLinkInv(ev)} style={{background:'#25d366',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #1ebe57'}}>🔗 Compartir link (abre solo la tarjeta)</button>
-                <button onClick={()=>generarTarjetaImagen(ev,sucAct,tematicas,iaConfig,'compartir')} style={{background:'#0ea5e9',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #0284c7'}}>📷 Compartir tarjeta (imagen, sin link)</button>
-              </div>
-            );
-          })}
+      {/* ── TARJETAS CREADAS HOY ── */}
+      <div style={{marginBottom:10,fontSize:14,fontWeight:900,color:'#0ea5e9',letterSpacing:.3}}>📅 CREADAS HOY {creadasHoy.length>0&&<span style={{color:'#94a3b8',fontWeight:700,fontSize:12}}>({creadasHoy.length})</span>}</div>
+      {creadasHoy.length===0
+        ?<div style={{textAlign:'center',color:'#94a3b8',padding:'26px 16px',background:'#fff',border:'1px dashed #e2e8f0',borderRadius:14,marginBottom:26,fontSize:13}}>Todavía no creaste ninguna tarjeta hoy. Tocá <b>➕ Crear tarjeta</b> arriba.</div>
+        :<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(250px,1fr))',gap:16,marginBottom:26}}>
+          {creadasHoy.map(ev=>tarjetaEvento(ev,false))}
+        </div>
+      }
+
+      {/* ── HISTORIAL POR MES / AÑO ── */}
+      <div style={{...S.card,marginBottom:14,padding:'14px 16px'}}>
+        <div style={{fontSize:14,fontWeight:900,color:'#0ea5e9',letterSpacing:.3,marginBottom:4}}>🔎 HISTORIAL DE TARJETAS</div>
+        <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Buscá por mes y/o año. Aparecen como tarjetitas más chicas.</div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+          <select value={fMes} onChange={e=>setFMes(e.target.value)} style={{...S.input,width:'auto',fontWeight:700,fontSize:12,padding:'8px 10px'}}>
+            <option value=''>📅 Todos los meses</option>
+            {MESES.slice(1).map((m,i)=><option key={i} value={String(i+1).padStart(2,'0')}>{m}</option>)}
+          </select>
+          <select value={fAnio} onChange={e=>setFAnio(e.target.value)} style={{...S.input,width:'auto',fontWeight:700,fontSize:12,padding:'8px 10px'}}>
+            <option value=''>📆 Todos los años</option>
+            {aniosDisp.map(a=><option key={a} value={a}>{a}</option>)}
+          </select>
+          <input placeholder="Día" value={fDia} onChange={e=>setFDia(e.target.value)} style={{...S.input,width:80,padding:'8px 10px'}}/>
+          {(fMes||fAnio||fDia)&&<button onClick={()=>{setFMes('');setFAnio('');setFDia('');}} style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'8px 12px',fontSize:12}}>✕ Limpiar</button>}
+          <span style={{fontSize:11,color:'#94a3b8',marginLeft:'auto'}}>{historial.length} resultado(s)</span>
+        </div>
+      </div>
+      {historial.length===0
+        ?<div style={{textAlign:'center',color:'#94a3b8',padding:40}}>No hay tarjetas para esa búsqueda.</div>
+        :<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(165px,1fr))',gap:12}}>
+          {historial.map(ev=>tarjetaEvento(ev,true))}
         </div>
       }
     </div>
