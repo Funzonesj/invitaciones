@@ -991,7 +991,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   const ef={nombre:'',tipo:'Cumpleaños',edad:'',edadUnidad:'años',dia:'',mes:'',anio:String((iaConfig&&iaConfig.anioVigente)||2026),hIni:'',hFin:'',celPapa:'',dni:'',nomPapa:'',user:'',pass:'',temId:((iaConfig&&iaConfig.temDefault)||'t-3'),doble:false,nombre2:'',edad2:'',temId2:'t-1',nomPapa2:'',celPapa2:''};
   const [form,setForm]=useState(ef); const [editId,setEditId]=useState(null); const [open,setOpen]=useState(false);
   const [fMes,setFMes]=useState(''); const [fDia,setFDia]=useState(''); const [msgOk,setMsgOk]=useState('');
-  const [busqTema,setBusqTema]=useState(''); const [catTema,setCatTema]=useState('TODOS');
+  const [busqTema,setBusqTema]=useState(''); const [catTema,setCatTema]=useState('TODOS'); const [temOpen,setTemOpen]=useState(false);
 
   function autoCredenciales(){
     if(!form.nombre) return alert('Ingresá primero el nombre del agasajado.');
@@ -1024,7 +1024,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     const fmt=fmtTipo(form.tipo,iaConfig);
     if(editId){setEventos(eventos.map(x=>x.id===editId?{...x,...form,...fmt}:x));setEditId(null);}
     else{setEventos(prev=>[...prev,{...form,...fmt,id:'ev-'+Date.now().toString(16),sucId:sucAct.id}]);}
-    setForm(ef);setOpen(false);
+    setForm(ef);setOpen(false);setTemOpen(false);
     setMsgOk('✅ Se guardó correctamente');flashOk('✓ ¡Guardado!');setTimeout(()=>setMsgOk(''),3500);
     window.scrollTo(0,0);
   }
@@ -1037,7 +1037,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
       {msgOk&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msgOk}</div>}
       <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:18}}>
         <div><h1 style={{fontWeight:900,fontSize:22}}>Eventos — {sucAct.nombre}</h1><p style={{fontSize:11,color:'#64748b'}}>{evsLocal.length} evento(s)</p></div>
-        <button style={{...S.btn,background:'#06b6d4',color:'#0f172a'}} onClick={()=>{setOpen(!open);setEditId(null);setForm(ef);}}>{open?'✕ Cancelar':'+ Cargar Evento'}</button>
+        <button style={{...S.btn,background:'#06b6d4',color:'#0f172a'}} onClick={()=>{setOpen(!open);setEditId(null);setForm(ef);setTemOpen(false);}}>{open?'✕ Cancelar':'+ Cargar Evento'}</button>
       </div>
 
       {/* Filtros */}
@@ -1087,31 +1087,45 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                 </select>
               </label>
             </div>
-            {/* Temática inicial: panel con buscador y categorías (como el de los papás) */}
+            {/* Temática inicial: viene YA CARGADA la predeterminada (⭐). Solo se cambia si la abrís. */}
             <div style={{marginBottom:14}}>
               <span style={S.label}>Temática inicial</span>
-              <div style={{display:'flex',gap:8,marginBottom:8,flexWrap:'wrap'}}>
-                <select value={catTema} onChange={e=>setCatTema(e.target.value)} style={{...S.input,maxWidth:200,fontWeight:700}}>
-                  {CATS.map(c=><option key={c} value={c}>{c==='TODOS'?'📂 Todas las categorías':c}</option>)}
-                </select>
-                <input value={busqTema} onChange={e=>setBusqTema(e.target.value)} placeholder="🔍 Buscar personaje..." style={{...S.input,flex:1,minWidth:140}}/>
+              {(()=>{const temSel=tematicas.find(t=>t.id===form.temId)||{};const esDef=iaConfig&&iaConfig.temDefault===form.temId;return(
+              <div style={{display:'flex',alignItems:'center',gap:10,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:12,padding:8}}>
+                <div style={{width:42,height:56,borderRadius:8,overflow:'hidden',background:'#0f172a',flexShrink:0}}>{temSel.img&&<img src={temSel.img} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:800,color:'#0f172a',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{temSel.emoji} {temSel.nombre||'— (elegí una)'}</div>
+                  {esDef&&<div style={{fontSize:10,color:'#f59e0b',fontWeight:800}}>⭐ Predeterminada · ya cargada</div>}
+                </div>
+                <button type="button" onClick={()=>setTemOpen(o=>!o)} style={{...S.btn,background:temOpen?'#7c3aed':'#ede9fe',color:temOpen?'white':'#7c3aed',padding:'7px 12px',fontSize:12,fontWeight:800}}>{temOpen?'✓ Listo':'✏️ Cambiar'}</button>
               </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(90px,1fr))',gap:8,maxHeight:230,overflowY:'auto'}} className="scrollbar-none">
-                {ordenarRecientes(tematicas.filter(t=>(catTema==='TODOS'||(t.cats||[]).includes(catTema))&&t.nombre.toLowerCase().includes(busqTema.toLowerCase()))).map(t=>(
-                  <div key={t.id} onClick={()=>setForm({...form,temId:t.id})} style={{borderRadius:10,overflow:'hidden',cursor:'pointer',border:form.temId===t.id?'3px solid #06b6d4':'2px solid #e2e8f0'}}>
-                    <div style={{aspectRatio:'9/16',maxHeight:120,background:'#0f172a',position:'relative',overflow:'hidden'}}>
-                      <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                      {form.temId===t.id&&<span style={{position:'absolute',top:4,right:4,background:'#06b6d4',color:'white',borderRadius:'50%',width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11}}>✓</span>}
-                      {iaConfig&&iaConfig.temDefault===t.id&&<span style={{position:'absolute',top:4,left:4,background:'#f59e0b',color:'white',borderRadius:99,padding:'1px 5px',fontSize:9,fontWeight:900}}>⭐</span>}
+              );})()}
+              {temOpen&&(
+              <div style={{marginTop:10}}>
+                <div style={{display:'flex',gap:8,marginBottom:8,flexWrap:'wrap'}}>
+                  <select value={catTema} onChange={e=>setCatTema(e.target.value)} style={{...S.input,maxWidth:200,fontWeight:700}}>
+                    {CATS.map(c=><option key={c} value={c}>{c==='TODOS'?'📂 Todas las categorías':c}</option>)}
+                  </select>
+                  <input value={busqTema} onChange={e=>setBusqTema(e.target.value)} placeholder="🔍 Buscar personaje..." style={{...S.input,flex:1,minWidth:140}}/>
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(90px,1fr))',gap:8,maxHeight:230,overflowY:'auto'}} className="scrollbar-none">
+                  {ordenarRecientes(tematicas.filter(t=>(catTema==='TODOS'||(t.cats||[]).includes(catTema))&&t.nombre.toLowerCase().includes(busqTema.toLowerCase()))).map(t=>(
+                    <div key={t.id} onClick={()=>setForm({...form,temId:t.id})} style={{borderRadius:10,overflow:'hidden',cursor:'pointer',border:form.temId===t.id?'3px solid #06b6d4':'2px solid #e2e8f0'}}>
+                      <div style={{aspectRatio:'9/16',maxHeight:120,background:'#0f172a',position:'relative',overflow:'hidden'}}>
+                        <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                        {form.temId===t.id&&<span style={{position:'absolute',top:4,right:4,background:'#06b6d4',color:'white',borderRadius:'50%',width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11}}>✓</span>}
+                        {iaConfig&&iaConfig.temDefault===t.id&&<span style={{position:'absolute',top:4,left:4,background:'#f59e0b',color:'white',borderRadius:99,padding:'1px 5px',fontSize:9,fontWeight:900}}>⭐</span>}
+                      </div>
+                      <div style={{padding:'3px 4px',fontSize:9,fontWeight:700,color:'#475569',textAlign:'center',background:'#f8fafc',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.emoji} {t.nombre}</div>
                     </div>
-                    <div style={{padding:'3px 4px',fontSize:9,fontWeight:700,color:'#475569',textAlign:'center',background:'#f8fafc',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.emoji} {t.nombre}</div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div style={{marginTop:8,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                  <button type="button" onClick={()=>{if(setIaConfig)setIaConfig(c=>({...c,temDefault:form.temId}));flashOk('⭐ ¡Predeterminada guardada!');}} style={{...S.btn,background:'#f59e0b',color:'white',padding:'7px 12px',fontSize:11,fontWeight:800}}>⭐ Usar la elegida como predeterminada</button>
+                  {iaConfig&&iaConfig.temDefault&&<span style={{fontSize:10,color:'#64748b'}}>Predeterminada: <b>{(tematicas.find(t=>t.id===iaConfig.temDefault)||{}).nombre||'—'}</b></span>}
+                </div>
               </div>
-              <div style={{marginTop:8,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                <button type="button" onClick={()=>{if(setIaConfig)setIaConfig(c=>({...c,temDefault:form.temId}));flashOk('⭐ ¡Predeterminada guardada!');}} style={{...S.btn,background:'#f59e0b',color:'white',padding:'7px 12px',fontSize:11,fontWeight:800}}>⭐ Usar la elegida como predeterminada</button>
-                {iaConfig&&iaConfig.temDefault&&<span style={{fontSize:10,color:'#64748b'}}>Predeterminada: <b>{(tematicas.find(t=>t.id===iaConfig.temDefault)||{}).nombre||'—'}</b></span>}
-              </div>
+              )}
             </div>
             {/* Credenciales con auto-generador */}
             <div style={{background:'#f0fdf4',borderRadius:12,padding:12,border:'1px solid #bbf7d0',marginBottom:10}}>
@@ -1233,7 +1247,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                   <button onClick={()=>{setInvEvId(ev.id);setVista('admin-asistencias');}} title="Ver asistentes" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18,position:'relative'}}>
                     👥<span style={{position:'absolute',top:0,right:0,background:'#7c3aed',color:'white',fontSize:8,borderRadius:99,width:13,height:13,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{cnt}</span>
                   </button>
-                  <button onClick={()=>{setForm({...ev});setEditId(ev.id);setOpen(true);window.scrollTo(0,0);}} title="Editar" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>✏️</button>
+                  <button onClick={()=>{setForm({...ev});setEditId(ev.id);setOpen(true);setTemOpen(false);window.scrollTo(0,0);}} title="Editar" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>✏️</button>
                   <button onClick={()=>setBorrarEv(ev)} title="Borrar tarjeta" style={{padding:6,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:18}}>🗑</button>
                 </div>
                 {/* Botón envío credenciales destacado */}
