@@ -2706,6 +2706,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   function setPortadaPos(v){setPapaSesion(ps=>{const n={...ps,portadaPos:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,portadaPos:v}:e));return n;});}
   const [regaloVideo,setRegaloVideo]=useState(false); // cartel "te regalamos un video" tras generar las imágenes
   const [verEjemploVid,setVerEjemploVid]=useState(false); // reproductor del video de ejemplo
+  const [editPanel,setEditPanel]=useState(null); // null=inicio (cuadraditos) | 'datos' | 'tematica' | 'foto'
+  function guardarYVolver(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setEditPanel(null);flashOk('✓ ¡Guardado!');}
   // Pedir un personaje a la encargada (nombre + foto de referencia)
   const [pedirOpen,setPedirOpen]=useState(false);
   const [pedNombre,setPedNombre]=useState('');
@@ -3013,11 +3015,54 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* ══ TARJETA ══ */}
       {seccion==='tarjeta'&&(
-        <div style={{display:'grid',gridTemplateColumns:'min(340px,100%) 1fr',gap:20,alignItems:'start'}} className="papa-grid">
-          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+        <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
+          {(editPanel===null&&modoPortada!=='ia-imagen')&&(
+            <div className="fade-in">
+              <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:14}}>
+                <div style={{position:'relative',aspectRatio:'4/5',maxHeight:'42vh',background:'#0f172a',overflow:'hidden'}}>
+                  <img src={portadaImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+portadaPos+'%'}}/>
+                  <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.75) 0%,transparent 50%)'}}></div>
+                  <span style={{position:'absolute',top:10,left:10,background:'#f43f5e',color:'white',fontSize:9,padding:'3px 10px',borderRadius:99,fontWeight:900}}>TE INVITO!</span>
+                  <div style={{position:'absolute',bottom:10,left:0,right:0,textAlign:'center',color:'white'}}>
+                    <div style={{fontSize:22,fontWeight:900,textShadow:'0 2px 8px rgba(0,0,0,.5)'}}>{form.nombre||papaSesion.nombre}</div>
+                    <div style={{fontSize:11,opacity:.8}}>{papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin}hs</div>
+                  </div>
+                </div>
+                <div style={{padding:'8px 12px 2px',fontSize:10,color:'#94a3b8',textAlign:'center'}}>Así se ve tu portada</div>
+                <div style={{padding:'2px 14px 12px'}}>
+                  <div style={{fontSize:10,color:'#64748b',marginBottom:4,textAlign:'center',fontWeight:700}}>↕ Acomodá la foto (movela para sacar el espacio de arriba)</div>
+                  <input type="range" min="0" max="100" value={portadaPos} onChange={e=>setPortadaPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
+                </div>
+              </div>
+              <div style={{display:'flex',gap:8,marginBottom:16}}>
+                <button onClick={()=>verTarjeta({seccion:'tarjeta'})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'12px',fontSize:13,fontWeight:900}}>👁 Ver tarjeta</button>
+                <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'12px',fontSize:13,fontWeight:900}}>🔗 Compartir</button>
+                <button onClick={()=>tarjetaImagen('compartir')} style={{...S.btn,flex:1,background:'#0ea5e9',color:'white',padding:'12px',fontSize:13,fontWeight:900}}>📷 Imagen</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:16}}>
+                {[['datos','✏️','Editar datos','#f97316'],['tematica','🎨','Editar temática','#7c3aed'],['foto','📸','Foto del niño/a','#0ea5e9']].map(([v,e,l,c])=>(
+                  <button key={v} onClick={()=>{setEditPanel(v);if(v==='tematica')setModoPortada('tematica');if(v==='foto')setModoPortada('foto');}} style={{aspectRatio:'1',borderRadius:18,border:'2px solid '+c+'44',cursor:'pointer',background:'linear-gradient(135deg,'+c+'12,'+c+'05)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,padding:8}}>
+                    <span style={{fontSize:28}}>{e}</span>
+                    <span style={{fontSize:11,fontWeight:800,color:c,textAlign:'center',lineHeight:1.15}}>{l}</span>
+                  </button>
+                ))}
+              </div>
+              <button onClick={()=>setModoPortada('ia-imagen')} style={{width:'100%',textAlign:'left',cursor:'pointer',border:'2px solid #0ea5e9',background:'linear-gradient(135deg,#0ea5e918,#a855f712)',borderRadius:18,padding:16,display:'flex',alignItems:'center',gap:12,boxShadow:'0 6px 20px rgba(14,165,233,.18)'}}>
+                {iaConfig.ejemploIA?<img src={iaConfig.ejemploIA} alt="" style={{width:60,height:78,borderRadius:10,objectFit:'cover',flexShrink:0}}/>:<span style={{fontSize:40}}>✨</span>}
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:900,fontSize:16,color:'#0369a1'}}>✨ Editar con IA (Premium)</div>
+                  <div style={{fontSize:11,color:'#64748b',lineHeight:1.35,marginTop:2}}>La foto de tu hijo/a con su personaje + video del personaje hablando 🎬</div>
+                  <div style={{fontSize:12,fontWeight:900,color:'#0ea5e9',marginTop:4}}>Con costo: ${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</div>
+                </div>
+              </button>
+              {iaConfig.ejemploVideo&&<button onClick={()=>setVerEjemploVid(true)} style={{...S.btn,width:'100%',marginTop:8,background:'#0ea5e9',color:'white',fontSize:12,fontWeight:800,padding:'10px'}}>▶️ Ver ejemplo del video</button>}
+            </div>
+          )}
+          <div style={{display:editPanel==='datos'?'flex':'none',flexDirection:'column',gap:16}}>
+            <button onClick={()=>setEditPanel(null)} style={{...S.btn,background:'#f1f5f9',color:'#334155',padding:'9px 14px',fontSize:13,fontWeight:800,alignSelf:'flex-start'}}>← Volver</button>
             <div style={S.card}>
               <h2 style={{fontWeight:900,fontSize:15,color:'#f97316',marginBottom:14}}>Datos de la Invitación</h2>
-              <form onSubmit={guardar} style={{display:'flex',flexDirection:'column',gap:11}}>
+              <form onSubmit={e=>{e.preventDefault();guardarYVolver();}} style={{display:'flex',flexDirection:'column',gap:11}}>
                 {[['😊 Nombre','nombre','text'],['🎂 Edad','edad','text'],['📱 Celular (confirmaciones)','celPapa','text']].map(([l,k,t])=>(
                   <label key={k}><span style={{...S.label,color:'#f97316'}}>{l}</span>
                     <input type={t} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={{...S.input,border:'2px solid #fed7aa',fontWeight:700}}/></label>
@@ -3055,35 +3100,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             </div>
           </div>
-          {/* Portada selector */}
-          <div style={S.card}>
-            <div style={{background:'#f0f9ff',border:'1px solid #bae6fd',borderRadius:14,padding:'12px 14px',marginBottom:16}}>
-              <p style={{fontSize:12,color:'#0369a1',margin:0}}><b>Elegí cómo crear tu tarjeta:</b> con <b>IA</b> (imagen + video del personaje), con una <b>temática</b> del catálogo, o con una <b>foto</b> de tu hijo/a. 🎬</p>
-            </div>
-            {modoPortada==='ia-imagen'&&(
-              <button onClick={()=>setModoPortada('tematica')} style={{...S.btn,background:'#f1f5f9',color:'#334155',padding:'8px 14px',fontSize:12,fontWeight:800,marginBottom:14}}>← Volver a edición</button>
-            )}
-            {(modoPortada==='tematica'||modoPortada==='foto')&&(
-              <div className="fade-in" style={{marginBottom:18}}>
-                {/* Destacada: Editar con IA */}
-                <button onClick={()=>setModoPortada('ia-imagen')} style={{width:'100%',textAlign:'left',cursor:'pointer',border:'2px solid #0ea5e9',background:'linear-gradient(135deg,#0ea5e918,#a855f710)',borderRadius:18,padding:16,display:'flex',alignItems:'center',gap:12,marginBottom:10,boxShadow:'0 6px 20px rgba(14,165,233,.18)'}}>
-                  {iaConfig.ejemploIA?<img src={iaConfig.ejemploIA} alt="" style={{width:60,height:78,borderRadius:10,objectFit:'cover',flexShrink:0}}/>:<span style={{fontSize:40}}>✨</span>}
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:900,fontSize:16,color:'#0369a1'}}>✨ Editar con IA (Premium)</div>
-                    <div style={{fontSize:11,color:'#64748b',lineHeight:1.35,marginTop:2}}>La foto de tu hijo/a con su personaje + video del personaje hablando 🎬</div>
-                    <div style={{fontSize:12,fontWeight:900,color:'#0ea5e9',marginTop:4}}>Con costo: ${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</div>
-                  </div>
-                </button>
-                {iaConfig.ejemploVideo&&<button onClick={()=>setVerEjemploVid(true)} style={{...S.btn,width:'100%',marginBottom:12,background:'#0ea5e9',color:'white',fontSize:12,fontWeight:800,padding:'10px'}}>▶️ Ver ejemplo del video</button>}
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                  {[['tematica','🎨','Editar temática','#7c3aed'],['foto','📸','Foto del niño/a','#f97316']].map(([v,e,l,c])=>(
-                    <button key={v} onClick={()=>setModoPortada(v)} style={{padding:'14px 4px',borderRadius:12,fontSize:12.5,fontWeight:800,border:'2px solid '+(modoPortada===v?c:'#e2e8f0'),cursor:'pointer',background:modoPortada===v?c:'white',color:modoPortada===v?'white':'#64748b',display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-                      <span style={{fontSize:22}}>{e}</span>{l}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* Editor: temática / foto / IA */}
+          <div style={{...S.card,display:(editPanel==='tematica'||editPanel==='foto'||modoPortada==='ia-imagen')?'block':'none'}}>
+            <button onClick={()=>{if(editPanel){guardarYVolver();}else{setEditPanel(null);}setModoPortada('tematica');}} style={{...S.btn,background:'#f1f5f9',color:'#334155',padding:'9px 14px',fontSize:13,fontWeight:800,marginBottom:14}}>← Volver</button>
             {modoPortada==='tematica'&&(
               <div className="fade-in">
                 <h2 style={{fontWeight:900,fontSize:17,marginBottom:8}}>¡Más de 830 Temáticas!</h2>
