@@ -3111,19 +3111,21 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   <input type="range" min="0" max="100" value={portadaPos} onChange={e=>setPortadaPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
                 </div>
               </div>
+              {(!!form.fotoNino||((form.iaImagenes||[]).length>0)||!!videoGuardado)&&(
               <div style={{background:'#fff',border:'1px solid #eef1f6',borderRadius:16,padding:14,marginBottom:16,boxShadow:'0 1px 3px rgba(15,23,42,.06)'}}>
                 <div style={{fontSize:13,fontWeight:800,color:'#0ea5e9',letterSpacing:.3,marginBottom:3}}>¿QUÉ VA EN TU TARJETA?</div>
-                <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Tildá una. Eso es lo que se ve y lo que se comparte.</div>
+                <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Tildá la que querés que se vea y se comparta.</div>
                 <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                  {[['foto','📸','Foto del niño/a',!!form.fotoNino],['tematica','🎨','Foto con personaje (temática)',true],['ia','✨','Generado por IA (imagen o video)',((form.iaImagenes||[]).length>0||!!videoGuardado)]].map(([t,ic,l,disp])=>(
-                    <button key={t} onClick={()=>{if(disp)elegirPortada(t);}} disabled={!disp} style={{display:'flex',alignItems:'center',gap:10,padding:'11px 12px',borderRadius:12,border:'2px solid '+(portadaTipo===t?'#7c3aed':'#e2e8f0'),background:portadaTipo===t?'#ede9fe':(disp?'white':'#f8fafc'),cursor:disp?'pointer':'not-allowed',opacity:disp?1:.55,textAlign:'left',width:'100%'}}>
+                  {[['foto','📸','Foto del niño/a',!!form.fotoNino],['tematica','🎨','Foto con personaje (temática)',true],['ia','✨','Generado por IA (imagen o video)',((form.iaImagenes||[]).length>0||!!videoGuardado)]].filter(o=>o[3]).map(([t,ic,l,disp])=>(
+                    <button key={t} onClick={()=>elegirPortada(t)} style={{display:'flex',alignItems:'center',gap:10,padding:'11px 12px',borderRadius:12,border:'2px solid '+(portadaTipo===t?'#7c3aed':'#e2e8f0'),background:portadaTipo===t?'#ede9fe':'white',cursor:'pointer',textAlign:'left',width:'100%'}}>
                       <span style={{width:22,height:22,borderRadius:'50%',border:'2px solid '+(portadaTipo===t?'#7c3aed':'#cbd5e1'),background:portadaTipo===t?'#7c3aed':'white',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:900,flexShrink:0}}>{portadaTipo===t?'✓':''}</span>
                       <span style={{fontSize:21}}>{ic}</span>
-                      <span style={{fontSize:13,fontWeight:800,color:'#334155',flex:1}}>{l}{!disp&&<span style={{fontSize:10,color:'#94a3b8',fontWeight:600}}> · todavía no la tenés</span>}</span>
+                      <span style={{fontSize:13,fontWeight:800,color:'#334155',flex:1}}>{l}</span>
                     </button>
                   ))}
                 </div>
               </div>
+              )}
               <div style={{display:'flex',gap:8,marginBottom:16}}>
                 <button onClick={()=>verTarjeta({seccion:'tarjeta'})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'12px',fontSize:13,fontWeight:900}}>👁 Ver tarjeta</button>
                 <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'12px',fontSize:13,fontWeight:900}}>🔗 Compartir</button>
