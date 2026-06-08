@@ -2024,7 +2024,7 @@ function AdminDescargables({setVista,iaConfig,setIaConfig}){
     <div className="fade-in" style={{maxWidth:700,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
       <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>📦 Descargables</h1>
-      <p style={{fontSize:11,color:'#64748b',marginBottom:16}}>Recursos que verán los papás en su panel (sección "Recursos"). Pegá el link de Google Drive de cada archivo.</p>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:16}}>Recursos que verán los papás en su panel (sección "Recursos"). <b>Subí el archivo directo</b> (PDF, imagen, etc.) o pegá un link. Los archivos se guardan en la nube; la app solo guarda el enlace, así no se pone lenta.</p>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msg}</div>}
 
       {items.length===0&&<p style={{fontSize:12,color:'#94a3b8',marginBottom:12}}>Todavía no hay recursos. Agregá el primero. 👇</p>}
@@ -2038,9 +2038,13 @@ function AdminDescargables({setVista,iaConfig,setIaConfig}){
             <label style={{width:70}}><span style={S.label}>Ícono</span><input value={it.emoji||''} onChange={e=>upd(i,'emoji',e.target.value)} maxLength={2} style={{...S.input,textAlign:'center',fontSize:18}}/></label>
             <label style={{flex:1}}><span style={S.label}>Nombre</span><input value={it.nombre||''} onChange={e=>upd(i,'nombre',e.target.value)} style={S.input} placeholder="Ej: Lista de regalos"/></label>
           </div>
-          <label style={{display:'block'}}><span style={S.label}>Link de Google Drive</span>
-            <input value={it.url||''} onChange={e=>upd(i,'url',e.target.value)} style={S.input} placeholder="https://drive.google.com/..."/>
+          <label style={{display:'block',marginBottom:8}}><span style={S.label}>Archivo (subido) o link</span>
+            <input value={it.url||''} onChange={e=>upd(i,'url',e.target.value)} style={S.input} placeholder="Subí un archivo 👇 o pegá un link (https://...)"/>
           </label>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <label style={{...S.btn,background:'#0f172a',color:'white',padding:'8px 12px',fontSize:12,cursor:'pointer'}}>📎 Subir archivo<input type="file" style={{display:'none'}} onChange={async e=>{const f=e.target.files[0];if(!f)return;try{flashOk('Subiendo archivo…');const ext=(String(f.name).split('.').pop()||'bin').toLowerCase();const ct=f.type||'application/octet-stream';const r=await fetch('/api/subir-init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:ct,ext})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.upload_url||!d.file_url){alert((d&&d.error)||'No se pudo iniciar la subida.');return;}const up=await fetch(d.upload_url,{method:'PUT',headers:{'Content-Type':ct},body:f});if(!up.ok){alert('No se pudo subir el archivo.');return;}upd(i,'url',d.file_url);flashOk('✓ Archivo subido');}catch(err){alert('No se pudo subir el archivo.');}}}/></label>
+            {it.url&&<a href={it.url} target="_blank" rel="noopener" style={{fontSize:11,color:'#16a34a',fontWeight:700,textDecoration:'none'}}>✓ Ver archivo</a>}
+          </div>
         </div>
       ))}
 
