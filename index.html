@@ -3209,8 +3209,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               <div style={{...S.card,marginBottom:14}}>
                 <div style={{fontWeight:900,fontSize:13,color:'#0369a1',marginBottom:8,textAlign:'center'}}>✨ Mirá cómo queda con IA</div>
                 <div style={{display:'flex',gap:10}}>
-                  {iaConfig.ejemploIA&&<img src={iaConfig.ejemploIA} alt="ejemplo" style={{flex:1,minWidth:0,borderRadius:12,objectFit:'cover',maxHeight:'38vh'}}/>}
-                  {iaConfig.ejemploVideo&&<video src={iaConfig.ejemploVideo} controls playsInline style={{flex:1,minWidth:0,borderRadius:12,background:'#000',maxHeight:'38vh'}}></video>}
+                  {iaConfig.ejemploIA&&<div style={{flex:1,minWidth:0,aspectRatio:'9/16',borderRadius:12,overflow:'hidden',background:'#0f172a'}}><img src={iaConfig.ejemploIA} alt="ejemplo" style={{width:'100%',height:'100%',objectFit:'cover'}}/></div>}
+                  {iaConfig.ejemploVideo&&<div style={{flex:1,minWidth:0,aspectRatio:'9/16',borderRadius:12,overflow:'hidden',background:'#000'}}><video src={iaConfig.ejemploVideo} controls playsInline style={{width:'100%',height:'100%',objectFit:'cover'}}></video></div>}
                 </div>
               </div>
             )}
