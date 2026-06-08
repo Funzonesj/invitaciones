@@ -3060,6 +3060,11 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           )}
           <div style={{display:editPanel==='datos'?'flex':'none',flexDirection:'column',gap:16}}>
             <button onClick={()=>setEditPanel(null)} style={{...S.btn,background:'#7c3aed',color:'white',padding:'11px 22px',fontSize:14,fontWeight:900,alignSelf:'flex-start',boxShadow:'0 4px 14px rgba(124,58,237,.35)'}}>← Volver</button>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>verTarjeta({seccion:seccion,modo:modoPortada,editPanel:editPanel,visto:true})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'10px',fontSize:12,fontWeight:900}}>👁 Ver</button>
+              <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'10px',fontSize:12,fontWeight:900}}>🔗 Link</button>
+              <button onClick={()=>tarjetaImagen('compartir')} style={{...S.btn,flex:1,background:'#0ea5e9',color:'white',padding:'10px',fontSize:12,fontWeight:900}}>📷 Imagen</button>
+            </div>
             <div style={S.card}>
               <h2 style={{fontWeight:900,fontSize:15,color:'#f97316',marginBottom:14}}>Datos de la Invitación</h2>
               <form onSubmit={e=>{e.preventDefault();guardarYVolver();}} style={{display:'flex',flexDirection:'column',gap:11}}>
@@ -3102,7 +3107,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           </div>
           {/* Editor: temática / foto / IA */}
           <div style={{...S.card,display:(editPanel==='tematica'||editPanel==='foto'||modoPortada==='ia-imagen')?'block':'none'}}>
-            <button onClick={()=>{if(editPanel){guardarYVolver();}else{setEditPanel(null);}setModoPortada('tematica');}} style={{...S.btn,background:'#7c3aed',color:'white',padding:'11px 22px',fontSize:14,fontWeight:900,marginBottom:14,boxShadow:'0 4px 14px rgba(124,58,237,.35)'}}>← Volver</button>
+            <button onClick={()=>{if(editPanel){guardarYVolver();}else{setEditPanel(null);}setModoPortada('tematica');}} style={{...S.btn,background:'#7c3aed',color:'white',padding:'11px 22px',fontSize:14,fontWeight:900,marginBottom:12,boxShadow:'0 4px 14px rgba(124,58,237,.35)'}}>← Volver</button>
+            <div style={{display:'flex',gap:8,marginBottom:14}}>
+              <button onClick={()=>verTarjeta({seccion:seccion,modo:modoPortada,editPanel:editPanel,visto:true})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'10px',fontSize:12,fontWeight:900}}>👁 Ver</button>
+              <button onClick={compartirInvitacionWA} style={{...S.btn,flex:1,background:'#25d366',color:'white',padding:'10px',fontSize:12,fontWeight:900}}>🔗 Link</button>
+              <button onClick={()=>tarjetaImagen('compartir')} style={{...S.btn,flex:1,background:'#0ea5e9',color:'white',padding:'10px',fontSize:12,fontWeight:900}}>📷 Imagen</button>
+            </div>
             {modoPortada==='tematica'&&(
               <div className="fade-in">
                 <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:14,border:'2px solid #7c3aed'}}>
