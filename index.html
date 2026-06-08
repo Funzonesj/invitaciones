@@ -3104,7 +3104,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
           {(editPanel===null&&modoPortada!=='ia-imagen')&&(
             <div className="fade-in">
-              {(!!form.fotoNino||((form.iaImagenes||[]).length>0)||!!videoGuardado)&&(
+              {(((form.iaImagenes||[]).length>0)||!!videoGuardado)&&(
               <div style={{background:'#fff',border:'1px solid #eef1f6',borderRadius:16,padding:14,marginBottom:14,boxShadow:'0 1px 3px rgba(15,23,42,.06)'}}>
                 <div style={{fontSize:13,fontWeight:800,color:'#0ea5e9',letterSpacing:.3,marginBottom:3}}>¿QUÉ VA EN TU TARJETA?</div>
                 <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Tildá la que querés que se vea y se comparta.</div>
