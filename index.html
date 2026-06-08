@@ -497,7 +497,7 @@ function App() {
         {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
-        {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso}/>}
+        {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso} adminSesion={adminSesion} sucAct={sucAct}/>}
         {vista==='papa-creador'      && papaSesion&&<PapaCreador key={papaSesion.id} setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs} pedidos={pedidos} setPedidos={setPedidos}/>}
         {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))} esInvPortada={true}/>}
         {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))}/>}
@@ -2096,7 +2096,7 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
   );
 }
 
-function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso}){
+function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso,adminSesion,sucAct}){
   const [u,setU]=useState('');const [p,setP]=useState('');const [err,setErr]=useState('');const [showP,setShowP]=useState(false);
   function sub(e){
     e.preventDefault();
@@ -2121,6 +2121,15 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso}){
           <h2 style={{fontWeight:900,fontSize:20,marginTop:8}}>Acceso para Padres</h2>
           <p style={{color:'#64748b',fontSize:12,marginTop:4}}>Personalizá tu invitación digital</p>
         </div>
+        {adminSesion&&(
+          <div style={{background:'#0f172a',borderRadius:12,padding:12,marginBottom:16}}>
+            <div style={{fontSize:11,fontWeight:800,color:'#fbbf24',marginBottom:8}}>👑 Sos admin — entrá sin contraseña:</div>
+            <select onChange={e=>{const ev=eventos.find(x=>x.id===e.target.value);if(ev){setPapaSesion({...ev,optinWA:true});setInvEvId(ev.id);setVista('papa-creador');}}} defaultValue="" style={{...S.input,color:'#1e293b'}}>
+              <option value="">Elegí un evento…</option>
+              {eventos.filter(ev=>String(ev.id).indexOf('__')!==0&&(!sucAct||ev.sucId===sucAct.id)).map(ev=><option key={ev.id} value={ev.id}>{ev.nombre} · {ev.dia}/{ev.mes}/{ev.anio}</option>)}
+            </select>
+          </div>
+        )}
         {(err||aviso)&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#dc2626',padding:'10px 14px',borderRadius:12,fontSize:12,marginBottom:12}}>{err||aviso}</div>}
         <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
           <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Usuario" autoComplete="username" required/>
