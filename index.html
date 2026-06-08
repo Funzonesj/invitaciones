@@ -1038,7 +1038,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   function guardarEvento(){
     const fmt=fmtTipo(form.tipo,iaConfig);
     if(editId){setEventos(eventos.map(x=>x.id===editId?{...x,...form,...fmt}:x));setEditId(null);}
-    else{setEventos(prev=>[...prev,{...form,...fmt,id:'ev-'+Date.now().toString(16),sucId:sucAct.id}]);}
+    else{setEventos(prev=>[...prev,{...form,...fmt,id:'ev-'+Date.now().toString(16),sucId:sucAct.id,creado:Date.now()}]);}
     setForm(ef);setOpen(false);setTemOpen(false);
     setMsgOk('✅ Se guardó correctamente');flashOk('✓ ¡Guardado!');setTimeout(()=>setMsgOk(''),3500);
     window.scrollTo(0,0);
