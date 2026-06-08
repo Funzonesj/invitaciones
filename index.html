@@ -3205,6 +3205,15 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <canvas ref={canvasRef} style={{display:'none'}}/>
               </div>
             )}
+            {modoPortada==='ia-imagen'&&(iaConfig.ejemploIA||iaConfig.ejemploVideo)&&(
+              <div style={{...S.card,marginBottom:14}}>
+                <div style={{fontWeight:900,fontSize:13,color:'#0369a1',marginBottom:8,textAlign:'center'}}>✨ Mirá cómo queda con IA</div>
+                <div style={{display:'flex',gap:10}}>
+                  {iaConfig.ejemploIA&&<img src={iaConfig.ejemploIA} alt="ejemplo" style={{flex:1,minWidth:0,borderRadius:12,objectFit:'cover',maxHeight:'38vh'}}/>}
+                  {iaConfig.ejemploVideo&&<video src={iaConfig.ejemploVideo} controls playsInline style={{flex:1,minWidth:0,borderRadius:12,background:'#000',maxHeight:'38vh'}}></video>}
+                </div>
+              </div>
+            )}
             {modoPortada==='ia-imagen'&&(
               <IAUploadSection tipo="imagen" precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v}:e));return n;});}} onGenerarVideo={()=>{if(!form.personajeIA){alert('Primero elegí el personaje.');return;}genVideoPagadoRef.current=true;setVideoStartImg((form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc);setGenActivo('video');}}/>
             )}
