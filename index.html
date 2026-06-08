@@ -2129,6 +2129,9 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
   function guardar(){setIaConfig(c=>({...c,menuConfig:cfg}));setMsg('✓ Menú guardado');setTimeout(()=>setMsg(''),2500);}
   function quitar(cat,id){setCfg(c=>({...c,[cat]:(c[cat]||[]).filter(i=>i.id!==id)}));}
   function updItem(cat,id,k,v){setCfg(c=>({...c,[cat]:(c[cat]||[]).map(i=>i.id===id?{...i,[k]:v}:i)}));}
+  const AJ_DEF={veranoBeb:30,inviernoBeb:20,comidaFuerte:15,tardeSalado:30,tardeDulce:25};
+  const aj=Object.assign({},AJ_DEF,cfg.ajustes||{});
+  function updAj(k,v){setCfg(c=>({...c,ajustes:Object.assign({},AJ_DEF,c.ajustes||{},{[k]:v===''?'':+v})}));}
   function agregar(cat){
     const n=nuevo[cat]||{}; if(!n.nombre||!n.nombre.trim())return;
     const dr=DEF_RATE[cat]||{pn:1,pa:1,u:'u'};
@@ -2147,6 +2150,19 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
         <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>🤖 Prompt de cálculo de comida</h3>
         <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Instrucción para calcular las cantidades según invitados, horas y estación.</p>
         <textarea value={cfg.prompt||''} onChange={e=>setCfg(c=>({...c,prompt:e.target.value}))} rows={5} style={{...S.input,resize:'vertical',fontFamily:'inherit'}} placeholder="Ej: Calculá las cantidades considerando estación, horas de fiesta y tipo de menú. Niños consumen más dulce que salado..."/>
+      </div>
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>⚙️ Ajustes automáticos (%)</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Según la época y el horario, el sistema suma o resta solo. Editá los porcentajes a tu gusto.</p>
+        {[['veranoBeb','☀️ Verano: más bebida','+'],['inviernoBeb','❄️ Invierno: menos bebida','−'],['comidaFuerte','🌞🌙 Mediodía/Noche: más comida','+'],['tardeSalado','🧁 Tarde: menos salado','−'],['tardeDulce','🍰 Tarde: más dulce/torta','+']].map(([k,l,sg])=>(
+          <div key={k} style={{display:'flex',alignItems:'center',gap:8,marginBottom:7}}>
+            <span style={{fontSize:12,fontWeight:700,color:'#334155',flex:1}}>{l}</span>
+            <span style={{fontSize:13,fontWeight:900,color:sg==='+'?'#16a34a':'#dc2626'}}>{sg}</span>
+            <input type="number" step="any" min="0" value={aj[k]} onChange={e=>updAj(k,e.target.value)} style={{...S.input,width:64,padding:'6px 8px',fontSize:13,textAlign:'center'}}/>
+            <span style={{fontSize:12,color:'#64748b'}}>%</span>
+          </div>
+        ))}
       </div>
 
       {cats.map(([k,lbl])=>(
@@ -2972,12 +2988,19 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     if(!t)return alert('Ingresá la cantidad de adultos y niños.');
     const h=+menuHoras||4;
     const cfg=iaConfig.menuConfig||{};
-    // Season multipliers
-    const bMult=menuEstacion==='Verano'?1.3:menuEstacion==='Invierno'?0.8:1.0;
+    // Ajustes automáticos (porcentajes editables desde el admin). Valores por defecto si no se configuró.
+    const AJ=Object.assign({veranoBeb:30,inviernoBeb:20,comidaFuerte:15,tardeSalado:30,tardeDulce:25},(cfg&&cfg.ajustes)||{});
+    const esSalado=cat=>(cat==='ninos'||cat==='adultos'||cat==='snacks');
+    // Bebida según estación (verano se toma más; invierno menos).
+    const bMult=menuEstacion==='Verano'?(1+(+AJ.veranoBeb||0)/100):menuEstacion==='Invierno'?(1-(+AJ.inviernoBeb||0)/100):1.0;
     const hMult=h<=3?1.0:h===4?1.15:h===5?1.3:1.45; // base = 3 hs (los datos cargados se asumen para 3 hs)
     const DEFR={ninos:{pn:4,pa:1,u:'u'},adultos:{pn:1,pa:6,u:'porc.'},snacks:{pn:0.02,pa:0.02,u:'bolsa'},postres:{pn:1,pa:1,u:'porción'},bebidas:{pn:0.4,pa:0.4,u:'L'}};
-    // Multiplicador por franja: mediodía/noche = comida completa; tarde (merienda) = menos salado y más dulce.
-    function frMult(cat){ if(menuFranja==='tarde'){ if(cat==='postres')return 1.3; if(cat==='ninos'||cat==='adultos'||cat==='snacks')return 0.65; } return 1; }
+    // Multiplicador por franja: mediodía/noche = comida fuerte (se come más); tarde (merienda) = menos salado y más dulce.
+    function frMult(cat){
+      if(menuFranja==='tarde'){ if(cat==='postres')return 1+(+AJ.tardeDulce||0)/100; if(esSalado(cat))return 1-(+AJ.tardeSalado||0)/100; return 1; }
+      if(esSalado(cat))return 1+(+AJ.comidaFuerte||0)/100; // mediodía / noche
+      return 1;
+    }
     setMenuGen(true);
     setTimeout(()=>{
       const results=[];
