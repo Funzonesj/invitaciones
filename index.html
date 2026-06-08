@@ -96,6 +96,21 @@ function waNum(n){
   if(d.startsWith('0'))   d=d.slice(1);            // sacar 0 inicial (ej: 0264...)
   return '549'+d;                                  // agregar código país Argentina + 9 móvil
 }
+// ¿Estamos en una compu (no celular)? Para abrir WhatsApp de la mejor forma en cada caso.
+function esEscritorioWA(){ try{ return !/Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent); }catch(e){ return false; } }
+// Abre WhatsApp con un mensaje (y opcionalmente un número). En la compu abre la app de
+// escritorio DIRECTO (whatsapp://), sin la página intermedia de WhatsApp. En el celular usa wa.me.
+function abrirWA(phone, text){
+  const t = text ? encodeURIComponent(text) : '';
+  const p = phone ? String(phone) : '';
+  if(esEscritorioWA()){
+    const url = 'whatsapp://send?'+(p?('phone='+p):'')+(p&&t?'&':'')+(t?('text='+t):'');
+    try{ const a=document.createElement('a'); a.href=url; a.style.display='none'; document.body.appendChild(a); a.click(); setTimeout(()=>{try{a.remove();}catch(e){}},1500); }
+    catch(e){ window.open('https://wa.me/'+p+(t?('?text='+t):''),'_blank'); }
+  } else {
+    window.open('https://wa.me/'+p+(t?('?text='+t):''),'_blank');
+  }
+}
 // Devuelve el formato de tarjeta (mostrar edad, título, dirigido) según el tipo de evento
 function fmtTipo(tipo, iaConfig){
   const t=((iaConfig&&iaConfig.tiposEvento)||[]).find(x=>x.nombre===tipo);
@@ -986,7 +1001,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
       '_El acceso vence al dia siguiente del evento._',
       '- '+salon,
     ];
-    window.open('https://wa.me/'+waNum(ev.celPapa)+'?text='+encodeURIComponent(lineas.join('\n')),'_blank');
+    abrirWA(waNum(ev.celPapa), lineas.join('\n'));
   }
   const ef={nombre:'',tipo:'Cumpleaños',edad:'',edadUnidad:'años',dia:'',mes:'',anio:String((iaConfig&&iaConfig.anioVigente)||2026),hIni:'',hFin:'',celPapa:'',dni:'',nomPapa:'',user:'',pass:'',temId:((iaConfig&&iaConfig.temDefault)||'t-3'),doble:false,nombre2:'',edad2:'',temId2:'t-1',nomPapa2:'',celPapa2:''};
   const [form,setForm]=useState(ef); const [editId,setEditId]=useState(null); const [open,setOpen]=useState(false);
@@ -1029,7 +1044,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     window.scrollTo(0,0);
   }
   function copiarLink(id){navigator.clipboard?.writeText(window.location.href.split('?')[0]+'?inv='+id);alert('¡Enlace copiado!');}
-  function compartirLinkInv(ev){const link=window.location.href.split('?')[0]+'?inv='+ev.id;const txt='¡Te invito al '+(ev.tipo||'cumpleaños')+' de '+ev.nombre+'! Abrí la tarjeta acá: '+link;window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');}
+  function compartirLinkInv(ev){const link=window.location.href.split('?')[0]+'?inv='+ev.id;const txt='¡Te invito al '+(ev.tipo||'cumpleaños')+' de '+ev.nombre+'! Abrí la tarjeta acá: '+link;abrirWA('', txt);}
 
   return(
     <div className="fade-in" style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
@@ -1535,7 +1550,7 @@ function AdminRemarketing({setVista,evsLocal,sucAct}){
   const fRef=useRef();
   function onFile(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setImgPrev(ev.target.result);r.readAsDataURL(f);}
   const targets=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fAnio||e.anio===fAnio));
-  function enviar(ev){const t=msg.replace('{salon}',sucAct.nombre).replace('{nombre}',ev.nombre);window.open(`https://wa.me/${waNum(ev.celPapa)}?text=${encodeURIComponent(t)}`,'_blank');}
+  function enviar(ev){const t=msg.replace('{salon}',sucAct.nombre).replace('{nombre}',ev.nombre);abrirWA(waNum(ev.celPapa), t);}
   return(
     <div className="fade-in" style={{maxWidth:820,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
@@ -2811,7 +2826,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       'Abri la invitacion:',
       longUrl,
     ];
-    window.open('https://wa.me/?text='+encodeURIComponent(lineas.join('\n')),'_blank');
+    abrirWA('', lineas.join('\n'));
   }
   // Menu IA
   const [menuAdultos,setMenuAdultos]=useState('');
@@ -2968,7 +2983,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <div style={{fontSize:52,marginBottom:10}}>📲</div>
           <h2 style={{fontWeight:900,fontSize:20,marginBottom:10}}>¡Hola! Antes de empezar</h2>
           <p style={{fontSize:14,color:'#475569',lineHeight:1.6,marginBottom:18}}>Para usar tu invitación, <b>autorizá</b> recibir la <b>invitación y las promociones</b> de <b>{suc.nombre}</b> por WhatsApp.</p>
-          <button onClick={()=>{ if(suc.tel){window.open('https://wa.me/'+waNum(suc.tel)+'?text='+encodeURIComponent('¡Hola '+suc.nombre+'! 🎉 Autorizo recibir la invitación y las promociones por WhatsApp.'),'_blank');} var f=''; try{f=(new Date()).toLocaleDateString('es-AR');}catch(e){} setPapaSesion(ps=>{const n={...ps,optinWA:true,optinFecha:f};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,optinWA:true,optinFecha:f}:e));return n;}); }} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'15px',fontSize:15,fontWeight:900}}>✅ Autorizo recibir la invitación y promociones</button>
+          <button onClick={()=>{ if(suc.tel){abrirWA(waNum(suc.tel), '¡Hola '+suc.nombre+'! 🎉 Autorizo recibir la invitación y las promociones por WhatsApp.');} var f=''; try{f=(new Date()).toLocaleDateString('es-AR');}catch(e){} setPapaSesion(ps=>{const n={...ps,optinWA:true,optinFecha:f};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,optinWA:true,optinFecha:f}:e));return n;}); }} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'15px',fontSize:15,fontWeight:900}}>✅ Autorizo recibir la invitación y promociones</button>
           <p style={{fontSize:11,color:'#94a3b8',marginTop:10}}>Al autorizar se abre WhatsApp y entrás a tu invitación. Tu permiso queda registrado.</p>
         </div>
       </div>
@@ -3423,8 +3438,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                         `📍 ${suc.nombre} · ${suc.tel}`,
                       ];
                       const txt=lines.join('\n');
-                      const wa=`https://wa.me/?text=${encodeURIComponent(txt)}`;
-                      window.open(wa,'_blank');
+                      abrirWA('', txt);
                     }} style={{...S.btn,background:'#25d366',color:'white',padding:'7px 12px',fontSize:11,display:'flex',alignItems:'center',gap:5}}>
                       <span>📱</span> Compartir
                     </button>
@@ -3579,7 +3593,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                     <div><div style={{fontWeight:900,fontSize:14}}>{ad.nombre}</div><div style={{fontSize:20,fontWeight:900,color:'#7c3aed'}}>${(+ad.precio).toLocaleString('es-AR')}</div></div>
                   </div>
                   <p style={{fontSize:12,color:'#64748b',margin:0}}>{ad.desc}</p>
-                  <button onClick={()=>{const t=`Hola! Quiero contratar: *${ad.nombre}* para el ${papaSesion.tipo||'Cumpleaños'} de ${papaSesion.nombre} el ${papaSesion.dia}/${papaSesion.mes}/${papaSesion.anio} en ${suc.nombre}. ¿Podemos coordinarlo? 🎉`;window.open(`https://wa.me/?text=${encodeURIComponent(t)}`,'_blank');}} style={{...S.btn,background:'#22c55e',color:'white',width:'100%',padding:'10px',fontSize:12}}>💬 Consultar por WhatsApp</button>
+                  <button onClick={()=>{const t=`Hola! Quiero contratar: *${ad.nombre}* para el ${papaSesion.tipo||'Cumpleaños'} de ${papaSesion.nombre} el ${papaSesion.dia}/${papaSesion.mes}/${papaSesion.anio} en ${suc.nombre}. ¿Podemos coordinarlo? 🎉`;abrirWA('', t);}} style={{...S.btn,background:'#22c55e',color:'white',width:'100%',padding:'10px',fontSize:12}}>💬 Consultar por WhatsApp</button>
                 </div>
               ))}
             </div>
@@ -3838,7 +3852,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
       'Invitacion: '+link,
     ];
     setTimeout(()=>{
-      window.open('https://wa.me/'+waNum(ev.celPapa)+'?text='+encodeURIComponent(lineas.join('\n')),'_blank');
+      abrirWA(waNum(ev.celPapa), lineas.join('\n'));
       setNom('');setCel('');setAd('');setNi('');setOk(false);
     },1800);
   }
@@ -4023,7 +4037,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
           const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
           const fecha=ev.dia+' de '+(meses[(+ev.mes)-1]||'')+' de '+ev.anio;
           const lineas=[ev.nombre+' te invita a su '+ev.tipo,'El dia '+fecha,'en '+suc.nombre,'','Abri la invitacion:',link];
-          window.open('https://wa.me/?text='+encodeURIComponent(lineas.join('\n')),'_blank');
+          abrirWA('', lineas.join('\n'));
         }} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:12,fontSize:14}}>
           Compartir por WhatsApp
         </button>
