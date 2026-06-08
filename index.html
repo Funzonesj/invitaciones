@@ -1302,7 +1302,7 @@ function AdminTematicas({setVista,tematicas,setTematicas}){
   return(
     <div className="fade-in" style={{maxWidth:900,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
-      <h1 style={{fontWeight:900,fontSize:20,marginBottom:18}}>🖼️ Catálogo de imágenes</h1>
+      <h1 style={{fontWeight:900,fontSize:20,marginBottom:18}}>🖼️ Catálogo de imágenes <span style={{fontSize:14,color:'#7c3aed'}}>({(tematicas||[]).length.toLocaleString('es-AR')} en total)</span></h1>
       <div style={{display:'grid',gridTemplateColumns:'min(300px,100%) 1fr',gap:20,alignItems:'start'}} className="admin-tematicas-grid">
         <div style={S.card}>
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>Cargar imágenes</h3>
@@ -3157,7 +3157,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                     <input type="range" min="0" max="100" value={portadaPos} onChange={e=>setPortadaPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
                   </div>
                 </div>
-                <h2 style={{fontWeight:900,fontSize:17,marginBottom:8}}>¡Más de 830 Temáticas!</h2>
+                <h2 style={{fontWeight:900,fontSize:17,marginBottom:8}}>🎨 {(tematicas||[]).length.toLocaleString('es-AR')} Temáticas para elegir</h2>
                 <input value={ftxt} onChange={e=>setFtxt(e.target.value)} placeholder="🔍 Buscar..." style={{...S.input,marginBottom:10}}/>
                 <div style={{display:'flex',gap:4,overflowX:'auto',paddingBottom:8,marginBottom:12}} className="scrollbar-none">
                   {CATS.map(c=><button key={c} onClick={()=>setFcat(c)} style={{padding:'4px 10px',borderRadius:8,fontSize:10,fontWeight:900,border:'none',cursor:'pointer',whiteSpace:'nowrap',background:fcat===c?'#7c3aed':'#f1f5f9',color:fcat===c?'white':'#64748b'}}>{c}</button>)}
