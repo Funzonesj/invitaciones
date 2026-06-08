@@ -3028,17 +3028,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
   return(
     <div className="fade-in" style={{maxWidth:940,margin:'0 auto',padding:'20px 16px'}}>
-      {/* Header */}
-      <div style={{...S.card,display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12,marginBottom:16,padding:18}}>
-        <div>
-          <span style={{fontSize:10,background:'#ede9fe',color:'#7c3aed',padding:'3px 10px',borderRadius:99,fontWeight:700}}>Panel Papás</span>
-          <h1 style={{fontWeight:900,fontSize:20,marginTop:6}}>Hola, {papaSesion.nomPapa||'Mamá/Papá'} 👋</h1>
-          <p style={{fontSize:11,color:'#64748b',margin:0}}>{papaSesion.tipo||'Cumpleaños'} de <b>{papaSesion.nombre}</b> · {papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin} hs</p>
-        </div>
-        <div style={{display:'flex',gap:8}}>
-          <button onClick={()=>verTarjeta({seccion:seccion,modo:modoPortada,editPanel:editPanel,visto:true})} style={{...S.btn,background:'#7c3aed',color:'white'}}>👁 Ver Tarjeta</button>
-          <button onClick={()=>{setPapaSesion(null);setVista('papa-login');}} style={{...S.btn,background:'#f1f5f9',color:'#64748b'}}>Salir</button>
-        </div>
+      {/* Salir (chico, arriba a la derecha) */}
+      <div style={{display:'flex',justifyContent:'flex-end',marginBottom:10}}>
+        <button onClick={()=>{setPapaSesion(null);setVista('papa-login');}} style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'6px 14px',fontSize:12}}>Salir</button>
       </div>
 
       {/* Doble Banner */}
