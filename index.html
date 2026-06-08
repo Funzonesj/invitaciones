@@ -2767,6 +2767,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   // Posición vertical de la foto en la tarjeta (0=arriba ... 100=abajo) para acomodar el espacio
   const portadaPos=(papaSesion&&typeof papaSesion.portadaPos==='number')?papaSesion.portadaPos:50;
   function setPortadaPos(v){setPapaSesion(ps=>{const n={...ps,portadaPos:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,portadaPos:v}:e));return n;});}
+  // Posición vertical del VIDEO en la tarjeta (independiente de la foto)
+  const videoPos=(papaSesion&&typeof papaSesion.videoPos==='number')?papaSesion.videoPos:50;
+  function setVideoPos(v){setPapaSesion(ps=>{const n={...ps,videoPos:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoPos:v}:e));return n;});}
   const [regaloVideo,setRegaloVideo]=useState(false); // cartel "te regalamos un video" tras generar las imágenes
   const [verEjemploVid,setVerEjemploVid]=useState(false); // reproductor del video de ejemplo
   const [editPanel,setEditPanel]=useState(_PAPA_NAV.editPanel||null); // null=inicio (cuadraditos) | 'datos' | 'tematica' | 'foto'
@@ -3123,6 +3126,25 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                       <span style={{fontSize:13,fontWeight:800,color:'#334155',flex:1}}>{l}</span>
                     </button>
                   ))}
+                </div>
+              </div>
+              )}
+              {(portadaTipo==='ia'&&usarVideo&&videoGuardado)&&(
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:11,fontWeight:900,color:'#7c3aed',textAlign:'center',marginBottom:6}}>🎬 Así queda tu video en la tarjeta</div>
+                <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:8,border:'2px solid #7c3aed',maxWidth:300,marginLeft:'auto',marginRight:'auto'}}>
+                  <div style={{position:'relative',aspectRatio:'4/5',background:'#000',overflow:'hidden'}}>
+                    <video src={videoGuardado} autoPlay muted loop playsInline style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+videoPos+'%',display:'block'}}></video>
+                    <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.75) 0%,transparent 50%)',pointerEvents:'none'}}></div>
+                    <div style={{position:'absolute',bottom:10,left:0,right:0,textAlign:'center',color:'white',pointerEvents:'none'}}>
+                      <div style={{fontSize:20,fontWeight:900,textShadow:'0 2px 8px rgba(0,0,0,.5)'}}>{form.nombre||papaSesion.nombre}</div>
+                      <div style={{fontSize:10,opacity:.8}}>{papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin}hs</div>
+                    </div>
+                  </div>
+                </div>
+                <div style={{padding:'0 4px'}}>
+                  <div style={{fontSize:10,color:'#64748b',marginBottom:4,textAlign:'center',fontWeight:700}}>↕ Acomodá el video (movelo para arriba o abajo)</div>
+                  <input type="range" min="0" max="100" value={videoPos} onChange={e=>setVideoPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
                 </div>
               </div>
               )}
@@ -3890,7 +3912,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
       <div style={{position:'relative',width:'100%',aspectRatio:'4/5',maxHeight:'58vh',overflow:'hidden',background:'#0f172a'}}>
         {ev&&ev.videoUrl&&(ev.usarVideo!==false)?(
           <React.Fragment>
-            <video src={ev.videoUrl} autoPlay muted={vidMuted} playsInline onClick={(e)=>{const v=e.currentTarget;setVidMuted(false);v.muted=false;v.currentTime=0;try{v.play();}catch(_){}}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&ev.portadaPos)||0)+'%',display:'block',cursor:'pointer'}}></video>
+            <video src={ev.videoUrl} autoPlay muted={vidMuted} playsInline onClick={(e)=>{const v=e.currentTarget;setVidMuted(false);v.muted=false;v.currentTime=0;try{v.play();}catch(_){}}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:50)+'%',display:'block',cursor:'pointer'}}></video>
             {vidMuted
               ? <button onClick={(e)=>{const v=e.currentTarget.parentNode.querySelector('video');setVidMuted(false);if(v){v.muted=false;v.currentTime=0;try{v.play();}catch(_){}}}} style={{position:'absolute',bottom:14,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.7)',color:'white',border:'none',borderRadius:99,padding:'10px 18px',fontSize:14,fontWeight:900,cursor:'pointer',zIndex:3,boxShadow:'0 6px 20px rgba(0,0,0,.4)'}}>🔊 Tocá para escuchar</button>
               : <div style={{position:'absolute',bottom:14,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.5)',color:'white',borderRadius:99,padding:'6px 14px',fontSize:12,fontWeight:700,zIndex:3,pointerEvents:'none'}}>🔁 Tocá el video para repetir</div>}
