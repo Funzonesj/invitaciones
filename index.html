@@ -3153,13 +3153,13 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 </div>
                 <button onClick={()=>setPedirOpen(true)} style={{...S.btn,width:'100%',marginBottom:12,background:'#fff7ed',color:'#9a3412',border:'1px dashed #fb923c',fontSize:13,fontWeight:900,padding:'12px'}}>📩 ¿No encontrás tu personaje? Pedilo acá</button>
                 <div style={{textAlign:'center',fontSize:12.5,fontWeight:900,color:'#7c3aed',marginBottom:10}}>👇 Tildá el personaje que te guste</div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,maxHeight:420,overflowY:'auto'}} className="scrollbar-none">
+                <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12,maxHeight:640,overflowY:'auto'}} className="scrollbar-none">
                   {tFilt.map(t=>{const sel=form.temId===t.id;return(
-                    <div key={t.id} onClick={()=>setForm({...form,temId:t.id,usarFoto:false,portadaSrc:''})} style={{borderRadius:12,overflow:'hidden',border:sel?'3px solid #7c3aed':'2px solid #e2e8f0',cursor:'pointer',boxShadow:sel?'0 0 0 3px #c4b5fd':'none',transition:'all .15s'}}>
+                    <div key={t.id} onClick={()=>setForm({...form,temId:t.id,usarFoto:false,portadaSrc:''})} style={{borderRadius:14,overflow:'hidden',border:sel?'3px solid #7c3aed':'1px solid #eef1f6',cursor:'pointer',boxShadow:sel?'0 0 0 3px #c4b5fd':'0 1px 3px rgba(15,23,42,.06)',transition:'all .15s'}}>
                       <div style={{aspectRatio:'9/16',background:'#0f172a',position:'relative',overflow:'hidden'}}>
                         <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                        <span style={{position:'absolute',bottom:4,left:4,background:'rgba(0,0,0,.75)',color:'white',fontSize:9,padding:'2px 5px',borderRadius:5,fontWeight:700}}>{t.nombre}</span>
-                        {sel&&<span style={{position:'absolute',top:5,right:5,background:'#7c3aed',color:'white',borderRadius:99,fontSize:12,width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center'}}>✓</span>}
+                        <span style={{position:'absolute',bottom:6,left:6,background:'rgba(0,0,0,.75)',color:'white',fontSize:11,padding:'3px 8px',borderRadius:6,fontWeight:700}}>{t.nombre}</span>
+                        {sel&&<span style={{position:'absolute',top:7,right:7,background:'#7c3aed',color:'white',borderRadius:99,fontSize:14,width:24,height:24,display:'flex',alignItems:'center',justifyContent:'center'}}>✓</span>}
                       </div>
                     </div>
                   );})}
