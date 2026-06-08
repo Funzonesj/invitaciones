@@ -2765,7 +2765,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   // Usar el video del personaje en la portada (por defecto sí; el papá lo elige debajo del video). Se guarda en el evento.
   const usarVideo=!(papaSesion&&papaSesion.usarVideo===false);
   // Posición vertical de la foto en la tarjeta (0=arriba ... 100=abajo) para acomodar el espacio
-  const portadaPos=(papaSesion&&typeof papaSesion.portadaPos==='number')?papaSesion.portadaPos:0;
+  const portadaPos=(papaSesion&&typeof papaSesion.portadaPos==='number')?papaSesion.portadaPos:50;
   function setPortadaPos(v){setPapaSesion(ps=>{const n={...ps,portadaPos:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,portadaPos:v}:e));return n;});}
   const [regaloVideo,setRegaloVideo]=useState(false); // cartel "te regalamos un video" tras generar las imágenes
   const [verEjemploVid,setVerEjemploVid]=useState(false); // reproductor del video de ejemplo
@@ -3192,9 +3192,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             </div>
             {modoPortada==='tematica'&&(
               <div className="fade-in">
-                <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:14,border:'2px solid #7c3aed'}}>
-                  <div style={{padding:'7px',fontSize:11,fontWeight:900,color:'#7c3aed',textAlign:'center'}}>👀 Así queda tu tarjeta</div>
-                  <div style={{position:'relative',aspectRatio:'4/5',maxHeight:'38vh',background:'#0f172a',overflow:'hidden'}}>
+                <div style={{fontSize:11,fontWeight:900,color:'#7c3aed',textAlign:'center',marginBottom:6}}>👀 Así queda tu tarjeta</div>
+                <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:8,border:'2px solid #7c3aed',maxWidth:300,marginLeft:'auto',marginRight:'auto'}}>
+                  <div style={{position:'relative',aspectRatio:'4/5',background:'#0f172a',overflow:'hidden'}}>
                     <img src={portadaImg} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+portadaPos+'%'}}/>
                     <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.75) 0%,transparent 50%)'}}></div>
                     <span style={{position:'absolute',top:10,left:10,background:'#f43f5e',color:'white',fontSize:9,padding:'3px 10px',borderRadius:99,fontWeight:900}}>TE INVITO!</span>
@@ -3203,10 +3203,10 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                       <div style={{fontSize:10,opacity:.8}}>{papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio} · {papaSesion.hIni} a {papaSesion.hFin}hs</div>
                     </div>
                   </div>
-                  <div style={{padding:'8px 14px 10px'}}>
-                    <div style={{fontSize:10,color:'#64748b',marginBottom:4,textAlign:'center',fontWeight:700}}>↕ Acomodá la imagen</div>
-                    <input type="range" min="0" max="100" value={portadaPos} onChange={e=>setPortadaPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
-                  </div>
+                </div>
+                <div style={{padding:'0 4px',marginBottom:14}}>
+                  <div style={{fontSize:10,color:'#64748b',marginBottom:4,textAlign:'center',fontWeight:700}}>↕ Acomodá la imagen (movela para arriba o abajo)</div>
+                  <input type="range" min="0" max="100" value={portadaPos} onChange={e=>setPortadaPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
                 </div>
                 <h2 style={{fontWeight:900,fontSize:17,marginBottom:8}}>🎨 {((tematicas||[]).length>=50)?('¡Más de '+(Math.floor((tematicas||[]).length/50)*50).toLocaleString('es-AR')+' Temáticas!'):((tematicas||[]).length+' Temáticas para elegir')}</h2>
                 <input value={ftxt} onChange={e=>setFtxt(e.target.value)} placeholder="🔍 Buscar..." style={{...S.input,marginBottom:10}}/>
