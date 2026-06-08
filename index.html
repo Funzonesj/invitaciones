@@ -1067,7 +1067,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                 </select>
               </label>
               <label><span style={S.label}>Año</span><input type="number" placeholder="" value={form.anio} autoComplete="off" onChange={e=>setForm({...form,anio:e.target.value})} style={S.input} required/></label>
-              {[['Hora Inicio','hIni','text',''],['Hora Fin','hFin','text',''],['Celular papá','celPapa','text',''],['DNI papá','dni','text',''],['Nombre padre/madre','nomPapa','text',''],['Usuario papás','user','text','']].map(([l,k,t,ph])=>(
+              {[['Hora Inicio','hIni','text',''],['Hora Fin','hFin','text',''],['Celular papá','celPapa','text',''],['DNI papá','dni','text',''],['Nombre padre/madre','nomPapa','text','']].map(([l,k,t,ph])=>(
                 <label key={k}><span style={S.label}>{l}</span><input type={t} placeholder={ph} value={form[k]} autoComplete="off" onChange={e=>setForm({...form,[k]:e.target.value})} style={S.input} required={['hIni','hFin','celPapa','dni'].includes(k)}/></label>
               ))}
               <label><span style={S.label}>Tipo</span>
