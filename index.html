@@ -3189,7 +3189,6 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   <div style={{fontSize:12,fontWeight:900,color:'#0ea5e9',marginTop:4}}>Con costo: ${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</div>
                 </div>
               </button>
-              {iaConfig.ejemploVideo&&<button onClick={()=>setVerEjemploVid(true)} style={{...S.btn,width:'100%',marginTop:8,background:'#0ea5e9',color:'white',fontSize:12,fontWeight:800,padding:'10px'}}>▶️ Ver ejemplo del video</button>}
             </div>
           )}
           <div style={{display:editPanel==='datos'?'flex':'none',flexDirection:'column',gap:16}}>
