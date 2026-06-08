@@ -3317,18 +3317,18 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <canvas ref={canvasRef} style={{display:'none'}}/>
               </div>
             )}
-            {modoPortada==='ia-imagen'&&(iaConfig.ejemploIA||iaConfig.ejemploVideo)&&(
+            {modoPortada==='ia-imagen'&&(
               <div style={{marginBottom:14}}>
                 <div style={{fontWeight:900,fontSize:13,color:'#0369a1',marginBottom:8,textAlign:'center'}}>✨ Mirá cómo queda con IA</div>
                 <div style={{display:'flex',gap:10}}>
-                  {iaConfig.ejemploIA&&<button onClick={()=>setVerEjemploImg(true)} style={{flex:1,background:'#fff',border:'1px solid #eef1f6',borderRadius:14,boxShadow:'0 1px 3px rgba(15,23,42,.06)',cursor:'pointer',padding:'16px 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
-                    <span style={{fontSize:30}}>🖼️</span>
-                    <span style={{fontSize:12,fontWeight:800,color:'#334155',textAlign:'center'}}>Ver ejemplo<br/>de imagen</span>
-                  </button>}
-                  {iaConfig.ejemploVideo&&<button onClick={()=>setVerEjemploVid(true)} style={{flex:1,background:'#fff',border:'1px solid #eef1f6',borderRadius:14,boxShadow:'0 1px 3px rgba(15,23,42,.06)',cursor:'pointer',padding:'16px 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+                  <button onClick={()=>{if(iaConfig.ejemploIA)setVerEjemploImg(true);else alert('Todavía no hay una imagen de ejemplo cargada.');}} style={{flex:1,background:'#fff',border:'1px solid #eef1f6',borderRadius:14,boxShadow:'0 1px 3px rgba(15,23,42,.06)',cursor:'pointer',padding:'16px 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+                    <span style={{fontSize:30}}>🪄</span>
+                    <span style={{fontSize:12,fontWeight:800,color:'#334155',textAlign:'center'}}>Ver ejemplo de<br/>imagen con IA</span>
+                  </button>
+                  <button onClick={()=>{if(iaConfig.ejemploVideo)setVerEjemploVid(true);else alert('Todavía no hay un video de ejemplo cargado.');}} style={{flex:1,background:'#fff',border:'1px solid #eef1f6',borderRadius:14,boxShadow:'0 1px 3px rgba(15,23,42,.06)',cursor:'pointer',padding:'16px 8px',display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
                     <span style={{fontSize:30}}>🎬</span>
-                    <span style={{fontSize:12,fontWeight:800,color:'#334155',textAlign:'center'}}>Ver ejemplo<br/>de video</span>
-                  </button>}
+                    <span style={{fontSize:12,fontWeight:800,color:'#334155',textAlign:'center'}}>Ver ejemplo de<br/>video con IA</span>
+                  </button>
                 </div>
               </div>
             )}
