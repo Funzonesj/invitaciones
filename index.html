@@ -481,7 +481,7 @@ function App() {
       <main style={{flex:1}}>
         {vista==='admin-login'       && <AdminLogin     onLogin={loginAdmin}/>}
         {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} tematicas={tematicas} esSA={esSA} iaConfig={iaConfig} setIaConfig={setIaConfig} pedidos={pedidos} setPedidos={setPedidos} refrescarPedidos={refrescarPedidos}/>}
-        {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig}/>}
+        {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-tematicas'   && <AdminTematicas setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-excel'       && <AdminExcel     setVista={setVista} sucActId={sucActId} eventos={eventos} setEventos={setEventos}/>}
         {vista==='admin-asistencias' && <AdminAsistencias setVista={setVista} evsLocal={evsLocal} confs={confs}/>}
@@ -954,7 +954,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
 }
 
 /* ── ADMIN EVENTOS ───────────────────────────────────────── */
-function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,setInvEvId,confs,iaConfig}){
+function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,setInvEvId,confs,iaConfig,setIaConfig}){
   function enviarCredsWA(ev){
     const salon=sucAct.nombre;
     const base=window.location.href.split('?')[0];
@@ -977,7 +977,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     ];
     window.open('https://wa.me/'+waNum(ev.celPapa)+'?text='+encodeURIComponent(lineas.join('\n')),'_blank');
   }
-  const ef={nombre:'',tipo:'Cumpleaños',edad:'',edadUnidad:'años',dia:'',mes:'',anio:String((iaConfig&&iaConfig.anioVigente)||2026),hIni:'',hFin:'',celPapa:'',dni:'',nomPapa:'',user:'',pass:'',temId:'t-3',doble:false,nombre2:'',edad2:'',temId2:'t-1',nomPapa2:'',celPapa2:''};
+  const ef={nombre:'',tipo:'Cumpleaños',edad:'',edadUnidad:'años',dia:'',mes:'',anio:String((iaConfig&&iaConfig.anioVigente)||2026),hIni:'',hFin:'',celPapa:'',dni:'',nomPapa:'',user:'',pass:'',temId:((iaConfig&&iaConfig.temDefault)||'t-3'),doble:false,nombre2:'',edad2:'',temId2:'t-1',nomPapa2:'',celPapa2:''};
   const [form,setForm]=useState(ef); const [editId,setEditId]=useState(null); const [open,setOpen]=useState(false);
   const [fMes,setFMes]=useState(''); const [fDia,setFDia]=useState(''); const [msgOk,setMsgOk]=useState('');
   const [busqTema,setBusqTema]=useState(''); const [catTema,setCatTema]=useState('TODOS');
@@ -1091,10 +1091,15 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                     <div style={{aspectRatio:'9/16',maxHeight:120,background:'#0f172a',position:'relative',overflow:'hidden'}}>
                       <img src={t.img} alt={t.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
                       {form.temId===t.id&&<span style={{position:'absolute',top:4,right:4,background:'#06b6d4',color:'white',borderRadius:'50%',width:20,height:20,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11}}>✓</span>}
+                      {iaConfig&&iaConfig.temDefault===t.id&&<span style={{position:'absolute',top:4,left:4,background:'#f59e0b',color:'white',borderRadius:99,padding:'1px 5px',fontSize:9,fontWeight:900}}>⭐</span>}
                     </div>
                     <div style={{padding:'3px 4px',fontSize:9,fontWeight:700,color:'#475569',textAlign:'center',background:'#f8fafc',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{t.emoji} {t.nombre}</div>
                   </div>
                 ))}
+              </div>
+              <div style={{marginTop:8,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                <button type="button" onClick={()=>{if(setIaConfig)setIaConfig(c=>({...c,temDefault:form.temId}));flashOk('⭐ ¡Predeterminada guardada!');}} style={{...S.btn,background:'#f59e0b',color:'white',padding:'7px 12px',fontSize:11,fontWeight:800}}>⭐ Usar la elegida como predeterminada</button>
+                {iaConfig&&iaConfig.temDefault&&<span style={{fontSize:10,color:'#64748b'}}>Predeterminada: <b>{(tematicas.find(t=>t.id===iaConfig.temDefault)||{}).nombre||'—'}</b></span>}
               </div>
             </div>
             {/* Credenciales con auto-generador */}
