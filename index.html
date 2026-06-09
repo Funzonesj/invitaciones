@@ -3693,7 +3693,25 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                       a.href=url;a.download=`lista-compras-${papaSesion.nombre}.txt`;
                       a.click();URL.revokeObjectURL(url);
                     }} style={{...S.btn,background:'#7c3aed',color:'white',padding:'7px 12px',fontSize:11,display:'flex',alignItems:'center',gap:5}}>
-                      <span>⬇️</span> Descargar
+                      <span>⬇️</span> Texto
+                    </button>
+                    <button onClick={()=>{
+                      const suc=sucursales.find(s=>s.id===papaSesion.sucId)||sucursales[0]||{};
+                      const L={ninos:'🧒 Menú Niños',adultos:'👨 Menú Adultos',snacks:'🍿 Snacks',postres:'🎂 Torta y Postres',bebidas:'🥤 Bebidas'};
+                      let body='';
+                      ['ninos','adultos','snacks','postres','bebidas'].forEach(cat=>{
+                        const its=menuResult.items.filter(r=>r.cat===cat);
+                        if(!its.length)return;
+                        body+='<h2>'+L[cat]+'</h2>';
+                        its.forEach(r=>{body+='<div class="row"><span>'+(r.emoji||'')+' '+r.nombre+'</span><span class="q">'+r.cant+' '+r.u+'</span></div>';});
+                      });
+                      const html='<html><head><meta charset="utf-8"><title>Lista de compras</title><style>body{font-family:Arial,sans-serif;padding:24px;color:#0f172a;max-width:600px;margin:auto}h1{font-size:20px;margin:0 0 4px}.sub{color:#555;margin-bottom:14px;font-size:13px}h2{font-size:14px;color:#0ea5e9;border-bottom:2px solid #e2e8f0;padding-bottom:4px;margin:18px 0 6px}.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dotted #e2e8f0;font-size:14px}.q{font-weight:bold;white-space:nowrap;padding-left:14px}.foot{margin-top:22px;font-size:12px;color:#555}</style></head><body><h1>🛒 Lista de compras — Fiesta de '+(papaSesion.nombre||'')+'</h1><div class="sub">'+menuResult.ninos+' niños + '+menuResult.adultos+' adultos · '+menuResult.horas+' hs · '+menuResult.estacion+'</div>'+body+'<div class="foot">💡 Conviene sumar 10-15% de margen extra.<br>'+(suc.nombre||'')+(suc.tel?(' · '+suc.tel):'')+'</div></body></html>';
+                      const w=window.open('','_blank');
+                      if(!w){alert('Permití las ventanas emergentes para descargar el PDF.');return;}
+                      w.document.write(html);w.document.close();w.focus();
+                      setTimeout(()=>{try{w.print();}catch(e){}},500);
+                    }} style={{...S.btn,background:'#0ea5e9',color:'white',padding:'7px 12px',fontSize:11,display:'flex',alignItems:'center',gap:5}}>
+                      <span>🖨️</span> PDF
                     </button>
                   </div>
                 </div>
