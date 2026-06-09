@@ -2131,6 +2131,10 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
   function guardar(){setIaConfig(c=>({...c,menuConfig:cfg}));setMsg('✓ Menú guardado');flashOk('✓ ¡Menú guardado!');setTimeout(()=>setMsg(''),2500);}
   function quitar(cat,id){setCfg(c=>({...c,[cat]:(c[cat]||[]).filter(i=>i.id!==id)}));}
   function updItem(cat,id,k,v){setCfg(c=>({...c,[cat]:(c[cat]||[]).map(i=>i.id===id?{...i,[k]:v}:i)}));}
+  const [openIng,setOpenIng]=useState(null);
+  function addIng(cat,id){setCfg(c=>({...c,[cat]:(c[cat]||[]).map(i=>i.id===id?{...i,ingredientes:[...(i.ingredientes||[]),{nombre:'',cantidad:1,cada:1,u:'u'}]}:i)}));}
+  function updIng(cat,id,idx,k,v){setCfg(c=>({...c,[cat]:(c[cat]||[]).map(i=>{if(i.id!==id)return i;const ing=(i.ingredientes||[]).slice();ing[idx]={...ing[idx],[k]:v};return {...i,ingredientes:ing};})}));}
+  function delIng(cat,id,idx){setCfg(c=>({...c,[cat]:(c[cat]||[]).map(i=>{if(i.id!==id)return i;return {...i,ingredientes:(i.ingredientes||[]).filter((_,x)=>x!==idx)};})}));}
   const TOPE_DEF={ninos:{tn:8,ta:4},adultos:{tn:4,ta:20},snacks:{tn:0,ta:0},postres:{tn:0,ta:0},bebidas:{tn:0.75,ta:0.85}};
   const topeDe=cat=>Object.assign({tn:0,ta:0},TOPE_DEF[cat]||{},((cfg.topes||{})[cat]||{}));
   function updTope(cat,k,v){setCfg(c=>{const tp=Object.assign({},c.topes||{});tp[cat]=Object.assign({tn:0,ta:0},TOPE_DEF[cat]||{},tp[cat]||{},{[k]:v===''?0:+v});return {...c,topes:tp};});}
@@ -2223,7 +2227,8 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
           </div>}
           <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:10}}>
             {(cfg[k]||[]).map(it=>(
-              <div key={it.id} style={{display:'flex',alignItems:'center',gap:5,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'6px 8px',flexWrap:'wrap'}}>
+              <React.Fragment key={it.id}>
+              <div style={{display:'flex',alignItems:'center',gap:5,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'6px 8px',flexWrap:'wrap'}}>
                 <input value={it.emoji||''} onChange={e=>updItem(k,it.id,'emoji',e.target.value)} maxLength={2} title="Emoji" style={{...S.input,width:38,padding:'5px 2px',fontSize:16,textAlign:'center'}}/>
                 <input value={it.nombre||''} onChange={e=>updItem(k,it.id,'nombre',e.target.value)} placeholder="Nombre" style={{...S.input,flex:1,minWidth:80,padding:'5px 8px',fontSize:12,fontWeight:700}}/>
                 {k==='snacks'?(<React.Fragment>
@@ -2272,11 +2277,30 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
                     </React.Fragment>}
                   </React.Fragment>)}
                 </React.Fragment>)}
+                {(k==='ninos'||k==='adultos'||k==='postres')&&<button onClick={()=>setOpenIng(openIng===it.id?null:it.id)} title="Insumos / ingredientes" style={{background:(it.ingredientes&&it.ingredientes.length)?'#fef3c7':'none',border:'1px solid '+((it.ingredientes&&it.ingredientes.length)?'#fcd34d':'#e2e8f0'),borderRadius:8,cursor:'pointer',fontSize:11,padding:'3px 6px',fontWeight:700,color:'#92400e'}}>🧂{(it.ingredientes&&it.ingredientes.length)?(' '+it.ingredientes.length):''}</button>}
                 <label title="Mostrar esta comida en el menú de los papás" style={{display:'flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,color:it.verPapa!==false?'#16a34a':'#94a3b8',cursor:'pointer'}}>
                   <input type="checkbox" checked={it.verPapa!==false} onChange={e=>updItem(k,it.id,'verPapa',e.target.checked)} style={{width:16,height:16,accentColor:'#16a34a'}}/>papás
                 </label>
                 <button onClick={()=>quitar(k,it.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900,padding:'0 2px',lineHeight:1}}>✕</button>
               </div>
+              {openIng===it.id&&(k==='ninos'||k==='adultos'||k==='postres')&&(
+                <div style={{background:'#fffbeb',border:'1px solid #fcd34d',borderRadius:10,padding:'8px 10px',margin:'2px 0 6px'}}>
+                  <div style={{fontSize:11,fontWeight:800,color:'#92400e',marginBottom:6}}>🧂 Insumos de "{it.nombre}" — se suman solos a la lista de compras</div>
+                  {(it.ingredientes||[]).map((g,gi)=>(
+                    <div key={gi} style={{display:'flex',alignItems:'center',gap:5,marginBottom:5,flexWrap:'wrap'}}>
+                      <input value={g.nombre||''} onChange={e=>updIng(k,it.id,gi,'nombre',e.target.value)} placeholder="Pan de pancho" style={{...S.input,flex:1,minWidth:90,padding:'5px 7px',fontSize:11}}/>
+                      <input type="number" step="any" min="0" value={g.cantidad!=null?g.cantidad:1} onChange={e=>updIng(k,it.id,gi,'cantidad',e.target.value===''?'':+e.target.value)} title="Cantidad" style={{...S.input,width:46,padding:'5px 4px',fontSize:12,textAlign:'center'}}/>
+                      <input value={g.u!=null?g.u:'u'} onChange={e=>updIng(k,it.id,gi,'u',e.target.value)} placeholder="u/kg/sachet" title="Unidad" style={{...S.input,width:78,padding:'5px 5px',fontSize:11,textAlign:'center'}}/>
+                      <span style={{fontSize:10,color:'#92400e'}}>cada</span>
+                      <input type="number" step="any" min="1" value={g.cada!=null?g.cada:1} onChange={e=>updIng(k,it.id,gi,'cada',e.target.value===''?'':+e.target.value)} title="Cada cuántas unidades del producto" style={{...S.input,width:46,padding:'5px 4px',fontSize:12,textAlign:'center'}}/>
+                      <button onClick={()=>delIng(k,it.id,gi)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:13,fontWeight:900}}>✕</button>
+                    </div>
+                  ))}
+                  <button onClick={()=>addIng(k,it.id)} style={{...S.btn,background:'#fef3c7',color:'#92400e',padding:'5px 10px',fontSize:11,fontWeight:800,border:'1px solid #fcd34d'}}>+ Agregar insumo</button>
+                  <div style={{fontSize:10,color:'#a16207',marginTop:5}}>Ej: Pan de pancho · 1 · "paq. de 6" · cada 6 → te da los paquetes. Mayonesa · 1 · "sachet 250g" · cada 25.</div>
+                </div>
+              )}
+              </React.Fragment>
             ))}
             {(!cfg[k]||cfg[k].length===0)&&<span style={{fontSize:11,color:'#94a3b8'}}>Sin opciones todavía.</span>}
           </div>
@@ -3177,6 +3201,15 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           const u2=compraU||unit;
           results.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:u2,cat});
           shopping.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:u2});
+          // INSUMOS/INGREDIENTES de esta comida: "cantidad cada X unidades del producto". Se suman a la lista.
+          (item.ingredientes||[]).forEach(g=>{
+            const cadaG=(g.cada!=null&&g.cada!=='')?+g.cada:1;
+            const cantG=(g.cantidad!=null&&g.cantidad!=='')?+g.cantidad:0;
+            if(!cantG||cadaG<=0||!g.nombre)return;
+            const tg=Math.ceil(consumo/cadaG*cantG);
+            results.push({emoji:'🧂',nombre:g.nombre+' ('+item.nombre+')',cant:tg,u:g.u||'u',cat:'insumos'});
+            shopping.push({emoji:'🧂',nombre:g.nombre,cant:tg,u:g.u||'u'});
+          });
         });
       }
       addItems('ninos');
@@ -3671,9 +3704,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 </div>
                 <button onClick={()=>{
                   const suc=sucursales.find(s=>s.id===papaSesion.sucId)||sucursales[0]||{};
-                  const L={ninos:'🧒 Niños',adultos:'👨 Adultos',snacks:'🍿 Snacks',postres:'🎂 Torta y Postres',bebidas:'🥤 Bebidas'};
+                  const L={ninos:'🧒 Niños',adultos:'👨 Adultos',snacks:'🍿 Snacks',postres:'🎂 Torta y Postres',bebidas:'🥤 Bebidas',insumos:'🧂 Insumos / Ingredientes'};
                   let body='';
-                  ['ninos','adultos','snacks','postres','bebidas'].forEach(cat=>{
+                  ['ninos','adultos','snacks','postres','bebidas','insumos'].forEach(cat=>{
                     const its=menuResult.items.filter(r=>r.cat===cat);
                     if(!its.length)return;
                     body+='<h2>'+L[cat]+'</h2>';
@@ -3686,8 +3719,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   setTimeout(()=>{try{w.print();}catch(e){}},500);
                 }} style={{...S.btn,width:'100%',background:'#0ea5e9',color:'white',padding:'11px',fontSize:13,fontWeight:900,marginBottom:14}}>🖨️ Descargar / Imprimir menú (PDF)</button>
                 {/* Results by category */}
-                {['ninos','adultos','snacks','postres','bebidas'].map(cat=>{
-                  const labels={ninos:'🧒 Menú Niños',adultos:'👨 Menú Adultos',snacks:'🍿 Snacks',postres:'🎂 Torta y Postres',bebidas:'🥤 Bebidas'};
+                {['ninos','adultos','snacks','postres','bebidas','insumos'].map(cat=>{
+                  const labels={ninos:'🧒 Menú Niños',adultos:'👨 Menú Adultos',snacks:'🍿 Snacks',postres:'🎂 Torta y Postres',bebidas:'🥤 Bebidas',insumos:'🧂 Insumos / Ingredientes'};
                   const catItems=menuResult.items.filter(r=>r.cat===cat);
                   if(!catItems.length)return null;
                   return(
