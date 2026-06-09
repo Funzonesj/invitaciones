@@ -2199,11 +2199,6 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
         <textarea value={cfg.prompt||''} onChange={e=>setCfg(c=>({...c,prompt:e.target.value}))} rows={5} style={{...S.input,resize:'vertical',fontFamily:'inherit'}} placeholder="Ej: Calculá las cantidades considerando estación, horas de fiesta y tipo de menú. Niños consumen más dulce que salado..."/>
       </div>
 
-      <div style={{...S.card,marginBottom:14}}>
-        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>📌 Recordatorio para el papá</h3>
-        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Aparece como cartel al final del menú calculado (velas, adornos de torta, lo que puede traer, etc.).</p>
-        <textarea value={cfg.recordatorio!=null?cfg.recordatorio:'🕯️ No te olvides de las VELAS y los adornos de la torta.\n☕ Opcional: podés traer café, yerba y azúcar para el mate.'} onChange={e=>setCfg(c=>({...c,recordatorio:e.target.value}))} rows={3} style={{...S.input,resize:'vertical',fontFamily:'inherit'}} placeholder="🕯️ No te olvides de las velas y adornos de la torta..."/>
-      </div>
 
       <div style={{...S.card,marginBottom:14}}>
         <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>⚙️ Ajustes automáticos (%)</h3>
@@ -2317,6 +2312,12 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
           </div>
         </div>
       ))}
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>📌 Recordatorio para el papá</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Aparece como cartel al final del menú calculado (velas, adornos de torta, lo que puede traer, etc.). Escribí uno por renglón.</p>
+        <textarea value={cfg.recordatorio!=null?cfg.recordatorio:'🕯️ No te olvides de las VELAS y los adornos de la torta.\n☕ Opcional: podés traer café, yerba y azúcar para el mate.'} onChange={e=>setCfg(c=>({...c,recordatorio:e.target.value}))} rows={4} style={{...S.input,resize:'vertical',fontFamily:'inherit'}} placeholder="🕯️ No te olvides de las velas y adornos de la torta..."/>
+      </div>
 
       <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#f59e0b,#f97316)',color:'white',padding:'13px 28px',fontSize:14}}>✓ Guardar menú</button>
     </div>
