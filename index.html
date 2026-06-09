@@ -2123,6 +2123,8 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
   const [cfg,setCfg]=useState(base);
   const [nuevo,setNuevo]=useState({});
   const [msg,setMsg]=useState('');
+  // Si la config llega/actualiza desde la base después de abrir el panel, refrescamos lo que se muestra.
+  React.useEffect(()=>{ if(iaConfig.menuConfig) setCfg(iaConfig.menuConfig); },[iaConfig.menuConfig]);
   const cats=[['ninos','🧒 Niños'],['adultos','🧑 Adultos'],['snacks','🍿 Snacks'],['postres','🍰 Postres'],['bebidas','🥤 Bebidas']];
   // Valores de arranque por categoría: cuánto come/toma 1 niño y 1 adulto (editables)
   const DEF_RATE={ninos:{pn:4,pa:1,u:'u'},adultos:{pn:1,pa:6,u:'porc.'},snacks:{pn:0.02,pa:0.02,u:'bolsa'},postres:{pn:1,pa:1,u:'porción'},bebidas:{pn:0.4,pa:0.4,u:'L'}};
