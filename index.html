@@ -2131,6 +2131,9 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
   function guardar(){setIaConfig(c=>({...c,menuConfig:cfg}));setMsg('✓ Menú guardado');setTimeout(()=>setMsg(''),2500);}
   function quitar(cat,id){setCfg(c=>({...c,[cat]:(c[cat]||[]).filter(i=>i.id!==id)}));}
   function updItem(cat,id,k,v){setCfg(c=>({...c,[cat]:(c[cat]||[]).map(i=>i.id===id?{...i,[k]:v}:i)}));}
+  const TOPE_DEF={ninos:{tn:8,ta:4},adultos:{tn:4,ta:20},snacks:{tn:0,ta:0},postres:{tn:0,ta:0},bebidas:{tn:0.75,ta:0.85}};
+  const topeDe=cat=>Object.assign({tn:0,ta:0},TOPE_DEF[cat]||{},((cfg.topes||{})[cat]||{}));
+  function updTope(cat,k,v){setCfg(c=>{const tp=Object.assign({},c.topes||{});tp[cat]=Object.assign({tn:0,ta:0},TOPE_DEF[cat]||{},tp[cat]||{},{[k]:v===''?0:+v});return {...c,topes:tp};});}
   const AJ_DEF={veranoBeb:30,inviernoBeb:20,comidaFuerte:15,tardeSalado:30,tardeDulce:25};
   const aj=Object.assign({},AJ_DEF,cfg.ajustes||{});
   function updAj(k,v){setCfg(c=>({...c,ajustes:Object.assign({},AJ_DEF,c.ajustes||{},{[k]:v===''?'':+v})}));}
@@ -2171,6 +2174,14 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
         <div key={k} style={{...S.card,marginBottom:14}}>
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>{lbl}</h3>
           <div style={{fontSize:10,color:'#94a3b8',marginBottom:8}}>Por cada comida: 👶 cuánto come 1 niño · 🧑 cuánto 1 adulto · y la <b>unidad</b> (u, porc., bolsa, L…). Editá con tu experiencia.</div>
+          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'6px 8px',flexWrap:'wrap'}}>
+            <span style={{fontSize:11,fontWeight:800,color:'#9a3412'}}>🧢 Tope por persona (máx, se reparte si eligen varias):</span>
+            <span style={{fontSize:11}}>👶</span>
+            <input type="number" step="any" min="0" value={topeDe(k).tn} onChange={e=>updTope(k,'tn',e.target.value)} style={{...S.input,width:54,padding:'4px 6px',fontSize:12,textAlign:'center'}}/>
+            <span style={{fontSize:11}}>🧑</span>
+            <input type="number" step="any" min="0" value={topeDe(k).ta} onChange={e=>updTope(k,'ta',e.target.value)} style={{...S.input,width:54,padding:'4px 6px',fontSize:12,textAlign:'center'}}/>
+            <span style={{fontSize:10,color:'#94a3b8'}}>(0 = sin tope)</span>
+          </div>
           <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:10}}>
             {(cfg[k]||[]).map(it=>(
               <div key={it.id} style={{display:'flex',alignItems:'center',gap:5,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'6px 8px',flexWrap:'wrap'}}>
@@ -3010,6 +3021,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     setTimeout(()=>{
       const results=[];
       const shopping=[];
+      // Tope por persona por categoría: máximo que come/toma 1 persona. Si eligen varias cosas, ese tope se REPARTE (proporcional). 0 = sin tope.
+      const TOPE_DEF={ninos:{tn:8,ta:4},adultos:{tn:4,ta:20},snacks:{tn:0,ta:0},postres:{tn:0,ta:0},bebidas:{tn:0.75,ta:0.85}};
+      const topeDe=cat=>Object.assign({tn:0,ta:0},TOPE_DEF[cat]||{},((cfg.topes||{})[cat]||{}));
       function addItems(cat){
         const items=cfg[cat]||[];
         const sel=(menuSel[cat]||{});
@@ -3018,9 +3032,15 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         const dr=DEFR[cat]||{pn:1,pa:1,u:'u'};
         const fm=frMult(cat);
         const season=(cat==='bebidas')?bMult:1;
+        // Reparto por tope: si la suma de lo elegido supera lo que come 1 persona, se achica proporcional.
+        const cap=topeDe(cat);
+        const sumN=selItems.reduce((s,i)=>s+((i.pn!=null&&i.pn!=='')?+i.pn:dr.pn),0);
+        const sumA=selItems.reduce((s,i)=>s+((i.pa!=null&&i.pa!=='')?+i.pa:dr.pa),0);
+        const scN=(cap.tn>0&&sumN>cap.tn)?cap.tn/sumN:1;
+        const scA=(cap.ta>0&&sumA>cap.ta)?cap.ta/sumA:1;
         selItems.forEach(item=>{
-          const pn=(item.pn!=null&&item.pn!=='')?+item.pn:dr.pn;
-          const pa=(item.pa!=null&&item.pa!=='')?+item.pa:dr.pa;
+          const pn=((item.pn!=null&&item.pn!=='')?+item.pn:dr.pn)*scN;
+          const pa=((item.pa!=null&&item.pa!=='')?+item.pa:dr.pa)*scA;
           const unit=(item.u!=null&&item.u!=='')?item.u:dr.u;
           const total=Math.ceil((n*pn + a*pa)*hMult*fm*season);
           results.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:unit,cat});
