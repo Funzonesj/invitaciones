@@ -2220,6 +2220,9 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
                     <input value={it.u!=null?it.u:((DEF_RATE[k]||{}).u||'u')} onChange={e=>updItem(k,it.id,'u',e.target.value)} title="Unidad (g, kg, porción…)" placeholder="kg/g/porc." style={{...S.input,width:62,padding:'5px 5px',fontSize:11,textAlign:'center'}}/>
                   </React.Fragment>)}
                 </React.Fragment>)}
+                <label title="Mostrar esta comida en el menú de los papás" style={{display:'flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,color:it.verPapa!==false?'#16a34a':'#94a3b8',cursor:'pointer'}}>
+                  <input type="checkbox" checked={it.verPapa!==false} onChange={e=>updItem(k,it.id,'verPapa',e.target.checked)} style={{width:16,height:16,accentColor:'#16a34a'}}/>papás
+                </label>
                 <button onClick={()=>quitar(k,it.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900,padding:'0 2px',lineHeight:1}}>✕</button>
               </div>
             ))}
@@ -3055,7 +3058,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       function addItems(cat){
         const items=cfg[cat]||[];
         const sel=(menuSel[cat]||{});
-        const selItems=items.filter(i=>sel[i.id]);
+        const selItems=items.filter(i=>sel[i.id]&&i.verPapa!==false);
         if(!selItems.length)return;
         const dr=DEFR[cat]||{pn:1,pa:1,u:'u'};
         const fm=frMult(cat);
@@ -3569,7 +3572,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             {/* Paso 3: Menú */}
             {['ninos','adultos','snacks','postres','bebidas'].map(cat=>{
               const labels={ninos:'🧒 Menú Niños',adultos:'👨 Menú Adultos',snacks:'🍿 Snacks',postres:'🎂 Torta y Postres',bebidas:'🥤 Bebidas'};
-              const items=(iaConfig.menuConfig?.[cat])||[];
+              const items=((iaConfig.menuConfig?.[cat])||[]).filter(i=>i.verPapa!==false);
               if(!items.length)return null;
               return(
                 <div key={cat} style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:12,padding:14,marginBottom:14}}>
