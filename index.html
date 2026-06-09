@@ -2176,7 +2176,7 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
         <div key={k} style={{...S.card,marginBottom:14}}>
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>{lbl}</h3>
           <div style={{fontSize:10,color:'#94a3b8',marginBottom:8}}>{k==='ninos'?'Cuántas unidades come 1 NIÑO de cada comida (esta comida es solo para niños).':k==='adultos'?'Cuántas unidades come 1 ADULTO de cada comida (solo para adultos).':k==='snacks'?'Poné el TAMAÑO de la bolsa (ej: bolsa 500g, bolsa 1kg) y cada cuántas personas alcanza 1. Ej: 1 bolsa 500g cada 50 personas.':k==='bebidas'?'Regla por bebida: [X] L alcanzan para [Y] personas en [Z] hs. El sistema saca el consumo por persona/hora y lo aplica a tu evento. "env" = litros por envase (botella 2L, bidón 5L; 0 = solo litros).':k==='postres'?'Cada postre: elegí "x persona" (cantidad por persona; la unidad puede ser g, kg, porción…) o "1 cada X" (ej: 1 tarta cada 25 personas).':'Cuánto consume 1 niño 👶 y 1 adulto 🧑 (lo comen los dos).'} {(k!=='snacks'&&k!=='bebidas')&&<React.Fragment>La casilla del medio es la <b>unidad</b> (porción, u, g, kg…).</React.Fragment>}</div>
-          {(k==='ninos'||k==='adultos'||k==='postres')&&<div style={{fontSize:10,color:'#0369a1',marginBottom:8,background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:8,padding:'6px 8px'}}>📦 <b>Cómo se compra</b>: si dejás las 2 últimas casillas vacías, la unidad <b>"u" se compra por DOCENA</b> y <b>"porción" de a 8</b> (pizza/tarta). ¿Querés otra? Poné cuánto rinde + el nombre. Ej nuggets por kilo: <b>50</b> · <b>kg</b>. Pernil (rinde 20): <b>20</b> · <b>pernil</b> (con porción 1 por adulto).</div>}
+          {(k==='ninos'||k==='adultos'||k==='postres')&&<div style={{fontSize:10,color:'#0369a1',marginBottom:8,background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:8,padding:'6px 8px'}}>📦 <b>Cómo sale en la lista de compras</b>: elegí en el desplegable → <b>por unidad</b>, <b>por docena</b>, <b>de a 8</b> (pizza/tarta), o <b>personalizado</b> (ej: nuggets por <b>kg</b> → rinde 50; <b>pernil</b> → rinde 20, con porción 1 por adulto). "Automático" usa la unidad (u→docena, porción→de a 8).</div>}
           {k!=='snacks'&&<div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'6px 8px',flexWrap:'wrap'}}>
             <span style={{fontSize:11,fontWeight:800,color:'#9a3412'}}>🧢 Tope por persona (máx, se reparte si eligen varias):</span>
             {k!=='adultos'&&<span style={{fontSize:11}}>👶</span>}
@@ -2219,9 +2219,21 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
                     {k!=='ninos'&&<span style={{fontSize:11,color:'#64748b',fontWeight:700}}>🧑</span>}
                     {k!=='ninos'&&<input type="number" step="any" min="0" value={it.pa!=null?it.pa:((DEF_RATE[k]||{}).pa||0)} onChange={e=>updItem(k,it.id,'pa',e.target.value===''?'':+e.target.value)} style={{...S.input,width:50,padding:'5px 5px',fontSize:12}}/>}
                     <input value={it.u!=null?it.u:((DEF_RATE[k]||{}).u||'u')} onChange={e=>updItem(k,it.id,'u',e.target.value)} title="Unidad de lo que come 1 persona (porción, u, g, kg…)" placeholder="porción/u" style={{...S.input,width:60,padding:'5px 5px',fontSize:11,textAlign:'center'}}/>
-                    <span style={{fontSize:10,color:'#64748b'}}>📦 c/</span>
-                    <input type="number" step="any" min="0" value={it.pack!=null?it.pack:''} onChange={e=>updItem(k,it.id,'pack',e.target.value===''?'':+e.target.value)} title="Cuántas porciones/unidades rinde 1 unidad de compra (ej: pizza=8). Vacío = no convierte." placeholder="—" style={{...S.input,width:44,padding:'5px 4px',fontSize:12,textAlign:'center'}}/>
-                    <input value={it.compraU!=null?it.compraU:''} onChange={e=>updItem(k,it.id,'compraU',e.target.value)} title="Cómo se compra (pizza, tarta, docena, kg, bidón…)" placeholder="pizza/docena/kg" style={{...S.input,width:96,padding:'5px 5px',fontSize:11}}/>
+                    <span style={{fontSize:10,color:'#64748b'}}>📦</span>
+                    <select value={it.compra||'auto'} onChange={e=>updItem(k,it.id,'compra',e.target.value)} title="Cómo sale en la lista de compras" style={{...S.input,width:128,padding:'5px 4px',fontSize:11}}>
+                      <option value="auto">automático</option>
+                      <option value="u">por unidad</option>
+                      <option value="docena">por docena</option>
+                      <option value="media">por ½ docena</option>
+                      <option value="porc8">de a 8 (pizza/tarta)</option>
+                      <option value="custom">personalizado…</option>
+                    </select>
+                    {it.compra==='porc8'&&<input value={it.compraU!=null?it.compraU:''} onChange={e=>updItem(k,it.id,'compraU',e.target.value)} placeholder="pizza/tarta" title="Nombre" style={{...S.input,width:80,padding:'5px 5px',fontSize:11}}/>}
+                    {it.compra==='custom'&&<React.Fragment>
+                      <span style={{fontSize:10,color:'#64748b'}}>rinde</span>
+                      <input type="number" step="any" min="1" value={it.pack!=null?it.pack:''} onChange={e=>updItem(k,it.id,'pack',e.target.value===''?'':+e.target.value)} title="Cuántas porciones/unidades rinde 1 unidad de compra (ej: nuggets por kg=50; pernil=20)" placeholder="50" style={{...S.input,width:46,padding:'5px 4px',fontSize:12,textAlign:'center'}}/>
+                      <input value={it.compraU!=null?it.compraU:''} onChange={e=>updItem(k,it.id,'compraU',e.target.value)} placeholder="kg/pernil" title="Nombre de la unidad de compra" style={{...S.input,width:80,padding:'5px 5px',fontSize:11}}/>
+                    </React.Fragment>}
                   </React.Fragment>)}
                 </React.Fragment>)}
                 <label title="Mostrar esta comida en el menú de los papás" style={{display:'flex',alignItems:'center',gap:3,fontSize:10,fontWeight:700,color:it.verPapa!==false?'#16a34a':'#94a3b8',cursor:'pointer'}}>
@@ -3116,17 +3128,17 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           const aporteN=(cat==='adultos')?0:(n*pn);
           const aporteA=(cat==='ninos')?0:(a*pa);
           const consumo=(aporteN+aporteA)*hMult*fm*season; // total de porciones/unidades que se comen
-          // Conversión a UNIDAD DE COMPRA. Si se carga "pack" + "compraU" se usa eso (ej: nuggets 50 por kg).
-          // Si no, regla automática por la unidad: "u" -> docena (÷12); "porción" -> de a 8 (÷8).
-          let pack=(item.pack!=null&&item.pack!=='')?+item.pack:0;
-          let compraU=item.compraU||'';
-          if(!(pack>0)){
-            const uu=(unit||'').toLowerCase();
-            if(uu==='u'||uu==='unidad'||uu==='unidades'){pack=12;if(!compraU)compraU='docena';}
-            else if(uu.indexOf('porc')===0){pack=8;if(!compraU)compraU='de 8 porc.';}
-          }
-          const total=pack>0?Math.ceil(consumo/pack):Math.ceil(consumo);
-          const u2=pack>0?(compraU||'u'):unit;
+          // Cómo sale en la lista de compras, según lo elegido en el desplegable de cada comida.
+          const modo=item.compra||'auto';
+          let pack=1,compraU=unit;
+          if(modo==='u'){pack=1;compraU='u';}
+          else if(modo==='docena'){pack=12;compraU='docena';}
+          else if(modo==='media'){pack=6;compraU='½ doc.';}
+          else if(modo==='porc8'){pack=8;compraU=item.compraU||'de 8 porc.';}
+          else if(modo==='custom'){pack=(item.pack!=null&&item.pack>0)?+item.pack:1;compraU=item.compraU||'u';}
+          else { const uu=(unit||'').toLowerCase(); if(uu==='u'||uu==='unidad'||uu==='unidades'){pack=12;compraU='docena';} else if(uu.indexOf('porc')===0){pack=8;compraU='de 8 porc.';} else {pack=1;compraU=unit;} }
+          const total=Math.ceil(consumo/(pack>0?pack:1));
+          const u2=compraU||unit;
           results.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:u2,cat});
           shopping.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:u2});
         });
