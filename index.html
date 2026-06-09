@@ -2142,6 +2142,7 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
     const dr=DEF_RATE[cat]||{pn:1,pa:1,u:'u'};
     const item={id:cat+'-'+Math.floor(Math.random()*1e6),nombre:n.nombre.trim(),emoji:(n.emoji||'🍽️').trim(),pn:dr.pn,pa:dr.pa,u:dr.u};
     if(cat==='snacks'){item.cada=50;item.u='bolsa';}
+    if(cat==='bebidas'){item.envase=2.25;}
     setCfg(c=>({...c,[cat]:[...(c[cat]||[]),item]}));
     setNuevo(x=>({...x,[cat]:{nombre:'',emoji:''}}));
   }
@@ -2174,7 +2175,7 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
       {cats.map(([k,lbl])=>(
         <div key={k} style={{...S.card,marginBottom:14}}>
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>{lbl}</h3>
-          <div style={{fontSize:10,color:'#94a3b8',marginBottom:8}}>{k==='ninos'?'Cuántas unidades come 1 NIÑO de cada comida (esta comida es solo para niños).':k==='adultos'?'Cuántas unidades come 1 ADULTO de cada comida (solo para adultos).':k==='snacks'?'Poné el TAMAÑO de la bolsa (ej: bolsa 500g, bolsa 1kg) y cada cuántas personas alcanza 1. Ej: 1 bolsa 500g cada 50 personas.':'Cuánto consume 1 niño 👶 y 1 adulto 🧑 (lo comen los dos).'} {k!=='snacks'&&<React.Fragment>La última casilla es la <b>unidad</b> (u, porc., bolsa, L…).</React.Fragment>}</div>
+          <div style={{fontSize:10,color:'#94a3b8',marginBottom:8}}>{k==='ninos'?'Cuántas unidades come 1 NIÑO de cada comida (esta comida es solo para niños).':k==='adultos'?'Cuántas unidades come 1 ADULTO de cada comida (solo para adultos).':k==='snacks'?'Poné el TAMAÑO de la bolsa (ej: bolsa 500g, bolsa 1kg) y cada cuántas personas alcanza 1. Ej: 1 bolsa 500g cada 50 personas.':k==='bebidas'?'Litros que toma 1 niño 👶 y 1 adulto 🧑, y el ENVASE (litros por botella). El sistema te dice cuántas botellas comprar.':'Cuánto consume 1 niño 👶 y 1 adulto 🧑 (lo comen los dos).'} {(k!=='snacks'&&k!=='bebidas')&&<React.Fragment>La última casilla es la <b>unidad</b> (u, porc., bolsa, L…).</React.Fragment>}</div>
           {k!=='snacks'&&<div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'6px 8px',flexWrap:'wrap'}}>
             <span style={{fontSize:11,fontWeight:800,color:'#9a3412'}}>🧢 Tope por persona (máx, se reparte si eligen varias):</span>
             {k!=='adultos'&&<span style={{fontSize:11}}>👶</span>}
@@ -2199,7 +2200,13 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
                   {k!=='adultos'&&<input type="number" step="any" min="0" value={it.pn!=null?it.pn:((DEF_RATE[k]||{}).pn||0)} onChange={e=>updItem(k,it.id,'pn',e.target.value===''?'':+e.target.value)} style={{...S.input,width:50,padding:'5px 5px',fontSize:12}}/>}
                   {k!=='ninos'&&<span style={{fontSize:11,color:'#64748b',fontWeight:700}}>🧑</span>}
                   {k!=='ninos'&&<input type="number" step="any" min="0" value={it.pa!=null?it.pa:((DEF_RATE[k]||{}).pa||0)} onChange={e=>updItem(k,it.id,'pa',e.target.value===''?'':+e.target.value)} style={{...S.input,width:50,padding:'5px 5px',fontSize:12}}/>}
-                  <input value={it.u!=null?it.u:((DEF_RATE[k]||{}).u||'u')} onChange={e=>updItem(k,it.id,'u',e.target.value)} title="Unidad" style={{...S.input,width:58,padding:'5px 5px',fontSize:11,textAlign:'center'}}/>
+                  {k==='bebidas'?(<React.Fragment>
+                    <span style={{fontSize:11,color:'#64748b'}}>botella</span>
+                    <input type="number" step="any" min="0" value={it.envase!=null?it.envase:2.25} onChange={e=>updItem(k,it.id,'envase',e.target.value===''?'':+e.target.value)} title="Litros por envase" style={{...S.input,width:54,padding:'5px 5px',fontSize:12,textAlign:'center'}}/>
+                    <span style={{fontSize:11,color:'#64748b'}}>L</span>
+                  </React.Fragment>):(
+                    <input value={it.u!=null?it.u:((DEF_RATE[k]||{}).u||'u')} onChange={e=>updItem(k,it.id,'u',e.target.value)} title="Unidad" style={{...S.input,width:58,padding:'5px 5px',fontSize:11,textAlign:'center'}}/>
+                  )}
                 </React.Fragment>)}
                 <button onClick={()=>quitar(k,it.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900,padding:'0 2px',lineHeight:1}}>✕</button>
               </div>
@@ -3062,7 +3069,16 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           const pn=((item.pn!=null&&item.pn!=='')?+item.pn:dr.pn)*scN;
           const pa=((item.pa!=null&&item.pa!=='')?+item.pa:dr.pa)*scA;
           const unit=(item.u!=null&&item.u!=='')?item.u:dr.u;
-          // Comida de niños la comen SOLO niños; comida de adultos SOLO adultos. Snacks/postres/bebidas: ambos.
+          // BEBIDAS: calcula los litros y los convierte en CANTIDAD DE BOTELLAS del envase elegido.
+          if(cat==='bebidas'){
+            const litros=(n*pn + a*pa)*hMult*season;
+            const envase=(item.envase!=null&&item.envase!=='')?+item.envase:2.25;
+            const bot=envase>0?Math.ceil(litros/envase):Math.ceil(litros);
+            results.push({emoji:item.emoji,nombre:item.nombre,cant:bot,u:'botella(s) de '+envase+' L',cat});
+            shopping.push({emoji:item.emoji,nombre:item.nombre,cant:bot,u:'botella(s) de '+envase+' L'});
+            return;
+          }
+          // Comida de niños la comen SOLO niños; comida de adultos SOLO adultos. Snacks/postres: corresponde.
           const aporteN=(cat==='adultos')?0:(n*pn);
           const aporteA=(cat==='ninos')?0:(a*pa);
           const total=Math.ceil((aporteN+aporteA)*hMult*fm*season);
