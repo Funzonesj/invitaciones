@@ -2173,13 +2173,13 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
       {cats.map(([k,lbl])=>(
         <div key={k} style={{...S.card,marginBottom:14}}>
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>{lbl}</h3>
-          <div style={{fontSize:10,color:'#94a3b8',marginBottom:8}}>Por cada comida: 👶 cuánto come 1 niño · 🧑 cuánto 1 adulto · y la <b>unidad</b> (u, porc., bolsa, L…). Editá con tu experiencia.</div>
+          <div style={{fontSize:10,color:'#94a3b8',marginBottom:8}}>{k==='ninos'?'Cuántas unidades come 1 NIÑO de cada comida (esta comida es solo para niños).':k==='adultos'?'Cuántas unidades come 1 ADULTO de cada comida (solo para adultos).':'Cuánto consume 1 niño 👶 y 1 adulto 🧑 (lo comen los dos).'} La última casilla es la <b>unidad</b> (u, porc., bolsa, L…).</div>
           <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'6px 8px',flexWrap:'wrap'}}>
             <span style={{fontSize:11,fontWeight:800,color:'#9a3412'}}>🧢 Tope por persona (máx, se reparte si eligen varias):</span>
-            <span style={{fontSize:11}}>👶</span>
-            <input type="number" step="any" min="0" value={topeDe(k).tn} onChange={e=>updTope(k,'tn',e.target.value)} style={{...S.input,width:54,padding:'4px 6px',fontSize:12,textAlign:'center'}}/>
-            <span style={{fontSize:11}}>🧑</span>
-            <input type="number" step="any" min="0" value={topeDe(k).ta} onChange={e=>updTope(k,'ta',e.target.value)} style={{...S.input,width:54,padding:'4px 6px',fontSize:12,textAlign:'center'}}/>
+            {k!=='adultos'&&<span style={{fontSize:11}}>👶</span>}
+            {k!=='adultos'&&<input type="number" step="any" min="0" value={topeDe(k).tn} onChange={e=>updTope(k,'tn',e.target.value)} style={{...S.input,width:54,padding:'4px 6px',fontSize:12,textAlign:'center'}}/>}
+            {k!=='ninos'&&<span style={{fontSize:11}}>🧑</span>}
+            {k!=='ninos'&&<input type="number" step="any" min="0" value={topeDe(k).ta} onChange={e=>updTope(k,'ta',e.target.value)} style={{...S.input,width:54,padding:'4px 6px',fontSize:12,textAlign:'center'}}/>}
             <span style={{fontSize:10,color:'#94a3b8'}}>(0 = sin tope)</span>
           </div>
           <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:10}}>
@@ -2187,10 +2187,10 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
               <div key={it.id} style={{display:'flex',alignItems:'center',gap:5,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'6px 8px',flexWrap:'wrap'}}>
                 <span style={{fontSize:16}}>{it.emoji}</span>
                 <span style={{fontSize:12,fontWeight:700,flex:1,minWidth:80,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{it.nombre}</span>
-                <span style={{fontSize:11,color:'#64748b'}}>👶</span>
-                <input type="number" step="any" min="0" value={it.pn!=null?it.pn:((DEF_RATE[k]||{}).pn||0)} onChange={e=>updItem(k,it.id,'pn',e.target.value===''?'':+e.target.value)} style={{...S.input,width:50,padding:'5px 5px',fontSize:12}}/>
-                <span style={{fontSize:11,color:'#64748b'}}>🧑</span>
-                <input type="number" step="any" min="0" value={it.pa!=null?it.pa:((DEF_RATE[k]||{}).pa||0)} onChange={e=>updItem(k,it.id,'pa',e.target.value===''?'':+e.target.value)} style={{...S.input,width:50,padding:'5px 5px',fontSize:12}}/>
+                {k!=='adultos'&&<span style={{fontSize:11,color:'#64748b',fontWeight:700}}>👶</span>}
+                {k!=='adultos'&&<input type="number" step="any" min="0" value={it.pn!=null?it.pn:((DEF_RATE[k]||{}).pn||0)} onChange={e=>updItem(k,it.id,'pn',e.target.value===''?'':+e.target.value)} style={{...S.input,width:50,padding:'5px 5px',fontSize:12}}/>}
+                {k!=='ninos'&&<span style={{fontSize:11,color:'#64748b',fontWeight:700}}>🧑</span>}
+                {k!=='ninos'&&<input type="number" step="any" min="0" value={it.pa!=null?it.pa:((DEF_RATE[k]||{}).pa||0)} onChange={e=>updItem(k,it.id,'pa',e.target.value===''?'':+e.target.value)} style={{...S.input,width:50,padding:'5px 5px',fontSize:12}}/>}
                 <input value={it.u!=null?it.u:((DEF_RATE[k]||{}).u||'u')} onChange={e=>updItem(k,it.id,'u',e.target.value)} title="Unidad" style={{...S.input,width:58,padding:'5px 5px',fontSize:11,textAlign:'center'}}/>
                 <button onClick={()=>quitar(k,it.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900,padding:'0 2px',lineHeight:1}}>✕</button>
               </div>
@@ -3042,7 +3042,10 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           const pn=((item.pn!=null&&item.pn!=='')?+item.pn:dr.pn)*scN;
           const pa=((item.pa!=null&&item.pa!=='')?+item.pa:dr.pa)*scA;
           const unit=(item.u!=null&&item.u!=='')?item.u:dr.u;
-          const total=Math.ceil((n*pn + a*pa)*hMult*fm*season);
+          // Comida de niños la comen SOLO niños; comida de adultos SOLO adultos. Snacks/postres/bebidas: ambos.
+          const aporteN=(cat==='adultos')?0:(n*pn);
+          const aporteA=(cat==='ninos')?0:(a*pa);
+          const total=Math.ceil((aporteN+aporteA)*hMult*fm*season);
           results.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:unit,cat});
           shopping.push({emoji:item.emoji,nombre:item.nombre,cant:total,u:unit});
         });
