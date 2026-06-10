@@ -4206,6 +4206,14 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const [videoFin,setVideoFin]=useState(false); // el video de portada terminó
   const musRef=React.useRef(null);
   function toggleMus(){const el=musRef.current;if(!el)return;if(musOn){el.pause();setMusOn(false);}else{el.volume=esVideoPortada?0.12:0.5;try{el.play();}catch(e){}setMusOn(true);}}
+  // Arrancar la música sola en la PRIMERA interacción (tocar/desplazar). En video, recién cuando terminó.
+  React.useEffect(()=>{
+    if(!musTrack)return; let done=false;
+    function tryStart(){ if(done)return; if(esVideoPortada&&!videoFin)return; const el=musRef.current; if(!el)return; el.volume=esVideoPortada?0.12:0.5; const pr=el.play(); if(pr&&pr.then){pr.then(()=>{done=true;setMusOn(true);cleanup();}).catch(()=>{});} else {done=true;setMusOn(true);cleanup();} }
+    function cleanup(){['pointerdown','touchstart','click','scroll','keydown'].forEach(ev=>window.removeEventListener(ev,tryStart));}
+    ['pointerdown','touchstart','click','scroll','keydown'].forEach(ev=>window.addEventListener(ev,tryStart,{passive:true}));
+    return cleanup;
+  },[musTrack,esVideoPortada,videoFin]);
   const col=suc.color||'#f97316';
   // Formato según tipo de evento (viaja guardado en el evento)
   const fEdad = (ev && ev.fmtEdad!==undefined) ? ev.fmtEdad : true;
@@ -4297,7 +4305,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
       {/* 2. LOGO centrado sobre la imagen */}
       <div style={{display:'flex',justifyContent:'center',marginTop:-60,marginBottom:8,position:'relative',zIndex:2}}>
         {musTrack&&(!esVideoPortada||videoFin)&&(
-          <button onClick={toggleMus} className={musOn?'':'pulse-soft'} title={musOn?'Silenciar música':'Activar música'} style={{position:'absolute',right:16,top:38,zIndex:5,background:col,color:'white',border:'none',borderRadius:99,width:46,height:46,fontSize:20,cursor:'pointer',boxShadow:'0 6px 18px rgba(0,0,0,.35)'}}>{musOn?'🔊':'🎵'}</button>
+          <button onClick={toggleMus} className={musOn?'':'pulse-soft'} title={musOn?'Silenciar música':'Activar música'} style={{position:'absolute',right:10,top:26,zIndex:5,background:col,color:'white',border:'3px solid white',borderRadius:99,width:64,height:64,fontSize:30,cursor:'pointer',boxShadow:'0 8px 22px rgba(0,0,0,.4)'}}>{musOn?'🔊':'🎵'}</button>
         )}
         {suc.logo?(
           <div style={{width:118,height:118,borderRadius:'50%',border:'5px solid '+col,overflow:'hidden',background:'white',boxShadow:'0 4px 20px rgba(0,0,0,.18)'}}>
