@@ -4330,7 +4330,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
       {/* 2. LOGO centrado sobre la imagen */}
       <div style={{display:'flex',justifyContent:'center',marginTop:-60,marginBottom:8,position:'relative',zIndex:2}}>
         {musTrack&&(!esVideoPortada||videoFin)&&(
-          <button onClick={toggleMus} className={musOn?'':'pulse-soft'} title={musOn?'Silenciar música':'Activar música'} style={{position:'absolute',right:10,top:26,zIndex:5,background:col,color:'white',border:'3px solid white',borderRadius:99,width:64,height:64,fontSize:30,cursor:'pointer',boxShadow:'0 8px 22px rgba(0,0,0,.4)'}}>{musOn?'🔊':'🎵'}</button>
+          <button onClick={toggleMus} className={musOn?'':'pulse-soft'} title={musOn?'Silenciar música':'Activar música'} style={{position:'fixed',right:14,bottom:18,zIndex:40,background:col,color:'white',border:'3px solid white',borderRadius:99,width:60,height:60,fontSize:28,cursor:'pointer',boxShadow:'0 8px 22px rgba(0,0,0,.45)'}}>{musOn?'🔊':'🎵'}</button>
         )}
         {suc.logo?(
           <div style={{width:118,height:118,borderRadius:'50%',border:'5px solid '+col,overflow:'hidden',background:'white',boxShadow:'0 4px 20px rgba(0,0,0,.18)'}}>
