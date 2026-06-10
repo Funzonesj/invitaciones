@@ -2132,6 +2132,11 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
   const gen=(sucSel.musicaGen&&sucSel.musicaGen.length)?sucSel.musicaGen:['',''];
   function setGen(i,url){setSucursales(p=>p.map(s=>{if(s.id!==selSuc)return s;const g=((s.musicaGen&&s.musicaGen.length)?s.musicaGen:['','']).slice();g[i]=url;return {...s,musicaGen:g};}));}
   function setTemMus(id,url){setTematicas(p=>p.map(t=>t.id===id?{...t,musica:url}:t));flashOk('✓ Guardado');}
+  // Biblioteca de música para el PASE DE FOTOS (la mamá elige una)
+  const pase=(iaConfig.musicaPase&&iaConfig.musicaPase.length)?iaConfig.musicaPase:[];
+  function addPase(url){setIaConfig(c=>({...c,musicaPase:[...((c.musicaPase)||[]),{id:'mp-'+Date.now().toString(16),nombre:'Tema '+(((c.musicaPase)||[]).length+1),url}]}));flashOk('✓ Música agregada');}
+  function updPaseNom(id,nombre){setIaConfig(c=>({...c,musicaPase:((c.musicaPase)||[]).map(m=>m.id===id?{...m,nombre}:m)}));}
+  function delPase(id){setIaConfig(c=>({...c,musicaPase:((c.musicaPase)||[]).filter(m=>m.id!==id)}));}
   async function subirAudio(file,cb){
     if(!file)return;
     try{flashOk('Subiendo música…');const ext=(String(file.name).split('.').pop()||'mp3').toLowerCase();const ct=file.type||'audio/mpeg';
@@ -2184,6 +2189,25 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
           {!lista.length&&<span style={{fontSize:12,color:'#94a3b8'}}>{busq.trim()?'No se encontró ese personaje.':'Todavía no asignaste música a ningún personaje. Buscá uno arriba.'}</span>}
         </div>
       </div>
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🎞️ Música para el Pase de Fotos</h3>
+        <p style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Subí varias canciones y la <b>mamá elige una</b> para musicalizar su pase de fotos. Usá música <b>libre de derechos</b> o generada por IA.</p>
+        <label style={{...S.btn,background:'#7c3aed',color:'white',padding:'10px 16px',fontSize:13,cursor:'pointer',display:'inline-block',marginBottom:12}}>📎 Subir canción<input type="file" accept="audio/*" style={{display:'none'}} onChange={e=>subirAudio(e.target.files[0],u=>addPase(u))}/></label>
+        {pase.length===0?(
+          <div style={{fontSize:12,color:'#94a3b8'}}>Todavía no subiste canciones para el pase.</div>
+        ):(
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {pase.map(m=>(
+              <div key={m.id} style={{display:'flex',alignItems:'center',gap:8,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'7px 8px',flexWrap:'wrap'}}>
+                <input value={m.nombre} onChange={e=>updPaseNom(m.id,e.target.value)} style={{...S.input,flex:1,minWidth:120,fontSize:12,fontWeight:700}}/>
+                {m.url&&<audio src={m.url} controls style={{height:30,maxWidth:170}}></audio>}
+                <button onClick={()=>delPase(m.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900}}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <p style={{fontSize:11,color:'#94a3b8'}}>💡 Los cambios se guardan solos. En la tarjeta, el invitado verá el botón 🔊/🔇 para activar el sonido.</p>
     </div>
   );
@@ -3956,9 +3980,25 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
           <div style={S.card}>
             <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>🎞️ Pase de Fotos</h2>
-            <p style={{fontSize:12,color:'#64748b',marginBottom:14,lineHeight:1.4}}>Subí las fotos del cumple y dentro de la invitación se van a ver pasando solas, con transiciones suaves y la música de la tarjeta. 💕</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:14,lineHeight:1.4}}>Subí las fotos del cumple y dentro de la invitación se van a ver pasando solas como un mini-video: arranca con una frase, las fotos pasan en un marco tipo foto instantánea con el logo del salón, y cierra con otra frase. 💕</p>
             <input ref={albumRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={onAlbumFotos}/>
             <button onClick={()=>albumRef.current&&albumRef.current.click()} disabled={subiendoAlbum} style={{...S.btn,width:'100%',background:subiendoAlbum?'#f1f5f9':'#ec4899',color:subiendoAlbum?'#94a3b8':'white',padding:'14px',fontSize:14,fontWeight:900,marginBottom:12,boxShadow:subiendoAlbum?'none':'0 4px 12px rgba(236,72,153,.3)'}}>{subiendoAlbum?'⏳ Subiendo fotos…':'➕ Agregar fotos'}</button>
+            {/* Frases + música del pase */}
+            <div style={{background:'#faf5ff',border:'1px solid #e9d5ff',borderRadius:14,padding:'12px 14px',marginBottom:12}}>
+              <label style={{display:'block',marginBottom:10}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>✍️ Frase de inicio</span>
+                <input value={form.albumFraseIni||''} onChange={e=>setForm({...form,albumFraseIni:e.target.value})} placeholder={'¡Hoy festejamos a '+(form.nombre||'…')+'!'} style={{...S.input,marginTop:4,fontSize:13}}/>
+              </label>
+              <label style={{display:'block',marginBottom:10}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>✍️ Frase de cierre</span>
+                <input value={form.albumFraseFin||''} onChange={e=>setForm({...form,albumFraseFin:e.target.value})} placeholder="¡Gracias por acompañarnos! 💕" style={{...S.input,marginTop:4,fontSize:13}}/>
+              </label>
+              <label style={{display:'block'}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>🎵 Música del pase</span>
+                <select value={form.albumMusica||''} onChange={e=>setForm({...form,albumMusica:e.target.value})} style={{...S.input,marginTop:4,fontSize:13}}>
+                  <option value="">(Usar la música de la tarjeta)</option>
+                  {((iaConfig.musicaPase)||[]).map(m=><option key={m.id} value={m.url}>{m.nombre}</option>)}
+                </select>
+              </label>
+              {form.albumMusica&&<audio src={form.albumMusica} controls style={{height:32,marginTop:8,width:'100%'}}></audio>}
+            </div>
             {((form.album)||[]).length===0?(
               <div style={{textAlign:'center',padding:'28px 16px',color:'#94a3b8',background:'#fafafa',borderRadius:14,border:'1px dashed #e2e8f0'}}>
                 <div style={{fontSize:38,marginBottom:6}}>🖼️</div>
@@ -4229,29 +4269,57 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 }
 
 
-/* ── PASE DE FOTOS (slideshow con transición + Ken Burns) ── */
-function PaseFotos({fotos,col,titulo}){
-  const lista=(fotos||[]).filter(Boolean);
+/* ── PASE DE FOTOS (mini-video: intro → fotos en marco instantánea con logo → cierre) ── */
+function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin}){
+  const base=(fotos||[]).filter(Boolean);
+  // Secuencia: intro (frase) + fotos + cierre (frase)
+  const slides=[];
+  if(base.length){
+    slides.push({tipo:'intro',src:base[0],texto:(fraseIni&&fraseIni.trim())||('¡Hoy festejamos a '+(nombre||'')+'!')});
+    base.forEach(s=>slides.push({tipo:'foto',src:s}));
+    slides.push({tipo:'cierre',src:base[base.length-1],texto:(fraseFin&&fraseFin.trim())||'¡Gracias por acompañarnos! 💕'});
+  }
   const [idx,setIdx]=React.useState(0);
   const DUR=3600;
   React.useEffect(()=>{
-    if(lista.length<2)return;
-    const t=setInterval(()=>setIdx(i=>(i+1)%lista.length),DUR);
+    if(slides.length<2)return;
+    const t=setInterval(()=>setIdx(i=>(i+1)%slides.length),DUR);
     return ()=>clearInterval(t);
-  },[lista.length]);
-  if(!lista.length)return null;
+  },[slides.length]);
+  if(!base.length)return null;
+  const Logo=logo?(<img src={logo} alt="" style={{position:'absolute',top:10,left:'50%',transform:'translateX(-50%)',width:46,height:46,borderRadius:'50%',objectFit:'cover',border:'2px solid rgba(255,255,255,.9)',boxShadow:'0 2px 10px rgba(0,0,0,.45)',opacity:.95,zIndex:6}}/>):null;
   return (
-    <div style={{padding:'8px 0 4px'}}>
-      {titulo&&<div style={{textAlign:'center',fontSize:13,fontWeight:800,color:col,letterSpacing:.5,margin:'6px 0 8px'}}>📸 {titulo}</div>}
-      <div style={{position:'relative',width:'100%',aspectRatio:'1',overflow:'hidden',background:'#000'}}>
-        {lista.map((src,i)=>(
-          <div key={i} style={{position:'absolute',inset:0,opacity:i===idx?1:0,transition:'opacity 1.1s ease-in-out'}}>
-            <img src={src} alt="" style={{width:'100%',height:'100%',objectFit:'cover',animation:i===idx?('kenburns '+(DUR+1200)+'ms ease-out both'):'none'}}/>
-          </div>
-        ))}
-        {lista.length>1&&(
-          <div style={{position:'absolute',bottom:10,left:0,right:0,display:'flex',justifyContent:'center',gap:6,zIndex:2}}>
-            {lista.map((_,i)=>(<span key={i} style={{width:i===idx?20:7,height:7,borderRadius:99,background:i===idx?col:'rgba(255,255,255,.6)',transition:'all .3s',boxShadow:'0 1px 3px rgba(0,0,0,.4)'}}/>))}
+    <div style={{padding:'8px 0 4px',background:'#0f172a'}}>
+      <div style={{textAlign:'center',fontSize:13,fontWeight:800,color:'#fff',letterSpacing:.5,margin:'8px 0'}}>📸 {nombre?(nombre+' en fotos'):'Pase de fotos'}</div>
+      <div style={{position:'relative',width:'100%',aspectRatio:'1',overflow:'hidden',background:'#0f172a'}}>
+        {slides.map((sl,i)=>{
+          const on=i===idx;
+          if(sl.tipo==='foto'){
+            return (
+              <div key={i} style={{position:'absolute',inset:0,opacity:on?1:0,transition:'opacity 1.1s ease-in-out',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f172a'}}>
+                <div style={{position:'relative',background:'#fff',padding:'12px 12px 36px',borderRadius:4,boxShadow:'0 10px 30px rgba(0,0,0,.55)',transform:'rotate(-2deg)',width:'76%'}}>
+                  <div style={{width:'100%',aspectRatio:'1',overflow:'hidden',background:'#000'}}>
+                    <img src={sl.src} alt="" style={{width:'100%',height:'100%',objectFit:'cover',animation:on?('kenburns '+(DUR+1200)+'ms ease-out both'):'none'}}/>
+                  </div>
+                  {nombre&&<div style={{position:'absolute',bottom:9,left:0,right:0,textAlign:'center',fontSize:15,color:'#475569',fontWeight:700,fontStyle:'italic'}}>{nombre} 🎉</div>}
+                </div>
+                {Logo}
+              </div>
+            );
+          }
+          return (
+            <div key={i} style={{position:'absolute',inset:0,opacity:on?1:0,transition:'opacity 1.1s ease-in-out'}}>
+              <img src={sl.src} alt="" style={{width:'100%',height:'100%',objectFit:'cover',filter:'brightness(.5)',animation:on?('kenburns '+(DUR+1200)+'ms ease-out both'):'none'}}/>
+              <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',padding:'26px'}}>
+                <div style={{textAlign:'center',color:'#fff',fontSize:25,fontWeight:900,textShadow:'0 2px 14px rgba(0,0,0,.75)',lineHeight:1.25}}>{sl.texto}</div>
+              </div>
+              {Logo}
+            </div>
+          );
+        })}
+        {slides.length>1&&(
+          <div style={{position:'absolute',bottom:10,left:0,right:0,display:'flex',justifyContent:'center',gap:5,zIndex:7}}>
+            {slides.map((_,i)=>(<span key={i} style={{width:i===idx?18:6,height:6,borderRadius:99,background:i===idx?col:'rgba(255,255,255,.6)',transition:'all .3s',boxShadow:'0 1px 3px rgba(0,0,0,.4)'}}/>))}
           </div>
         )}
       </div>
@@ -4345,7 +4413,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const [vidMuted,setVidMuted]=useState(true); // el video de portada arranca mudo (los celus no dejan audio automático)
   // Música de fondo: la del personaje, o una genérica que rota. En video suena bajita; en foto, normal.
   const _musGenF=(((suc&&suc.musicaGen&&suc.musicaGen.length)?suc.musicaGen:((iaConfig&&iaConfig.musicaGen)||[]))).filter(Boolean);
-  const musTrack=(tem&&tem.musica)||(_musGenF.length?_musGenF[(parseInt(String((ev&&ev.id)||'0').replace(/[^0-9]/g,''))||0)%_musGenF.length]:'');
+  const musTrack=(ev&&ev.albumMusica)||(tem&&tem.musica)||(_musGenF.length?_musGenF[(parseInt(String((ev&&ev.id)||'0').replace(/[^0-9]/g,''))||0)%_musGenF.length]:'');
   const esVideoPortada=!!(ev&&ev.videoUrl&&ev.usarVideo!==false);
   const [musOn,setMusOn]=useState(false);
   const [videoFin,setVideoFin]=useState(false); // el video de portada terminó
@@ -4565,10 +4633,13 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         <p style={{fontSize:11,color:'#94a3b8',marginTop:7}}>Se guarda en tu calendario y te avisa el día 🎉</p>
       </div>}
 
-      {/* 8.5 PASE DE FOTOS de la mamá (álbum) */}
-      {Array.isArray(ev.album)&&ev.album.length>0&&(
-        <PaseFotos fotos={ev.album} col={col} titulo={(ev.nombre||'')+' en fotos'}/>
-      )}
+      {/* 8.5 PASE DE FOTOS de la mamá (mini-video): IA (si hay) + fotos de los papás */}
+      {(()=>{
+        const _ia=Array.isArray(ev.iaImagenes)?ev.iaImagenes.filter(Boolean):[];
+        const _al=Array.isArray(ev.album)?ev.album.filter(Boolean):[];
+        const _pf=[..._ia,..._al];
+        return _pf.length>0?(<PaseFotos fotos={_pf} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin}/>):null;
+      })()}
 
       {/* 9. FOTOS 2x2 */}
       {fotos.length>0&&(
