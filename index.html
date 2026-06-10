@@ -2137,6 +2137,22 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
   function addPase(url){setIaConfig(c=>({...c,musicaPase:[...((c.musicaPase)||[]),{id:'mp-'+Date.now().toString(16),nombre:'Tema '+(((c.musicaPase)||[]).length+1),url}]}));flashOk('✓ Música agregada');}
   function updPaseNom(id,nombre){setIaConfig(c=>({...c,musicaPase:((c.musicaPase)||[]).map(m=>m.id===id?{...m,nombre}:m)}));}
   function delPase(id){setIaConfig(c=>({...c,musicaPase:((c.musicaPase)||[]).filter(m=>m.id!==id)}));}
+  // Frases del pase (la mamá elige). frasesPaseIni / frasesPaseFin = [texto]
+  const frasesIni=(iaConfig.frasesPaseIni&&iaConfig.frasesPaseIni.length)?iaConfig.frasesPaseIni:[];
+  const frasesFin=(iaConfig.frasesPaseFin&&iaConfig.frasesPaseFin.length)?iaConfig.frasesPaseFin:[];
+  const [nfIni,setNfIni]=useState('');const [nfFin,setNfFin]=useState('');
+  function addFrase(campo,txt,clr){if(!txt||!txt.trim())return;setIaConfig(c=>({...c,[campo]:[...((c[campo])||[]),txt.trim()]}));clr('');flashOk('✓ Frase agregada');}
+  function delFrase(campo,i){setIaConfig(c=>({...c,[campo]:((c[campo])||[]).filter((_,k)=>k!==i)}));}
+  // Portadas (imágenes bonitas) del pase. portadasPase = [url]
+  const portadas=(iaConfig.portadasPase&&iaConfig.portadasPase.length)?iaConfig.portadasPase:[];
+  function delPortada(i){setIaConfig(c=>({...c,portadasPase:((c.portadasPase)||[]).filter((_,k)=>k!==i)}));}
+  function comprimirAdmin(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{const M=1200;let w=img.width,h=img.height;if(w>h&&w>M){h=Math.round(h*M/w);w=M;}else if(h>=w&&h>M){w=Math.round(w*M/h);h=M;}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',0.85));};img.onerror=rej;img.src=ev.target.result;};r.onerror=rej;r.readAsDataURL(file);});}
+  async function subirPortadas(files){
+    const arr=Array.from(files||[]);if(!arr.length)return;flashOk('Subiendo portadas…');
+    const urls=[];
+    for(const f of arr){try{const du=await comprimirAdmin(f);let u=du;try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:du})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(e){}urls.push(u);}catch(e){}}
+    setIaConfig(c=>({...c,portadasPase:[...((c.portadasPase)||[]),...urls]}));flashOk('✓ '+urls.length+' portada(s) subida(s)');
+  }
   async function subirAudio(file,cb){
     if(!file)return;
     try{flashOk('Subiendo música…');const ext=(String(file.name).split('.').pop()||'mp3').toLowerCase();const ct=file.type||'audio/mpeg';
@@ -2202,6 +2218,50 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
                 <input value={m.nombre} onChange={e=>updPaseNom(m.id,e.target.value)} style={{...S.input,flex:1,minWidth:120,fontSize:12,fontWeight:700}}/>
                 {m.url&&<audio src={m.url} controls style={{height:30,maxWidth:170}}></audio>}
                 <button onClick={()=>delPase(m.id)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900}}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>✍️ Frases del Pase de Fotos</h3>
+        <p style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Cargá varias frases y la <b>mamá elige</b> una de inicio y una de cierre (o escribe la suya). Podés usar <b>{'{nombre}'}</b> y se reemplaza por el nombre del niño/a.</p>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+          {[['frasesPaseIni','🎬 Frases de INICIO',frasesIni,nfIni,setNfIni],['frasesPaseFin','💕 Frases de CIERRE',frasesFin,nfFin,setNfFin]].map(([campo,lbl,lista,val,setVal])=>(
+            <div key={campo}>
+              <div style={{fontSize:12,fontWeight:800,color:'#7c3aed',marginBottom:6}}>{lbl}</div>
+              <div style={{display:'flex',gap:6,marginBottom:8}}>
+                <input value={val} onChange={e=>setVal(e.target.value)} placeholder="Escribí una frase…" style={{...S.input,fontSize:12,flex:1}}/>
+                <button onClick={()=>addFrase(campo,val,setVal)} style={{...S.btn,background:'#7c3aed',color:'white',padding:'7px 12px',fontSize:13,fontWeight:900}}>+</button>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:5}}>
+                {lista.length===0&&<span style={{fontSize:11,color:'#94a3b8'}}>Sin frases todavía.</span>}
+                {lista.map((f,i)=>(
+                  <div key={i} style={{display:'flex',alignItems:'center',gap:6,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:8,padding:'5px 8px'}}>
+                    <span style={{fontSize:12,flex:1}}>{f}</span>
+                    <button onClick={()=>delFrase(campo,i)} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:13,fontWeight:900}}>✕</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🖼️ Portadas del Pase (imágenes bonitas)</h3>
+        <p style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>Subí imágenes coloridas para que la <b>mamá elija la portada</b> del pase (la primera pantalla con la frase). </p>
+        <p style={{fontSize:11,color:'#0ea5e9',fontWeight:700,marginBottom:10}}>📐 Subilas <b>cuadradas, 1080 × 1080 px</b> (mínimo 800×800). Si es rectangular se recorta al centro.</p>
+        <label style={{...S.btn,background:'#0ea5e9',color:'white',padding:'10px 16px',fontSize:13,cursor:'pointer',display:'inline-block',marginBottom:12}}>📎 Subir portadas<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>subirPortadas(e.target.files)}/></label>
+        {portadas.length===0?(
+          <div style={{fontSize:12,color:'#94a3b8'}}>Todavía no subiste portadas.</div>
+        ):(
+          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
+            {portadas.map((src,i)=>(
+              <div key={i} style={{position:'relative',aspectRatio:'1',borderRadius:10,overflow:'hidden',border:'1px solid #eef1f6',background:'#000'}}>
+                <img src={src} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                <button onClick={()=>delPortada(i)} style={{position:'absolute',top:3,right:3,width:22,height:22,borderRadius:'50%',border:'none',background:'rgba(220,38,38,.92)',color:'white',fontSize:12,fontWeight:900,cursor:'pointer'}}>×</button>
               </div>
             ))}
           </div>
@@ -3983,21 +4043,46 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <p style={{fontSize:12,color:'#64748b',marginBottom:14,lineHeight:1.4}}>Subí las fotos del cumple y dentro de la invitación se van a ver pasando solas como un mini-video: arranca con una frase, las fotos pasan en un marco tipo foto instantánea con el logo del salón, y cierra con otra frase. 💕</p>
             <input ref={albumRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={onAlbumFotos}/>
             <button onClick={()=>albumRef.current&&albumRef.current.click()} disabled={subiendoAlbum} style={{...S.btn,width:'100%',background:subiendoAlbum?'#f1f5f9':'#ec4899',color:subiendoAlbum?'#94a3b8':'white',padding:'14px',fontSize:14,fontWeight:900,marginBottom:12,boxShadow:subiendoAlbum?'none':'0 4px 12px rgba(236,72,153,.3)'}}>{subiendoAlbum?'⏳ Subiendo fotos…':'➕ Agregar fotos'}</button>
-            {/* Frases + música del pase */}
+            {/* Frases + música + portada del pase */}
             <div style={{background:'#faf5ff',border:'1px solid #e9d5ff',borderRadius:14,padding:'12px 14px',marginBottom:12}}>
-              <label style={{display:'block',marginBottom:10}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>✍️ Frase de inicio</span>
-                <input value={form.albumFraseIni||''} onChange={e=>setForm({...form,albumFraseIni:e.target.value})} placeholder={'¡Hoy festejamos a '+(form.nombre||'…')+'!'} style={{...S.input,marginTop:4,fontSize:13}}/>
+              <label style={{display:'block',marginBottom:10}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>🎬 Frase de inicio</span>
+                {((iaConfig.frasesPaseIni)||[]).length>0&&(
+                  <select onChange={e=>{if(e.target.value)setForm({...form,albumFraseIni:e.target.value.replace(/\{nombre\}/g,form.nombre||'')});}} value="" style={{...S.input,marginTop:4,fontSize:13}}>
+                    <option value="">📋 Elegir una frase…</option>
+                    {((iaConfig.frasesPaseIni)||[]).map((f,i)=><option key={i} value={f}>{f.replace(/\{nombre\}/g,form.nombre||'')}</option>)}
+                  </select>
+                )}
+                <input value={form.albumFraseIni||''} onChange={e=>setForm({...form,albumFraseIni:e.target.value})} placeholder={'¡Hoy festejamos a '+(form.nombre||'…')+'!'} style={{...S.input,marginTop:6,fontSize:13}}/>
               </label>
-              <label style={{display:'block',marginBottom:10}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>✍️ Frase de cierre</span>
-                <input value={form.albumFraseFin||''} onChange={e=>setForm({...form,albumFraseFin:e.target.value})} placeholder="¡Gracias por acompañarnos! 💕" style={{...S.input,marginTop:4,fontSize:13}}/>
+              <label style={{display:'block',marginBottom:10}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>💕 Frase de cierre</span>
+                {((iaConfig.frasesPaseFin)||[]).length>0&&(
+                  <select onChange={e=>{if(e.target.value)setForm({...form,albumFraseFin:e.target.value.replace(/\{nombre\}/g,form.nombre||'')});}} value="" style={{...S.input,marginTop:4,fontSize:13}}>
+                    <option value="">📋 Elegir una frase…</option>
+                    {((iaConfig.frasesPaseFin)||[]).map((f,i)=><option key={i} value={f}>{f.replace(/\{nombre\}/g,form.nombre||'')}</option>)}
+                  </select>
+                )}
+                <input value={form.albumFraseFin||''} onChange={e=>setForm({...form,albumFraseFin:e.target.value})} placeholder="¡Gracias por acompañarnos! 💕" style={{...S.input,marginTop:6,fontSize:13}}/>
               </label>
-              <label style={{display:'block'}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>🎵 Música del pase</span>
+              <label style={{display:'block',marginBottom:((iaConfig.portadasPase)||[]).length>0?10:0}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>🎵 Música del pase</span>
                 <select value={form.albumMusica||''} onChange={e=>setForm({...form,albumMusica:e.target.value})} style={{...S.input,marginTop:4,fontSize:13}}>
                   <option value="">(Usar la música de la tarjeta)</option>
                   {((iaConfig.musicaPase)||[]).map(m=><option key={m.id} value={m.url}>{m.nombre}</option>)}
                 </select>
               </label>
-              {form.albumMusica&&<audio src={form.albumMusica} controls style={{height:32,marginTop:8,width:'100%'}}></audio>}
+              {form.albumMusica&&<audio src={form.albumMusica} controls style={{height:32,marginTop:8,width:'100%',marginBottom:6}}></audio>}
+              {((iaConfig.portadasPase)||[]).length>0&&(
+                <div>
+                  <span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>🖼️ Portada del pase</span>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginTop:6}}>
+                    <button type="button" onClick={()=>setForm({...form,albumPortada:''})} style={{aspectRatio:'1',borderRadius:8,border:(!form.albumPortada?'3px solid #7c3aed':'1px solid #e2e8f0'),background:'#f1f5f9',cursor:'pointer',fontSize:9,fontWeight:800,color:'#64748b',padding:2}}>1ª foto</button>
+                    {((iaConfig.portadasPase)||[]).map((src,i)=>(
+                      <button type="button" key={i} onClick={()=>setForm({...form,albumPortada:src})} style={{aspectRatio:'1',borderRadius:8,overflow:'hidden',border:(form.albumPortada===src?'3px solid #7c3aed':'1px solid #e2e8f0'),background:'#000',cursor:'pointer',padding:0}}>
+                        <img src={src} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             {((form.album)||[]).length===0?(
               <div style={{textAlign:'center',padding:'28px 16px',color:'#94a3b8',background:'#fafafa',borderRadius:14,border:'1px dashed #e2e8f0'}}>
@@ -4270,14 +4355,16 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
 
 /* ── PASE DE FOTOS (mini-video: intro → fotos en marco instantánea con logo → cierre) ── */
-function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin}){
+function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada}){
   const base=(fotos||[]).filter(Boolean);
   // Secuencia: intro (frase) + fotos + cierre (frase)
   const slides=[];
   if(base.length){
-    slides.push({tipo:'intro',src:base[0],texto:(fraseIni&&fraseIni.trim())||('¡Hoy festejamos a '+(nombre||'')+'!')});
+    const bgIni=portada||base[0];
+    const bgFin=portada||base[base.length-1];
+    slides.push({tipo:'intro',src:bgIni,texto:(fraseIni&&fraseIni.trim())||('¡Hoy festejamos a '+(nombre||'')+'!')});
     base.forEach(s=>slides.push({tipo:'foto',src:s}));
-    slides.push({tipo:'cierre',src:base[base.length-1],texto:(fraseFin&&fraseFin.trim())||'¡Gracias por acompañarnos! 💕'});
+    slides.push({tipo:'cierre',src:bgFin,texto:(fraseFin&&fraseFin.trim())||'¡Gracias por acompañarnos! 💕'});
   }
   const [idx,setIdx]=React.useState(0);
   const DUR=3600;
@@ -4638,7 +4725,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         const _ia=Array.isArray(ev.iaImagenes)?ev.iaImagenes.filter(Boolean):[];
         const _al=Array.isArray(ev.album)?ev.album.filter(Boolean):[];
         const _pf=[..._ia,..._al];
-        return _pf.length>0?(<PaseFotos fotos={_pf} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin}/>):null;
+        return _pf.length>0?(<PaseFotos fotos={_pf} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin} portada={ev.albumPortada}/>):null;
       })()}
 
       {/* 9. FOTOS 2x2 */}
