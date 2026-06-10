@@ -4366,20 +4366,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         {/* 6. FECHA */}
         <p style={{color:'#555',fontSize:17,margin:'0 0 2px'}}>Te espero el dia</p>
         <p style={{color:'#1e293b',fontSize:22,fontWeight:900,margin:'0 0 2px'}}>{diaStr}</p>
-        <p style={{color:'#555',fontSize:16,margin:'0 0 12px'}}>{horario}</p>
-        <button onClick={()=>{
-          const p2=x=>String(x).padStart(2,'0');
-          const Y=ev.anio,M=p2(ev.mes),D=p2(ev.dia);
-          const hi=String(ev.hIni||'17:00').split(':');const hf=String(ev.hFin||'20:00').split(':');
-          const dt=Y+M+D+'T'+p2(hi[0])+p2(hi[1]||'00')+'00';
-          const dtEnd=Y+M+D+'T'+p2(hf[0])+p2(hf[1]||'00')+'00';
-          const alarmUTC=Y+M+D+'T130000Z'; // 10:00 (Argentina UTC-3)
-          const titulo='Cumple de '+(ev.nombre||'')+' en '+(suc.nombre||'');
-          const loc=String(suc.direccion||suc.nombre||'').replace(/[\r\n,]/g,' ');
-          const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//FunZone//ES','CALSCALE:GREGORIAN','BEGIN:VEVENT','UID:'+(ev.id||'ev')+'@funzone','DTSTAMP:'+Y+M+D+'T120000Z','DTSTART:'+dt,'DTEND:'+dtEnd,'SUMMARY:'+titulo,'LOCATION:'+loc,'DESCRIPTION:No te olvides del cumple de '+(ev.nombre||'')+'!','BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Hoy es el cumple de '+(ev.nombre||'')+'!','TRIGGER;VALUE=DATE-TIME:'+alarmUTC,'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
-          const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});const url=URL.createObjectURL(blob);
-          const a=document.createElement('a');a.href=url;a.download='cumple-'+String(ev.nombre||'fiesta').replace(/\s/g,'')+'.ics';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>{try{URL.revokeObjectURL(url);}catch(e){}},4000);
-        }} style={{background:col,color:'white',border:'none',borderRadius:99,padding:'12px 22px',fontSize:14,fontWeight:900,cursor:'pointer',marginBottom:20,boxShadow:'0 6px 18px rgba(0,0,0,.18)'}}>📅 Recordármelo (agregar a mi calendario)</button>
+        <p style={{color:'#555',fontSize:16,margin:'0 0 20px'}}>{horario}</p>
 
         {/* 7. COUNTDOWN o LLEGO EL DIA */}
         {countdown.llego?(
@@ -4414,6 +4401,24 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         <p style={{color:'#333',fontSize:22,margin:'0 0 4px',fontWeight:400}}>{T.festejoEn||'Festejo en el salón'}</p>
         <p style={{color:col,fontSize:28,fontWeight:900,margin:0,textTransform:'uppercase'}}>{suc.nombre}</p>
       </div>
+
+      {/* Recordatorio: agregar al calendario (antes de las fotos del salón) */}
+      {ev&&<div style={{padding:'8px 20px 18px',textAlign:'center'}}>
+        <button onClick={()=>{
+          const p2=x=>String(x).padStart(2,'0');
+          const Y=ev.anio,M=p2(ev.mes),D=p2(ev.dia);
+          const hi=String(ev.hIni||'17:00').split(':');const hf=String(ev.hFin||'20:00').split(':');
+          const dt=Y+M+D+'T'+p2(hi[0])+p2(hi[1]||'00')+'00';
+          const dtEnd=Y+M+D+'T'+p2(hf[0])+p2(hf[1]||'00')+'00';
+          const alarmUTC=Y+M+D+'T130000Z'; // 10:00 (Argentina UTC-3)
+          const titulo='Cumple de '+(ev.nombre||'')+' en '+(suc.nombre||'');
+          const loc=String(suc.direccion||suc.nombre||'').replace(/[\r\n,]/g,' ');
+          const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//FunZone//ES','CALSCALE:GREGORIAN','BEGIN:VEVENT','UID:'+(ev.id||'ev')+'@funzone','DTSTAMP:'+Y+M+D+'T120000Z','DTSTART:'+dt,'DTEND:'+dtEnd,'SUMMARY:'+titulo,'LOCATION:'+loc,'DESCRIPTION:No te olvides del cumple de '+(ev.nombre||'')+'!','BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Hoy es el cumple de '+(ev.nombre||'')+'!','TRIGGER;VALUE=DATE-TIME:'+alarmUTC,'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
+          const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});const url=URL.createObjectURL(blob);
+          const a=document.createElement('a');a.href=url;a.download='cumple-'+String(ev.nombre||'fiesta').replace(/\s/g,'')+'.ics';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>{try{URL.revokeObjectURL(url);}catch(e){}},4000);
+        }} style={{width:'100%',maxWidth:420,background:col,color:'white',border:'none',borderRadius:16,padding:'15px 18px',fontSize:16,fontWeight:900,cursor:'pointer',boxShadow:'0 8px 22px rgba(0,0,0,.22)'}}>📅 ¡No te lo pierdas! Agendá el cumple</button>
+        <p style={{fontSize:11,color:'#94a3b8',marginTop:7}}>Se agrega a tu calendario con un aviso a las 10 AM del día 🎉</p>
+      </div>}
 
       {/* 9. FOTOS 2x2 */}
       {fotos.length>0&&(
