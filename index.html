@@ -4164,30 +4164,26 @@ function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volv
     if(!container)return;
     const colors=['#f43f5e','#fb923c','#fbbf24','#a3e635','#34d399','#22d3ee','#60a5fa','#a78bfa','#f472b6','#ffffff'];
     const style=document.createElement('style');
-    // Bomba: explota fuerte y abre en TODA la pantalla (sube rápido) y después CAE MUY LENTO.
-    style.textContent='@keyframes burst{0%{opacity:0;transform:translate(-50%,-50%) translate(0,0) rotate(0deg) scale(.2)}6%{opacity:1}16%{transform:translate(-50%,-50%) translate(calc(var(--tx)*0.85),var(--peak)) rotate(160deg) scale(1)}100%{opacity:.9;transform:translate(-50%,-50%) translate(var(--tx),var(--ty)) rotate(700deg) scale(.9)}}';
+    // Bomba: explota y los papelitos SOLO van hacia arriba y afuera (no caen), se desvanecen.
+    style.textContent='@keyframes burst{0%{opacity:0;transform:translate(-50%,-50%) translate(0,0) rotate(0deg) scale(.2)}7%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) translate(var(--tx),var(--ty)) rotate(560deg) scale(1)}}';
     document.head.appendChild(style);
     function lanzar(){
       const W=window.innerWidth||400, H=window.innerHeight||700;
       for(let i=0;i<120;i++){
         const el=document.createElement('div');
         const size=Math.random()*10+6;
-        const ang=Math.random()*Math.PI*2;
-        const dist=Math.random()*(W*0.55)+40;           // se abre por toda la pantalla
-        const tx=Math.cos(ang)*dist;
-        const peak=-(Math.random()*(H*0.45)+H*0.1);     // sube alto
-        const ty=Math.random()*(H*0.55)+(H*0.35);       // cae hasta abajo
-        const dur=Math.random()*2.5+5.5;                // 5.5 a 8s -> caída MUY lenta
-        el.style.cssText='position:absolute;left:50%;top:54%;width:'+size+'px;height:'+(size*(Math.random()>0.5?1:0.45))+'px;background:'+colors[Math.floor(Math.random()*colors.length)]+';border-radius:'+(Math.random()>0.5?'50%':'2px')+';opacity:0;will-change:transform,opacity;animation:burst '+dur+'s '+(Math.random()*0.12)+'s cubic-bezier(.15,.6,.3,1) forwards;';
+        const tx=(Math.random()*2-1)*(W*0.55);          // se abre a los costados
+        const ty=-(Math.random()*(H*0.7)+H*0.2);        // SOLO hacia arriba
+        const dur=Math.random()*2+3.5;                  // 3.5 a 5.5s
+        el.style.cssText='position:absolute;left:50%;top:60%;width:'+size+'px;height:'+(size*(Math.random()>0.5?1:0.45))+'px;background:'+colors[Math.floor(Math.random()*colors.length)]+';border-radius:'+(Math.random()>0.5?'50%':'2px')+';opacity:0;will-change:transform,opacity;animation:burst '+dur+'s '+(Math.random()*0.12)+'s cubic-bezier(.1,.7,.3,1) forwards;';
         el.style.setProperty('--tx',tx+'px');
         el.style.setProperty('--ty',ty+'px');
-        el.style.setProperty('--peak',peak+'px');
         container.appendChild(el);
-        setTimeout(()=>{try{el.remove();}catch(e){}},8500);
+        setTimeout(()=>{try{el.remove();}catch(e){}},6000);
       }
     }
     lanzar();
-    const t2=setInterval(lanzar,5000);
+    const t2=setInterval(lanzar,4000);
     return()=>{clearInterval(t2);if(container)container.innerHTML='';};
   },[]);
   return(
