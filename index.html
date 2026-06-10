@@ -170,6 +170,7 @@ const S = {
 // Detect invitation URL param before React renders
 const _SEARCH = window.location.search || window.location.hash.replace('#','?');
 const _INV_PARAM = new URLSearchParams(_SEARCH).get('inv');
+const _REC_PARAM = new URLSearchParams(_SEARCH).get('rec'); // link propio del Generador de Recuerdos
 // If param looks like base64 (contains letters+numbers, not just ev-X), decode event data
 let _INV_EV_DATA = null;
 if(_INV_PARAM && !_INV_PARAM.match(/^ev-/)){
@@ -178,7 +179,7 @@ if(_INV_PARAM && !_INV_PARAM.match(/^ev-/)){
 const _PAPA_PARAM = new URLSearchParams(_SEARCH).get('papa');
 let _PAPA_DATA = null;
 if(_PAPA_PARAM){try{_PAPA_DATA=JSON.parse(atob(_PAPA_PARAM));}catch(e){}}
-const INIT_INV_ID = _INV_PARAM || 'ev-1';
+const INIT_INV_ID = _INV_PARAM || _REC_PARAM || 'ev-1';
 // Sesiones recordadas en este dispositivo (para no poner la contraseña cada vez)
 let _ADMIN_SAVED=null;
 try{const s=localStorage.getItem('fz_admin_sesion');if(s)_ADMIN_SAVED=JSON.parse(s);}catch(e){}
@@ -192,10 +193,11 @@ const _AUTO_VISTA = (_ULTIMO_MODO==='admin'&&_ADMIN_SAVED) ? 'admin-dashboard'
   : (_ULTIMO_MODO==='papa'&&_PAPA_SAVED) ? 'papa-creador'
   : (_PAPA_SAVED ? 'papa-creador'
   : (_ADMIN_SAVED ? 'admin-dashboard' : 'admin-login'));
-const INIT_VISTA = _INV_PARAM ? 'invitado-portada'
+const INIT_VISTA = _REC_PARAM ? 'recuerdos'
+  : (_INV_PARAM ? 'invitado-portada'
   : (_PAPA_DATA ? 'papa-creador'
   : (_PAPA_PARAM ? 'papa-login'
-  : _AUTO_VISTA));
+  : _AUTO_VISTA)));
 
 // Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
 let _PAPA_NAV={};
@@ -335,17 +337,19 @@ function App() {
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [dbReady,     setDbReady]     = useState(!SB);
 
-  // Detect ?inv= param after mount as reliable fallback
+  // Detect ?inv= / ?rec= param after mount as reliable fallback
   React.useEffect(()=>{
-    const inv=new URLSearchParams(window.location.search).get('inv');
-    if(inv){setInvEvId(inv);setVista('invitado-portada');}
+    const sp=new URLSearchParams(window.location.search);
+    const rec=sp.get('rec'); const inv=sp.get('inv');
+    if(rec){setInvEvId(rec);setVista('recuerdos');}
+    else if(inv){setInvEvId(inv);setVista('invitado-portada');}
   },[]);
   // Cargar eventos y confirmaciones desde la base de datos central (Supabase)
   React.useEffect(()=>{
     if(!SB){return;}
     (async()=>{
       // 1) Links de invitación/papá: traer SOLO ese evento primero (rápido) y mostrar ya
-      const quickId=_INV_PARAM||_PAPA_PARAM;
+      const quickId=_INV_PARAM||_PAPA_PARAM||_REC_PARAM;
       if(quickId){
         try{
           const one=await SB.from('eventos').select('data').eq('id',quickId);
@@ -444,7 +448,7 @@ function App() {
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:'#f7f9fc'}}>
 
       {/* HEADER */}
-      {vista!=='invitado-portada'&&vista!=='invitado-web'&&(
+      {vista!=='invitado-portada'&&vista!=='invitado-web'&&vista!=='recuerdos'&&(
         <header style={{background:'#ffffff',color:'#1e293b',padding:'10px 16px',position:'sticky',top:0,zIndex:100,borderBottom:'1px solid #eef2f7',boxShadow:'0 1px 10px rgba(15,23,42,.05)'}}>
           <div style={{maxWidth:900,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
             {/* Logo */}
@@ -540,9 +544,10 @@ function App() {
         {vista==='papa-creador'      && papaSesion&&<PapaCreador key={papaSesion.id} setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs} pedidos={pedidos} setPedidos={setPedidos}/>}
         {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))} esInvPortada={true}/>}
         {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))}/>}
+        {vista==='recuerdos'         && <InvRecuerdos  setVista={setVista} eventos={eventos} invEvId={invEvId} sucursales={sucursales} tematicas={tematicas} volverInv={(_REC_PARAM)?null:(papaSesion?'papa-creador':(adminSesion?'admin-eventos':null))}/>}
       </main>
 
-      {vista!=='invitado-portada'&&vista!=='invitado-web'&&(
+      {vista!=='invitado-portada'&&vista!=='invitado-web'&&vista!=='recuerdos'&&(
         <footer style={{background:'#0f172a',color:'#475569',textAlign:'center',padding:'10px',fontSize:11,borderTop:'1px solid #1e293b'}}>
           © 2026 Fun Zone & Play Point · Sistema de Invitaciones Digitales
         </footer>
@@ -3246,7 +3251,11 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   }
   function quitarAlbum(i){setForm(x=>({...x,album:((x.album)||[]).filter((_,k)=>k!==i)}));}
   function moverAlbum(i,dir){setForm(x=>{const a=[...((x.album)||[])];const j=i+dir;if(j<0||j>=a.length)return x;const t=a[i];a[i]=a[j];a[j]=t;return {...x,album:a};});}
-  function guardarAlbum(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});flashOk('✓ ¡Pase de fotos guardado!');}
+  function guardarAlbum(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});flashOk('✓ ¡Recuerdo guardado!');}
+  // Ver el recuerdo (página propia) — guarda primero
+  function verRecuerdo(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('recuerdos');}
+  // Compartir el recuerdo por WhatsApp (link propio ?rec=, aparte de la invitación)
+  function compartirRecuerdo(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});const link=window.location.href.split('?')[0]+'?rec='+papaSesion.id;const nom=form.nombre||papaSesion.nombre;const msg='📸✨ ¡Te comparto los recuerdos del cumple de '+nom+'! Mirá las fotos 👉 '+link;abrirWA('', msg);}
   function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
   function guardar(e){e.preventDefault();const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvGuardada(true);alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');}
   function verTarjeta(opts){_PAPA_NAV=opts||{seccion:'home'};const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}
@@ -4040,7 +4049,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
           <div style={S.card}>
             <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>🎞️ Generador de Recuerdos</h2>
-            <p style={{fontSize:12,color:'#64748b',marginBottom:14,lineHeight:1.4}}>Subí las fotos del cumple y dentro de la invitación se van a ver pasando solas como un mini-video: arranca con una frase, las fotos pasan en un marco tipo foto instantánea con el logo del salón, y cierra con otra frase. 💕</p>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:14,lineHeight:1.4}}>Es <b>aparte de la invitación</b>: armalo <b>después del cumple</b> con las fotos del festejo y compartilo por WhatsApp a los invitados con su <b>link propio</b>. Se ve como un mini-video: arranca con una frase, las fotos pasan en marco tipo foto instantánea con el logo, y cierra con otra frase. 💕</p>
             <input ref={albumRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={onAlbumFotos}/>
             <button onClick={()=>albumRef.current&&albumRef.current.click()} disabled={subiendoAlbum} style={{...S.btn,width:'100%',background:subiendoAlbum?'#f1f5f9':'#ec4899',color:subiendoAlbum?'#94a3b8':'white',padding:'14px',fontSize:14,fontWeight:900,marginBottom:12,boxShadow:subiendoAlbum?'none':'0 4px 12px rgba(236,72,153,.3)'}}>{subiendoAlbum?'⏳ Subiendo fotos…':'➕ Agregar fotos'}</button>
             {/* Frases + música + portada del pase */}
@@ -4070,19 +4079,23 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 </select>
               </label>
               {form.albumMusica&&<audio src={form.albumMusica} controls style={{height:32,marginTop:8,width:'100%',marginBottom:6}}></audio>}
-              {((iaConfig.portadasPase)||[]).length>0&&(
-                <div>
-                  <span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>🖼️ Portada del pase</span>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginTop:6}}>
-                    <button type="button" onClick={()=>setForm({...form,albumPortada:''})} style={{aspectRatio:'1',borderRadius:8,border:(!form.albumPortada?'3px solid #7c3aed':'1px solid #e2e8f0'),background:'#f1f5f9',cursor:'pointer',fontSize:9,fontWeight:800,color:'#64748b',padding:2}}>1ª foto</button>
-                    {((iaConfig.portadasPase)||[]).map((src,i)=>(
-                      <button type="button" key={i} onClick={()=>setForm({...form,albumPortada:src})} style={{aspectRatio:'1',borderRadius:8,overflow:'hidden',border:(form.albumPortada===src?'3px solid #7c3aed':'1px solid #e2e8f0'),background:'#000',cursor:'pointer',padding:0}}>
-                        <img src={src} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                      </button>
-                    ))}
+              {(()=>{
+                const opts=[...((iaConfig.portadasPase)||[]),...((form.album)||[])].filter(Boolean);
+                if(!opts.length)return null;
+                return [['albumPortada','🖼️ Foto de PORTADA (inicio)','Automática (1ª foto)'],['albumFinal','🏁 Foto de FINAL (cierre)','Automática (última foto)']].map(([campo,lbl,auto])=>(
+                  <div key={campo} style={{marginTop:10}}>
+                    <span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>{lbl}</span>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginTop:6}}>
+                      <button type="button" onClick={()=>setForm({...form,[campo]:''})} style={{aspectRatio:'1',borderRadius:8,border:(!form[campo]?'3px solid #7c3aed':'1px solid #e2e8f0'),background:'#f1f5f9',cursor:'pointer',fontSize:9,fontWeight:800,color:'#64748b',padding:2,lineHeight:1.1}}>{auto}</button>
+                      {opts.map((src,i)=>(
+                        <button type="button" key={i} onClick={()=>setForm({...form,[campo]:src})} style={{aspectRatio:'1',borderRadius:8,overflow:'hidden',border:(form[campo]===src?'3px solid #7c3aed':'1px solid #e2e8f0'),background:'#000',cursor:'pointer',padding:0}}>
+                          <img src={src} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                ));
+              })()}
             </div>
             {((form.album)||[]).length===0?(
               <div style={{textAlign:'center',padding:'28px 16px',color:'#94a3b8',background:'#fafafa',borderRadius:14,border:'1px dashed #e2e8f0'}}>
@@ -4107,9 +4120,10 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   ))}
                 </div>
                 <div style={{display:'flex',gap:8,marginTop:14}}>
-                  <button onClick={()=>verTarjeta({seccion:'album'})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'12px',fontSize:13,fontWeight:800}}>👁 Ver el pase</button>
+                  <button onClick={verRecuerdo} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'12px',fontSize:13,fontWeight:800}}>👁 Ver el recuerdo</button>
                   <button onClick={guardarAlbum} style={{...S.btn,flex:1,background:'#16a34a',color:'white',padding:'12px',fontSize:13,fontWeight:900}}>💾 Guardar</button>
                 </div>
+                <button onClick={compartirRecuerdo} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'14px',fontSize:14,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(37,211,102,.3)'}}>📲 Compartir el recuerdo por WhatsApp</button>
               </div>
             )}
           </div>
@@ -4355,13 +4369,13 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
 
 /* ── PASE DE FOTOS (mini-video: intro → fotos en marco instantánea con logo → cierre) ── */
-function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada}){
+function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin}){
   const base=(fotos||[]).filter(Boolean);
   // Secuencia: intro (frase) + fotos + cierre (frase)
   const slides=[];
   if(base.length){
     const bgIni=portada||base[0];
-    const bgFin=portada||base[base.length-1];
+    const bgFin=portadaFin||portada||base[base.length-1];
     slides.push({tipo:'intro',src:bgIni,texto:(fraseIni&&fraseIni.trim())||('¡Hoy festejamos a '+(nombre||'')+'!')});
     base.forEach(s=>slides.push({tipo:'foto',src:s}));
     slides.push({tipo:'cierre',src:bgFin,texto:(fraseFin&&fraseFin.trim())||'¡Gracias por acompañarnos! 💕'});
@@ -4410,6 +4424,44 @@ function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada}){
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── RECUERDOS (página propia: se comparte DESPUÉS del cumple, aparte de la invitación) ── */
+function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv}){
+  const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
+  const suc=(sucursales||[]).find(s=>s.id===ev?.sucId)||(sucursales||[])[0]||{};
+  const col=suc.color||'#ec4899';
+  const tem=(tematicas||[]).find(t=>t.id===ev?.temId);
+  const _ia=Array.isArray(ev&&ev.iaImagenes)?ev.iaImagenes.filter(Boolean):[];
+  const _al=Array.isArray(ev&&ev.album)?ev.album.filter(Boolean):[];
+  const fotos=[..._ia,..._al];
+  const musTrack=(ev&&ev.albumMusica)||(tem&&tem.musica)||'';
+  const [musOn,setMusOn]=useState(false);
+  const musRef=React.useRef(null);
+  React.useEffect(()=>{ if(!musTrack)return; const el=musRef.current; if(!el)return; el.volume=0.6; const p=el.play&&el.play(); if(p&&p.then){p.then(()=>setMusOn(true)).catch(()=>{});} },[musTrack]);
+  function toggleMus(){const el=musRef.current;if(!el)return;if(musOn){el.pause();setMusOn(false);}else{el.volume=0.6;try{el.play();}catch(e){}setMusOn(true);}}
+  const cerrar=volverInv?(<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:30,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>):null;
+  if(!ev||!fotos.length){
+    return (
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:30,background:'#0f172a',color:'#fff'}}>
+        {cerrar}
+        <div style={{fontSize:54,marginBottom:12}}>📸</div>
+        <h1 style={{fontSize:22,fontWeight:900,margin:'0 0 8px'}}>Recuerdos en camino…</h1>
+        <p style={{color:'#94a3b8',maxWidth:320,lineHeight:1.5}}>Todavía no hay fotos cargadas para este recuerdo.</p>
+      </div>
+    );
+  }
+  return (
+    <div style={{minHeight:'100vh',background:'#0f172a',display:'flex',flexDirection:'column'}}>
+      {cerrar}
+      {musTrack&&<audio ref={musRef} src={musTrack} loop preload="auto"></audio>}
+      <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',maxWidth:480,margin:'0 auto',width:'100%'}}>
+        <PaseFotos fotos={fotos} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin} portada={ev.albumPortada} portadaFin={ev.albumFinal}/>
+      </div>
+      {musTrack&&<button onClick={toggleMus} title="Sonido" style={{position:'fixed',right:14,bottom:18,zIndex:40,background:col,color:'white',border:'3px solid white',borderRadius:99,width:58,height:58,fontSize:26,cursor:'pointer',boxShadow:'0 6px 18px rgba(0,0,0,.3)'}}>{musOn?'🔊':'🎵'}</button>}
+      <div style={{textAlign:'center',color:'#64748b',fontSize:11,padding:'12px'}}>{suc.nombre||''} · Recuerdos del cumple 💕</div>
     </div>
   );
 }
@@ -4720,13 +4772,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         <p style={{fontSize:11,color:'#94a3b8',marginTop:7}}>Se guarda en tu calendario y te avisa el día 🎉</p>
       </div>}
 
-      {/* 8.5 PASE DE FOTOS de la mamá (mini-video): IA (si hay) + fotos de los papás */}
-      {(()=>{
-        const _ia=Array.isArray(ev.iaImagenes)?ev.iaImagenes.filter(Boolean):[];
-        const _al=Array.isArray(ev.album)?ev.album.filter(Boolean):[];
-        const _pf=[..._ia,..._al];
-        return _pf.length>0?(<PaseFotos fotos={_pf} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin} portada={ev.albumPortada}/>):null;
-      })()}
+      {/* (El Generador de Recuerdos NO va dentro de la invitación: tiene su propio link ?rec=) */}
 
       {/* 9. FOTOS 2x2 */}
       {fotos.length>0&&(
