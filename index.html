@@ -4151,8 +4151,11 @@ function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volv
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
   const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
   const col=suc.color||'#f97316';
-  const tem=(tematicas||[]).find(t=>t.id===ev?.temId)||(tematicas||[])[0];
-  const temImg=(ev&&ev.portadaSrc)||(tem&&tem.img);
+  const _temMatchP=(tematicas||[]).find(t=>t.id===ev?.temId);
+  const tem=_temMatchP||(tematicas||[])[0];
+  const _temImgCalc=(ev&&ev.portadaSrc)||(_temMatchP&&_temMatchP.img)||'';
+  const [temImg,setTemImg]=useState(_temImgCalc);
+  React.useEffect(()=>{ if(_temImgCalc) setTemImg(_temImgCalc); },[_temImgCalc]);
   const T=(iaConfig&&iaConfig.txtTarjeta)||{};
   const tituloPortada = ev ? (ev.nombre||ev.tipo||'¡Te esperamos!') : '...';
   React.useEffect(()=>{
@@ -4213,8 +4216,11 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const T=(iaConfig&&iaConfig.txtTarjeta)||{};
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
   const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
-  const tem=tematicas.find(t=>t.id===ev?.temId)||tematicas[0];
-  const portada=(ev&&ev.portadaSrc)||(tem&&tem.img);
+  const _temMatch=tematicas.find(t=>t.id===ev?.temId);
+  const tem=_temMatch||tematicas[0];
+  const _portCalc=(ev&&ev.portadaSrc)||(_temMatch&&_temMatch.img)||'';
+  const [portada,setPortadaSticky]=useState(_portCalc);
+  React.useEffect(()=>{ if(_portCalc) setPortadaSticky(_portCalc); },[_portCalc]);
   const [vidMuted,setVidMuted]=useState(true); // el video de portada arranca mudo (los celus no dejan audio automático)
   // Música de fondo: la del personaje, o una genérica que rota. En video suena bajita; en foto, normal.
   const _musGenF=(((suc&&suc.musicaGen&&suc.musicaGen.length)?suc.musicaGen:((iaConfig&&iaConfig.musicaGen)||[]))).filter(Boolean);
