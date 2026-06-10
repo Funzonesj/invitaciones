@@ -82,11 +82,13 @@ function genPass(nombre) {
   const base=(nombre||'fiesta').toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').slice(0,10)||'fiesta';
   return base+Math.floor(100+Math.random()*900); // ej: mateo481 (fácil + un número)
 }
-// ¿El acceso del evento está vencido? (2 días después de la fecha del evento)
+// ¿El acceso del evento está vencido?
+// La tarjeta sigue viva el día del cumple + 2 días completos después (para subir
+// las fotos del cumple y que los invitados las vean). Recién al 3er día se cierra.
 function estaVencido(ev){
   if(!ev||!ev.anio||!ev.mes||!ev.dia) return false;
   const fF=new Date(+ev.anio,+ev.mes-1,+ev.dia);
-  const fV=new Date(fF);fV.setDate(fF.getDate()+2);fV.setHours(0,0,0,0);
+  const fV=new Date(fF);fV.setDate(fF.getDate()+3);fV.setHours(0,0,0,0);
   const hoy=new Date();hoy.setHours(0,0,0,0);
   return hoy>=fV;
 }
@@ -4296,6 +4298,17 @@ function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volv
     const t2=setInterval(lanzar,4000);
     return()=>{clearInterval(t2);if(container)container.innerHTML='';};
   },[]);
+  if(ev&&estaVencido(ev)&&!volverInv){
+    return(
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:'30px',background:'linear-gradient(160deg,'+col+'18,#ffffff)'}}>
+        <div style={{fontSize:64,marginBottom:14}}>🎉</div>
+        <h1 style={{fontSize:24,fontWeight:900,color:'#1e293b',margin:'0 0 10px'}}>¡El cumple de {ev.nombre} ya pasó!</h1>
+        <p style={{fontSize:15,color:'#475569',maxWidth:340,lineHeight:1.5,margin:'0 0 6px'}}>Gracias por ser parte de este momento tan lindo. 💕</p>
+        <p style={{fontSize:13,color:'#94a3b8',maxWidth:340,lineHeight:1.5}}>Esta invitación ya no está disponible.</p>
+        {suc&&suc.nombre&&<div style={{marginTop:24,fontSize:13,fontWeight:800,color:col}}>{suc.nombre}</div>}
+      </div>
+    );
+  }
   return(
     <div style={{minHeight:'100vh',background:col,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,textAlign:'center',position:'relative',overflow:'hidden'}}>
       {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.55)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>}
@@ -4421,6 +4434,17 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const diaStr=ev?(ev.dia+'/'+ev.mes+'/'+ev.anio):'';
   const horario=ev?('de '+ev.hIni+' a '+ev.hFin+'hs'):'';
 
+  if(ev&&estaVencido(ev)&&!volverInv){
+    return(
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:'30px',background:'linear-gradient(160deg,'+col+'18,#ffffff)'}}>
+        <div style={{fontSize:64,marginBottom:14}}>🎉</div>
+        <h1 style={{fontSize:24,fontWeight:900,color:'#1e293b',margin:'0 0 10px'}}>¡El cumple de {ev.nombre} ya pasó!</h1>
+        <p style={{fontSize:15,color:'#475569',maxWidth:340,lineHeight:1.5,margin:'0 0 6px'}}>Gracias por ser parte de este momento tan lindo. 💕</p>
+        <p style={{fontSize:13,color:'#94a3b8',maxWidth:340,lineHeight:1.5}}>Esta invitación ya no está disponible.</p>
+        {suc&&suc.nombre&&<div style={{marginTop:24,fontSize:13,fontWeight:800,color:col}}>{suc.nombre}</div>}
+      </div>
+    );
+  }
   return(
     <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto'}}>
       {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>}
