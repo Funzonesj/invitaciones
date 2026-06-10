@@ -4222,15 +4222,16 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const [musOn,setMusOn]=useState(false);
   const [videoFin,setVideoFin]=useState(false); // el video de portada terminó
   const musRef=React.useRef(null);
+  const vidRef=React.useRef(null);
   function toggleMus(){const el=musRef.current;if(!el)return;if(musOn){el.pause();setMusOn(false);}else{el.volume=esVideoPortada?0.12:0.5;try{el.play();}catch(e){}setMusOn(true);}}
-  // Auto-arranque de música SOLO en tarjetas con FOTO (en la 1ra interacción). En video, NO: espera a que el video termine (onEnded).
+  // Auto-arranque de música en la 1ra interacción, PERO si hay un video de portada que todavía NO terminó, NO arranca (espera).
   React.useEffect(()=>{
-    if(!musTrack||esVideoPortada)return; let done=false;
-    function tryStart(){ if(done)return; const el=musRef.current; if(!el)return; el.volume=0.5; const pr=el.play(); if(pr&&pr.then){pr.then(()=>{done=true;setMusOn(true);cleanup();}).catch(()=>{});} else {done=true;setMusOn(true);cleanup();} }
+    if(!musTrack)return; let done=false;
+    function tryStart(){ if(done)return; const v=vidRef.current; if(v&&!v.ended)return; const el=musRef.current; if(!el)return; el.volume=0.5; const pr=el.play(); if(pr&&pr.then){pr.then(()=>{done=true;setMusOn(true);cleanup();}).catch(()=>{});} else {done=true;setMusOn(true);cleanup();} }
     function cleanup(){['pointerdown','touchstart','click','scroll','keydown'].forEach(ev=>window.removeEventListener(ev,tryStart));}
     ['pointerdown','touchstart','click','scroll','keydown'].forEach(ev=>window.addEventListener(ev,tryStart,{passive:true}));
     return cleanup;
-  },[musTrack,esVideoPortada]);
+  },[musTrack]);
   const col=suc.color||'#f97316';
   // Formato según tipo de evento (viaja guardado en el evento)
   const fEdad = (ev && ev.fmtEdad!==undefined) ? ev.fmtEdad : true;
@@ -4307,7 +4308,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
       <div style={{position:'relative',width:'100%',aspectRatio:'4/5',maxHeight:'58vh',overflow:'hidden',background:'#0f172a'}}>
         {ev&&ev.videoUrl&&(ev.usarVideo!==false)?(
           <React.Fragment>
-            <video src={ev.videoUrl} poster={portada||(tem&&tem.img)||''} autoPlay muted={vidMuted} playsInline onEnded={()=>{setVideoFin(true);const el=musRef.current;if(el&&musTrack){el.volume=0.4;var pr=el.play();if(pr&&pr.catch)pr.catch(function(){});setMusOn(true);}}} onClick={(e)=>{const v=e.currentTarget;setVidMuted(false);v.muted=false;v.currentTime=0;try{v.play();}catch(_){}const m=musRef.current;if(m&&!m.paused)m.volume=0.12;}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:50)+'%',display:'block',cursor:'pointer'}}></video>
+            <video ref={vidRef} src={ev.videoUrl} poster={portada||(tem&&tem.img)||''} autoPlay muted={vidMuted} playsInline onEnded={()=>{setVideoFin(true);const el=musRef.current;if(el&&musTrack){el.volume=0.4;var pr=el.play();if(pr&&pr.catch)pr.catch(function(){});setMusOn(true);}}} onClick={(e)=>{const v=e.currentTarget;setVidMuted(false);v.muted=false;v.currentTime=0;try{v.play();}catch(_){}const m=musRef.current;if(m&&!m.paused)m.volume=0.12;}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:50)+'%',display:'block',cursor:'pointer'}}></video>
             {vidMuted
               ? <button onClick={(e)=>{const v=e.currentTarget.parentNode.querySelector('video');setVidMuted(false);if(v){v.muted=false;v.currentTime=0;try{v.play();}catch(_){}}}} style={{position:'absolute',bottom:76,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.7)',color:'white',border:'none',borderRadius:99,padding:'10px 18px',fontSize:14,fontWeight:900,cursor:'pointer',zIndex:3,boxShadow:'0 6px 20px rgba(0,0,0,.4)'}}>🔊 Tocá para escuchar</button>
               : <div style={{position:'absolute',bottom:76,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.5)',color:'white',borderRadius:99,padding:'6px 14px',fontSize:12,fontWeight:700,zIndex:3,pointerEvents:'none'}}>🔁 Tocá el video para repetir</div>}
