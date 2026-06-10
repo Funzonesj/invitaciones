@@ -525,7 +525,7 @@ function App() {
         {vista==='admin-catalogo'    && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-catalogo-ia' && esSA && <AdminCatalogoIA setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-papabotones' && esSA && <AdminPapaBotones setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
-        {vista==='admin-musica'      && esSA && <AdminMusica setVista={setVista} tematicas={tematicas} setTematicas={setTematicas} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-musica'      && esSA && <AdminMusica setVista={setVista} tematicas={tematicas} setTematicas={setTematicas} iaConfig={iaConfig} setIaConfig={setIaConfig} sucursales={sucursales} setSucursales={setSucursales} sucAct={sucAct}/>}
         {vista==='admin-diseno'      && esSA && <AdminDisenoTarjeta setVista={setVista} sucAct={sucAct} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-mejorador'   && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas} modo="mejorador"/>}
         {vista==='admin-config'      && esSA && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
@@ -2121,10 +2121,12 @@ function AdminFormatos({setVista,iaConfig,setIaConfig}){
 }
 
 /* ── ADMIN MÚSICA DE TARJETAS ─────────────────────────────── */
-function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig}){
+function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucursales,setSucursales,sucAct}){
   const [busq,setBusq]=useState('');
-  const gen=(iaConfig.musicaGen&&iaConfig.musicaGen.length)?iaConfig.musicaGen:['',''];
-  function setGen(i,url){const g=((iaConfig.musicaGen&&iaConfig.musicaGen.length)?iaConfig.musicaGen:['','']).slice();g[i]=url;setIaConfig(c=>({...c,musicaGen:g}));}
+  const [selSuc,setSelSuc]=useState((sucAct&&sucAct.id)||(sucursales&&sucursales[0]&&sucursales[0].id)||'');
+  const sucSel=(sucursales||[]).find(s=>s.id===selSuc)||{};
+  const gen=(sucSel.musicaGen&&sucSel.musicaGen.length)?sucSel.musicaGen:['',''];
+  function setGen(i,url){setSucursales(p=>p.map(s=>{if(s.id!==selSuc)return s;const g=((s.musicaGen&&s.musicaGen.length)?s.musicaGen:['','']).slice();g[i]=url;return {...s,musicaGen:g};}));}
   function setTemMus(id,url){setTematicas(p=>p.map(t=>t.id===id?{...t,musica:url}:t));flashOk('✓ Guardado');}
   async function subirAudio(file,cb){
     if(!file)return;
@@ -2143,7 +2145,13 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig}){
       <p style={{fontSize:11,color:'#64748b',marginBottom:16}}>Música de fondo de la invitación. Las <b>genéricas</b> rotan; a un personaje le podés asignar la suya. Usá música <b>libre de derechos</b> o generada por IA (Suno / Udio). En video suena bajita; en foto, normal.</p>
 
       <div style={{...S.card,marginBottom:14}}>
-        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🔁 Genéricas (rotan en las tarjetas sin música propia)</h3>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🔁 Genéricas por sucursal (rotan en las tarjetas sin música propia)</h3>
+        <label style={{display:'block',marginBottom:10}}><span style={S.label}>Sucursal</span>
+          <select value={selSuc} onChange={e=>setSelSuc(e.target.value)} style={{...S.input,fontWeight:700}}>
+            {(sucursales||[]).map(s=><option key={s.id} value={s.id}>{s.emoji||'🎪'} {s.nombre}</option>)}
+          </select>
+        </label>
+        <div style={{fontSize:11,color:'#94a3b8',marginBottom:8}}>Esta música suena solo en los cumpleaños de <b>{sucSel.nombre||'esta sucursal'}</b>.</div>
         {[0,1].map(i=>(
           <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,flexWrap:'wrap'}}>
             <span style={{fontSize:12,fontWeight:700,color:'#64748b'}}>#{i+1}</span>
@@ -4191,7 +4199,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const portada=(ev&&ev.portadaSrc)||(tem&&tem.img);
   const [vidMuted,setVidMuted]=useState(true); // el video de portada arranca mudo (los celus no dejan audio automático)
   // Música de fondo: la del personaje, o una genérica que rota. En video suena bajita; en foto, normal.
-  const _musGenF=((iaConfig&&iaConfig.musicaGen)||[]).filter(Boolean);
+  const _musGenF=(((suc&&suc.musicaGen&&suc.musicaGen.length)?suc.musicaGen:((iaConfig&&iaConfig.musicaGen)||[]))).filter(Boolean);
   const musTrack=(tem&&tem.musica)||(_musGenF.length?_musGenF[(parseInt(String((ev&&ev.id)||'0').replace(/[^0-9]/g,''))||0)%_musGenF.length]:'');
   const esVideoPortada=!!(ev&&ev.videoUrl&&ev.usarVideo!==false);
   const [musOn,setMusOn]=useState(false);
