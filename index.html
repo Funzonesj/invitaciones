@@ -3334,6 +3334,13 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     const longUrl=baseUrl+'?inv='+papaSesion.id;
     acortarYCompartir(longUrl,(form.nombre||papaSesion.nombre),fecha,suc.nombre);
   }
+  // Recordatorio para enviar a los invitados el DÍA del cumple
+  function compartirRecordatorio(){
+    const link=window.location.href.split('?')[0]+'?inv='+papaSesion.id;
+    const nom=form.nombre||papaSesion.nombre;
+    const msg='🎉🎂 ¡HOY es el cumple de '+nom+'! 🎂🎉\nTe esperamos hoy de '+papaSesion.hIni+' a '+papaSesion.hFin+' hs en '+suc.nombre+'.\n¡No faltes! 👉 '+link;
+    abrirWA('', msg);
+  }
 
   // Autorización OBLIGATORIA (DESACTIVADA por ahora — para reactivarla, cambiar "false &&" por nada).
   if(false && !papaSesion.optinWA){
@@ -3391,9 +3398,15 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           </div>
           {/* Compartir */}
           <button onClick={compartirInvitacionWA} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'16px',fontSize:16,fontWeight:900,marginBottom:10,boxShadow:'0 4px 14px rgba(37,211,102,.35)'}}>🔗 Compartir tu invitación</button>
-          <div style={{display:'flex',gap:8,marginBottom:20}}>
+          <div style={{display:'flex',gap:8,marginBottom:12}}>
             <button onClick={()=>verTarjeta({seccion:'home'})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'11px',fontSize:13,fontWeight:800}}>👁 Vista previa</button>
             <button onClick={descargarInvitacion} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#475569',padding:'11px',fontSize:13,fontWeight:800}}>⬇️ Descargar JPG</button>
+          </div>
+          {/* Recordatorio el día del cumple */}
+          <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:14,padding:'12px 14px',marginBottom:20}}>
+            <div style={{fontSize:13,fontWeight:900,color:'#c2410c',marginBottom:2}}>🎈 El día del cumple</div>
+            <div style={{fontSize:12,color:'#9a3412',marginBottom:10,lineHeight:1.35}}>Mandales un recordatorio a tus invitados para que no se olviden. Se abre WhatsApp con el mensaje listo.</div>
+            <button onClick={compartirRecordatorio} style={{...S.btn,width:'100%',background:'#f97316',color:'white',padding:'13px',fontSize:14,fontWeight:900,boxShadow:'0 4px 12px rgba(249,115,22,.3)'}}>📣 Recordar a mis invitados</button>
           </div>
           {/* Accesos (cuadrados) */}
           <div style={{fontSize:13,fontWeight:800,color:'#0ea5e9',letterSpacing:.3,marginBottom:10}}>OPCIONES DE TU INVITACIÓN</div>
