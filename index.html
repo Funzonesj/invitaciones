@@ -83,12 +83,12 @@ function genPass(nombre) {
   return base+Math.floor(100+Math.random()*900); // ej: mateo481 (fácil + un número)
 }
 // ¿El acceso del evento está vencido?
-// La tarjeta sigue viva el día del cumple + 2 días completos después (para subir
-// las fotos del cumple y que los invitados las vean). Recién al 3er día se cierra.
+// La tarjeta sigue viva el día del cumple + 1 semana completa después (para subir
+// las fotos del cumple y que los invitados las vean). Recién al 8º día se cierra.
 function estaVencido(ev){
   if(!ev||!ev.anio||!ev.mes||!ev.dia) return false;
   const fF=new Date(+ev.anio,+ev.mes-1,+ev.dia);
-  const fV=new Date(fF);fV.setDate(fF.getDate()+3);fV.setHours(0,0,0,0);
+  const fV=new Date(fF);fV.setDate(fF.getDate()+8);fV.setHours(0,0,0,0);
   const hoy=new Date();hoy.setHours(0,0,0,0);
   return hoy>=fV;
 }
