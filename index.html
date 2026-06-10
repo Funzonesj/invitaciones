@@ -2146,11 +2146,12 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
   const gen=(sucSel.musicaGen&&sucSel.musicaGen.length)?sucSel.musicaGen:['',''];
   function setGen(i,url){setSucursales(p=>p.map(s=>{if(s.id!==selSuc)return s;const g=((s.musicaGen&&s.musicaGen.length)?s.musicaGen:['','']).slice();g[i]=url;return {...s,musicaGen:g};}));}
   function setTemMus(id,url){setTematicas(p=>p.map(t=>t.id===id?{...t,musica:url}:t));flashOk('✓ Guardado');}
-  // Biblioteca de música para el PASE DE FOTOS (la mamá elige una)
-  const pase=(iaConfig.musicaPase&&iaConfig.musicaPase.length)?iaConfig.musicaPase:[];
-  function addPase(url){setIaConfig(c=>({...c,musicaPase:[...((c.musicaPase)||[]),{id:'mp-'+Date.now().toString(16),nombre:'Tema '+(((c.musicaPase)||[]).length+1),url}]}));flashOk('✓ Música agregada');}
-  function updPaseNom(id,nombre){setIaConfig(c=>({...c,musicaPase:((c.musicaPase)||[]).map(m=>m.id===id?{...m,nombre}:m)}));}
-  function delPase(id){setIaConfig(c=>({...c,musicaPase:((c.musicaPase)||[]).filter(m=>m.id!==id)}));}
+  // Biblioteca de música para el PASE DE FOTOS — POR SUCURSAL (cada salón la suya)
+  const pase=(sucSel.musicaPase&&sucSel.musicaPase.length)?sucSel.musicaPase:[];
+  function setSucPase(updater){setSucursales(p=>p.map(s=>{if(s.id!==selSuc)return s;return {...s,musicaPase:updater(s.musicaPase||[])};}));}
+  function addPase(url){setSucPase(cur=>[...cur,{id:'mp-'+Date.now().toString(16),nombre:'Tema '+(cur.length+1),url}]);flashOk('✓ Música agregada');}
+  function updPaseNom(id,nombre){setSucPase(cur=>cur.map(m=>m.id===id?{...m,nombre}:m));}
+  function delPase(id){setSucPase(cur=>cur.filter(m=>m.id!==id));}
   // Frases del pase (la mamá elige). frasesPaseIni / frasesPaseFin = [texto]
   const frasesIni=(iaConfig.frasesPaseIni&&iaConfig.frasesPaseIni.length)?iaConfig.frasesPaseIni:[];
   const frasesFin=(iaConfig.frasesPaseFin&&iaConfig.frasesPaseFin.length)?iaConfig.frasesPaseFin:[];
@@ -2221,7 +2222,8 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
       </div>
       <div style={{...S.card,marginBottom:14}}>
         <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🎞️ Música para el Pase de Fotos</h3>
-        <p style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Subí varias canciones y la <b>mamá elige una</b> para musicalizar su pase de fotos. Usá música <b>libre de derechos</b> o generada por IA.</p>
+        <p style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>Subí varias canciones y la <b>mamá elige una</b> para su recuerdo. Usá música <b>libre de derechos</b> o generada por IA.</p>
+        <p style={{fontSize:11,color:'#db2777',fontWeight:800,marginBottom:10}}>🎪 Es POR SUCURSAL: estás cargando la de <b>{sucSel.nombre||'esta sucursal'}</b> (cambiá la sucursal arriba ☝️).</p>
         <label style={{...S.btn,background:'#7c3aed',color:'white',padding:'10px 16px',fontSize:13,cursor:'pointer',display:'inline-block',marginBottom:12}}>📎 Subir canción<input type="file" accept="audio/*" style={{display:'none'}} onChange={e=>subirAudio(e.target.files[0],u=>addPase(u))}/></label>
         {pase.length===0?(
           <div style={{fontSize:12,color:'#94a3b8'}}>Todavía no subiste canciones para el pase.</div>
@@ -2239,8 +2241,8 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
       </div>
 
       <div style={{...S.card,marginBottom:14}}>
-        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>✍️ Frases del Pase de Fotos</h3>
-        <p style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Cargá varias frases y la <b>mamá elige</b> una de inicio y una de cierre (o escribe la suya). Podés usar <b>{'{nombre}'}</b> y se reemplaza por el nombre del niño/a.</p>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>✍️ Frases del Pase de Fotos <span style={{fontSize:10,fontWeight:700,color:'#16a34a',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'1px 7px'}}>todas las sucursales</span></h3>
+        <p style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Cargá varias frases y la <b>mamá elige</b> una de inicio y una de cierre (o escribe la suya). Podés usar <b>{'{nombre}'}</b> y se reemplaza por el nombre del niño/a. Estas frases valen para <b>todos los salones</b>.</p>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           {[['frasesPaseIni','🎬 Frases de INICIO',frasesIni,nfIni,setNfIni],['frasesPaseFin','💕 Frases de CIERRE',frasesFin,nfFin,setNfFin]].map(([campo,lbl,lista,val,setVal])=>(
             <div key={campo}>
@@ -2264,8 +2266,8 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
       </div>
 
       <div style={{...S.card,marginBottom:14}}>
-        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🖼️ Portadas del Pase (imágenes bonitas)</h3>
-        <p style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>Subí imágenes coloridas para que la <b>mamá elija la portada</b> del pase (la primera pantalla con la frase). </p>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🖼️ Portadas del Pase (imágenes bonitas) <span style={{fontSize:10,fontWeight:700,color:'#16a34a',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'1px 7px'}}>todas las sucursales</span></h3>
+        <p style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>Subí imágenes coloridas para que la <b>mamá elija la portada</b> del pase (la primera pantalla con la frase). Valen para <b>todos los salones</b>.</p>
         <p style={{fontSize:11,color:'#0ea5e9',fontWeight:700,marginBottom:10}}>📐 Subilas <b>cuadradas, 1080 × 1080 px</b> (mínimo 800×800). Si es rectangular se recorta al centro.</p>
         <label style={{...S.btn,background:'#0ea5e9',color:'white',padding:'10px 16px',fontSize:13,cursor:'pointer',display:'inline-block',marginBottom:12}}>📎 Subir portadas<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>subirPortadas(e.target.files)}/></label>
         {portadas.length===0?(
@@ -4082,7 +4084,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               <label style={{display:'block',marginBottom:((iaConfig.portadasPase)||[]).length>0?10:0}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>🎵 Música del pase</span>
                 <select value={form.albumMusica||''} onChange={e=>setForm({...form,albumMusica:e.target.value})} style={{...S.input,marginTop:4,fontSize:13}}>
                   <option value="">(Usar la música de la tarjeta)</option>
-                  {((iaConfig.musicaPase)||[]).map(m=><option key={m.id} value={m.url}>{m.nombre}</option>)}
+                  {(((suc&&suc.musicaPase)||[])).map(m=><option key={m.id} value={m.url}>{m.nombre}</option>)}
                 </select>
               </label>
               {form.albumMusica&&<audio src={form.albumMusica} controls style={{height:32,marginTop:8,width:'100%',marginBottom:6}}></audio>}
