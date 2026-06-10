@@ -2830,6 +2830,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
   const [progreso,setProgreso]=useState(0);
   const [resultados,setResultados]=useState([]);
   const [hechas,setHechas]=useState(0);
+  const [imgsLive,setImgsLive]=useState([]); // imágenes que ya salieron (preview en vivo)
   const [errMsg,setErrMsg]=useState('');
   const [mini,setMini]=useState(false); // minimizado: seguir usando la app mientras genera
   const totalGen=tipo==='imagen'?Math.max(1,Math.min(cantidad||6,6)):2;
@@ -2865,7 +2866,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
           const calls=lista.map(it=>fetch('/api/generar-catalogo',{
             method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({prompt:it.p,images:[fotoNino,personaje],model:it.m,aspect_ratio:'9:16'})
-          }).then(async r=>{const d=await r.json().catch(()=>({}));if(!cancel)setHechas(h=>h+1);return (r.ok&&d.url)?d.url:null;}).catch(()=>{if(!cancel)setHechas(h=>h+1);return null;}));
+          }).then(async r=>{const d=await r.json().catch(()=>({}));if(!cancel){setHechas(h=>h+1);if(r.ok&&d.url)setImgsLive(prev=>[...prev,d.url]);}return (r.ok&&d.url)?d.url:null;}).catch(()=>{if(!cancel)setHechas(h=>h+1);return null;}));
           const settled=await Promise.all(calls);
           if(cancel)return;
           const urls=settled.filter(Boolean);
@@ -2941,6 +2942,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
         </div>
         <p style={{fontSize:11,color:'#7c3aed',fontWeight:700}}>{progreso}%</p>
         {tipo==='imagen'&&<p style={{fontSize:12,color:'#16a34a',fontWeight:800,marginTop:6}}>{hechas} de {totalGen} listas</p>}
+        {tipo==='imagen'&&imgsLive.length>0&&<div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginTop:10}}>{imgsLive.map((u,i)=>(<div key={i} className="fade-in" style={{aspectRatio:'9/16',borderRadius:8,overflow:'hidden',background:'#0f172a'}}><img src={u} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></div>))}</div>}
         <p style={{fontSize:10,color:'#94a3b8',marginTop:8}}>{tipo==='imagen'?('Estamos creando '+totalGen+' imágenes. Puede tardar 1 a 3 minutos.'):'El video puede tardar unos minutos.'}</p>
         <div style={{marginTop:16,background:'#fef2f2',border:'1px solid #fecaca',borderRadius:12,padding:'12px',color:'#b91c1c',fontSize:13,fontWeight:800,lineHeight:1.45}}>⚠️ No cierres ni recargues esta página mientras se genera{tipo==='video'?' — el video puede tardar unos minutos, esperá acá 🙏':'. Es rápido, esperá acá 🙏'}</div>
       </div>
