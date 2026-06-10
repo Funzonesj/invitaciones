@@ -833,38 +833,47 @@ function AdminDisenoTarjeta({setVista,sucAct,iaConfig,setIaConfig}){
 /* ── ADMIN BOTONES DEL PAPÁ ──────────────────────────────── */
 function AdminPapaBotones({setVista,iaConfig,setIaConfig}){
   const PT=(iaConfig&&iaConfig.papaTiles)||{};
+  const ord=(iaConfig&&iaConfig.papaOrden)||[];
   const base=[
     ['tarjeta','🎨','Editar Tarjeta'],
+    ['album','🎞️','Generador de Recuerdos'],
     ['confirmaciones','👥','Confirmados'],
     ['descargables','📦','Descargas'],
     ['menu','🍽️','Menú IA'],
     ['faq','💬','Consultas'],
     ['adicionales','➕','Adicionales'],
     ['reglas','📋','Reglas del Salón'],
+    ['recordar','📣','Recordar invitados'],
   ];
+  const ordenado=[...base].sort((a,b)=>{const ia=ord.indexOf(a[0]),ib=ord.indexOf(b[0]);if(ia<0&&ib<0)return 0;if(ia<0)return 1;if(ib<0)return -1;return ia-ib;});
   const [msg,setMsg]=useState('');
   function setCampo(v,campo,val){setIaConfig(c=>({...c,papaTiles:{...(c.papaTiles||{}),[v]:{...((c.papaTiles||{})[v]||{}),[campo]:val}}}));setMsg('✓ Guardado');setTimeout(()=>setMsg(''),1200);}
   function restaurar(v){setIaConfig(c=>{const p={...(c.papaTiles||{})};delete p[v];return {...c,papaTiles:p};});setMsg('✓ Restaurado');setTimeout(()=>setMsg(''),1200);}
+  function mover(v,dir){const orden=ordenado.map(x=>x[0]);const i=orden.indexOf(v);const j=i+dir;if(i<0||j<0||j>=orden.length)return;const t=orden[i];orden[i]=orden[j];orden[j]=t;setIaConfig(c=>({...c,papaOrden:orden}));setMsg('✓ Movido');setTimeout(()=>setMsg(''),1000);}
   return(
     <div className="fade-in" style={{maxWidth:560,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
       <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>👪 Botones del Papá</h1>
-      <p style={{fontSize:11,color:'#64748b',marginBottom:14}}>Cambiá el nombre o el ícono de cada botón de la app del papá, u ocultá los que no uses. Se guarda solo.</p>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:14}}>Cambiá el nombre o el ícono de cada botón, movelos con ▲▼ para ordenarlos, u ocultá los que no uses. Se guarda solo.</p>
       {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'8px 12px',borderRadius:10,fontSize:12,marginBottom:12,fontWeight:700}}>{msg}</div>}
       <div style={{display:'flex',flexDirection:'column',gap:10}}>
-        {base.map(([v,de,dt])=>{
+        {ordenado.map(([v,de,dt],idx)=>{
           const e=(PT[v]&&PT[v].e)||de;const t=(PT[v]&&PT[v].t!==undefined&&PT[v].t!=='')?PT[v].t:dt;const oc=!!(PT[v]&&PT[v].oculto);
           return(
-            <div key={v} style={{...S.card,display:'flex',alignItems:'center',gap:10,padding:12,opacity:oc?0.55:1}}>
-              <input value={e} onChange={ev=>setCampo(v,'e',ev.target.value)} maxLength={2} style={{...S.input,width:54,fontSize:24,textAlign:'center',marginBottom:0,padding:'6px'}}/>
+            <div key={v} style={{...S.card,display:'flex',alignItems:'center',gap:8,padding:12,opacity:oc?0.55:1}}>
+              <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                <button onClick={()=>mover(v,-1)} disabled={idx===0} title="Subir" style={{...S.btn,background:idx===0?'#f8fafc':'#eef2f7',color:'#475569',padding:'2px 8px',fontSize:12,lineHeight:1.1}}>▲</button>
+                <button onClick={()=>mover(v,1)} disabled={idx===ordenado.length-1} title="Bajar" style={{...S.btn,background:idx===ordenado.length-1?'#f8fafc':'#eef2f7',color:'#475569',padding:'2px 8px',fontSize:12,lineHeight:1.1}}>▼</button>
+              </div>
+              <input value={e} onChange={ev=>setCampo(v,'e',ev.target.value)} maxLength={2} style={{...S.input,width:50,fontSize:22,textAlign:'center',marginBottom:0,padding:'6px'}}/>
               <input value={t} onChange={ev=>setCampo(v,'t',ev.target.value)} style={{...S.input,flex:1,fontWeight:700,marginBottom:0}}/>
-              <button onClick={()=>setCampo(v,'oculto',!oc)} title={oc?'Mostrar':'Ocultar'} style={{...S.btn,background:oc?'#fef2f2':'#f0fdf4',color:oc?'#dc2626':'#16a34a',padding:'8px 10px',fontSize:12,fontWeight:800,whiteSpace:'nowrap'}}>{oc?'🙈 Oculto':'👁 Visible'}</button>
-              {PT[v]&&<button onClick={()=>restaurar(v)} title="Volver al original" style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'8px',fontSize:12}}>↺</button>}
+              <button onClick={()=>setCampo(v,'oculto',!oc)} title={oc?'Mostrar':'Ocultar'} style={{...S.btn,background:oc?'#fef2f2':'#f0fdf4',color:oc?'#dc2626':'#16a34a',padding:'8px 10px',fontSize:12,fontWeight:800,whiteSpace:'nowrap'}}>{oc?'🙈':'👁'}</button>
+              {(PT[v]||ord.indexOf(v)>=0)&&<button onClick={()=>restaurar(v)} title="Restaurar nombre/ícono" style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'8px',fontSize:12}}>↺</button>}
             </div>
           );
         })}
       </div>
-      <p style={{fontSize:10,color:'#94a3b8',marginTop:14}}>Estos son los accesos que ve el papá en su panel de inicio. El botón "Editar Tarjeta" conviene dejarlo visible.</p>
+      <p style={{fontSize:10,color:'#94a3b8',marginTop:14}}>Estos son los accesos que ve el papá en su panel de inicio. El botón "Editar Tarjeta" conviene dejarlo visible. "Generador de Recuerdos" y "Recordar invitados" también se pueden renombrar, mover u ocultar.</p>
     </div>
   );
 }
@@ -3437,6 +3446,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   }
 
   const _PT=(iaConfig&&iaConfig.papaTiles)||{};
+  const _PORD=(iaConfig&&iaConfig.papaOrden)||[];
   const SECCIONES=[
     ['tarjeta','🎨','Editar Tarjeta','#7c3aed'],
     ['album','🎞️','Generador de Recuerdos','#ec4899'],
@@ -3446,7 +3456,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     ['faq','💬','Consultas','#e11d48'],
     ['adicionales','➕','Adicionales','#8b5cf6'],
     ['reglas','📋','Reglas del Salón','#0ea5e9'],
-  ].map(([v,e,l,c])=>[v,(_PT[v]&&_PT[v].e)||e,(_PT[v]&&_PT[v].t!==undefined&&_PT[v].t!=='')?_PT[v].t:l,c]).filter(([v])=>!(_PT[v]&&_PT[v].oculto));
+    ['recordar','📣','Recordar invitados','#f97316'],
+  ].map(([v,e,l,c])=>[v,(_PT[v]&&_PT[v].e)||e,(_PT[v]&&_PT[v].t!==undefined&&_PT[v].t!=='')?_PT[v].t:l,c]).filter(([v])=>!(_PT[v]&&_PT[v].oculto))
+   .sort((a,b)=>{const ia=_PORD.indexOf(a[0]),ib=_PORD.indexOf(b[0]);if(ia<0&&ib<0)return 0;if(ia<0)return 1;if(ib<0)return -1;return ia-ib;});
   const tituloSeccion=(SECCIONES.find(s=>s[0]===seccion)||['','','',''])[2];
   function compartirInvitacionWA(){
     const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -3526,21 +3538,16 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           {/* Accesos (cuadrados) */}
           <div style={{fontSize:13,fontWeight:800,color:'#0ea5e9',letterSpacing:.3,marginBottom:10}}>OPCIONES DE TU INVITACIÓN</div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
-            {SECCIONES.map(([v,e,l,c])=>(
-              <button key={v} onClick={()=>setSeccion(v)} style={{aspectRatio:'1',borderRadius:16,border:'1px solid #eef1f6',cursor:'pointer',background:'#fff',boxShadow:'0 1px 3px rgba(15,23,42,.06)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,padding:8,transition:'all .15s'}}
+            {SECCIONES.map(([v,e,l,c])=>{
+              const esRec=v==='recordar';
+              return(
+              <button key={v} onClick={()=>esRec?compartirRecordatorio():setSeccion(v)} title={esRec?'Mandales un recordatorio a tus invitados':l} style={{aspectRatio:'1',borderRadius:16,border:esRec?'1px solid #fed7aa':'1px solid #eef1f6',cursor:'pointer',background:esRec?'#fff7ed':'#fff',boxShadow:'0 1px 3px rgba(15,23,42,.06)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,padding:8,transition:'all .15s'}}
                 onMouseEnter={ev=>{ev.currentTarget.style.boxShadow='0 4px 14px rgba(15,23,42,.10)';ev.currentTarget.style.transform='translateY(-2px)';}}
                 onMouseLeave={ev=>{ev.currentTarget.style.boxShadow='0 1px 3px rgba(15,23,42,.06)';ev.currentTarget.style.transform='none';}}>
                 <span style={{fontSize:30}}>{e}</span>
-                <span style={{fontSize:11.5,fontWeight:700,color:'#475569',textAlign:'center',lineHeight:1.2}}>{l}</span>
+                <span style={{fontSize:11.5,fontWeight:esRec?800:700,color:esRec?'#c2410c':'#475569',textAlign:'center',lineHeight:1.2}}>{l}</span>
               </button>
-            ))}
-            {/* Recordar a los invitados el día del cumple (abre WhatsApp con mensaje listo) */}
-            <button onClick={compartirRecordatorio} title="Mandales un recordatorio a tus invitados" style={{aspectRatio:'1',borderRadius:16,border:'1px solid #fed7aa',cursor:'pointer',background:'#fff7ed',boxShadow:'0 1px 3px rgba(15,23,42,.06)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,padding:8,transition:'all .15s'}}
-              onMouseEnter={ev=>{ev.currentTarget.style.boxShadow='0 4px 14px rgba(249,115,22,.18)';ev.currentTarget.style.transform='translateY(-2px)';}}
-              onMouseLeave={ev=>{ev.currentTarget.style.boxShadow='0 1px 3px rgba(15,23,42,.06)';ev.currentTarget.style.transform='none';}}>
-              <span style={{fontSize:30}}>📣</span>
-              <span style={{fontSize:11.5,fontWeight:800,color:'#c2410c',textAlign:'center',lineHeight:1.2}}>Recordar invitados</span>
-            </button>
+            );})}
           </div>
         </div>
       )}
