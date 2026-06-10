@@ -4228,7 +4228,13 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const [videoFin,setVideoFin]=useState(false); // el video de portada terminó
   const musRef=React.useRef(null);
   const vidRef=React.useRef(null);
-  function toggleMus(){const el=musRef.current;if(!el)return;if(musOn){el.pause();setMusOn(false);}else{el.volume=esVideoPortada?0.12:0.5;try{el.play();}catch(e){}setMusOn(true);}}
+  function toggleMus(){
+    const v=vidRef.current; const el=musRef.current;
+    // Si el video está sonando, este botón silencia/activa el VIDEO.
+    if(v&&!v.ended){const nm=!v.muted;v.muted=nm;setVidMuted(nm);if(!nm){try{v.play();}catch(e){}}return;}
+    if(!el)return;
+    if(musOn){el.pause();setMusOn(false);}else{el.volume=0.5;try{el.play();}catch(e){}setMusOn(true);}
+  }
   // Auto-arranque de música RECIÉN cuando el invitado baja cierto desplazamiento (no al toque). Si hay video sin terminar, espera.
   React.useEffect(()=>{
     if(!musTrack)return; let done=false;
@@ -4333,8 +4339,8 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
 
       {/* 2. LOGO centrado sobre la imagen */}
       <div style={{display:'flex',justifyContent:'center',marginTop:-60,marginBottom:8,position:'relative',zIndex:2}}>
-        {musTrack&&(!esVideoPortada||videoFin)&&(
-          <button onClick={toggleMus} className={musOn?'':'pulse-soft'} title={musOn?'Silenciar música':'Activar música'} style={{position:'fixed',right:14,bottom:18,zIndex:40,background:col,color:'white',border:'3px solid white',borderRadius:99,width:60,height:60,fontSize:28,cursor:'pointer',boxShadow:'0 8px 22px rgba(0,0,0,.45)'}}>{musOn?'🔊':'🎵'}</button>
+        {musTrack&&(
+          <button onClick={toggleMus} className={(musOn||!vidMuted)?'':'pulse-soft'} title="Sonido" style={{position:'fixed',right:14,bottom:18,zIndex:40,background:col,color:'white',border:'3px solid white',borderRadius:99,width:60,height:60,fontSize:28,cursor:'pointer',boxShadow:'0 8px 22px rgba(0,0,0,.45)'}}>{(musOn||!vidMuted)?'🔊':'🎵'}</button>
         )}
         {suc.logo?(
           <div style={{width:118,height:118,borderRadius:'50%',border:'5px solid '+col,overflow:'hidden',background:'white',boxShadow:'0 4px 20px rgba(0,0,0,.18)'}}>
@@ -4410,14 +4416,19 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
           const hi=String(ev.hIni||'17:00').split(':');const hf=String(ev.hFin||'20:00').split(':');
           const dt=Y+M+D+'T'+p2(hi[0])+p2(hi[1]||'00')+'00';
           const dtEnd=Y+M+D+'T'+p2(hf[0])+p2(hf[1]||'00')+'00';
-          const alarmUTC=Y+M+D+'T130000Z'; // 10:00 (Argentina UTC-3)
-          const titulo='Cumple de '+(ev.nombre||'')+' en '+(suc.nombre||'');
-          const loc=String(suc.direccion||suc.nombre||'').replace(/[\r\n,]/g,' ');
-          const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//FunZone//ES','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT','UID:'+(ev.id||'ev')+'@funzone','DTSTAMP:'+Y+M+D+'T120000Z','DTSTART:'+dt,'DTEND:'+dtEnd,'SUMMARY:'+titulo,'LOCATION:'+loc,'DESCRIPTION:No te olvides del cumple de '+(ev.nombre||'')+'!','BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Hoy es el cumple de '+(ev.nombre||'')+'!','TRIGGER;VALUE=DATE-TIME:'+alarmUTC,'END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
-          // Abrir el .ics (no descargar): en iPhone/Android muestra directo "Agregar al calendario".
-          window.location.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);
+          const titulo='🎉 Cumple de '+(ev.nombre||'')+' en '+(suc.nombre||'');
+          const det='¡No te olvides! Cumpleaños de '+(ev.nombre||'')+' en '+(suc.nombre||'')+'.';
+          const loc=String(suc.direccion||suc.nombre||'');
+          // Abre Google Calendar con el evento listo para guardar (sin descargar archivos).
+          const gcal='https://calendar.google.com/calendar/render?action=TEMPLATE'+
+            '&text='+encodeURIComponent(titulo)+
+            '&dates='+dt+'/'+dtEnd+
+            '&ctz=America/Argentina/Buenos_Aires'+
+            '&details='+encodeURIComponent(det)+
+            '&location='+encodeURIComponent(loc);
+          window.open(gcal,'_blank');
         }} style={{width:'100%',maxWidth:420,background:col,color:'white',border:'none',borderRadius:16,padding:'15px 18px',fontSize:16,fontWeight:900,cursor:'pointer',boxShadow:'0 8px 22px rgba(0,0,0,.22)'}}>📅 ¡No te lo pierdas! Agendá el cumple</button>
-        <p style={{fontSize:11,color:'#94a3b8',marginTop:7}}>Se agrega a tu calendario con un aviso a las 10 AM del día 🎉</p>
+        <p style={{fontSize:11,color:'#94a3b8',marginTop:7}}>Se guarda en tu calendario y te avisa el día 🎉</p>
       </div>}
 
       {/* 9. FOTOS 2x2 */}
