@@ -4221,14 +4221,14 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const [videoFin,setVideoFin]=useState(false); // el video de portada terminó
   const musRef=React.useRef(null);
   function toggleMus(){const el=musRef.current;if(!el)return;if(musOn){el.pause();setMusOn(false);}else{el.volume=esVideoPortada?0.12:0.5;try{el.play();}catch(e){}setMusOn(true);}}
-  // Arrancar la música sola en la PRIMERA interacción (tocar/desplazar). En video, recién cuando terminó.
+  // Auto-arranque de música SOLO en tarjetas con FOTO (en la 1ra interacción). En video, NO: espera a que el video termine (onEnded).
   React.useEffect(()=>{
-    if(!musTrack)return; let done=false;
-    function tryStart(){ if(done)return; if(esVideoPortada&&!videoFin)return; const el=musRef.current; if(!el)return; el.volume=esVideoPortada?0.12:0.5; const pr=el.play(); if(pr&&pr.then){pr.then(()=>{done=true;setMusOn(true);cleanup();}).catch(()=>{});} else {done=true;setMusOn(true);cleanup();} }
+    if(!musTrack||esVideoPortada)return; let done=false;
+    function tryStart(){ if(done)return; const el=musRef.current; if(!el)return; el.volume=0.5; const pr=el.play(); if(pr&&pr.then){pr.then(()=>{done=true;setMusOn(true);cleanup();}).catch(()=>{});} else {done=true;setMusOn(true);cleanup();} }
     function cleanup(){['pointerdown','touchstart','click','scroll','keydown'].forEach(ev=>window.removeEventListener(ev,tryStart));}
     ['pointerdown','touchstart','click','scroll','keydown'].forEach(ev=>window.addEventListener(ev,tryStart,{passive:true}));
     return cleanup;
-  },[musTrack,esVideoPortada,videoFin]);
+  },[musTrack,esVideoPortada]);
   const col=suc.color||'#f97316';
   // Formato según tipo de evento (viaja guardado en el evento)
   const fEdad = (ev && ev.fmtEdad!==undefined) ? ev.fmtEdad : true;
