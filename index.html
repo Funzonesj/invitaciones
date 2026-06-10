@@ -4231,12 +4231,13 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const musRef=React.useRef(null);
   const vidRef=React.useRef(null);
   function toggleMus(){const el=musRef.current;if(!el)return;if(musOn){el.pause();setMusOn(false);}else{el.volume=esVideoPortada?0.12:0.5;try{el.play();}catch(e){}setMusOn(true);}}
-  // Auto-arranque de música en la 1ra interacción, PERO si hay un video de portada que todavía NO terminó, NO arranca (espera).
+  // Auto-arranque de música RECIÉN cuando el invitado baja cierto desplazamiento (no al toque). Si hay video sin terminar, espera.
   React.useEffect(()=>{
     if(!musTrack)return; let done=false;
-    function tryStart(){ if(done)return; const v=vidRef.current; if(v&&!v.ended)return; const el=musRef.current; if(!el)return; el.volume=0.5; const pr=el.play(); if(pr&&pr.then){pr.then(()=>{done=true;setMusOn(true);cleanup();}).catch(()=>{});} else {done=true;setMusOn(true);cleanup();} }
-    function cleanup(){['pointerdown','touchstart','click','scroll','keydown'].forEach(ev=>window.removeEventListener(ev,tryStart));}
-    ['pointerdown','touchstart','click','scroll','keydown'].forEach(ev=>window.addEventListener(ev,tryStart,{passive:true}));
+    function tryStart(){ if(done)return; const v=vidRef.current; if(v&&!v.ended)return; const y=window.scrollY||document.documentElement.scrollTop||0; if(y<300)return; const el=musRef.current; if(!el)return; el.volume=0.5; const pr=el.play(); if(pr&&pr.then){pr.then(()=>{done=true;setMusOn(true);cleanup();}).catch(()=>{});} else {done=true;setMusOn(true);cleanup();} }
+    function cleanup(){window.removeEventListener('scroll',tryStart);window.removeEventListener('touchmove',tryStart);}
+    window.addEventListener('scroll',tryStart,{passive:true});
+    window.addEventListener('touchmove',tryStart,{passive:true});
     return cleanup;
   },[musTrack]);
   const col=suc.color||'#f97316';
