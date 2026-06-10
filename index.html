@@ -23,6 +23,7 @@ input,select,textarea,button{font-family:inherit;outline:none}
 .spin{animation:spin 1.5s linear infinite}
 .pulse-soft{animation:pulse 0.9s ease-in-out infinite alternate}
 @keyframes heartUp{0%{transform:translateY(0) scale(.6);opacity:0}12%{opacity:.5}85%{opacity:.4}100%{transform:translateY(-78vh) translateX(var(--hx,0)) scale(1.15) rotate(var(--hr,0));opacity:0}}
+@keyframes kenburns{0%{transform:scale(1) translate(0,0)}100%{transform:scale(1.14) translate(-2%,-2%)}}
 /* ── Responsive ── */
 @media(max-width:640px){
   .hide-mobile{display:none!important}
@@ -3001,7 +3002,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     _PAPA_NAV={};
   },[]);
   const [mejora,setMejora]=useState({brillo:110,contraste:115,saturacion:120,calidez:0,aplicado:false});
-  const fotoRef=useRef();const canvasRef=useRef();
+  const fotoRef=useRef();const canvasRef=useRef();const albumRef=useRef();
+  const [subiendoAlbum,setSubiendoAlbum]=useState(false);
   const [pagoActivo,setPagoActivo]=useState(null);
   const [genActivo,setGenActivo]=useState(null);
   // Upsell de video (animar la imagen elegida): ver gratis, pagar para descargar
@@ -3136,6 +3138,29 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const confsEv=(confs||[]).filter(c=>c.evId===papaSesion.id);
 
   function onFotoNino(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>setForm(x=>({...x,fotoNino:ev.target.result,fotoMejorada:'',usarFoto:true}));r.readAsDataURL(f);}
+  // Comprime una foto en el celular (máx ~1400px, jpg) antes de subir, para que sea liviana
+  function comprimirImg(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{const M=1400;let w=img.width,h=img.height;if(w>h&&w>M){h=Math.round(h*M/w);w=M;}else if(h>=w&&h>M){w=Math.round(w*M/h);h=M;}const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',0.82));};img.onerror=rej;img.src=ev.target.result;};r.onerror=rej;r.readAsDataURL(file);});}
+  // Sube varias fotos al "pase de fotos" (álbum). Cada una se sube a la nube y guardamos el link.
+  async function onAlbumFotos(e){
+    const files=Array.from(e.target.files||[]);if(!files.length)return;
+    if(e.target)e.target.value='';
+    setSubiendoAlbum(true);
+    const nuevos=[];
+    for(const f of files){
+      try{
+        const dataUri=await comprimirImg(f);
+        let url=dataUri;
+        try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:dataUri})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)url=d.url;}catch(err){}
+        nuevos.push(url);
+      }catch(err){}
+    }
+    setForm(x=>({...x,album:[...((x.album)||[]),...nuevos]}));
+    setSubiendoAlbum(false);
+    flashOk('✓ '+nuevos.length+(nuevos.length===1?' foto agregada':' fotos agregadas'));
+  }
+  function quitarAlbum(i){setForm(x=>({...x,album:((x.album)||[]).filter((_,k)=>k!==i)}));}
+  function moverAlbum(i,dir){setForm(x=>{const a=[...((x.album)||[])];const j=i+dir;if(j<0||j>=a.length)return x;const t=a[i];a[i]=a[j];a[j]=t;return {...x,album:a};});}
+  function guardarAlbum(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});flashOk('✓ ¡Pase de fotos guardado!');}
   function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
   function guardar(e){e.preventDefault();const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvGuardada(true);alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');}
   function verTarjeta(opts){_PAPA_NAV=opts||{seccion:'home'};const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}
@@ -3319,6 +3344,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const _PT=(iaConfig&&iaConfig.papaTiles)||{};
   const SECCIONES=[
     ['tarjeta','🎨','Editar Tarjeta','#7c3aed'],
+    ['album','🎞️','Pase de Fotos','#ec4899'],
     ['confirmaciones','👥','Confirmados','#06b6d4'],
     ['descargables','📦','Descargas','#16a34a'],
     ['menu','🍽️','Menú IA','#f97316'],
@@ -3923,6 +3949,46 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         </div>
       )}
 
+      {/* ══ PASE DE FOTOS (álbum) ══ */}
+      {seccion==='album'&&(
+        <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
+          <div style={S.card}>
+            <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>🎞️ Pase de Fotos</h2>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:14,lineHeight:1.4}}>Subí las fotos del cumple y dentro de la invitación se van a ver pasando solas, con transiciones suaves y la música de la tarjeta. 💕</p>
+            <input ref={albumRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={onAlbumFotos}/>
+            <button onClick={()=>albumRef.current&&albumRef.current.click()} disabled={subiendoAlbum} style={{...S.btn,width:'100%',background:subiendoAlbum?'#f1f5f9':'#ec4899',color:subiendoAlbum?'#94a3b8':'white',padding:'14px',fontSize:14,fontWeight:900,marginBottom:12,boxShadow:subiendoAlbum?'none':'0 4px 12px rgba(236,72,153,.3)'}}>{subiendoAlbum?'⏳ Subiendo fotos…':'➕ Agregar fotos'}</button>
+            {((form.album)||[]).length===0?(
+              <div style={{textAlign:'center',padding:'28px 16px',color:'#94a3b8',background:'#fafafa',borderRadius:14,border:'1px dashed #e2e8f0'}}>
+                <div style={{fontSize:38,marginBottom:6}}>🖼️</div>
+                <p style={{fontWeight:700,fontSize:13}}>Todavía no subiste fotos</p>
+                <p style={{fontSize:11}}>Tocá "Agregar fotos" y elegí varias del celular.</p>
+              </div>
+            ):(
+              <div>
+                <div style={{fontSize:12,color:'#64748b',marginBottom:8,fontWeight:700}}>{((form.album)||[]).length} foto{((form.album)||[]).length===1?'':'s'} · se ven en este orden</div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
+                  {((form.album)||[]).map((src,i)=>(
+                    <div key={i} style={{position:'relative',aspectRatio:'1',borderRadius:12,overflow:'hidden',border:'1px solid #eef1f6',background:'#000'}}>
+                      <img src={src} alt={'foto '+(i+1)} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                      <span style={{position:'absolute',top:4,left:4,background:'rgba(0,0,0,.6)',color:'white',fontSize:10,fontWeight:900,borderRadius:8,padding:'1px 6px'}}>{i+1}</span>
+                      <button onClick={()=>quitarAlbum(i)} title="Quitar" style={{position:'absolute',top:4,right:4,width:24,height:24,borderRadius:'50%',border:'none',background:'rgba(220,38,38,.92)',color:'white',fontSize:13,fontWeight:900,cursor:'pointer',lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+                      <div style={{position:'absolute',bottom:4,left:0,right:0,display:'flex',justifyContent:'center',gap:6}}>
+                        <button onClick={()=>moverAlbum(i,-1)} disabled={i===0} title="Mover antes" style={{width:24,height:24,borderRadius:6,border:'none',background:i===0?'rgba(255,255,255,.4)':'rgba(255,255,255,.92)',color:'#334155',fontSize:13,fontWeight:900,cursor:i===0?'default':'pointer',lineHeight:1}}>‹</button>
+                        <button onClick={()=>moverAlbum(i,1)} disabled={i===((form.album)||[]).length-1} title="Mover después" style={{width:24,height:24,borderRadius:6,border:'none',background:i===((form.album)||[]).length-1?'rgba(255,255,255,.4)':'rgba(255,255,255,.92)',color:'#334155',fontSize:13,fontWeight:900,cursor:'pointer',lineHeight:1}}>›</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'flex',gap:8,marginTop:14}}>
+                  <button onClick={()=>verTarjeta({seccion:'album'})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'12px',fontSize:13,fontWeight:800}}>👁 Ver el pase</button>
+                  <button onClick={guardarAlbum} style={{...S.btn,flex:1,background:'#16a34a',color:'white',padding:'12px',fontSize:13,fontWeight:900}}>💾 Guardar</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ══ FAQ ══ */}
       {seccion==='faq'&&(
         <div className="fade-in">
@@ -4160,6 +4226,36 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   );
 }
 
+
+/* ── PASE DE FOTOS (slideshow con transición + Ken Burns) ── */
+function PaseFotos({fotos,col,titulo}){
+  const lista=(fotos||[]).filter(Boolean);
+  const [idx,setIdx]=React.useState(0);
+  const DUR=3600;
+  React.useEffect(()=>{
+    if(lista.length<2)return;
+    const t=setInterval(()=>setIdx(i=>(i+1)%lista.length),DUR);
+    return ()=>clearInterval(t);
+  },[lista.length]);
+  if(!lista.length)return null;
+  return (
+    <div style={{padding:'8px 0 4px'}}>
+      {titulo&&<div style={{textAlign:'center',fontSize:13,fontWeight:800,color:col,letterSpacing:.5,margin:'6px 0 8px'}}>📸 {titulo}</div>}
+      <div style={{position:'relative',width:'100%',aspectRatio:'1',overflow:'hidden',background:'#000'}}>
+        {lista.map((src,i)=>(
+          <div key={i} style={{position:'absolute',inset:0,opacity:i===idx?1:0,transition:'opacity 1.1s ease-in-out'}}>
+            <img src={src} alt="" style={{width:'100%',height:'100%',objectFit:'cover',animation:i===idx?('kenburns '+(DUR+1200)+'ms ease-out both'):'none'}}/>
+          </div>
+        ))}
+        {lista.length>1&&(
+          <div style={{position:'absolute',bottom:10,left:0,right:0,display:'flex',justifyContent:'center',gap:6,zIndex:2}}>
+            {lista.map((_,i)=>(<span key={i} style={{width:i===idx?20:7,height:7,borderRadius:99,background:i===idx?col:'rgba(255,255,255,.6)',transition:'all .3s',boxShadow:'0 1px 3px rgba(0,0,0,.4)'}}/>))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 /* ── INVITADO PORTADA ────────────────────────────────────── */
 function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volverInv}){
@@ -4444,6 +4540,11 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         }} style={{width:'100%',maxWidth:420,background:col,color:'white',border:'none',borderRadius:16,padding:'15px 18px',fontSize:16,fontWeight:900,cursor:'pointer',boxShadow:'0 8px 22px rgba(0,0,0,.22)'}}>📅 ¡No te lo pierdas! Agendá el cumple</button>
         <p style={{fontSize:11,color:'#94a3b8',marginTop:7}}>Se guarda en tu calendario y te avisa el día 🎉</p>
       </div>}
+
+      {/* 8.5 PASE DE FOTOS de la mamá (álbum) */}
+      {Array.isArray(ev.album)&&ev.album.length>0&&(
+        <PaseFotos fotos={ev.album} col={col} titulo={(ev.nombre||'')+' en fotos'}/>
+      )}
 
       {/* 9. FOTOS 2x2 */}
       {fotos.length>0&&(
