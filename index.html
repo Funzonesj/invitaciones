@@ -3430,7 +3430,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const _PT=(iaConfig&&iaConfig.papaTiles)||{};
   const SECCIONES=[
     ['tarjeta','🎨','Editar Tarjeta','#7c3aed'],
-    ['album','🎞️','Pase de Fotos','#ec4899'],
+    ['album','🎞️','Generador de Recuerdos','#ec4899'],
     ['confirmaciones','👥','Confirmados','#06b6d4'],
     ['descargables','📦','Descargas','#16a34a'],
     ['menu','🍽️','Menú IA','#f97316'],
@@ -4039,7 +4039,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       {seccion==='album'&&(
         <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
           <div style={S.card}>
-            <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>🎞️ Pase de Fotos</h2>
+            <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>🎞️ Generador de Recuerdos</h2>
             <p style={{fontSize:12,color:'#64748b',marginBottom:14,lineHeight:1.4}}>Subí las fotos del cumple y dentro de la invitación se van a ver pasando solas como un mini-video: arranca con una frase, las fotos pasan en un marco tipo foto instantánea con el logo del salón, y cierra con otra frase. 💕</p>
             <input ref={albumRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={onAlbumFotos}/>
             <button onClick={()=>albumRef.current&&albumRef.current.click()} disabled={subiendoAlbum} style={{...S.btn,width:'100%',background:subiendoAlbum?'#f1f5f9':'#ec4899',color:subiendoAlbum?'#94a3b8':'white',padding:'14px',fontSize:14,fontWeight:900,marginBottom:12,boxShadow:subiendoAlbum?'none':'0 4px 12px rgba(236,72,153,.3)'}}>{subiendoAlbum?'⏳ Subiendo fotos…':'➕ Agregar fotos'}</button>
