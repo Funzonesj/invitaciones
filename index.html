@@ -171,6 +171,10 @@ const S = {
 const _SEARCH = window.location.search || window.location.hash.replace('#','?');
 const _INV_PARAM = new URLSearchParams(_SEARCH).get('inv');
 const _REC_PARAM = new URLSearchParams(_SEARCH).get('rec'); // link propio del Generador de Recuerdos
+// Cuando se abre por un link de invitación o de recuerdos, el dispositivo es SOLO LECTURA:
+// nunca debe escribir eventos/config en la base central (si no, pisa los datos buenos con
+// los viejos que tenga guardados en ese celular). El invitado igual puede confirmar asistencia.
+const _SOLO_LECTURA = !!(_INV_PARAM || _REC_PARAM);
 // If param looks like base64 (contains letters+numbers, not just ev-X), decode event data
 let _INV_EV_DATA = null;
 if(_INV_PARAM && !_INV_PARAM.match(/^ev-/)){
@@ -336,6 +340,9 @@ function App() {
   const [vista,       setVista]       = useState(INIT_VISTA);
   const [menuOpen,    setMenuOpen]    = useState(false);
   const [dbReady,     setDbReady]     = useState(!SB);
+  // fullLoaded = la base terminó de cargar TODO (no solo la carga rápida de 1 evento).
+  // Recién con esto habilitamos escrituras de eventos/config, para no subir datos viejos del celular.
+  const [fullLoaded,  setFullLoaded]  = useState(!SB);
 
   // Detect ?inv= / ?rec= param after mount as reliable fallback
   React.useEffect(()=>{
@@ -384,16 +391,19 @@ function App() {
         }
       }
       setDbReady(true);
+      setFullLoaded(true);
     })();
   },[]);
-  // Auto-save: localStorage (respaldo) + base de datos central
-  React.useEffect(()=>{try{localStorage.setItem('fz_eventos',JSON.stringify(eventos));}catch(e){}; if(dbReady){eventos.forEach(sbUpsertEvento);}},[eventos]);
+  // Auto-save: localStorage (respaldo) + base de datos central.
+  // IMPORTANTE: el invitado (_SOLO_LECTURA) NO escribe eventos/config (si no pisa los datos buenos).
+  // Y los eventos/config recién se suben tras la carga COMPLETA (fullLoaded), no con la rápida.
+  React.useEffect(()=>{try{localStorage.setItem('fz_eventos',JSON.stringify(eventos));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){eventos.forEach(sbUpsertEvento);}},[eventos]);
   React.useEffect(()=>{try{localStorage.setItem('fz_confs',JSON.stringify(confs));}catch(e){}; if(dbReady){confs.forEach(sbUpsertConf);}},[confs]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_tematicas',JSON.stringify(tematicas));}catch(e){}; if(dbReady){sbUpsertConfig('__config_tematicas__',tematicas);}},[tematicas]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){}; if(dbReady){sbUpsertConfig('__config_suc__',sucursales);}},[sucursales]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){}; if(dbReady){sbUpsertConfig('__config_ia__',iaConfig);}},[iaConfig]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_usuarios',JSON.stringify(usuarios));}catch(e){}; if(dbReady){sbUpsertConfig('__config_usuarios__',usuarios);}},[usuarios]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_pedidos',JSON.stringify(pedidos));}catch(e){}; if(dbReady){sbUpsertConfig('__config_pedidos__',pedidos);}},[pedidos]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_tematicas',JSON.stringify(tematicas));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){sbUpsertConfig('__config_tematicas__',tematicas);}},[tematicas]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){sbUpsertConfig('__config_suc__',sucursales);}},[sucursales]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){sbUpsertConfig('__config_ia__',iaConfig);}},[iaConfig]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_usuarios',JSON.stringify(usuarios));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){sbUpsertConfig('__config_usuarios__',usuarios);}},[usuarios]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_pedidos',JSON.stringify(pedidos));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){sbUpsertConfig('__config_pedidos__',pedidos);}},[pedidos]);
   async function refrescarPedidos(){ if(!SB)return; try{ const r=await SB.from('eventos').select('data').eq('id','__config_pedidos__').maybeSingle(); if(r&&r.data&&r.data.data) setPedidos(r.data.data); }catch(e){} }
   // Recordar sesión del admin/encargada en este dispositivo (no pedir contraseña cada vez)
   React.useEffect(()=>{try{if(adminSesion)localStorage.setItem('fz_admin_sesion',JSON.stringify(adminSesion));else localStorage.removeItem('fz_admin_sesion');}catch(e){}},[adminSesion]);
