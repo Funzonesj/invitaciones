@@ -3145,7 +3145,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
 
 /* ── PAPA CREADOR ────────────────────────────────────────── */
 function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,tematicas,sucursales,setInvEvId,iaConfig,confs,setConfs,pedidos,setPedidos}){
-  const [form,setForm]=useState({nombre:papaSesion.nombre,tipo:papaSesion.tipo||'Cumpleaños',edad:papaSesion.edad,celPapa:papaSesion.celPapa,temId:papaSesion.temId||'t-3',fotoNino:'',fotoMejorada:'',usarMejorada:true,usarFoto:false,portadaSrc:papaSesion.portadaSrc||'',iaImagenes:papaSesion.iaImagenes||[],iaImagenSel:(papaSesion.iaImagenSel!=null?papaSesion.iaImagenSel:null),fotoNinoIA:papaSesion.fotoNinoIA||'',personajeIA:papaSesion.personajeIA||'',iaVideos:[],iaVideoSel:null,fotoNinoIAV:'',personajeIAV:'',album:papaSesion.album||[],albumFraseIni:papaSesion.albumFraseIni||'',albumFraseFin:papaSesion.albumFraseFin||'',albumMusica:papaSesion.albumMusica||'',albumPortada:papaSesion.albumPortada||'',albumFinal:papaSesion.albumFinal||'',albumPortadaColor:papaSesion.albumPortadaColor||'',albumFinalColor:papaSesion.albumFinalColor||''});
+  const [form,setForm]=useState({nombre:papaSesion.nombre,tipo:papaSesion.tipo||'Cumpleaños',edad:papaSesion.edad,celPapa:papaSesion.celPapa,temId:papaSesion.temId||'t-3',fotoNino:papaSesion.fotoNino||'',fotoMejorada:papaSesion.fotoMejorada||'',usarMejorada:papaSesion.usarMejorada!==false,usarFoto:!!papaSesion.usarFoto,portadaSrc:papaSesion.portadaSrc||'',iaImagenes:papaSesion.iaImagenes||[],iaImagenSel:(papaSesion.iaImagenSel!=null?papaSesion.iaImagenSel:null),fotoNinoIA:papaSesion.fotoNinoIA||'',personajeIA:papaSesion.personajeIA||'',iaVideos:[],iaVideoSel:null,fotoNinoIAV:'',personajeIAV:'',album:papaSesion.album||[],albumFraseIni:papaSesion.albumFraseIni||'',albumFraseFin:papaSesion.albumFraseFin||'',albumMusica:papaSesion.albumMusica||'',albumPortada:papaSesion.albumPortada||'',albumFinal:papaSesion.albumFinal||'',albumPortadaColor:papaSesion.albumPortadaColor||'',albumFinalColor:papaSesion.albumFinalColor||''});
   const [ftxt,setFtxt]=useState('');const [fcat,setFcat]=useState('TODOS');
   const [modoPortada,setModoPortada]=useState(_PAPA_NAV.modo||'tematica');
   const [vistoTarjeta,setVistoTarjeta]=useState(!!_PAPA_NAV.visto); // ya vio la tarjeta → habilita el paso del video
@@ -3764,7 +3764,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <div style={{...S.card,display:(editPanel==='tematica'||editPanel==='foto'||modoPortada==='ia-imagen')?'block':'none'}}>
             <button onClick={()=>{if(editPanel){guardarYVolver();}else{setEditPanel(null);}setModoPortada('tematica');}} style={{...S.btn,background:'#7c3aed',color:'white',padding:'11px 22px',fontSize:14,fontWeight:900,marginBottom:12,boxShadow:'0 4px 14px rgba(124,58,237,.35)'}}>← Volver</button>
             <div style={{display:'flex',gap:8,marginBottom:14}}>
-              {modoPortada!=='ia-imagen'&&<button onClick={()=>verTarjeta({seccion:seccion,modo:modoPortada,editPanel:editPanel,visto:true})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'10px',fontSize:12,fontWeight:900}}>👁 Ver</button>}
+              {modoPortada==='tematica'&&<button onClick={()=>verTarjeta({seccion:seccion,modo:modoPortada,editPanel:editPanel,visto:true})} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'10px',fontSize:12,fontWeight:900}}>👁 Ver</button>}
             </div>
             {modoPortada==='tematica'&&(
               <div className="fade-in">
@@ -3865,6 +3865,10 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                     )}
                   </div>
                 )}
+                {form.fotoNino&&(
+                  <button onClick={()=>verTarjeta({seccion:seccion,modo:'foto',editPanel:'foto',visto:true})} style={{...S.btn,width:'100%',background:'#ede9fe',color:'#7c3aed',padding:'13px',fontSize:14,fontWeight:900,marginTop:14}}>👁 Ver la tarjeta</button>
+                )}
+                <button onClick={()=>{guardarYVolver();setSeccion('home');setEditoTarjeta(true);}} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>✓ Listo, enviar tu tarjeta</button>
                 <canvas ref={canvasRef} style={{display:'none'}}/>
               </div>
             )}
