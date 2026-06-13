@@ -3407,6 +3407,92 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     }catch(e){alert('No se pudo generar el PDF. Probá de nuevo.');}
     setPdfGen(false);
   }
+  const [vidGen,setVidGen]=useState(false);
+  // Grabar el recuerdo como VIDEO (archivo descargable) — graba en vivo el pase en un canvas + música.
+  async function descargarVideoRecuerdo(){
+    const album=((form.album)||[]).filter(Boolean);
+    if(!album.length){alert('Primero subí fotos al recuerdo.');return;}
+    if(typeof MediaRecorder==='undefined'||typeof HTMLCanvasElement.prototype.captureStream!=='function'){alert('Este navegador no permite grabar el video. Probá desde una compu o un celular Android. (Igual te queda el link y el PDF.)');return;}
+    if(!confirm('Voy a GRABAR el video (tarda lo que dura el video, ~1 a 2 min). No cierres ni bloquees la pantalla hasta que termine. ¿Empezamos?'))return;
+    setVidGen(true);
+    function cargar(url){return new Promise(res=>{ fetch(url).then(r=>r.blob()).then(b=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>res(null);im.src=fr.result;};fr.onerror=()=>res(null);fr.readAsDataURL(b);}).catch(()=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>res(im);im.onerror=()=>res(null);im.src=url;}); }); }
+    const esClaro=c=>c&&(c.toLowerCase()==='#ffffff'||c.toLowerCase()==='#fff'||c.toLowerCase()==='#facc15');
+    try{
+      let sucV=suc; try{ if(SB){const r=await SB.from('eventos').select('data').eq('id','__config_suc__').maybeSingle();const arr=r&&r.data&&r.data.data;if(Array.isArray(arr)){const fr=arr.find(s=>s.id===(suc&&suc.id));if(fr)sucV=fr;}} }catch(e){}
+      const niñoUrl=form.portadaSrc||((form.iaImagenes||[])[0])||(temA&&temA.img)||form.fotoNino||'';
+      const portIni=form.albumPortada||(sucV&&sucV.fraseIniImg)||'';
+      const portFin=form.albumFinal||(sucV&&sucV.fraseFinImg)||'';
+      const fondoUrl=(sucV&&sucV.fondoPase)||'';
+      const fIni=(form.albumFraseIni&&form.albumFraseIni.trim())||('¡Hoy festejamos a '+(form.nombre||'')+'!');
+      const fFin=(form.albumFraseFin&&form.albumFraseFin.trim())||'¡Gracias por acompañarnos! 💕';
+      const musUrl=form.albumMusica||((((sucV&&sucV.musicaPase)||[]).filter(Boolean)[0]||{}).url)||(((sucV&&sucV.musicaGen)||[]).filter(Boolean)[0])||'';
+      const fondoImg=fondoUrl?await cargar(fondoUrl):null;
+      // armar slides (con imágenes ya cargadas)
+      const slides=[];
+      slides.push({tipo:'frase',img:await cargar(portIni||niñoUrl||albUrl(album[0])),texto:fIni,color:form.albumPortadaColor||'',dur:7000,pos:25});
+      if(niñoUrl) slides.push({tipo:'foto',img:await cargar(niñoUrl),dur:4000,pos:25});
+      for(const it of album){ slides.push({tipo:'foto',img:await cargar(albUrl(it)),dur:4000,pos:albPos(it)}); }
+      slides.push({tipo:'frase',img:await cargar(portFin||niñoUrl||albUrl(album[album.length-1])),texto:fFin,color:form.albumFinalColor||'',dur:7000,pos:25});
+      const S=720; const cv=document.createElement('canvas');cv.width=S;cv.height=S;const cx=cv.getContext('2d');
+      function dFondo(){ if(fondoImg){const ir=fondoImg.width/fondoImg.height;let sw,sh,sx,sy;if(ir>1){sh=fondoImg.height;sw=sh;sx=(fondoImg.width-sw)/2;sy=0;}else{sw=fondoImg.width;sh=sw;sx=0;sy=(fondoImg.height-sh)/2;}cx.drawImage(fondoImg,sx,sy,sw,sh,0,0,S,S);} else {cx.fillStyle='#0f172a';cx.fillRect(0,0,S,S);} }
+      function coverR(im,x,y,w,h,posY){const cr=w/h,ir=im.width/im.height;let sw,sh,sx,sy;if(ir>cr){sh=im.height;sw=sh*cr;sx=(im.width-sw)/2;sy=0;}else{sw=im.width;sh=sw/cr;sx=0;sy=(im.height-sh)*((posY!=null?posY:50)/100);}cx.drawImage(im,sx,sy,sw,sh,x,y,w,h);}
+      function dSlide(sl,p){
+        const sc=1+0.12*p;
+        if(sl.tipo==='foto'){
+          const w=S*0.74,bord=w*0.05,photo=w-2*bord,bottom=w*0.18,h=bord+photo+bottom;
+          cx.save();cx.translate(S/2,S/2);cx.rotate(-2*Math.PI/180);
+          cx.shadowColor='rgba(0,0,0,0.4)';cx.shadowBlur=w*0.04;cx.shadowOffsetY=w*0.02;
+          cx.fillStyle='#fff';cx.fillRect(-w/2,-h/2,w,h);cx.shadowColor='transparent';
+          cx.save();cx.beginPath();cx.rect(-w/2+bord,-h/2+bord,photo,photo);cx.clip();
+          if(sl.img){const pw=photo*sc,ph=photo*sc,ox=-w/2+bord-(pw-photo)/2,oy=-h/2+bord-(ph-photo)/2;cx.save();try{cx.filter='contrast(1.08) saturate(1.14) brightness(1.04)';}catch(e){}coverR(sl.img,ox,oy,pw,ph,sl.pos);cx.restore();}
+          cx.restore();cx.restore();
+        }else{
+          if(sl.color){cx.fillStyle=sl.color;cx.fillRect(0,0,S,S);}
+          else if(sl.img){cx.save();try{cx.filter='brightness(.5) blur(6px)';}catch(e){}coverR(sl.img,-S*0.04,-S*0.04,S*1.08,S*1.08,sl.pos);cx.restore();cx.fillStyle='rgba(0,0,0,.35)';cx.fillRect(0,0,S,S);}
+          cx.fillStyle=esClaro(sl.color)?'#0f172a':'#fff';cx.textAlign='center';cx.textBaseline='middle';
+          let fs=S*0.078;cx.font='900 '+fs+'px Arial';
+          const words=(sl.texto||'').split(' ');const lines=[];let line='';
+          for(const wd of words){const tst=line?line+' '+wd:wd;if(cx.measureText(tst).width>S*0.82&&line){lines.push(line);line=wd;}else line=tst;} if(line)lines.push(line);
+          cx.shadowColor='rgba(0,0,0,.95)';cx.shadowBlur=14;
+          const lh=fs*1.2,sy0=S/2-(lines.length-1)*lh/2;
+          lines.forEach((ln,k)=>cx.fillText(ln,S/2,sy0+k*lh));
+          cx.shadowColor='transparent';
+        }
+      }
+      // stream video + audio
+      const vstream=cv.captureStream(25);
+      const combined=new MediaStream(); vstream.getVideoTracks().forEach(t=>combined.addTrack(t));
+      let audioEl=null,actx=null;
+      if(musUrl){ try{ audioEl=new Audio();audioEl.crossOrigin='anonymous';audioEl.src=musUrl;audioEl.loop=true; actx=new (window.AudioContext||window.webkitAudioContext)(); const sN=actx.createMediaElementSource(audioEl);const dest=actx.createMediaStreamDestination();sN.connect(dest); dest.stream.getAudioTracks().forEach(t=>combined.addTrack(t)); }catch(e){audioEl=null;} }
+      let mime=''; ['video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].forEach(m=>{ if(!mime&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))mime=m; });
+      const rec=new MediaRecorder(combined, mime?{mimeType:mime}:undefined);
+      const chunks=[]; rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+      const stopped=new Promise(res=>{rec.onstop=res;});
+      rec.start(250);
+      if(audioEl){ try{ if(actx&&actx.state==='suspended')await actx.resume(); audioEl.currentTime=0; await audioEl.play(); }catch(e){} }
+      const t0=performance.now(); const FADE=900;
+      await new Promise(resolve=>{
+        function frame(){
+          const now=performance.now()-t0; let acc=0,idx=0;
+          for(idx=0;idx<slides.length;idx++){ if(now<acc+slides[idx].dur)break; acc+=slides[idx].dur; }
+          if(idx>=slides.length){resolve();return;}
+          const sl=slides[idx],local=now-acc;
+          dFondo(); dSlide(sl,local/sl.dur);
+          if(slides[idx+1]&&local>sl.dur-FADE){ const a=(local-(sl.dur-FADE))/FADE; cx.save();cx.globalAlpha=Math.min(1,a); dFondo(); dSlide(slides[idx+1],0); cx.restore(); }
+          requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      });
+      try{rec.stop();}catch(e){}
+      if(audioEl){try{audioEl.pause();}catch(e){}}
+      await stopped;
+      const ext=(mime.indexOf('mp4')>=0)?'mp4':'webm';
+      const blob=new Blob(chunks,{type:mime||'video/webm'});
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Recuerdos-'+((form.nombre||'cumple').replace(/[^a-zA-Z0-9]/g,'_'))+'.'+ext; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      flashOk('✓ Video descargado');
+    }catch(e){ alert('No se pudo grabar el video en este dispositivo. Igual te quedan el link y el PDF como recuerdo.'); }
+    setVidGen(false);
+  }
   function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
   function guardar(e){e.preventDefault();const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvGuardada(true);alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');}
   function verTarjeta(opts){_PAPA_NAV=opts||{seccion:'home'};const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}
@@ -4288,6 +4374,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <button onClick={guardarAlbum} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>💾 Guardar</button>
                 <button onClick={compartirRecuerdo} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'14px',fontSize:14,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(37,211,102,.3)'}}>📲 Compartir el recuerdo por WhatsApp</button>
                 <button onClick={descargarAlbumPDF} disabled={pdfGen} style={{...S.btn,width:'100%',background:pdfGen?'#f1f5f9':'#0f172a',color:pdfGen?'#94a3b8':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{pdfGen?'⏳ Armando tu regalo…':'🎁 Imprimí tu regalo'}</button>
+                <button onClick={descargarVideoRecuerdo} disabled={vidGen} style={{...S.btn,width:'100%',background:vidGen?'#f1f5f9':'#7c3aed',color:vidGen?'#94a3b8':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{vidGen?'⏳ Grabando el video… (no cierres)':'🎬 Descargar el video'}</button>
               </div>
             )}
           </div>
