@@ -2179,6 +2179,13 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
     for(const f of arr){try{const du=await comprimirAdmin(f);let u=du;try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:du})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(e){}urls.push(u);}catch(e){}}
     setIaConfig(c=>({...c,portadasPase:[...((c.portadasPase)||[]),...urls]}));flashOk('✓ '+urls.length+' portada(s) subida(s)');
   }
+  // Fondo decorado del pase — POR SUCURSAL (va detrás del marco blanco de las fotos)
+  async function subirFondo(file){ if(!file)return; flashOk('Subiendo fondo…');
+    try{const du=await comprimirAdmin(file);let u=du;try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:du})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(e){}
+      setSucursales(p=>p.map(s=>s.id===selSuc?{...s,fondoPase:u}:s));flashOk('✓ Fondo subido');
+    }catch(e){alert('No se pudo subir el fondo.');}
+  }
+  function quitarFondo(){setSucursales(p=>p.map(s=>s.id===selSuc?{...s,fondoPase:''}:s));}
   async function subirAudio(file,cb){
     if(!file)return;
     try{flashOk('Subiendo música…');const ext=(String(file.name).split('.').pop()||'mp3').toLowerCase();const ct=file.type||'audio/mpeg';
@@ -2291,6 +2298,19 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
                 <button onClick={()=>delPortada(i)} style={{position:'absolute',top:3,right:3,width:22,height:22,borderRadius:'50%',border:'none',background:'rgba(220,38,38,.92)',color:'white',fontSize:12,fontWeight:900,cursor:'pointer'}}>×</button>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🎨 Fondo del Pase de Fotos <span style={{fontSize:10,fontWeight:700,color:'#db2777',background:'#fdf2f8',border:'1px solid #fbcfe8',borderRadius:8,padding:'1px 7px'}}>por sucursal</span></h3>
+        <p style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>Imagen decorada con tu marca que va <b>detrás del marco blanco</b> de las fotos en el recuerdo. Dejá el <b>centro libre</b> (las fotos van al medio). Es de <b>{sucSel.nombre||'esta sucursal'}</b> (cambiá la sucursal arriba ☝️).</p>
+        <p style={{fontSize:11,color:'#0ea5e9',fontWeight:700,marginBottom:10}}>📐 Subila <b>cuadrada, 1080 × 1080 px</b>.</p>
+        <label style={{...S.btn,background:'#db2777',color:'white',padding:'10px 16px',fontSize:13,cursor:'pointer',display:'inline-block',marginBottom:12}}>📎 Subir fondo<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>subirFondo(e.target.files[0])}/></label>
+        {sucSel.fondoPase&&(
+          <div style={{position:'relative',width:160,aspectRatio:'1',borderRadius:10,overflow:'hidden',border:'1px solid #eef1f6',background:'#000'}}>
+            <img src={sucSel.fondoPase} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+            <button onClick={quitarFondo} style={{position:'absolute',top:4,right:4,width:24,height:24,borderRadius:'50%',border:'none',background:'rgba(220,38,38,.92)',color:'white',fontSize:13,fontWeight:900,cursor:'pointer'}}>×</button>
           </div>
         )}
       </div>
@@ -4395,7 +4415,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
 
 /* ── PASE DE FOTOS (mini-video: intro → fotos en marco instantánea con logo → cierre) ── */
-function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,portadaColor,portadaFinColor}){
+function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,portadaColor,portadaFinColor,fondo}){
   const base=(fotos||[]).filter(Boolean);
   // Secuencia: intro (frase) + fotos + cierre (frase)
   const slides=[];
@@ -4418,13 +4438,13 @@ function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,p
   return (
     <div style={{padding:'8px 0 4px',background:'#0f172a'}}>
       <div style={{textAlign:'center',fontSize:13,fontWeight:800,color:'#fff',letterSpacing:.5,margin:'8px 0'}}>📸 {nombre?(nombre+' en fotos'):'Pase de fotos'}</div>
-      <div style={{position:'relative',width:'100%',aspectRatio:'1',overflow:'hidden',background:'#0f172a'}}>
+      <div style={{position:'relative',width:'100%',aspectRatio:'1',overflow:'hidden',background:'#0f172a',backgroundImage:fondo?('url('+fondo+')'):'none',backgroundSize:'cover',backgroundPosition:'center'}}>
         {slides.map((sl,i)=>{
           const on=i===idx;
           if(sl.tipo==='foto'){
             return (
-              <div key={i} style={{position:'absolute',inset:0,opacity:on?1:0,transition:'opacity 1.1s ease-in-out',display:'flex',alignItems:'center',justifyContent:'center',background:'#0f172a'}}>
-                <div style={{position:'relative',background:'#fff',padding:'12px 12px 36px',borderRadius:4,boxShadow:'0 10px 30px rgba(0,0,0,.55)',transform:'rotate(-2deg)',width:'76%'}}>
+              <div key={i} style={{position:'absolute',inset:0,opacity:on?1:0,transition:'opacity 1.1s ease-in-out',display:'flex',alignItems:'center',justifyContent:'center',background:fondo?'transparent':'#0f172a'}}>
+                <div style={{position:'relative',background:'#fff',padding:'12px 12px 36px',borderRadius:4,boxShadow:'0 10px 30px rgba(0,0,0,.55)',transform:'rotate(-2deg)',width:fondo?'68%':'76%'}}>
                   <div style={{width:'100%',aspectRatio:'1',overflow:'hidden',background:'#000'}}>
                     <img src={sl.src} alt="" style={{width:'100%',height:'100%',objectFit:'cover',animation:on?((i%2?'kenburns2':'kenburns')+' '+(DUR+700)+'ms ease-out both'):'none'}}/>
                   </div>
@@ -4496,7 +4516,7 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
       {cerrar}
       {musTrack&&<audio ref={musRef} src={musTrack} loop preload="auto"></audio>}
       <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',maxWidth:480,margin:'0 auto',width:'100%'}}>
-        <PaseFotos fotos={fotos} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin} portada={ev.albumPortada} portadaFin={ev.albumFinal} portadaColor={ev.albumPortadaColor} portadaFinColor={ev.albumFinalColor}/>
+        <PaseFotos fotos={fotos} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin} portada={ev.albumPortada} portadaFin={ev.albumFinal} portadaColor={ev.albumPortadaColor} portadaFinColor={ev.albumFinalColor} fondo={suc.fondoPase}/>
       </div>
       {musTrack&&<button onClick={toggleMus} title="Sonido" style={{position:'fixed',right:14,bottom:18,zIndex:40,background:col,color:'white',border:'3px solid white',borderRadius:99,width:58,height:58,fontSize:26,cursor:'pointer',boxShadow:'0 6px 18px rgba(0,0,0,.3)'}}>{musOn?'🔊':'🎵'}</button>}
       <div style={{textAlign:'center',color:'#64748b',fontSize:11,padding:'12px'}}>{suc.nombre||''} · Recuerdos del cumple 💕</div>
