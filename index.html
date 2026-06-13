@@ -4287,7 +4287,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <button onClick={verRecuerdo} style={{...S.btn,width:'100%',background:'#ede9fe',color:'#7c3aed',padding:'13px',fontSize:14,fontWeight:900,marginTop:14}}>👁 Ver el recuerdo</button>
                 <button onClick={guardarAlbum} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>💾 Guardar</button>
                 <button onClick={compartirRecuerdo} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'14px',fontSize:14,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(37,211,102,.3)'}}>📲 Compartir el recuerdo por WhatsApp</button>
-                <button onClick={descargarAlbumPDF} disabled={pdfGen} style={{...S.btn,width:'100%',background:pdfGen?'#f1f5f9':'#0f172a',color:pdfGen?'#94a3b8':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{pdfGen?'⏳ Armando el PDF…':'📄 Descargar álbum PDF (A4 para imprimir)'}</button>
+                <button onClick={descargarAlbumPDF} disabled={pdfGen} style={{...S.btn,width:'100%',background:pdfGen?'#f1f5f9':'#0f172a',color:pdfGen?'#94a3b8':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{pdfGen?'⏳ Armando tu regalo…':'🎁 Imprimí tu regalo'}</button>
               </div>
             )}
           </div>
@@ -4572,7 +4572,7 @@ function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,p
               <div key={i} style={{position:'absolute',inset:0,opacity:on?1:0,transition:'opacity 1.1s ease-in-out',display:'flex',alignItems:'center',justifyContent:'center',background:fondo?'transparent':'#0f172a'}}>
                 <div style={{position:'relative',background:'#fff',padding:'10px 10px 32px',borderRadius:4,boxShadow:'0 10px 30px rgba(0,0,0,.55)',transform:'rotate(-2deg)',width:fondo?'82%':'90%'}}>
                   <div style={{width:'100%',aspectRatio:'1',overflow:'hidden',background:'#000'}}>
-                    <img src={albUrl(sl.src)} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+albPos(sl.src)+'%',animation:on?((i%2?'kenburns2':'kenburns')+' '+(DUR+700)+'ms ease-out both'):'none'}}/>
+                    <img src={albUrl(sl.src)} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+albPos(sl.src)+'%',filter:'contrast(1.08) saturate(1.14) brightness(1.04)',animation:on?((i%2?'kenburns2':'kenburns')+' '+(DUR+700)+'ms ease-out both'):'none'}}/>
                   </div>
                   {nombre&&<div style={{position:'absolute',bottom:8,left:0,right:0,textAlign:'center',fontSize:15,color:'#475569',fontWeight:700,fontStyle:'italic'}}>{nombre} 🎉</div>}
                 </div>
