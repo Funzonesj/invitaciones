@@ -2192,6 +2192,13 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
     }catch(e){alert('No se pudo subir el fondo.');}
   }
   function quitarFondo(){setSucursales(p=>p.map(s=>s.id===selSuc?{...s,fondoPase:''}:s));}
+  // Imágenes para la frase de INICIO y de FINAL — POR SUCURSAL (la frase va sobre esta imagen)
+  async function subirFraseImg(file,campo){ if(!file)return; flashOk('Subiendo imagen…');
+    try{const du=await comprimirAdmin(file);let u=du;try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:du})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(e){}
+      setSucursales(p=>p.map(s=>s.id===selSuc?{...s,[campo]:u}:s));flashOk('✓ Imagen subida');
+    }catch(e){alert('No se pudo subir la imagen.');}
+  }
+  function quitarFraseImg(campo){setSucursales(p=>p.map(s=>s.id===selSuc?{...s,[campo]:''}:s));}
   async function subirAudio(file,cb){
     if(!file)return;
     try{flashOk('Subiendo música…');const ext=(String(file.name).split('.').pop()||'mp3').toLowerCase();const ct=file.type||'audio/mpeg';
@@ -2319,6 +2326,25 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
             <button onClick={quitarFondo} style={{position:'absolute',top:4,right:4,width:24,height:24,borderRadius:'50%',border:'none',background:'rgba(220,38,38,.92)',color:'white',fontSize:13,fontWeight:900,cursor:'pointer'}}>×</button>
           </div>
         )}
+      </div>
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🖼️ Imágenes de las frases (inicio y final) <span style={{fontSize:10,fontWeight:700,color:'#db2777',background:'#fdf2f8',border:'1px solid #fbcfe8',borderRadius:8,padding:'1px 7px'}}>por sucursal</span></h3>
+        <p style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>La <b>frase de inicio</b> y la <b>de cierre</b> se ven SOBRE estas imágenes (así nunca quedan "perdidas"). Son de <b>{sucSel.nombre||'esta sucursal'}</b>. 📐 Cuadradas 1080×1080.</p>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:8}}>
+          {[['fraseIniImg','🎬 Imagen frase de INICIO'],['fraseFinImg','💕 Imagen frase de FINAL']].map(([campo,lbl])=>(
+            <div key={campo}>
+              <div style={{fontSize:12,fontWeight:800,color:'#7c3aed',marginBottom:6}}>{lbl}</div>
+              <label style={{...S.btn,background:'#0ea5e9',color:'white',padding:'8px 12px',fontSize:12,cursor:'pointer',display:'inline-block',marginBottom:8}}>📎 Subir<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>subirFraseImg(e.target.files[0],campo)}/></label>
+              {sucSel[campo]&&(
+                <div style={{position:'relative',width:'100%',aspectRatio:'1',borderRadius:10,overflow:'hidden',border:'1px solid #eef1f6',background:'#000'}}>
+                  <img src={sucSel[campo]} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  <button onClick={()=>quitarFraseImg(campo)} style={{position:'absolute',top:4,right:4,width:24,height:24,borderRadius:'50%',border:'none',background:'rgba(220,38,38,.92)',color:'white',fontSize:13,fontWeight:900,cursor:'pointer'}}>×</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       <p style={{fontSize:11,color:'#94a3b8'}}>💡 Los cambios se guardan solos. En la tarjeta, el invitado verá el botón 🔊/🔇 para activar el sonido.</p>
@@ -4439,14 +4465,15 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
 
 /* ── PASE DE FOTOS (mini-video: intro → fotos en marco instantánea con logo → cierre) ── */
-function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,portadaColor,portadaFinColor,fondo,onEnd}){
+function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,portadaColor,portadaFinColor,fondo,fotoNino,onEnd}){
   const base=(fotos||[]).filter(Boolean);
-  // Secuencia: intro (frase) + fotos + cierre (frase)
+  // Secuencia (por regla): intro (frase) → foto del niño/personaje → fotos del cumple → cierre (frase)
   const slides=[];
-  if(base.length){
-    const bgIni=portada||base[0];
-    const bgFin=portadaFin||portada||base[base.length-1];
+  if(base.length||fotoNino){
+    const bgIni=portada||fotoNino||(base[0]?albUrl(base[0]):'');
+    const bgFin=portadaFin||portada||(base.length?albUrl(base[base.length-1]):'')||fotoNino;
     slides.push({tipo:'intro',src:bgIni,color:portadaColor||'',texto:(fraseIni&&fraseIni.trim())||('¡Hoy festejamos a '+(nombre||'')+'!')});
+    if(fotoNino && albUrl(bgIni)!==fotoNino) slides.push({tipo:'foto',src:fotoNino});
     base.forEach(s=>slides.push({tipo:'foto',src:s}));
     slides.push({tipo:'cierre',src:bgFin,color:portadaFinColor||'',texto:(fraseFin&&fraseFin.trim())||'¡Gracias por acompañarnos! 💕'});
   }
@@ -4461,7 +4488,7 @@ function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,p
     const t=setTimeout(()=>setIdx(i=>i+1),DUR);
     return ()=>clearTimeout(t);
   },[idx,slides.length]);
-  if(!base.length)return null;
+  if(!slides.length)return null;
   const Logo=logo?(<img src={logo} alt="" style={{position:'absolute',top:8,right:8,width:70,height:70,borderRadius:'50%',objectFit:'cover',border:'3px solid rgba(255,255,255,.95)',boxShadow:'0 3px 12px rgba(0,0,0,.5)',opacity:.97,zIndex:8}}/>):null;
   return (
     <div style={{padding:'8px 0 4px',background:'transparent'}}>
@@ -4513,8 +4540,14 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
   const suc=(sucursales||[]).find(s=>s.id===ev?.sucId)||(sucursales||[])[0]||{};
   const col=suc.color||'#ec4899';
   const tem=(tematicas||[]).find(t=>t.id===ev?.temId);
-  // El recuerdo usa SOLO las fotos que sube la mamá (las del festejo), no las de IA.
-  const fotos=Array.isArray(ev&&ev.album)?ev.album.filter(Boolean):[];
+  // El recuerdo usa las fotos que sube la mamá (las del festejo).
+  const _album=Array.isArray(ev&&ev.album)?ev.album.filter(Boolean):[];
+  const fotos=_album;
+  // Por regla: la foto del niño/personaje (lo elegido para la tarjeta) va después de la frase de inicio.
+  const _cardImg=(ev&&(ev.portadaSrc||((ev.iaImagenes||[])[0])))||(tem&&tem.img)||(ev&&ev.fotoNino)||'';
+  // Fondo de las frases: 1) lo que subió la mamá, 2) la imagen del admin (por sucursal).
+  const _portadaIni=(ev&&ev.albumPortada)||(suc&&suc.fraseIniImg)||'';
+  const _portadaFin=(ev&&ev.albumFinal)||(suc&&suc.fraseFinImg)||'';
   // La música del recuerdo es SIEMPRE la del salón del evento (no la de la temática, que es común a todos):
   // 1) la que eligió la mamá, 2) la del pase del salón, 3) la genérica del salón.
   const musTrack=(ev&&ev.albumMusica)||((((suc&&suc.musicaPase)||[]).filter(Boolean)[0]||{}).url)||(((suc&&suc.musicaGen)||[]).filter(Boolean)[0])||'';
@@ -4548,7 +4581,7 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
       {cerrar}
       {musTrack&&<audio ref={musRef} src={musTrack} loop preload="auto"></audio>}
       <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',maxWidth:480,margin:'0 auto',width:'100%'}}>
-        <PaseFotos fotos={fotos} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin} portada={ev.albumPortada} portadaFin={ev.albumFinal} portadaColor={ev.albumPortadaColor} portadaFinColor={ev.albumFinalColor} fondo={suc.fondoPase} onEnd={()=>{const el=musRef.current;if(!el)return;let v=el.volume||0.6;const fade=setInterval(()=>{v-=0.04;if(v<=0.02){try{el.pause();el.volume=0.6;}catch(e){}setMusOn(false);clearInterval(fade);}else{try{el.volume=Math.max(0,v);}catch(e){}}},260);}}/>
+        <PaseFotos fotos={fotos} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin} portada={_portadaIni} portadaFin={_portadaFin} portadaColor={ev.albumPortadaColor} portadaFinColor={ev.albumFinalColor} fondo={suc.fondoPase} fotoNino={_cardImg} onEnd={()=>{const el=musRef.current;if(!el)return;let v=el.volume||0.6;const fade=setInterval(()=>{v-=0.04;if(v<=0.02){try{el.pause();el.volume=0.6;}catch(e){}setMusOn(false);clearInterval(fade);}else{try{el.volume=Math.max(0,v);}catch(e){}}},260);}}/>
       </div>
       {musTrack&&!musOn&&<div onClick={toggleMus} style={{position:'fixed',right:80,bottom:30,zIndex:40,background:'rgba(0,0,0,.7)',color:'white',fontSize:12,fontWeight:800,padding:'7px 12px',borderRadius:99,cursor:'pointer',boxShadow:'0 3px 10px rgba(0,0,0,.3)'}}>👉 Tocá para el sonido</div>}
       {musTrack&&<button onClick={toggleMus} className={musOn?'':'pulse-soft'} title="Sonido" style={{position:'fixed',right:14,bottom:18,zIndex:40,background:col,color:'white',border:'3px solid white',borderRadius:99,width:58,height:58,fontSize:26,cursor:'pointer',boxShadow:'0 6px 18px rgba(0,0,0,.3)'}}>{musOn?'🔊':'🎵'}</button>}
