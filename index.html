@@ -3729,6 +3729,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   <div style={{fontSize:12,fontWeight:900,color:'#0ea5e9',marginTop:4}}>Con costo: ${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</div>
                 </div>
               </button>
+              <button onClick={()=>{const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setEditoTarjeta(true);setSeccion('home');}} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'16px',fontSize:16,fontWeight:900,marginTop:18,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Listo, enviar tu tarjeta</button>
             </div>
           )}
           <div style={{display:editPanel==='datos'?'flex':'none',flexDirection:'column',gap:16}}>
