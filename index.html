@@ -3287,9 +3287,14 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   // Comprime una foto en el celular (máx ~1400px, jpg) antes de subir, para que sea liviana
   function comprimirImg(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{const M=1400;let w=img.width,h=img.height;if(w>h&&w>M){h=Math.round(h*M/w);w=M;}else if(h>=w&&h>M){w=Math.round(w*M/h);h=M;}const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',0.82));};img.onerror=rej;img.src=ev.target.result;};r.onerror=rej;r.readAsDataURL(file);});}
   // Sube varias fotos al "pase de fotos" (álbum). Cada una se sube a la nube y guardamos el link.
+  const ALBUM_MAX=20;
   async function onAlbumFotos(e){
-    const files=Array.from(e.target.files||[]);if(!files.length)return;
+    let files=Array.from(e.target.files||[]);if(!files.length)return;
     if(e.target)e.target.value='';
+    const yaHay=((form.album)||[]).length;
+    const lugar=ALBUM_MAX-yaHay;
+    if(lugar<=0){ alert('Llegaste al máximo de '+ALBUM_MAX+' fotos. Quitá alguna si querés cambiarla.'); return; }
+    if(files.length>lugar){ alert('Solo entran '+lugar+' foto(s) más (máximo '+ALBUM_MAX+' en total). Voy a subir las primeras '+lugar+'.'); files=files.slice(0,lugar); }
     setSubiendoAlbum(true);
     const nuevos=[];
     for(const f of files){
@@ -4116,7 +4121,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>🎞️ Generador de Recuerdos</h2>
             <p style={{fontSize:12,color:'#64748b',marginBottom:14,lineHeight:1.4}}>Es <b>aparte de la invitación</b>: armalo <b>después del cumple</b> con las fotos del festejo y compartilo por WhatsApp a los invitados con su <b>link propio</b>. Se ve como un mini-video: arranca con una frase, las fotos pasan en marco tipo foto instantánea con el logo, y cierra con otra frase. 💕</p>
             <input ref={albumRef} type="file" accept="image/*" multiple style={{display:'none'}} onChange={onAlbumFotos}/>
-            <button onClick={()=>albumRef.current&&albumRef.current.click()} disabled={subiendoAlbum} style={{...S.btn,width:'100%',background:subiendoAlbum?'#f1f5f9':'#ec4899',color:subiendoAlbum?'#94a3b8':'white',padding:'14px',fontSize:14,fontWeight:900,marginBottom:12,boxShadow:subiendoAlbum?'none':'0 4px 12px rgba(236,72,153,.3)'}}>{subiendoAlbum?'⏳ Subiendo fotos…':'➕ Agregar fotos'}</button>
+            <button onClick={()=>albumRef.current&&albumRef.current.click()} disabled={subiendoAlbum||((form.album)||[]).length>=ALBUM_MAX} style={{...S.btn,width:'100%',background:(subiendoAlbum||((form.album)||[]).length>=ALBUM_MAX)?'#f1f5f9':'#ec4899',color:(subiendoAlbum||((form.album)||[]).length>=ALBUM_MAX)?'#94a3b8':'white',padding:'14px',fontSize:14,fontWeight:900,marginBottom:12,boxShadow:(subiendoAlbum||((form.album)||[]).length>=ALBUM_MAX)?'none':'0 4px 12px rgba(236,72,153,.3)'}}>{subiendoAlbum?'⏳ Subiendo fotos…':(((form.album)||[]).length>=ALBUM_MAX?('✓ Máximo '+ALBUM_MAX+' fotos'):'➕ Agregar fotos')}</button>
             {/* Frases + música + portada del pase */}
             <div style={{background:'#faf5ff',border:'1px solid #e9d5ff',borderRadius:14,padding:'12px 14px',marginBottom:12}}>
               <label style={{display:'block',marginBottom:10}}><span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>🎬 Frase de inicio</span>
@@ -4180,7 +4185,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             ):(
               <div>
-                <div style={{fontSize:12,color:'#64748b',marginBottom:3,fontWeight:700}}>{((form.album)||[]).length} foto{((form.album)||[]).length===1?'':'s'} · se ven en este orden</div>
+                <div style={{fontSize:12,color:'#64748b',marginBottom:3,fontWeight:700}}>{((form.album)||[]).length} de {ALBUM_MAX} foto{((form.album)||[]).length===1?'':'s'} · se ven en este orden</div>
                 <div style={{fontSize:11,color:'#94a3b8',marginBottom:8}}>↕ Movés la <b>barrita</b> de abajo de cada foto para acomodar el encuadre (que no se corten las caras).</div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
                   {((form.album)||[]).map((src,i)=>(
