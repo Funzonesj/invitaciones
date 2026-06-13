@@ -3364,7 +3364,10 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       const {jsPDF}=window.jspdf;
       const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
       const nom=form.nombre||papaSesion.nombre||'';
-      const _fondoAlbumUrl=(suc&&(suc.fondoAlbum||suc.fondoPase))||'';
+      // Traer la versión MÁS FRESCA de la sucursal (por si el fondo se cargó recién y la app tenía datos viejos)
+      let sucPDF=suc;
+      try{ if(SB){ const r=await SB.from('eventos').select('data').eq('id','__config_suc__').maybeSingle(); const arr=r&&r.data&&r.data.data; if(Array.isArray(arr)){ const fr=arr.find(s=>s.id===(suc&&suc.id)); if(fr) sucPDF=fr; } } }catch(e){}
+      const _fondoAlbumUrl=(sucPDF&&(sucPDF.fondoAlbum||sucPDF.fondoPase))||'';
       const fondoImg=_fondoAlbumUrl?await cargar(_fondoAlbumUrl):null;
       // Dibuja el fondo decorado (o un color claro) en el canvas de la hoja
       function dibFondo(ctx){ if(fondoImg){ const cr=CW/CH,ir=fondoImg.width/fondoImg.height; let sw,sh,sx,sy; if(ir>cr){sh=fondoImg.height;sw=sh*cr;sx=(fondoImg.width-sw)/2;sy=0;}else{sw=fondoImg.width;sh=sw/cr;sx=0;sy=(fondoImg.height-sh)/2;} ctx.drawImage(fondoImg,sx,sy,sw,sh,0,0,CW,CH); } else { ctx.fillStyle='#f7f7fb'; ctx.fillRect(0,0,CW,CH);} }
@@ -3382,7 +3385,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       // ── TAPA ──
       const tc=document.createElement('canvas');tc.width=CW;tc.height=CH;const tx=tc.getContext('2d');
       dibFondo(tx);
-      const portUrl=form.albumPortada||(suc&&suc.fraseIniImg)||fotos[0];
+      const portUrl=form.albumPortada||(sucPDF&&sucPDF.fraseIniImg)||fotos[0];
       const pim=await cargar(portUrl);
       dibPolaroid(tx,pim,148,112,150,-4);
       tx.fillStyle='#1e293b';tx.textAlign='center';tx.font='bold '+(10*PPM)+'px Arial';
