@@ -3363,6 +3363,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   async function descargarVideoRecuerdo(){
     const album=((form.album)||[]).filter(Boolean);
     if(!album.length){alert('Primero subí fotos al recuerdo.');return;}
+    if(typeof MediaRecorder==='undefined'||typeof HTMLCanvasElement.prototype.captureStream!=='function'){alert('Este navegador no permite grabar el video. Hacelo desde una COMPUTADORA. (Igual te quedan el PDF y el link.)');return;}
+    if(!confirm('Voy a GRABAR el video en alta (tarda lo que dura el video, ~1 a 2 min). Mejor desde la computadora. No cierres ni bloquees la pantalla hasta que termine. ¿Empezamos?'))return;
     setVidGen(true);setVidProg(0);setVidListo(null);
     try{
       let sucV=suc; try{ if(SB){const r=await SB.from('eventos').select('data').eq('id','__config_suc__').maybeSingle();const arr=r&&r.data&&r.data.data;if(Array.isArray(arr)){const fr=arr.find(s=>s.id===(suc&&suc.id));if(fr)sucV=fr;}} }catch(e){}
@@ -3377,13 +3379,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         fondoUrl:(sucV&&sucV.fondoPase)||'',
         musUrl:form.albumMusica||((((sucV&&sucV.musicaPase)||[]).filter(Boolean)[0]||{}).url)||(((sucV&&sucV.musicaGen)||[]).filter(Boolean)[0])||''
       };
-      let r;
-      try{ r=await genVideoServidor(opts,p=>setVidProg(p)); }
-      catch(e){ // respaldo: grabar en vivo si el servidor no estuviera disponible
-        if(typeof MediaRecorder==='undefined'){throw e;}
-        setVidProg(0); r=await grabarVideoArchivo(opts,p=>setVidProg(p)); }
+      const r=await grabarVideoArchivo(opts,p=>setVidProg(p));
       setVidListo(r); flashOk('✓ ¡Video listo! Tocá Guardar');
-    }catch(e){ alert('No se pudo armar el video. Igual te quedan el link y el PDF como recuerdo.'); }
+    }catch(e){ alert('No se pudo grabar el video en este dispositivo. Probá desde una computadora. Igual te quedan el link y el PDF.'); }
     setVidGen(false);
   }
   function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
@@ -4267,7 +4265,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <button onClick={guardarAlbum} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>💾 Guardar</button>
                 <button onClick={compartirRecuerdo} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'14px',fontSize:14,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(37,211,102,.3)'}}>📲 Compartir el recuerdo por WhatsApp</button>
                 <button onClick={descargarAlbumPDF} disabled={pdfGen} style={{...S.btn,width:'100%',background:pdfGen?'#f1f5f9':'#0f172a',color:pdfGen?'#94a3b8':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{pdfGen?'⏳ Armando tu regalo…':'🎁 Imprimí tu regalo'}</button>
-                {!vidListo&&<button onClick={descargarVideoRecuerdo} disabled={vidGen} style={{...S.btn,width:'100%',background:vidGen?'#ede9fe':'#7c3aed',color:vidGen?'#7c3aed':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{vidGen?(vidProg>0?('⏳ Grabando… '+vidProg+'% (no cierres)'):'⏳ Preparando fotos…'):'🎬 Crear el video'}</button>}
+                {!vidListo&&<button onClick={descargarVideoRecuerdo} disabled={vidGen} style={{...S.btn,width:'100%',background:vidGen?'#ede9fe':'#7c3aed',color:vidGen?'#7c3aed':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{vidGen?(vidProg>0?('⏳ Grabando… '+vidProg+'% (no cierres)'):'⏳ Preparando fotos…'):'🎬 Descargar el video'}</button>}
+                {!vidListo&&<div style={{fontSize:11,color:'#64748b',textAlign:'center',marginTop:4,fontWeight:700}}>💻 El video conviene descargarlo desde la computadora</div>}
                 {vidListo&&<button onClick={guardarVideoListo} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>💾 Guardar el video ({vidListo.ext.toUpperCase()})</button>}
               </div>
             )}
@@ -4617,7 +4616,7 @@ async function grabarVideoArchivo(opts,onProg){
   if(opts.ninoUrl) slides.push({tipo:'foto',img:await _cargarImg(opts.ninoUrl),dur:DP,pos:25});
   for(const it of album){ slides.push({tipo:'foto',img:await _cargarImg(albUrl(it)),dur:DP,pos:albPos(it)}); }
   slides.push({tipo:'frase',img:await _cargarImg(opts.portFin||opts.ninoUrl||albUrl(album[album.length-1])),texto:opts.fraseFin||'',color:opts.colFin||'',dur:DF,pos:25});
-  const S=720;const cv=document.createElement('canvas');cv.width=S;cv.height=S;const cx=cv.getContext('2d');
+  const S=1080;const cv=document.createElement('canvas');cv.width=S;cv.height=S;const cx=cv.getContext('2d');cx.imageSmoothingEnabled=true;cx.imageSmoothingQuality='high';
   function dFondo(){ if(fondoImg){const ir=fondoImg.width/fondoImg.height;let sw,sh,sx,sy;if(ir>1){sh=fondoImg.height;sw=sh;sx=(fondoImg.width-sw)/2;sy=0;}else{sw=fondoImg.width;sh=sw;sx=0;sy=(fondoImg.height-sh)/2;}cx.drawImage(fondoImg,sx,sy,sw,sh,0,0,S,S);} else {cx.fillStyle='#0f172a';cx.fillRect(0,0,S,S);} }
   function coverR(im,x,y,w,h,posY){const cr=w/h,ir=im.width/im.height;let sw,sh,sx,sy;if(ir>cr){sh=im.height;sw=sh*cr;sx=(im.width-sw)/2;sy=0;}else{sw=im.width;sh=sw/cr;sx=0;sy=(im.height-sh)*((posY!=null?posY:50)/100);}cx.drawImage(im,sx,sy,sw,sh,x,y,w,h);}
   function dSlide(sl,p){ const sc=1+0.12*p; if(sl.tipo==='foto'){ const w=S*0.74,bord=w*0.05,photo=w-2*bord,bottom=w*0.18,h=bord+photo+bottom; cx.save();cx.translate(S/2,S/2);cx.rotate(-2*Math.PI/180); cx.shadowColor='rgba(0,0,0,0.4)';cx.shadowBlur=w*0.04;cx.shadowOffsetY=w*0.02; cx.fillStyle='#fff';cx.fillRect(-w/2,-h/2,w,h);cx.shadowColor='transparent'; cx.save();cx.beginPath();cx.rect(-w/2+bord,-h/2+bord,photo,photo);cx.clip(); if(sl.img){const pw=photo*sc,ph=photo*sc,ox=-w/2+bord-(pw-photo)/2,oy=-h/2+bord-(ph-photo)/2;cx.save();try{cx.filter='contrast(1.08) saturate(1.14) brightness(1.04)';}catch(e){}coverR(sl.img,ox,oy,pw,ph,sl.pos);cx.restore();} cx.restore();cx.restore(); } else { if(sl.color){cx.fillStyle=sl.color;cx.fillRect(0,0,S,S);} else if(sl.img){cx.save();try{cx.filter='brightness(.5) blur(6px)';}catch(e){}coverR(sl.img,-S*0.04,-S*0.04,S*1.08,S*1.08,sl.pos);cx.restore();cx.fillStyle='rgba(0,0,0,.35)';cx.fillRect(0,0,S,S);} cx.fillStyle=esClaro(sl.color)?'#0f172a':'#fff';cx.textAlign='center';cx.textBaseline='middle';let fs=S*0.078;cx.font='900 '+fs+'px Arial';const words=(sl.texto||'').split(' ');const lines=[];let line='';for(const wd of words){const tst=line?line+' '+wd:wd;if(cx.measureText(tst).width>S*0.82&&line){lines.push(line);line=wd;}else line=tst;}if(line)lines.push(line);cx.shadowColor='rgba(0,0,0,.95)';cx.shadowBlur=14;const lh=fs*1.2,sy0=S/2-(lines.length-1)*lh/2;lines.forEach((ln,k)=>cx.fillText(ln,S/2,sy0+k*lh));cx.shadowColor='transparent'; } }
@@ -4632,7 +4631,7 @@ async function grabarVideoArchivo(opts,onProg){
   }catch(e){audioEl=null;} }
   // Preferimos webm+opus (lleva el audio de forma confiable); mp4 queda como respaldo (iPhone).
   let mime=''; ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/mp4','video/webm'].forEach(m=>{ if(!mime&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(m))mime=m; });
-  const rec=new MediaRecorder(combined, mime?{mimeType:mime}:undefined); const chunks=[]; rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);}; const stopped=new Promise(res=>{rec.onstop=res;});
+  const recOpts=mime?{mimeType:mime,videoBitsPerSecond:6000000}:{videoBitsPerSecond:6000000}; const rec=new MediaRecorder(combined,recOpts); const chunks=[]; rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);}; const stopped=new Promise(res=>{rec.onstop=res;});
   rec.start(250); if(audioEl){ try{ if(actx&&actx.state==='suspended')await actx.resume(); audioEl.currentTime=0; await audioEl.play(); }catch(e){} }
   const totalDur=slides.reduce((s,x)=>s+x.dur,0); const t0=performance.now(); const FADE=900;
   await new Promise(resolve=>{ function frame(){ const now=performance.now()-t0; let acc=0,idx=0; for(idx=0;idx<slides.length;idx++){ if(now<acc+slides[idx].dur)break; acc+=slides[idx].dur; } if(onProg)onProg(Math.min(99,Math.round(now/totalDur*100))); if(idx>=slides.length){resolve();return;} const sl=slides[idx],local=now-acc; dFondo();dSlide(sl,local/sl.dur); if(slides[idx+1]&&local>sl.dur-FADE){const a=(local-(sl.dur-FADE))/FADE;cx.save();cx.globalAlpha=Math.min(1,a);dFondo();dSlide(slides[idx+1],0);cx.restore();} requestAnimationFrame(frame); } requestAnimationFrame(frame); });
@@ -4715,6 +4714,8 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
   }
   async function invVideo(){
     if(!_album.length){alert('Este recuerdo todavía no tiene fotos.');return;}
+    if(typeof MediaRecorder==='undefined'||typeof HTMLCanvasElement.prototype.captureStream!=='function'){alert('Tu navegador no permite grabar el video. Hacelo desde una COMPUTADORA, o bajá el PDF.');return;}
+    if(!confirm('Voy a GRABAR el video (~1 a 2 min, en tiempo real). Mejor desde la computadora. No cierres la pantalla hasta que termine. ¿Empezamos?'))return;
     setVidG(true);setVidP(0);setVidL(null);
     const opts={
       fotos:_album, nombre:(ev.nombre||''),
@@ -4725,11 +4726,9 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
       fondoUrl:(suc&&suc.fondoPase)||'', musUrl:musTrack
     };
     try{
-      let r;
-      try{ r=await genVideoServidor(opts,p=>setVidP(p)); }
-      catch(e){ if(typeof MediaRecorder==='undefined'){throw e;} setVidP(0); r=await grabarVideoArchivo(opts,p=>setVidP(p)); }
+      const r=await grabarVideoArchivo(opts,p=>setVidP(p));
       setVidL(r);
-    }catch(e){ alert('No se pudo armar el video. Probá el PDF.'); }
+    }catch(e){ alert('No se pudo grabar el video acá. Probá desde una computadora, o bajá el PDF.'); }
     setVidG(false);
   }
   function guardarVidL(){ if(!vidL)return; bajarUrl(vidL.url,vidL.name); }
@@ -4757,6 +4756,7 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
       <div style={{maxWidth:480,margin:'0 auto',width:'100%',padding:'4px 14px 8px',display:'flex',flexDirection:'column',gap:8}}>
         <div style={{textAlign:'center',color:'rgba(255,255,255,.92)',fontSize:12,fontWeight:800,textShadow:'0 1px 4px rgba(0,0,0,.5)'}}>💾 Guardate el recuerdo:</div>
         {!vidL&&<button onClick={invVideo} disabled={vidG} style={{...S.btn,width:'100%',background:vidG?'rgba(255,255,255,.85)':'#7c3aed',color:vidG?'#7c3aed':'white',padding:'13px',fontSize:14,fontWeight:900}}>{vidG?(vidP>0?('⏳ Grabando… '+vidP+'% (no cierres)'):'⏳ Preparando fotos…'):'🎬 Descargar el video'}</button>}
+        {!vidL&&<div style={{fontSize:11,color:'rgba(255,255,255,.8)',textAlign:'center',fontWeight:700,textShadow:'0 1px 4px rgba(0,0,0,.4)'}}>💻 El video conviene descargarlo desde la computadora</div>}
         {vidL&&<button onClick={guardarVidL} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'14px',fontSize:15,fontWeight:900,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>💾 Guardar el video ({vidL.ext.toUpperCase()})</button>}
         <button onClick={invPDF} disabled={pdfG} style={{...S.btn,width:'100%',background:pdfG?'rgba(255,255,255,.85)':'#0f172a',color:pdfG?'#0f172a':'white',padding:'13px',fontSize:14,fontWeight:900}}>{pdfG?'⏳ Armando…':'🎁 Descargar álbum (PDF para imprimir)'}</button>
       </div>
