@@ -3300,6 +3300,16 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   function quitarAlbum(i){setForm(x=>({...x,album:((x.album)||[]).filter((_,k)=>k!==i)}));}
   function moverAlbum(i,dir){setForm(x=>{const a=[...((x.album)||[])];const j=i+dir;if(j<0||j>=a.length)return x;const t=a[i];a[i]=a[j];a[j]=t;return {...x,album:a};});}
   function setAlbumPos(i,pos){setForm(x=>({...x,album:((x.album)||[]).map((it,k)=>k===i?{url:albUrl(it),pos:pos}:it)}));}
+  // Subir una foto propia para la PORTADA o el FINAL (donde van las frases)
+  async function subirFotoCampo(file,campo){
+    if(!file)return; setSubiendoAlbum(true);
+    try{ const du=await comprimirImg(file); let u=du;
+      try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:du})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(e){}
+      setForm(x=>({...x,[campo]:u,[campo+'Color']:''}));
+      flashOk('✓ Foto cargada');
+    }catch(e){}
+    setSubiendoAlbum(false);
+  }
   function guardarAlbum(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});flashOk('✓ ¡Recuerdo guardado!');}
   // Ver el recuerdo (página propia) — guarda primero
   function verRecuerdo(){_PAPA_NAV={seccion:'album'};const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('recuerdos');}
@@ -4133,6 +4143,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 return [['albumPortada','albumPortadaColor','🖼️ PORTADA (inicio)','Automática (1ª foto)'],['albumFinal','albumFinalColor','🏁 FINAL (cierre)','Automática (última foto)']].map(([campo,campoCol,lbl,auto])=>(
                   <div key={campo} style={{marginTop:10}}>
                     <span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>{lbl}</span>
+                    <label style={{...S.btn,display:'inline-block',background:'#0ea5e9',color:'white',padding:'8px 14px',fontSize:12,fontWeight:900,cursor:'pointer',marginTop:6}}>📎 Subir una foto<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>subirFotoCampo(e.target.files[0],campo)}/></label>
+                    {form[campo]&&!form[campoCol]&&<div style={{display:'inline-flex',alignItems:'center',gap:6,marginLeft:8,verticalAlign:'middle'}}><img src={form[campo]} alt="" style={{width:40,height:40,borderRadius:8,objectFit:'cover',border:'2px solid #7c3aed'}}/><button type="button" onClick={()=>setForm({...form,[campo]:''})} style={{fontSize:11,fontWeight:800,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'3px 8px',cursor:'pointer'}}>quitar</button></div>}
+                    {opts.length>0&&(<div style={{fontSize:10,color:'#94a3b8',fontWeight:700,marginTop:8}}>…o elegí una ya cargada:</div>)}
                     {opts.length>0&&(
                       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginTop:6}}>
                         <button type="button" onClick={()=>setForm({...form,[campo]:'',[campoCol]:''})} style={{aspectRatio:'1',borderRadius:8,border:((!form[campo]&&!form[campoCol])?'3px solid #7c3aed':'1px solid #e2e8f0'),background:'#f1f5f9',cursor:'pointer',fontSize:9,fontWeight:800,color:'#64748b',padding:2,lineHeight:1.1}}>{auto}</button>
