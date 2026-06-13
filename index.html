@@ -4441,7 +4441,7 @@ function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,p
   return (
     <div style={{padding:'8px 0 4px',background:'transparent'}}>
       <div style={{textAlign:'center',fontSize:13,fontWeight:800,color:'#fff',letterSpacing:.5,margin:'8px 0',textShadow:'0 1px 6px rgba(0,0,0,.4)'}}>📸 {nombre?(nombre+' en fotos'):'Pase de fotos'}</div>
-      <div style={{position:'relative',width:'100%',aspectRatio:'1',overflow:'hidden',background:'#0f172a',backgroundImage:fondo?('url('+fondo+')'):'none',backgroundSize:'cover',backgroundPosition:'center'}}>
+      <div style={{position:'relative',width:'100%',aspectRatio:'1',overflow:'hidden',background:fondo?'transparent':'#0f172a'}}>
         {slides.map((sl,i)=>{
           const on=i===idx;
           if(sl.tipo==='foto'){
@@ -4506,16 +4506,16 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
   const cerrar=volverInv?(<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:30,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>):null;
   if(!ev||!fotos.length){
     return (
-      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:30,background:'linear-gradient(160deg,'+col+', #7c3aed 55%, #0ea5e9)',color:'#fff'}}>
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:30,color:'#fff',background:suc.fondoPase?('#0f172a'):('linear-gradient(160deg,'+col+', #7c3aed 55%, #0ea5e9)'),backgroundImage:suc.fondoPase?('url('+suc.fondoPase+')'):undefined,backgroundSize:'cover',backgroundPosition:'center'}}>
         {cerrar}
         <div style={{fontSize:54,marginBottom:12}}>📸</div>
-        <h1 style={{fontSize:22,fontWeight:900,margin:'0 0 8px'}}>Recuerdos en camino…</h1>
-        <p style={{color:'rgba(255,255,255,.85)',maxWidth:320,lineHeight:1.5}}>Todavía no hay fotos cargadas para este recuerdo.</p>
+        <h1 style={{fontSize:22,fontWeight:900,margin:'0 0 8px',textShadow:'0 2px 10px rgba(0,0,0,.5)'}}>Recuerdos en camino…</h1>
+        <p style={{color:'rgba(255,255,255,.9)',maxWidth:320,lineHeight:1.5,textShadow:'0 1px 6px rgba(0,0,0,.5)'}}>Todavía no hay fotos cargadas para este recuerdo.</p>
       </div>
     );
   }
   return (
-    <div style={{minHeight:'100vh',background:'linear-gradient(160deg,'+col+', #7c3aed 55%, #0ea5e9)',display:'flex',flexDirection:'column'}}>
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:suc.fondoPase?('#0f172a'):('linear-gradient(160deg,'+col+', #7c3aed 55%, #0ea5e9)'),backgroundImage:suc.fondoPase?('url('+suc.fondoPase+')'):undefined,backgroundSize:'cover',backgroundPosition:'center',backgroundAttachment:'fixed'}}>
       {cerrar}
       {musTrack&&<audio ref={musRef} src={musTrack} loop preload="auto"></audio>}
       <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',maxWidth:480,margin:'0 auto',width:'100%'}}>
