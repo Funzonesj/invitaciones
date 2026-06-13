@@ -4459,14 +4459,18 @@ function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,p
     slides.push({tipo:'cierre',src:bgFin,color:portadaFinColor||'',texto:(fraseFin&&fraseFin.trim())||'¡Gracias por acompañarnos! 💕'});
   }
   const [idx,setIdx]=React.useState(0);
-  const DUR=2800;
+  const DUR_FOTO=4000;   // fotos: 4 segundos
+  const DUR_FRASE=7000;  // pantallas de frase (inicio y cierre): 7 segundos
+  const DUR=DUR_FOTO;
+  const slideDur=(j)=>{const t=slides[j]&&slides[j].tipo;return (t==='intro'||t==='cierre')?DUR_FRASE:DUR_FOTO;};
   const finRef=React.useRef(false);
   // Pasa UNA vez y se detiene en la última (cierre). La última foto se muestra con música,
   // y recién después de su tiempo se corta la música (onEnd).
   React.useEffect(()=>{
     if(slides.length<2)return;
-    if(idx>=slides.length-1){ const t=setTimeout(()=>{ if(!finRef.current){finRef.current=true; if(onEnd)onEnd();} }, DUR+1500); return ()=>clearTimeout(t); }
-    const t=setTimeout(()=>setIdx(i=>i+1),DUR);
+    const d=slideDur(idx);
+    if(idx>=slides.length-1){ const t=setTimeout(()=>{ if(!finRef.current){finRef.current=true; if(onEnd)onEnd();} }, d+800); return ()=>clearTimeout(t); }
+    const t=setTimeout(()=>setIdx(i=>i+1),d);
     return ()=>clearTimeout(t);
   },[idx,slides.length]);
   if(!slides.length)return null;
@@ -4495,7 +4499,7 @@ function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,p
             <div key={i} style={{position:'absolute',inset:0,opacity:on?1:0,transition:'opacity 1.1s ease-in-out',display:'flex',alignItems:'center',justifyContent:'center',background:fondo?'transparent':'#0f172a'}}>
               <div style={{position:'relative',background:'#fff',padding:'10px 10px 32px',borderRadius:4,boxShadow:'0 10px 30px rgba(0,0,0,.55)',transform:'rotate(-2deg)',width:fondo?'82%':'90%'}}>
                 <div style={{position:'relative',width:'100%',aspectRatio:'1',overflow:'hidden',background:sl.color||'#000'}}>
-                  {!sl.color&&<img src={albUrl(sl.src)} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+albPos(sl.src)+'%',filter:'brightness(.6)',animation:on?((i%2?'kenburns2':'kenburns')+' '+(DUR+700)+'ms ease-out both'):'none'}}/>}
+                  {!sl.color&&<img src={albUrl(sl.src)} alt="" style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+albPos(sl.src)+'%',filter:'brightness(.6)',animation:on?((i%2?'kenburns2':'kenburns')+' '+(DUR_FRASE+800)+'ms ease-out both'):'none'}}/>}
                   <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',padding:'14px',background:sl.color?'transparent':'linear-gradient(rgba(0,0,0,.15),rgba(0,0,0,.5))'}}>
                     <div style={{textAlign:'center',color:claro?'#0f172a':'#fff',fontSize:17,fontWeight:900,textShadow:claro?'none':'0 2px 12px rgba(0,0,0,.85)',lineHeight:1.25}}>{sl.texto}</div>
                   </div>
