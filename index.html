@@ -396,15 +396,18 @@ function App() {
     })();
   },[]);
   // Auto-save: localStorage (respaldo) + base de datos central.
-  // IMPORTANTE: el invitado (_SOLO_LECTURA) NO escribe eventos/config (si no pisa los datos buenos).
+  // IMPORTANTE: el INVITADO sin sesión (link ?inv/?rec y sin admin/papá) NO escribe (si no pisa los datos buenos).
+  // Pero si está logueada la ADMINISTRADORA (o el papá), SÍ puede guardar, aunque la URL tenga un link.
   // Y los eventos/config recién se suben tras la carga COMPLETA (fullLoaded), no con la rápida.
-  React.useEffect(()=>{try{localStorage.setItem('fz_eventos',JSON.stringify(eventos));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){eventos.forEach(sbUpsertEvento);}},[eventos]);
+  const _puedeEscribir = !_SOLO_LECTURA || !!adminSesion || !!papaSesion;
+  const _puedeConfig   = !_SOLO_LECTURA || !!adminSesion;
+  React.useEffect(()=>{try{localStorage.setItem('fz_eventos',JSON.stringify(eventos));}catch(e){}; if(fullLoaded&&_puedeEscribir){eventos.forEach(sbUpsertEvento);}},[eventos]);
   React.useEffect(()=>{try{localStorage.setItem('fz_confs',JSON.stringify(confs));}catch(e){}; if(dbReady){confs.forEach(sbUpsertConf);}},[confs]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_tematicas',JSON.stringify(tematicas));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){sbUpsertConfig('__config_tematicas__',tematicas);}},[tematicas]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){sbUpsertConfig('__config_suc__',sucursales);}},[sucursales]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){sbUpsertConfig('__config_ia__',iaConfig);}},[iaConfig]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_usuarios',JSON.stringify(usuarios));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){sbUpsertConfig('__config_usuarios__',usuarios);}},[usuarios]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_pedidos',JSON.stringify(pedidos));}catch(e){}; if(fullLoaded&&!_SOLO_LECTURA){sbUpsertConfig('__config_pedidos__',pedidos);}},[pedidos]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_tematicas',JSON.stringify(tematicas));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_tematicas__',tematicas);}},[tematicas]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_suc__',sucursales);}},[sucursales]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_ia__',iaConfig);}},[iaConfig]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_usuarios',JSON.stringify(usuarios));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_usuarios__',usuarios);}},[usuarios]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_pedidos',JSON.stringify(pedidos));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_pedidos__',pedidos);}},[pedidos]);
   async function refrescarPedidos(){ if(!SB)return; try{ const r=await SB.from('eventos').select('data').eq('id','__config_pedidos__').maybeSingle(); if(r&&r.data&&r.data.data) setPedidos(r.data.data); }catch(e){} }
   // Recordar sesión del admin/encargada en este dispositivo (no pedir contraseña cada vez)
   React.useEffect(()=>{try{if(adminSesion)localStorage.setItem('fz_admin_sesion',JSON.stringify(adminSesion));else localStorage.removeItem('fz_admin_sesion');}catch(e){}},[adminSesion]);
