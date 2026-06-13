@@ -3354,11 +3354,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     const W=297,H=210,PPM=6;                 // A4 horizontal en mm, 6 px por mm
     const CW=Math.round(W*PPM), CH=Math.round(H*PPM);
     // Posiciones por hoja [centroX, centroY, ancho(mm), ángulo]; desparejas/cruzadas
+    // [centroX, centroY, ancho(mm), ángulo] — más chicas y centradas (dejan libres arriba/abajo del fondo)
     const LAYOUTS={
-      1:[[148,103,150,-4]],
-      2:[[86,106,120,-7],[210,103,120,6]],
-      3:[[72,76,100,-8],[166,126,104,6],[232,74,94,-3]],
-      4:[[82,70,98,-7],[212,72,98,6],[80,146,98,5],[214,144,98,-5]]
+      1:[[148,104,128,-4]],
+      2:[[90,104,102,-7],[206,103,98,6]],
+      3:[[74,82,80,-8],[164,116,90,6],[226,82,74,-3]],
+      4:[[82,82,68,-6],[205,76,54,6],[94,140,54,5],[205,138,70,-5]]
     };
     try{
       const {jsPDF}=window.jspdf;
@@ -3389,7 +3390,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       dibFondo(tx);
       const portUrl=form.albumPortada||(sucPDF&&sucPDF.fraseIniImg)||fotos[0];
       const pim=await cargar(portUrl);
-      dibPolaroid(tx,pim,148,108,150,-4,nom);
+      dibPolaroid(tx,pim,148,104,120,-4,nom);
       hojaAlPDF(tc,true);
       // ── PÁGINAS (variado: 2, 3, 4 fotos por hoja) ──
       const patron=[2,3,4]; let pi=0; let i=0;
