@@ -4436,7 +4436,7 @@ function PaseFotos({fotos,col,logo,nombre,fraseIni,fraseFin,portada,portadaFin,p
   // y recién después de su tiempo se corta la música (onEnd).
   React.useEffect(()=>{
     if(slides.length<2)return;
-    if(idx>=slides.length-1){ const t=setTimeout(()=>{ if(!finRef.current){finRef.current=true; if(onEnd)onEnd();} }, DUR+800); return ()=>clearTimeout(t); }
+    if(idx>=slides.length-1){ const t=setTimeout(()=>{ if(!finRef.current){finRef.current=true; if(onEnd)onEnd();} }, DUR+1500); return ()=>clearTimeout(t); }
     const t=setTimeout(()=>setIdx(i=>i+1),DUR);
     return ()=>clearTimeout(t);
   },[idx,slides.length]);
@@ -4525,7 +4525,7 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
       {cerrar}
       {musTrack&&<audio ref={musRef} src={musTrack} loop preload="auto"></audio>}
       <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',maxWidth:480,margin:'0 auto',width:'100%'}}>
-        <PaseFotos fotos={fotos} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin} portada={ev.albumPortada} portadaFin={ev.albumFinal} portadaColor={ev.albumPortadaColor} portadaFinColor={ev.albumFinalColor} fondo={suc.fondoPase} onEnd={()=>{const el=musRef.current;if(el){try{el.pause();}catch(e){}setMusOn(false);}}}/>
+        <PaseFotos fotos={fotos} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin} portada={ev.albumPortada} portadaFin={ev.albumFinal} portadaColor={ev.albumPortadaColor} portadaFinColor={ev.albumFinalColor} fondo={suc.fondoPase} onEnd={()=>{const el=musRef.current;if(!el)return;let v=el.volume||0.6;const fade=setInterval(()=>{v-=0.04;if(v<=0.02){try{el.pause();el.volume=0.6;}catch(e){}setMusOn(false);clearInterval(fade);}else{try{el.volume=Math.max(0,v);}catch(e){}}},260);}}/>
       </div>
       {musTrack&&<button onClick={toggleMus} title="Sonido" style={{position:'fixed',right:14,bottom:18,zIndex:40,background:col,color:'white',border:'3px solid white',borderRadius:99,width:58,height:58,fontSize:26,cursor:'pointer',boxShadow:'0 6px 18px rgba(0,0,0,.3)'}}>{musOn?'🔊':'🎵'}</button>}
       <div style={{textAlign:'center',color:'#64748b',fontSize:11,padding:'12px'}}>{suc.nombre||''} · Recuerdos del cumple 💕</div>
