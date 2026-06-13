@@ -3408,13 +3408,16 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     setPdfGen(false);
   }
   const [vidGen,setVidGen]=useState(false);
+  const [vidProg,setVidProg]=useState(0);
+  const [vidListo,setVidListo]=useState(null); // {url,ext,name} cuando el video terminó de grabarse
+  function guardarVideoListo(){ if(!vidListo)return; const a=document.createElement('a');a.href=vidListo.url;a.download=vidListo.name;document.body.appendChild(a);a.click();document.body.removeChild(a); }
   // Grabar el recuerdo como VIDEO (archivo descargable) — graba en vivo el pase en un canvas + música.
   async function descargarVideoRecuerdo(){
     const album=((form.album)||[]).filter(Boolean);
     if(!album.length){alert('Primero subí fotos al recuerdo.');return;}
     if(typeof MediaRecorder==='undefined'||typeof HTMLCanvasElement.prototype.captureStream!=='function'){alert('Este navegador no permite grabar el video. Probá desde una compu o un celular Android. (Igual te queda el link y el PDF.)');return;}
     if(!confirm('Voy a GRABAR el video (se graba en tiempo real, ~1 minuto aprox según la cantidad de fotos). No cierres ni bloquees la pantalla hasta que termine. ¿Empezamos?'))return;
-    setVidGen(true);
+    setVidGen(true);setVidProg(0);setVidListo(null);
     function cargar(url){return new Promise(res=>{ fetch(url).then(r=>r.blob()).then(b=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>res(null);im.src=fr.result;};fr.onerror=()=>res(null);fr.readAsDataURL(b);}).catch(()=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>res(im);im.onerror=()=>res(null);im.src=url;}); }); }
     const esClaro=c=>c&&(c.toLowerCase()==='#ffffff'||c.toLowerCase()==='#fff'||c.toLowerCase()==='#facc15');
     try{
@@ -3472,11 +3475,13 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       const stopped=new Promise(res=>{rec.onstop=res;});
       rec.start(250);
       if(audioEl){ try{ if(actx&&actx.state==='suspended')await actx.resume(); audioEl.currentTime=0; await audioEl.play(); }catch(e){} }
+      const totalDur=slides.reduce((s,x)=>s+x.dur,0);
       const t0=performance.now(); const FADE=900;
       await new Promise(resolve=>{
         function frame(){
           const now=performance.now()-t0; let acc=0,idx=0;
           for(idx=0;idx<slides.length;idx++){ if(now<acc+slides[idx].dur)break; acc+=slides[idx].dur; }
+          setVidProg(Math.min(99,Math.round(now/totalDur*100)));
           if(idx>=slides.length){resolve();return;}
           const sl=slides[idx],local=now-acc;
           dFondo(); dSlide(sl,local/sl.dur);
@@ -3490,8 +3495,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       await stopped;
       const ext=(mime.indexOf('mp4')>=0)?'mp4':'webm';
       const blob=new Blob(chunks,{type:mime||'video/webm'});
-      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='Recuerdos-'+((form.nombre||'cumple').replace(/[^a-zA-Z0-9]/g,'_'))+'.'+ext; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      flashOk('✓ Video descargado');
+      setVidProg(100);
+      setVidListo({url:URL.createObjectURL(blob),ext:ext,name:'Recuerdos-'+((form.nombre||'cumple').replace(/[^a-zA-Z0-9]/g,'_'))+'.'+ext});
+      flashOk('✓ ¡Video listo! Tocá Guardar');
     }catch(e){ alert('No se pudo grabar el video en este dispositivo. Igual te quedan el link y el PDF como recuerdo.'); }
     setVidGen(false);
   }
@@ -4376,7 +4382,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <button onClick={guardarAlbum} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>💾 Guardar</button>
                 <button onClick={compartirRecuerdo} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'14px',fontSize:14,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(37,211,102,.3)'}}>📲 Compartir el recuerdo por WhatsApp</button>
                 <button onClick={descargarAlbumPDF} disabled={pdfGen} style={{...S.btn,width:'100%',background:pdfGen?'#f1f5f9':'#0f172a',color:pdfGen?'#94a3b8':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{pdfGen?'⏳ Armando tu regalo…':'🎁 Imprimí tu regalo'}</button>
-                <button onClick={descargarVideoRecuerdo} disabled={vidGen} style={{...S.btn,width:'100%',background:vidGen?'#f1f5f9':'#7c3aed',color:vidGen?'#94a3b8':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{vidGen?'⏳ Grabando el video… (no cierres)':'🎬 Descargar el video'}</button>
+                <button onClick={descargarVideoRecuerdo} disabled={vidGen} style={{...S.btn,width:'100%',background:vidGen?'#ede9fe':'#7c3aed',color:vidGen?'#7c3aed':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{vidGen?('⏳ Grabando… '+vidProg+'% (no cierres la pantalla)'):'🎬 Crear el video'}</button>
+                {vidListo&&<button onClick={guardarVideoListo} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>💾 Guardar el video ({vidListo.ext.toUpperCase()})</button>}
               </div>
             )}
           </div>
