@@ -4910,7 +4910,9 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
       {/* 14b. REDES (Instagram / WhatsApp del salón) */}
       {(suc.instagram||suc.tel)&&(
         <div style={{display:'flex',justifyContent:'center',gap:18,padding:'20px 16px 4px'}}>
-          {suc.instagram&&<a href={igUrl(suc.instagram)} target="_blank" title="Instagram" style={{width:54,height:54,borderRadius:'50%',background:'linear-gradient(45deg,#feda75,#fa7e1e,#d62976,#962fbf,#4f5bd5)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,textDecoration:'none',boxShadow:'0 3px 10px rgba(0,0,0,.18)'}}>📷</a>}
+          {suc.instagram&&<a href={igUrl(suc.instagram)} target="_blank" title="Instagram" style={{width:54,height:54,borderRadius:'50%',background:'linear-gradient(45deg,#feda75,#fa7e1e,#d62976,#962fbf,#4f5bd5)',display:'flex',alignItems:'center',justifyContent:'center',textDecoration:'none',boxShadow:'0 3px 10px rgba(0,0,0,.18)'}}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+          </a>}
           {suc.tel&&<a href={'https://wa.me/'+waNum(suc.tel)} target="_blank" title="WhatsApp" style={{width:54,height:54,borderRadius:'50%',background:'#25d366',display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,textDecoration:'none',boxShadow:'0 3px 10px rgba(0,0,0,.18)'}}>💬</a>}
         </div>
       )}
