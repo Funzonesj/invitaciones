@@ -4463,13 +4463,20 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
   const suc=(sucursales||[]).find(s=>s.id===ev?.sucId)||(sucursales||[])[0]||{};
   const col=suc.color||'#ec4899';
   const tem=(tematicas||[]).find(t=>t.id===ev?.temId);
-  const _ia=Array.isArray(ev&&ev.iaImagenes)?ev.iaImagenes.filter(Boolean):[];
-  const _al=Array.isArray(ev&&ev.album)?ev.album.filter(Boolean):[];
-  const fotos=[..._ia,..._al];
+  // El recuerdo usa SOLO las fotos que sube la mamá (las del festejo), no las de IA.
+  const fotos=Array.isArray(ev&&ev.album)?ev.album.filter(Boolean):[];
   const musTrack=(ev&&ev.albumMusica)||(tem&&tem.musica)||'';
   const [musOn,setMusOn]=useState(false);
   const musRef=React.useRef(null);
-  React.useEffect(()=>{ if(!musTrack)return; const el=musRef.current; if(!el)return; el.volume=0.6; const p=el.play&&el.play(); if(p&&p.then){p.then(()=>setMusOn(true)).catch(()=>{});} },[musTrack]);
+  React.useEffect(()=>{ if(!musTrack)return; const el=musRef.current; if(!el)return; el.volume=0.6;
+    // Intento de auto-arranque (los celus lo bloquean) + arranque al primer toque en la pantalla.
+    const p=el.play&&el.play(); if(p&&p.then){p.then(()=>setMusOn(true)).catch(()=>{});}
+    function arrancar(){ const e2=musRef.current; if(e2&&e2.paused){ e2.volume=0.6; const pr=e2.play(); if(pr&&pr.then){pr.then(()=>setMusOn(true)).catch(()=>{});} else setMusOn(true);} limpiar(); }
+    function limpiar(){document.removeEventListener('click',arrancar);document.removeEventListener('touchstart',arrancar);}
+    document.addEventListener('click',arrancar,{once:true});
+    document.addEventListener('touchstart',arrancar,{once:true});
+    return limpiar;
+  },[musTrack]);
   function toggleMus(){const el=musRef.current;if(!el)return;if(musOn){el.pause();setMusOn(false);}else{el.volume=0.6;try{el.play();}catch(e){}setMusOn(true);}}
   const cerrar=volverInv?(<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:30,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>):null;
   if(!ev||!fotos.length){
