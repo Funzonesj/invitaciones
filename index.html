@@ -2297,25 +2297,6 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
       </div>
 
       <div style={{...S.card,marginBottom:14}}>
-        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🖼️ Portadas del Pase (imágenes bonitas) <span style={{fontSize:10,fontWeight:700,color:'#16a34a',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:'1px 7px'}}>todas las sucursales</span></h3>
-        <p style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>Subí imágenes coloridas para que la <b>mamá elija la portada</b> del pase (la primera pantalla con la frase). Valen para <b>todos los salones</b>.</p>
-        <p style={{fontSize:11,color:'#0ea5e9',fontWeight:700,marginBottom:10}}>📐 Subilas <b>cuadradas, 1080 × 1080 px</b> (mínimo 800×800). Si es rectangular se recorta al centro.</p>
-        <label style={{...S.btn,background:'#0ea5e9',color:'white',padding:'10px 16px',fontSize:13,cursor:'pointer',display:'inline-block',marginBottom:12}}>📎 Subir portadas<input type="file" accept="image/*" multiple style={{display:'none'}} onChange={e=>subirPortadas(e.target.files)}/></label>
-        {portadas.length===0?(
-          <div style={{fontSize:12,color:'#94a3b8'}}>Todavía no subiste portadas.</div>
-        ):(
-          <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8}}>
-            {portadas.map((src,i)=>(
-              <div key={i} style={{position:'relative',aspectRatio:'1',borderRadius:10,overflow:'hidden',border:'1px solid #eef1f6',background:'#000'}}>
-                <img src={src} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                <button onClick={()=>delPortada(i)} style={{position:'absolute',top:3,right:3,width:22,height:22,borderRadius:'50%',border:'none',background:'rgba(220,38,38,.92)',color:'white',fontSize:12,fontWeight:900,cursor:'pointer'}}>×</button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div style={{...S.card,marginBottom:14}}>
         <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🎨 Fondo del Pase de Fotos <span style={{fontSize:10,fontWeight:700,color:'#db2777',background:'#fdf2f8',border:'1px solid #fbcfe8',borderRadius:8,padding:'1px 7px'}}>por sucursal</span></h3>
         <p style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>Imagen decorada con tu marca que va <b>detrás del marco blanco</b> de las fotos en el recuerdo. Dejá el <b>centro libre</b> (las fotos van al medio). Es de <b>{sucSel.nombre||'esta sucursal'}</b> (cambiá la sucursal arriba ☝️).</p>
         <p style={{fontSize:11,color:'#0ea5e9',fontWeight:700,marginBottom:10}}>📐 Subila <b>cuadrada, 1080 × 1080 px</b>.</p>
@@ -4164,7 +4145,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </label>
               {form.albumMusica&&<audio src={form.albumMusica} controls style={{height:32,marginTop:8,width:'100%',marginBottom:6}}></audio>}
               {(()=>{
-                const opts=[...new Set([(temA&&temA.img),form.fotoNino,...((form.iaImagenes)||[]),...((form.album)||[]).map(albUrl),...((iaConfig.portadasPase)||[])].filter(Boolean))];
+                const opts=[...new Set([(temA&&temA.img),form.fotoNino,...((form.iaImagenes)||[]),...((form.album)||[]).map(albUrl)].filter(Boolean))];
                 const PALETA=['#000000','#1e293b','#ffffff','#7c3aed','#ec4899','#0ea5e9','#16a34a','#f97316','#f43f5e','#facc15'];
                 return [['albumPortada','albumPortadaColor','🖼️ PORTADA (inicio)','Automática (1ª foto)'],['albumFinal','albumFinalColor','🏁 FINAL (cierre)','Automática (última foto)']].map(([campo,campoCol,lbl,auto])=>(
                   <div key={campo} style={{marginTop:10}}>
