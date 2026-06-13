@@ -3653,8 +3653,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <div style={{fontSize:10,color:'#64748b',marginBottom:4,textAlign:'center',fontWeight:700}}>↕ Acomodá la foto (movela para arriba o abajo)</div>
             <input type="range" min="0" max="100" value={portadaPos} onChange={e=>setPortadaPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
           </div>
-          {/* ¿Qué va en tu tarjeta? — debajo de la tarjeta, cuando ya hay algo para elegir */}
-          {(((form.iaImagenes||[]).length>0)||!!videoGuardado)&&(
+          {/* ¿Qué va en tu tarjeta? — aparece SOLO si hay 2+ opciones cargadas (temática + foto y/o IA) */}
+          {(!!form.fotoNino||((form.iaImagenes||[]).length>0)||!!videoGuardado)&&(
           <div style={{background:'#fff',border:'1px solid #eef1f6',borderRadius:16,padding:14,marginBottom:12,boxShadow:'0 1px 3px rgba(15,23,42,.06)'}}>
             <div style={{fontSize:13,fontWeight:800,color:'#0ea5e9',letterSpacing:.3,marginBottom:3}}>¿QUÉ VA EN TU TARJETA?</div>
             <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Tocá cuál querés que se vea en la tarjeta. Con 👁 la ves antes.</div>
