@@ -2167,7 +2167,7 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
   // Biblioteca de música para el PASE DE FOTOS — POR SUCURSAL (cada salón la suya)
   const pase=(sucSel.musicaPase&&sucSel.musicaPase.length)?sucSel.musicaPase:[];
   function setSucPase(updater){setSucursales(p=>p.map(s=>{if(s.id!==selSuc)return s;return {...s,musicaPase:updater(s.musicaPase||[])};}));}
-  function addPase(url){setSucPase(cur=>[...cur,{id:'mp-'+Date.now().toString(16),nombre:'Tema '+(cur.length+1),url}]);flashOk('✓ Música agregada');}
+  function addPase(url,nombre){setSucPase(cur=>[...cur,{id:'mp-'+Date.now().toString(16),nombre:(nombre&&nombre.trim())||('Tema '+(cur.length+1)),url}]);flashOk('✓ Música agregada');}
   function updPaseNom(id,nombre){setSucPase(cur=>cur.map(m=>m.id===id?{...m,nombre}:m));}
   function delPase(id){setSucPase(cur=>cur.filter(m=>m.id!==id));}
   // Frases del pase (la mamá elige). frasesPaseIni / frasesPaseFin = [texto]
@@ -2254,9 +2254,9 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
       </div>
       <div style={{...S.card,marginBottom:14}}>
         <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🎞️ Música para el Pase de Fotos</h3>
-        <p style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>Subí varias canciones y la <b>mamá elige una</b> para su recuerdo. Usá música <b>libre de derechos</b> o generada por IA.</p>
+        <p style={{fontSize:11,color:'#94a3b8',marginBottom:6}}>Subí varias canciones y la <b>mamá elige una</b> para su recuerdo. Toma el nombre del archivo y <b>podés cambiarle el nombre</b> (tocá el texto y escribí). Usá música <b>libre de derechos</b> o generada por IA.</p>
         <p style={{fontSize:11,color:'#db2777',fontWeight:800,marginBottom:10}}>🎪 Es POR SUCURSAL: estás cargando la de <b>{sucSel.nombre||'esta sucursal'}</b> (cambiá la sucursal arriba ☝️).</p>
-        <label style={{...S.btn,background:'#7c3aed',color:'white',padding:'10px 16px',fontSize:13,cursor:'pointer',display:'inline-block',marginBottom:12}}>📎 Subir canción<input type="file" accept="audio/*" style={{display:'none'}} onChange={e=>subirAudio(e.target.files[0],u=>addPase(u))}/></label>
+        <label style={{...S.btn,background:'#7c3aed',color:'white',padding:'10px 16px',fontSize:13,cursor:'pointer',display:'inline-block',marginBottom:12}}>📎 Subir canción<input type="file" accept="audio/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];const nom=f?String(f.name).replace(/\.[^.]+$/,''):'';subirAudio(f,u=>addPase(u,nom));}}/></label>
         {pase.length===0?(
           <div style={{fontSize:12,color:'#94a3b8'}}>Todavía no subiste canciones para el pase.</div>
         ):(
@@ -4267,7 +4267,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <button onClick={descargarAlbumPDF} disabled={pdfGen} style={{...S.btn,width:'100%',background:pdfGen?'#f1f5f9':'#0f172a',color:pdfGen?'#94a3b8':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{pdfGen?'⏳ Armando tu regalo…':'🎁 Imprimí tu regalo'}</button>
                 {!vidListo&&<button onClick={descargarVideoRecuerdo} disabled={vidGen} style={{...S.btn,width:'100%',background:vidGen?'#ede9fe':'#7c3aed',color:vidGen?'#7c3aed':'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>{vidGen?(vidProg>0?('⏳ Grabando… '+vidProg+'% (no cierres)'):'⏳ Preparando fotos…'):'🎬 Descargar el video'}</button>}
                 {!vidListo&&<div style={{fontSize:11,color:'#64748b',textAlign:'center',marginTop:4,fontWeight:700}}>💻 El video conviene descargarlo desde la computadora</div>}
-                {vidListo&&<button onClick={guardarVideoListo} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>💾 Guardar el video ({vidListo.ext.toUpperCase()})</button>}
+                {vidListo&&<button onClick={guardarVideoListo} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>💾 Guardar el video 🎬</button>}
               </div>
             )}
           </div>
@@ -4757,7 +4757,7 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
         <div style={{textAlign:'center',color:'rgba(255,255,255,.92)',fontSize:12,fontWeight:800,textShadow:'0 1px 4px rgba(0,0,0,.5)'}}>💾 Guardate el recuerdo:</div>
         {!vidL&&<button onClick={invVideo} disabled={vidG} style={{...S.btn,width:'100%',background:vidG?'rgba(255,255,255,.85)':'#7c3aed',color:vidG?'#7c3aed':'white',padding:'13px',fontSize:14,fontWeight:900}}>{vidG?(vidP>0?('⏳ Grabando… '+vidP+'% (no cierres)'):'⏳ Preparando fotos…'):'🎬 Descargar el video'}</button>}
         {!vidL&&<div style={{fontSize:11,color:'rgba(255,255,255,.8)',textAlign:'center',fontWeight:700,textShadow:'0 1px 4px rgba(0,0,0,.4)'}}>💻 El video conviene descargarlo desde la computadora</div>}
-        {vidL&&<button onClick={guardarVidL} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'14px',fontSize:15,fontWeight:900,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>💾 Guardar el video ({vidL.ext.toUpperCase()})</button>}
+        {vidL&&<button onClick={guardarVidL} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'14px',fontSize:15,fontWeight:900,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>💾 Guardar el video 🎬</button>}
         <button onClick={invPDF} disabled={pdfG} style={{...S.btn,width:'100%',background:pdfG?'rgba(255,255,255,.85)':'#0f172a',color:pdfG?'#0f172a':'white',padding:'13px',fontSize:14,fontWeight:900}}>{pdfG?'⏳ Armando…':'🎁 Descargar álbum (PDF para imprimir)'}</button>
       </div>
       <div style={{textAlign:'center',color:'rgba(255,255,255,.7)',fontSize:11,padding:'8px 12px 14px',textShadow:'0 1px 4px rgba(0,0,0,.4)'}}>{suc.nombre||''} · Recuerdos del cumple 💕</div>
