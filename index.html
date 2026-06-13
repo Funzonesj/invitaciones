@@ -3578,24 +3578,6 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
           {(editPanel===null&&modoPortada!=='ia-imagen')&&(
             <div className="fade-in">
-              {(((form.iaImagenes||[]).length>0)||!!videoGuardado)&&(
-              <div style={{background:'#fff',border:'1px solid #eef1f6',borderRadius:16,padding:14,marginBottom:14,boxShadow:'0 1px 3px rgba(15,23,42,.06)'}}>
-                <div style={{fontSize:13,fontWeight:800,color:'#0ea5e9',letterSpacing:.3,marginBottom:3}}>¿QUÉ VA EN TU TARJETA?</div>
-                <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Tocá una para elegirla. Con 👁 la ves antes. Después compartís abajo la elegida.</div>
-                <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                  {[['foto','📸','Foto del niño/a',!!form.fotoNino],['tematica','🎨','Foto con personaje (temática)',true],['ia','✨','Generado por IA (imagen o video)',((form.iaImagenes||[]).length>0||!!videoGuardado)]].filter(o=>o[3]).map(([t,ic,l,disp])=>{const act=portadaTipo===t;return(
-                    <div key={t} style={{display:'flex',alignItems:'center',gap:6,borderRadius:12,border:'2px solid '+(act?'#7c3aed':'#e2e8f0'),background:act?'#ede9fe':'white',padding:'4px 6px 4px 10px'}}>
-                      <button onClick={()=>elegirPortada(t)} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 4px',background:'none',border:'none',cursor:'pointer',textAlign:'left',flex:1}}>
-                        <span style={{width:22,height:22,borderRadius:'50%',border:'2px solid '+(act?'#7c3aed':'#cbd5e1'),background:act?'#7c3aed':'white',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:900,flexShrink:0}}>{act?'✓':''}</span>
-                        <span style={{fontSize:21}}>{ic}</span>
-                        <span style={{fontSize:13,fontWeight:800,color:'#334155',flex:1}}>{l}</span>
-                      </button>
-                      <button onClick={()=>{elegirPortada(t);verTarjeta({seccion:'tarjeta'});}} style={{...S.btn,background:'#ede9fe',color:'#7c3aed',padding:'8px 12px',fontSize:12,fontWeight:900,flexShrink:0}}>👁 Ver</button>
-                    </div>
-                  );})}
-                </div>
-              </div>
-              )}
               {!(portadaTipo==='ia'&&usarVideo&&videoGuardado)&&(
               <div style={{...S.card,padding:0,overflow:'hidden',marginBottom:14}}>
                 <div style={{padding:'7px',fontSize:11,fontWeight:900,color:'#7c3aed',textAlign:'center'}}>👀 Así queda tu tarjeta</div>
@@ -3653,6 +3635,25 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   <div style={{fontSize:12,fontWeight:900,color:'#0ea5e9',marginTop:4}}>Con costo: ${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</div>
                 </div>
               </button>
+              {/* Selector "¿qué va en tu tarjeta?": aparece RECIÉN AL FINAL, cuando ya hay imagen IA o video para elegir */}
+              {(((form.iaImagenes||[]).length>0)||!!videoGuardado)&&(
+              <div style={{background:'#fff',border:'1px solid #eef1f6',borderRadius:16,padding:14,marginTop:16,boxShadow:'0 1px 3px rgba(15,23,42,.06)'}}>
+                <div style={{fontSize:13,fontWeight:800,color:'#0ea5e9',letterSpacing:.3,marginBottom:3}}>¿QUÉ VA EN TU TARJETA?</div>
+                <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Ya elegiste todo 🎉 Tocá cuál querés que se vea en la tarjeta. Con 👁 la ves antes.</div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {[['foto','📸','Foto del niño/a',!!form.fotoNino],['tematica','🎨','Foto con personaje (temática)',true],['ia','✨','Generado por IA (imagen o video)',((form.iaImagenes||[]).length>0||!!videoGuardado)]].filter(o=>o[3]).map(([t,ic,l,disp])=>{const act=portadaTipo===t;return(
+                    <div key={t} style={{display:'flex',alignItems:'center',gap:6,borderRadius:12,border:'2px solid '+(act?'#7c3aed':'#e2e8f0'),background:act?'#ede9fe':'white',padding:'4px 6px 4px 10px'}}>
+                      <button onClick={()=>elegirPortada(t)} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 4px',background:'none',border:'none',cursor:'pointer',textAlign:'left',flex:1}}>
+                        <span style={{width:22,height:22,borderRadius:'50%',border:'2px solid '+(act?'#7c3aed':'#cbd5e1'),background:act?'#7c3aed':'white',color:'white',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:900,flexShrink:0}}>{act?'✓':''}</span>
+                        <span style={{fontSize:21}}>{ic}</span>
+                        <span style={{fontSize:13,fontWeight:800,color:'#334155',flex:1}}>{l}</span>
+                      </button>
+                      <button onClick={()=>{elegirPortada(t);verTarjeta({seccion:'tarjeta'});}} style={{...S.btn,background:'#ede9fe',color:'#7c3aed',padding:'8px 12px',fontSize:12,fontWeight:900,flexShrink:0}}>👁 Ver</button>
+                    </div>
+                  );})}
+                </div>
+              </div>
+              )}
             </div>
           )}
           <div style={{display:editPanel==='datos'?'flex':'none',flexDirection:'column',gap:16}}>
