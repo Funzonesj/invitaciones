@@ -3338,34 +3338,38 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     // Cargar una imagen (vía fetch para evitar problemas de CORS al exportar)
     function cargar(url){return new Promise(res=>{ fetch(url).then(r=>r.blob()).then(b=>{const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>res(null);im.src=fr.result;};fr.onerror=()=>res(null);fr.readAsDataURL(b);}).catch(()=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>res(im);im.onerror=()=>res(null);im.src=url;}); }); }
     // Recortar (cover) una imagen a un recuadro de wmm x hmm y devolver dataURL
-    function cover(im,wmm,hmm){const px=4;const cw=Math.round(wmm*px),ch=Math.round(hmm*px);const c=document.createElement('canvas');c.width=cw;c.height=ch;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cw,ch);const cr=cw/ch,ir=im.width/im.height;let sw,sh,sx,sy;if(ir>cr){sh=im.height;sw=sh*cr;sx=(im.width-sw)/2;sy=0;}else{sw=im.width;sh=sw/cr;sx=0;sy=(im.height-sh)/2;}ctx.drawImage(im,sx,sy,sw,sh,0,0,cw,ch);try{return c.toDataURL('image/jpeg',0.9);}catch(e){return null;}}
+    function cover(im,wmm,hmm){const px=6;const cw=Math.round(wmm*px),ch=Math.round(hmm*px);const c=document.createElement('canvas');c.width=cw;c.height=ch;const ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,cw,ch);const cr=cw/ch,ir=im.width/im.height;let sw,sh,sx,sy;if(ir>cr){sh=im.height;sw=sh*cr;sx=(im.width-sw)/2;sy=0;}else{sw=im.width;sh=sw/cr;sx=0;sy=(im.height-sh)/2;}ctx.drawImage(im,sx,sy,sw,sh,0,0,cw,ch);try{return c.toDataURL('image/jpeg',0.9);}catch(e){return null;}}
+    // Recuadros (mm) según cuántas fotos van en la hoja (variado, tipo álbum)
+    function rects(n){
+      if(n<=1) return [[78,28,141,154]];
+      if(n===2) return [[30,27,110,156],[157,27,110,156]];
+      if(n===3) return [[17.5,33,82,144],[107.5,33,82,144],[197.5,33,82,144]];
+      return [[24,16,118,84],[155,16,118,84],[24,110,118,84],[155,110,118,84]]; // 4 (2x2)
+    }
     try{
       const {jsPDF}=window.jspdf;
       const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'}); // 297 x 210
       const W=297,H=210;
       const nom=form.nombre||papaSesion.nombre||'';
-      const colSuc=(suc&&suc.color)||'#ec4899';
+      const fondoImg=(suc&&suc.fondoPase)?await cargar(suc.fondoPase):null;
+      function fondoHoja(){ if(fondoImg){const d=cover(fondoImg,W,H);if(d){doc.addImage(d,'JPEG',0,0,W,H);return;}} doc.setFillColor(247,247,251);doc.rect(0,0,W,H,'F'); }
+      // marquito blanco + foto (estilo álbum)
+      function ponerFoto(im,x,y,w,h){ doc.setFillColor(255,255,255);doc.setDrawColor(228,228,233);doc.roundedRect(x-3,y-3,w+6,h+6,3,3,'FD'); if(im){const d=cover(im,w,h);if(d)doc.addImage(d,'JPEG',x,y,w,h);} }
       // ── TAPA ──
-      doc.setFillColor(colSuc);doc.rect(0,0,W,H,'F');
+      fondoHoja();
       const portUrl=form.albumPortada||(suc&&suc.fraseIniImg)||fotos[0];
       const pim=await cargar(portUrl);
-      if(pim){const pd=cover(pim,180,120);if(pd)doc.addImage(pd,'JPEG',(W-180)/2,28,180,120);}
-      doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');
-      doc.setFontSize(34);doc.text('Recuerdos del cumple',W/2,22,{align:'center'});
-      doc.setFontSize(40);doc.text(nom,W/2,170,{align:'center'});
-      doc.setFontSize(14);doc.text((suc&&suc.nombre)||'',W/2,188,{align:'center'});
-      // ── PÁGINAS DE FOTOS (2x2 por hoja) ──
-      const M=12,G=8;
-      const cw=(W-2*M-G)/2, ch=(H-2*M-G)/2;
-      for(let i=0;i<fotos.length;i++){
-        const pos=i%4;
-        if(pos===0){doc.addPage();doc.setFillColor(248,248,250);doc.rect(0,0,W,H,'F');}
-        const col=pos%2, row=Math.floor(pos/2);
-        const x=M+col*(cw+G), y=M+row*(ch+G);
-        const im=await cargar(fotos[i]);
-        // marco blanco
-        doc.setFillColor(255,255,255);doc.setDrawColor(225,225,230);doc.roundedRect(x-1.5,y-1.5,cw+3,ch+3,2,2,'FD');
-        if(im){const d=cover(im,cw,ch);if(d)doc.addImage(d,'JPEG',x,y,cw,ch);}
+      ponerFoto(pim,(W-128)/2,40,128,150);
+      doc.setTextColor(30,41,59);doc.setFont('helvetica','bold');
+      doc.setFontSize(30);doc.text('Recuerdos del cumple',W/2,24,{align:'center'});
+      doc.setFontSize(34);doc.text(nom,W/2,205,{align:'center'});
+      // ── PÁGINAS (variado: 2, 3, 4 fotos por hoja) ──
+      const patron=[2,3,4]; let pi=0; let i=0;
+      while(i<fotos.length){
+        let n=Math.min(patron[pi%patron.length], fotos.length-i); pi++;
+        doc.addPage(); fondoHoja();
+        const rs=rects(n);
+        for(let k=0;k<n;k++){ const r=rs[k]; const im=await cargar(fotos[i]); ponerFoto(im,r[0],r[1],r[2],r[3]); i++; }
       }
       doc.save('Recuerdos-'+(nom||'cumple').replace(/[^a-zA-Z0-9]/g,'_')+'.pdf');
       flashOk('✓ Álbum PDF listo');
