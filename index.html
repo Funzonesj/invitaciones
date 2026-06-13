@@ -4147,10 +4147,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                     </div>
                   ))}
                 </div>
-                <div style={{display:'flex',gap:8,marginTop:14}}>
-                  <button onClick={verRecuerdo} style={{...S.btn,flex:1,background:'#ede9fe',color:'#7c3aed',padding:'12px',fontSize:13,fontWeight:800}}>👁 Ver el recuerdo</button>
-                  <button onClick={guardarAlbum} style={{...S.btn,flex:1,background:'#16a34a',color:'white',padding:'12px',fontSize:13,fontWeight:900}}>💾 Guardar</button>
-                </div>
+                <button onClick={verRecuerdo} style={{...S.btn,width:'100%',background:'#ede9fe',color:'#7c3aed',padding:'13px',fontSize:14,fontWeight:900,marginTop:14}}>👁 Ver el recuerdo</button>
+                <button onClick={guardarAlbum} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8}}>💾 Guardar</button>
                 <button onClick={compartirRecuerdo} style={{...S.btn,width:'100%',background:'#25d366',color:'white',padding:'14px',fontSize:14,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(37,211,102,.3)'}}>📲 Compartir el recuerdo por WhatsApp</button>
               </div>
             )}
@@ -4467,7 +4465,9 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
   const tem=(tematicas||[]).find(t=>t.id===ev?.temId);
   // El recuerdo usa SOLO las fotos que sube la mamá (las del festejo), no las de IA.
   const fotos=Array.isArray(ev&&ev.album)?ev.album.filter(Boolean):[];
-  const musTrack=(ev&&ev.albumMusica)||(tem&&tem.musica)||(((suc&&suc.musicaGen)||[]).filter(Boolean)[0])||'';
+  // La música del recuerdo es SIEMPRE la del salón del evento (no la de la temática, que es común a todos):
+  // 1) la que eligió la mamá, 2) la del pase del salón, 3) la genérica del salón.
+  const musTrack=(ev&&ev.albumMusica)||((((suc&&suc.musicaPase)||[]).filter(Boolean)[0]||{}).url)||(((suc&&suc.musicaGen)||[]).filter(Boolean)[0])||'';
   const [musOn,setMusOn]=useState(false);
   const musRef=React.useRef(null);
   React.useEffect(()=>{ if(!musTrack)return; const el=musRef.current; if(!el)return; el.volume=0.6;
