@@ -3493,11 +3493,13 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [faqTyping,setFaqTyping]=useState(false);
 
   const suc=sucursales.find(s=>s.id===papaSesion.sucId)||sucursales[0];
-  const temA=tematicas.find(t=>t.id===form.temId)||tematicas[0];
+  // Importante: si la temática real todavía no cargó, NO caer a tematicas[0]
+  // (eso mostraba un instante una imagen ajena, ej. Sonic, antes de la correcta).
+  const temA=tematicas.find(t=>t.id===form.temId)||{};
   const tFilt=ordenarRecientes(tematicas.filter(t=>t.nombre.toLowerCase().includes(ftxt.toLowerCase())&&(fcat==='TODOS'||t.cats.includes(fcat))));
   const cssFilter=`brightness(${mejora.brillo}%) contrast(${mejora.contraste}%) saturate(${mejora.saturacion}%) sepia(${mejora.calidez}%)`;
   const fotoElegida=(form.usarMejorada&&form.fotoMejorada)?form.fotoMejorada:form.fotoNino;
-  const portadaImg=form.portadaSrc||temA.img;
+  const portadaImg=form.portadaSrc||temA.img||'';
   const esDoble=papaSesion.doble&&papaSesion.nombre2;
   const confsEv=(confs||[]).filter(c=>c.evId===papaSesion.id);
 
