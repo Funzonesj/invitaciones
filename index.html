@@ -449,7 +449,7 @@ function App() {
   }
   function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
 
-  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-menu2','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-catalogo-ia','admin-mejorador','admin-diseno','admin-config'].includes(vista);
+  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-menu2','admin-salon','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-catalogo-ia','admin-mejorador','admin-diseno','admin-config'].includes(vista);
   const isPapa  = ['papa-login','papa-creador'].includes(vista);
 
   // Mientras carga la base: mostrar cargando SOLO si el evento todavía no está disponible (si ya está, abre directo).
@@ -557,6 +557,7 @@ function App() {
         {vista==='admin-config'      && esSA && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-menu2'       && esSA && <AdminMenuG setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-salon'       && esSA && <AdminSalon setVista={setVista} sucursales={sucursales} setSucursales={setSucursales} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso} adminSesion={adminSesion} sucAct={sucAct}/>}
@@ -922,6 +923,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
     {e:'⚙️',t:'Usuarios & Sucursales',s:'Cuentas y salones',           v:'admin-usuarios',   bdr:'#94a3b8',ownerOnly:true},
     {e:'🍽️',t:'Menú Interactivo',      s:'Prompt y comidas',            v:'admin-menu',       bdr:'#f59e0b',ownerOnly:true},
     {e:'🧮',t:'Calculador v2 (gramos)', s:'Nuevo · por gramos',          v:'admin-menu2',      bdr:'#f59e0b',ownerOnly:true},
+    {e:'🏛️',t:'Info del Salón',         s:'Reglas, adicionales y FAQ',   v:'admin-salon',      bdr:'#0ea5e9',ownerOnly:true},
     {e:'🎟️',t:'Formatos de Tarjeta',   s:'Por tipo de evento',          v:'admin-formatos',   bdr:'#ec4899',ownerOnly:true},
     {e:'🎴',t:'Diseño de Tarjeta',     s:'Editar textos de la invitación',v:'admin-diseno',    bdr:'#d946ef',ownerOnly:true},
     {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a',ownerOnly:true},
@@ -2355,6 +2357,74 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
 }
 
 /* ── ADMIN MENÚ INTERACTIVO ──────────────────────────────── */
+// ── Info del Salón (admin): Reglas + Adicionales + Preguntas Frecuentes (por sucursal) ──
+const FAQ_PROMPT_DEF='Sos el asistente de este salón. Respondé las preguntas del cliente usando ÚNICAMENTE la información del salón que te paso. Si la respuesta no está en esa información, respondé exactamente: "No tengo esa información, consultá directamente con el salón." No inventes ni supongas nada. Respondé en español, de forma completa, clara y amable, sin cambiar los datos.';
+function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
+  const [selSuc,setSelSuc]=useState(((sucursales[0]||{}).id)||'sz-1');
+  const suc=sucursales.find(s=>s.id===selSuc)||sucursales[0]||{};
+  const [msg,setMsg]=useState('');
+  function flash(t){setMsg(t);flashOk(t);setTimeout(()=>setMsg(''),2200);}
+  function comprimir(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{const M=1000;let w=img.width,h=img.height;if(w>h&&w>M){h=Math.round(h*M/w);w=M;}else if(h>=w&&h>M){w=Math.round(w*M/h);h=M;}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',0.85));};img.onerror=rej;img.src=ev.target.result;};r.onerror=rej;r.readAsDataURL(file);});}
+  async function subirImg(file){const du=await comprimir(file);let u=du;try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:du})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(e){}return u;}
+  function updSuc(field,value){setSucursales(p=>p.map(s=>s.id===selSuc?{...s,[field]:value}:s));}
+  const adic=suc.adicionales||[];
+  function setAdic(arr){updSuc('adicionales',arr);}
+  function addAdic(){setAdic([...adic,{id:'ad-'+Math.floor(Math.random()*1e6),titulo:'Nuevo adicional',desc:'',foto:'',precio:''}]);}
+  function updAdic(id,k,v){setAdic(adic.map(a=>a.id===id?{...a,[k]:v}:a));}
+  function delAdic(id){setAdic(adic.filter(a=>a.id!==id));}
+  async function fotoAdic(id,file){if(!file)return;flash('Subiendo foto…');const u=await subirImg(file);updAdic(id,'foto',u);flash('✓ Foto lista');}
+  const ip={...S.input};
+  return(
+    <div className="fade-in" style={{maxWidth:720,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🏛️ Info del Salón</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Reglas, adicionales y preguntas frecuentes — por cada salón. Se guarda solo.</p>
+      <label style={{display:'block',marginBottom:12}}><span style={S.label}>🏢 Salón</span>
+        <select value={selSuc} onChange={e=>setSelSuc(e.target.value)} style={ip}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>
+      </label>
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msg}</div>}
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>📋 Reglas del salón</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Lo que ve el papá en "Reglas del salón".</p>
+        <textarea value={suc.reglas||''} onChange={e=>updSuc('reglas',e.target.value)} rows={6} style={{...ip,resize:'vertical',fontFamily:'inherit'}} placeholder="Horarios, cantidad de invitados, alimentos permitidos, qué incluye, qué no, etc."/>
+      </div>
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>➕ Adicionales</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Servicios extras que puede contratar el papá (cada uno con foto, descripción y precio).</p>
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          {adic.map(a=>(
+            <div key={a.id} style={{background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:12,padding:12,display:'flex',flexDirection:'column',gap:8}}>
+              <input value={a.titulo||''} onChange={e=>updAdic(a.id,'titulo',e.target.value)} placeholder="Título (ej: Metegol, Pochoclera...)" style={{...ip,fontWeight:700}}/>
+              <textarea value={a.desc||''} onChange={e=>updAdic(a.id,'desc',e.target.value)} rows={2} placeholder="Descripción" style={{...ip,resize:'vertical',fontFamily:'inherit'}}/>
+              <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+                <span style={{fontSize:13,fontWeight:800,color:'#16a34a'}}>$</span>
+                <input type="number" min="0" value={a.precio==null?'':a.precio} onChange={e=>updAdic(a.id,'precio',e.target.value===''?'':+e.target.value)} placeholder="Precio" style={{...ip,width:120}}/>
+                <label style={{...S.btn,background:'#0ea5e9',color:'white',padding:'8px 12px',fontSize:12,fontWeight:800,cursor:'pointer'}}>📷 {a.foto?'Cambiar foto':'Subir foto'}<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>fotoAdic(a.id,e.target.files[0])}/></label>
+                <button onClick={()=>delAdic(a.id)} style={{background:'none',border:'none',cursor:'pointer',fontSize:16,color:'#ef4444'}}>🗑️</button>
+              </div>
+              {a.foto&&<img src={a.foto} alt="" style={{width:'100%',maxHeight:160,objectFit:'cover',borderRadius:10}}/>}
+            </div>
+          ))}
+        </div>
+        <button onClick={addAdic} style={{...S.btn,background:'#0ea5e9',color:'white',padding:'9px 14px',fontSize:12,fontWeight:800,marginTop:10}}>+ Agregar adicional</button>
+      </div>
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>❓ Preguntas Frecuentes (IA)</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Pegá acá toda la info del salón. La IA responde a los papás <b>SOLO</b> con esto; si la pregunta no está, dice que no tiene la información. Podés copiar y pegar desde tu Word.</p>
+        <textarea value={suc.faqTexto||''} onChange={e=>updSuc('faqTexto',e.target.value)} rows={9} style={{...ip,resize:'vertical',fontFamily:'inherit'}} placeholder="Ej: Horarios de atención, qué incluye el paquete, precios, formas de pago, si se puede llevar torta, cantidad máxima de invitados, etc."/>
+        <h4 style={{fontWeight:900,fontSize:12,margin:'14px 0 4px'}}>🤖 Instrucción para la IA (cómo responde) — vale para todos los salones</h4>
+        <textarea value={iaConfig.faqPrompt!=null?iaConfig.faqPrompt:FAQ_PROMPT_DEF} onChange={e=>setIaConfig(c=>({...c,faqPrompt:e.target.value}))} rows={4} style={{...ip,resize:'vertical',fontFamily:'inherit'}}/>
+        <button onClick={()=>setIaConfig(c=>({...c,faqPrompt:FAQ_PROMPT_DEF}))} style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'7px 12px',fontSize:11,fontWeight:700,marginTop:6}}>↺ Restaurar instrucción por defecto</button>
+      </div>
+
+      <button onClick={()=>flash('✓ ¡Guardado!')} style={{...S.btn,background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',width:'100%',padding:14,fontSize:14,fontWeight:900}}>💾 Guardar</button>
+    </div>
+  );
+}
+
 // ── Calculador de menú v2 — MOTOR EN GRAMOS (ver PLAN-CALCULADOR-MENU.md) ──
 // Independiente del calculador viejo. Todo editable desde el admin.
 const MENUG_DEF={
@@ -3756,20 +3826,26 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       setMenuGen(false);
     },2500);
   }
-  function enviarFaq(e){
+  async function enviarFaq(e){
     e.preventDefault();
     if(!faqQ.trim())return;
     const q=faqQ.trim();
     setFaqChat(c=>[...c,{de:'user',txt:q}]);
     setFaqQ('');setFaqTyping(true);
-    setTimeout(()=>{
-      const items=iaConfig.faqItems||[];
-      const words=q.toLowerCase().split(' ').filter(w=>w.length>3);
-      const match=items.find(i=>words.some(w=>i.pregunta.toLowerCase().includes(w))||i.pregunta.toLowerCase().includes(q.toLowerCase()));
-      const resp=match?match.respuesta:'Lo siento, no tengo información sobre eso. Para consultas específicas, contactá directamente con el salón.';
+    const info=(suc&&suc.faqTexto)||'';
+    if(!info.trim()){
+      setFaqChat(c=>[...c,{de:'ia',txt:'El salón todavía no cargó su información. Para consultas, comunicate directamente con el salón.'}]);
+      setFaqTyping(false);return;
+    }
+    try{
+      const r=await fetch('/api/faq',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pregunta:q,info:info,prompt:(iaConfig&&iaConfig.faqPrompt)||'',salon:(suc&&suc.nombre)||''})});
+      const d=await r.json().catch(()=>({}));
+      const resp=(r.ok&&d.respuesta)?d.respuesta:(d.error||'No pude responder en este momento. Probá de nuevo o consultá directamente con el salón.');
       setFaqChat(c=>[...c,{de:'ia',txt:resp}]);
-      setFaqTyping(false);
-    },1500);
+    }catch(err){
+      setFaqChat(c=>[...c,{de:'ia',txt:'No pude responder en este momento. Consultá directamente con el salón.'}]);
+    }
+    setFaqTyping(false);
   }
 
   const _PT=(iaConfig&&iaConfig.papaTiles)||{};
@@ -4526,21 +4602,22 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         <div className="fade-in" style={S.card}>
           <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>➕ Contratar Adicionales</h2>
           <p style={{fontSize:12,color:'#64748b',marginBottom:16}}>Servicios extras para hacer tu evento aún más especial</p>
-          {(iaConfig.adicionales||[]).length===0?(
+          {((suc&&suc.adicionales)||[]).length===0?(
             <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}>
               <div style={{fontSize:40,marginBottom:8}}>🛍️</div>
               <p style={{fontWeight:700}}>El salón aún no configuró adicionales</p>
             </div>
           ):(
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:14}}>
-              {(iaConfig.adicionales||[]).map((ad,i)=>(
-                <div key={ad.id||i} style={{...S.card,padding:18,border:'1px solid #e2e8f0',display:'flex',flexDirection:'column',gap:10}}>
-                  <div style={{display:'flex',alignItems:'center',gap:12}}>
-                    <div style={{width:48,height:48,borderRadius:14,background:'#ede9fe',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24}}>{ad.emoji||'✨'}</div>
-                    <div><div style={{fontWeight:900,fontSize:14}}>{ad.nombre}</div><div style={{fontSize:20,fontWeight:900,color:'#7c3aed'}}>${(+ad.precio).toLocaleString('es-AR')}</div></div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))',gap:14}}>
+              {(suc.adicionales||[]).map((ad,i)=>(
+                <div key={ad.id||i} style={{...S.card,padding:0,overflow:'hidden',border:'1px solid #e2e8f0',display:'flex',flexDirection:'column'}}>
+                  {ad.foto&&<div style={{aspectRatio:'16/10',background:'#0f172a',overflow:'hidden'}}><img src={ad.foto} alt={ad.titulo||ad.nombre} style={{width:'100%',height:'100%',objectFit:'cover'}}/></div>}
+                  <div style={{padding:16,display:'flex',flexDirection:'column',gap:8,flex:1}}>
+                    <div style={{fontWeight:900,fontSize:15}}>{ad.titulo||ad.nombre}</div>
+                    {ad.desc&&<p style={{fontSize:12,color:'#64748b',margin:0,flex:1}}>{ad.desc}</p>}
+                    {(ad.precio!==''&&ad.precio!=null)&&<div style={{fontSize:20,fontWeight:900,color:'#7c3aed'}}>${(+ad.precio).toLocaleString('es-AR')}</div>}
+                    <button onClick={()=>{const t=`Hola! Quiero contratar: *${ad.titulo||ad.nombre}* para el ${papaSesion.tipo||'Cumpleaños'} de ${papaSesion.nombre} el ${papaSesion.dia}/${papaSesion.mes}/${papaSesion.anio} en ${suc.nombre}. ¿Podemos coordinarlo? 🎉`;abrirWA('', t);}} style={{...S.btn,background:'#22c55e',color:'white',width:'100%',padding:'10px',fontSize:12}}>💬 Consultar / Contratar</button>
                   </div>
-                  <p style={{fontSize:12,color:'#64748b',margin:0}}>{ad.desc}</p>
-                  <button onClick={()=>{const t=`Hola! Quiero contratar: *${ad.nombre}* para el ${papaSesion.tipo||'Cumpleaños'} de ${papaSesion.nombre} el ${papaSesion.dia}/${papaSesion.mes}/${papaSesion.anio} en ${suc.nombre}. ¿Podemos coordinarlo? 🎉`;abrirWA('', t);}} style={{...S.btn,background:'#22c55e',color:'white',width:'100%',padding:'10px',fontSize:12}}>💬 Consultar por WhatsApp</button>
                 </div>
               ))}
             </div>
