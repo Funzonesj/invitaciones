@@ -449,7 +449,7 @@ function App() {
   }
   function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
 
-  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-catalogo-ia','admin-mejorador','admin-diseno','admin-config'].includes(vista);
+  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-menu2','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-catalogo-ia','admin-mejorador','admin-diseno','admin-config'].includes(vista);
   const isPapa  = ['papa-login','papa-creador'].includes(vista);
 
   // Mientras carga la base: mostrar cargando SOLO si el evento todavía no está disponible (si ya está, abre directo).
@@ -556,6 +556,7 @@ function App() {
         {vista==='admin-mejorador'   && esSA && <AdminCatalogo setVista={setVista} tematicas={tematicas} setTematicas={setTematicas} modo="mejorador"/>}
         {vista==='admin-config'      && esSA && <AdminConfig setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-menu2'       && esSA && <AdminMenuG setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso} adminSesion={adminSesion} sucAct={sucAct}/>}
@@ -920,6 +921,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
     {e:'📣',t:'Remarketing',          s:'Envíos masivos',               v:'admin-remarketing',bdr:'#f97316'},
     {e:'⚙️',t:'Usuarios & Sucursales',s:'Cuentas y salones',           v:'admin-usuarios',   bdr:'#94a3b8',ownerOnly:true},
     {e:'🍽️',t:'Menú Interactivo',      s:'Prompt y comidas',            v:'admin-menu',       bdr:'#f59e0b',ownerOnly:true},
+    {e:'🧮',t:'Calculador v2 (gramos)', s:'Nuevo · por gramos',          v:'admin-menu2',      bdr:'#f59e0b',ownerOnly:true},
     {e:'🎟️',t:'Formatos de Tarjeta',   s:'Por tipo de evento',          v:'admin-formatos',   bdr:'#ec4899',ownerOnly:true},
     {e:'🎴',t:'Diseño de Tarjeta',     s:'Editar textos de la invitación',v:'admin-diseno',    bdr:'#d946ef',ownerOnly:true},
     {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a',ownerOnly:true},
@@ -2348,6 +2350,201 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
 }
 
 /* ── ADMIN MENÚ INTERACTIVO ──────────────────────────────── */
+// ── Calculador de menú v2 — MOTOR EN GRAMOS (ver PLAN-CALCULADOR-MENU.md) ──
+// Independiente del calculador viejo. Todo editable desde el admin.
+const MENUG_DEF={
+  salado:{mujer:450,hombre:700,nino:300},
+  dulce:{mujer:200,hombre:150,nino:150},
+  tortaG:100, pernilG:160, meriendaFactor:0.8,
+  snackPapasAd:26, snackManiAd:12, snackNino:18,
+  bebidaL:1.5, bebidaHoras:3, bebidaExtraL:0.2,
+  alimentos:[
+    {id:'g-emp',nombre:'Empanada',emoji:'🥟',grupo:'salado',g:90,gusto:3},
+    {id:'g-empc',nombre:'Empanada de copetín',emoji:'🥟',grupo:'salado',g:45,gusto:3},
+    {id:'g-piz',nombre:'Pizza/prepizza (porción)',emoji:'🍕',grupo:'salado',g:90,gusto:2},
+    {id:'g-peb',nombre:'Pebete/sánguche',emoji:'🥖',grupo:'salado',g:80,gusto:2},
+    {id:'g-migat',nombre:'Sándwich miga triple',emoji:'🥪',grupo:'salado',g:25,gusto:2},
+    {id:'g-migas',nombre:'Sándwich miga simple',emoji:'🥪',grupo:'salado',g:10,gusto:2},
+    {id:'g-tartsal',nombre:'Tarta salada (porción)',emoji:'🥧',grupo:'salado',g:100,gusto:1},
+    {id:'g-pernil',nombre:'Pernil',emoji:'🍖',grupo:'salado',g:80,gusto:0,especial:'pernil'},
+    {id:'g-pancho',nombre:'Pancho',emoji:'🌭',grupo:'nino',g:90,gusto:3},
+    {id:'g-pizzeta',nombre:'Pizzeta',emoji:'🍕',grupo:'nino',g:45,gusto:3},
+    {id:'g-hamb',nombre:'Hamburguesa',emoji:'🍔',grupo:'nino',g:120,gusto:3},
+    {id:'g-migan',nombre:'Sándwich de miga',emoji:'🥪',grupo:'nino',g:25,gusto:2},
+    {id:'g-empjq',nombre:'Empanada j-y-q',emoji:'🥟',grupo:'nino',g:90,gusto:1},
+    {id:'g-torta',nombre:'Torta',emoji:'🎂',grupo:'dulce',g:100,gusto:0,especial:'torta'},
+    {id:'g-medialuna',nombre:'Medialuna',emoji:'🥐',grupo:'dulce',g:40,gusto:1},
+    {id:'g-factura',nombre:'Factura',emoji:'🥐',grupo:'dulce',g:50,gusto:1},
+    {id:'g-magdalena',nombre:'Magdalena',emoji:'🧁',grupo:'dulce',g:30,gusto:1},
+    {id:'g-brownie',nombre:'Brownie (porción)',emoji:'🍫',grupo:'dulce',g:50,gusto:1},
+    {id:'g-masafina',nombre:'Masa fina',emoji:'🍪',grupo:'dulce',g:15,gusto:1},
+    {id:'g-palmerita',nombre:'Palmerita',emoji:'🍪',grupo:'dulce',g:15,gusto:1},
+    {id:'g-maicena',nombre:'Alfajor de maicena',emoji:'🍪',grupo:'dulce',g:20,gusto:1},
+    {id:'g-pastafrola',nombre:'Pastafrola (porción)',emoji:'🥧',grupo:'dulce',g:80,gusto:1},
+  ],
+};
+function calcMenuG(cfg,inp){
+  cfg=cfg||MENUG_DEF; const al=cfg.alimentos||[];
+  const M=+inp.mujeres||0,H=+inp.hombres||0,N=+inp.ninos||0;
+  const adultos=M+H,pers=M+H+N;
+  const sal=cfg.salado||MENUG_DEF.salado, dul=cfg.dulce||MENUG_DEF.dulce;
+  const fS=inp.horario==='merienda'?(+cfg.meriendaFactor||0.8):1;
+  const sel=inp.sel||{};
+  const eleg=al.filter(a=>sel[a.id]);
+  const out={salado:[],nino:[],dulce:[],pernil:null,torta:null,snacks:[],bebidaL:0,bebidaPP:0};
+  const repartir=(lista,total,destino)=>{
+    const suma=lista.reduce((s,a)=>s+(+a.gusto||0),0);
+    if(suma<=0)return;
+    lista.forEach(a=>{const g=total*(+a.gusto||0)/suma; destino.push({nombre:a.nombre,emoji:a.emoji,unidades:Math.ceil(g/((+a.g)||1)),g:Math.round(g)});});
+  };
+  // SALADO adultos
+  let saladoTot=(M*(+sal.mujer||450)+H*(+sal.hombre||700))*fS;
+  const saladoSel=eleg.filter(a=>a.grupo==='salado');
+  const pernilSel=saladoSel.find(a=>a.especial==='pernil');
+  if(pernilSel&&adultos>0){ saladoTot=Math.max(0,saladoTot-adultos*(+cfg.pernilG||160)); out.pernil={nombre:pernilSel.nombre,emoji:pernilSel.emoji,paraPers:Math.round(adultos*0.7)}; }
+  repartir(saladoSel.filter(a=>a.especial!=='pernil'),saladoTot,out.salado);
+  // NIÑO
+  repartir(eleg.filter(a=>a.grupo==='nino'),N*(+sal.nino||300)*fS,out.nino);
+  // DULCE
+  let dulceTot=M*(+dul.mujer||200)+H*(+dul.hombre||150)+N*(+dul.nino||150);
+  const dulceSel=eleg.filter(a=>a.grupo==='dulce');
+  const tortaSel=dulceSel.find(a=>a.especial==='torta');
+  if(tortaSel&&pers>0){ const rt=pers*(+cfg.tortaG||100); dulceTot=Math.max(0,dulceTot-rt); out.torta={nombre:tortaSel.nombre,emoji:tortaSel.emoji,porciones:pers,g:rt}; }
+  repartir(dulceSel.filter(a=>a.especial!=='torta'),dulceTot,out.dulce);
+  // BEBIDA
+  const pp=(+cfg.bebidaL||1.5)+Math.max(0,(+inp.horas||3)-(+cfg.bebidaHoras||3))*(+cfg.bebidaExtraL||0.2);
+  out.bebidaPP=Math.round(pp*10)/10; out.bebidaL=Math.ceil(pp*pers);
+  // SNACKS (aparte)
+  if(adultos>0){ out.snacks.push({nombre:'Papas/snacks salados (adultos)',g:Math.round(adultos*(+cfg.snackPapasAd||26))}); out.snacks.push({nombre:'Maní (adultos)',g:Math.round(adultos*(+cfg.snackManiAd||12))}); }
+  if(N>0) out.snacks.push({nombre:'Snacks salados (niños)',g:Math.round(N*(+cfg.snackNino||18))});
+  return out;
+}
+function AdminMenuG({setVista,iaConfig,setIaConfig}){
+  const merge=()=>{const s=iaConfig.menuG||{};return {...MENUG_DEF,...s,salado:{...MENUG_DEF.salado,...(s.salado||{})},dulce:{...MENUG_DEF.dulce,...(s.dulce||{})},alimentos:(s.alimentos&&s.alimentos.length?s.alimentos:MENUG_DEF.alimentos)};};
+  const [cfg,setCfg]=useState(merge());
+  const [tab,setTab]=useState('probar');
+  const [msg,setMsg]=useState('');
+  React.useEffect(()=>{ if(iaConfig.menuG) setCfg(merge()); },[iaConfig.menuG]);
+  function guardar(){setIaConfig(c=>({...c,menuG:cfg}));setMsg('✓ Guardado');flashOk('✓ ¡Calculador guardado!');setTimeout(()=>setMsg(''),2500);}
+  const setG=(grp,k,v)=>setCfg(c=>({...c,[grp]:{...c[grp],[k]:v===''?'':+v}}));
+  const setNum=(k,v)=>setCfg(c=>({...c,[k]:v===''?'':+v}));
+  const updAl=(id,k,v)=>setCfg(c=>({...c,alimentos:c.alimentos.map(a=>a.id===id?{...a,[k]:(k==='g'||k==='gusto')?(v===''?'':+v):v}:a)}));
+  const delAl=(id)=>setCfg(c=>({...c,alimentos:c.alimentos.filter(a=>a.id!==id)}));
+  const addAl=(grupo)=>setCfg(c=>({...c,alimentos:[...c.alimentos,{id:'g-'+Math.floor(Math.random()*1e6),nombre:'Nuevo',emoji:'🍽️',grupo,g:50,gusto:1}]}));
+  // ── probador ──
+  const [pM,setPM]=useState(''),[pH,setPH]=useState(''),[pN,setPN]=useState('');
+  const [pHor,setPHor]=useState('comida'),[pHoras,setPHoras]=useState(3);
+  const [sel,setSel]=useState({});
+  const res=calcMenuG(cfg,{mujeres:pM,hombres:pH,ninos:pN,horario:pHor,horas:pHoras,sel});
+  const grupos=[['salado','🧑 Salado (adultos)'],['nino','🧒 De niño'],['dulce','🍰 Dulce']];
+  const nip={...S.input,width:60,padding:'5px 6px',fontSize:13,textAlign:'center'};
+  const Rows=({lista})=>(<div style={{display:'flex',flexDirection:'column',gap:5}}>{lista.map(it=>(
+    <div key={it.id} style={{display:'flex',alignItems:'center',gap:5,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'6px 8px',flexWrap:'wrap'}}>
+      <input value={it.emoji||''} maxLength={2} onChange={e=>updAl(it.id,'emoji',e.target.value)} style={{...S.input,width:36,padding:'5px 2px',fontSize:16,textAlign:'center'}}/>
+      <input value={it.nombre||''} onChange={e=>updAl(it.id,'nombre',e.target.value)} style={{...S.input,flex:1,minWidth:90,padding:'5px 8px',fontSize:12,fontWeight:700}}/>
+      <span style={{fontSize:11,color:'#64748b'}}>g/u</span>
+      <input type="number" step="any" min="0" value={it.g} onChange={e=>updAl(it.id,'g',e.target.value)} style={nip}/>
+      {it.especial?(<span style={{fontSize:10,fontWeight:800,color:'#9a3412',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:6,padding:'3px 6px'}}>{it.especial==='pernil'?'🍖 reserva':'🎂 reserva'}</span>):(<React.Fragment><span style={{fontSize:11,color:'#64748b'}}>gusto</span><input type="number" step="1" min="0" value={it.gusto} onChange={e=>updAl(it.id,'gusto',e.target.value)} style={{...nip,width:48}}/></React.Fragment>)}
+      <button onClick={()=>delAl(it.id)} style={{background:'none',border:'none',cursor:'pointer',fontSize:15,color:'#ef4444'}}>🗑️</button>
+    </div>
+  ))}</div>);
+  return(
+    <div className="fade-in" style={{maxWidth:720,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🧮 Calculador v2 (gramos)</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Calculador nuevo por gramos (mujeres/hombres/niños + lo que eligen). Probalo acá; cuando estés segura reemplazamos el viejo.</p>
+      <div style={{display:'flex',gap:8,marginBottom:14}}>
+        {[['probar','🧪 Probar'],['config','⚙️ Configuración']].map(([k,l])=>(
+          <button key={k} onClick={()=>setTab(k)} style={{...S.btn,flex:1,padding:'10px',fontSize:13,fontWeight:900,background:tab===k?'linear-gradient(135deg,#f97316,#fbbf24)':'#e2e8f0',color:tab===k?'#0f172a':'#64748b'}}>{l}</button>
+        ))}
+      </div>
+      {msg&&<div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:14,fontWeight:700}}>{msg}</div>}
+
+      {tab==='probar'&&(<React.Fragment>
+        <div style={{...S.card,marginBottom:14}}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:10}}>👥 ¿Quiénes vienen?</h3>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:10}}>
+            <label><span style={S.label}>👩 Mujeres</span><input type="number" min={0} value={pM} onChange={e=>setPM(e.target.value)} style={S.input} placeholder="0"/></label>
+            <label><span style={S.label}>👨 Hombres</span><input type="number" min={0} value={pH} onChange={e=>setPH(e.target.value)} style={S.input} placeholder="0"/></label>
+            <label><span style={S.label}>🧒 Niños</span><input type="number" min={0} value={pN} onChange={e=>setPN(e.target.value)} style={S.input} placeholder="0"/></label>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            <label><span style={S.label}>🕐 Horario</span><select value={pHor} onChange={e=>setPHor(e.target.value)} style={S.input}><option value="comida">Almuerzo / Noche (comida)</option><option value="merienda">Tarde / Merienda</option></select></label>
+            <label><span style={S.label}>⏱️ Duración (hs)</span><input type="number" min={1} value={pHoras} onChange={e=>setPHoras(e.target.value)} style={S.input}/></label>
+          </div>
+        </div>
+        <div style={{...S.card,marginBottom:14}}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:6}}>🍽️ ¿Qué va a llevar?</h3>
+          {grupos.map(([g,l])=>(
+            <div key={g} style={{marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:800,color:'#334155',marginBottom:6}}>{l}</div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                {cfg.alimentos.filter(a=>a.grupo===g).map(a=>(
+                  <button key={a.id} onClick={()=>setSel(s=>({...s,[a.id]:!s[a.id]}))} style={{border:'1px solid '+(sel[a.id]?'#f97316':'#e2e8f0'),background:sel[a.id]?'#fff7ed':'#fff',color:'#334155',borderRadius:20,padding:'6px 12px',fontSize:12,fontWeight:700,cursor:'pointer'}}>{a.emoji} {a.nombre}{sel[a.id]?' ✓':''}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{...S.card}}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:10}}>📋 Cantidades a comprar</h3>
+          {res.pernil&&<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'10px 12px',fontSize:12,color:'#9a3412',marginBottom:10,fontWeight:600}}>🍖 <b>{res.pernil.nombre}:</b> consultá la cantidad en el local donde lo comprás (para ~{res.pernil.paraPers} personas). Ellos lo arman; siempre sobra un poco.</div>}
+          {[['salado','🧑 Salado (adultos)',res.salado],['nino','🧒 De niño',res.nino],['dulce','🍰 Dulce',res.dulce]].map(([k,l,arr])=>arr.length>0&&(
+            <div key={k} style={{marginBottom:10}}>
+              <div style={{fontSize:12,fontWeight:800,color:'#5b21b6',marginBottom:4}}>{l}</div>
+              {arr.map((it,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'4px 0',borderBottom:'1px solid #f1f5f9'}}><span>{it.emoji} {it.nombre}</span><b>{it.unidades} u <span style={{color:'#94a3b8',fontWeight:400,fontSize:11}}>({it.g} g)</span></b></div>))}
+            </div>
+          ))}
+          {res.torta&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'4px 0',borderBottom:'1px solid #f1f5f9'}}><span>{res.torta.emoji} {res.torta.nombre}</span><b>{res.torta.porciones} porciones <span style={{color:'#94a3b8',fontWeight:400,fontSize:11}}>({res.torta.g} g)</span></b></div>}
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'6px 0',marginTop:6,borderTop:'2px solid #e2e8f0'}}><span>🥤 Bebida</span><b>{res.bebidaL} L <span style={{color:'#94a3b8',fontWeight:400,fontSize:11}}>({res.bebidaPP} L c/u)</span></b></div>
+          {res.snacks.length>0&&<div style={{marginTop:8}}><div style={{fontSize:11,color:'#64748b',marginBottom:4}}>Snacks aparte:</div>{res.snacks.map((s,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#64748b'}}><span>{s.nombre}</span><span>{s.g} g</span></div>))}</div>}
+          {(!res.salado.length&&!res.nino.length&&!res.dulce.length&&!res.pernil&&!res.torta)&&<p style={{fontSize:12,color:'#94a3b8'}}>Cargá la gente y elegí algún plato para ver el cálculo.</p>}
+        </div>
+      </React.Fragment>)}
+
+      {tab==='config'&&(<React.Fragment>
+        <div style={{...S.card,marginBottom:14}}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>⚖️ Gramos por persona</h3>
+          <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Cuánto come cada persona de salado y de dulce (comida completa).</p>
+          <div style={{fontSize:12,fontWeight:800,color:'#334155',marginBottom:4}}>Salado (g)</div>
+          <div style={{display:'flex',gap:10,marginBottom:10,flexWrap:'wrap'}}>
+            <label style={{fontSize:12}}>👩 <input type="number" value={cfg.salado.mujer} onChange={e=>setG('salado','mujer',e.target.value)} style={nip}/></label>
+            <label style={{fontSize:12}}>👨 <input type="number" value={cfg.salado.hombre} onChange={e=>setG('salado','hombre',e.target.value)} style={nip}/></label>
+            <label style={{fontSize:12}}>🧒 <input type="number" value={cfg.salado.nino} onChange={e=>setG('salado','nino',e.target.value)} style={nip}/></label>
+          </div>
+          <div style={{fontSize:12,fontWeight:800,color:'#334155',marginBottom:4}}>Dulce (g) — incluye la torta</div>
+          <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+            <label style={{fontSize:12}}>👩 <input type="number" value={cfg.dulce.mujer} onChange={e=>setG('dulce','mujer',e.target.value)} style={nip}/></label>
+            <label style={{fontSize:12}}>👨 <input type="number" value={cfg.dulce.hombre} onChange={e=>setG('dulce','hombre',e.target.value)} style={nip}/></label>
+            <label style={{fontSize:12}}>🧒 <input type="number" value={cfg.dulce.nino} onChange={e=>setG('dulce','nino',e.target.value)} style={nip}/></label>
+          </div>
+        </div>
+        <div style={{...S.card,marginBottom:14}}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:10}}>🎂🍖🕐 Especiales y bebida</h3>
+          <div style={{display:'flex',flexDirection:'column',gap:8,fontSize:12}}>
+            <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🎂 Torta: gramos por persona</span><input type="number" value={cfg.tortaG} onChange={e=>setNum('tortaG',e.target.value)} style={nip}/></label>
+            <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🍖 Pernil: reserva por persona (g)</span><input type="number" value={cfg.pernilG} onChange={e=>setNum('pernilG',e.target.value)} style={nip}/></label>
+            <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🍰 Tarde/merienda: factor del salado</span><input type="number" step="0.05" value={cfg.meriendaFactor} onChange={e=>setNum('meriendaFactor',e.target.value)} style={nip}/></label>
+            <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🥤 Bebida: litros por persona (3 hs)</span><input type="number" step="0.1" value={cfg.bebidaL} onChange={e=>setNum('bebidaL',e.target.value)} style={nip}/></label>
+            <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🥤 Bebida: +litros por cada hora extra</span><input type="number" step="0.1" value={cfg.bebidaExtraL} onChange={e=>setNum('bebidaExtraL',e.target.value)} style={nip}/></label>
+            <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🍟 Snack salado: g por adulto (papas)</span><input type="number" value={cfg.snackPapasAd} onChange={e=>setNum('snackPapasAd',e.target.value)} style={nip}/></label>
+            <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🥜 Maní: g por adulto</span><input type="number" value={cfg.snackManiAd} onChange={e=>setNum('snackManiAd',e.target.value)} style={nip}/></label>
+            <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🍿 Snack salado: g por niño</span><input type="number" value={cfg.snackNino} onChange={e=>setNum('snackNino',e.target.value)} style={nip}/></label>
+          </div>
+        </div>
+        {grupos.map(([g,l])=>(
+          <div key={g} style={{...S.card,marginBottom:14}}>
+            <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>{l}</h3>
+            <Rows lista={cfg.alimentos.filter(a=>a.grupo===g)}/>
+            <button onClick={()=>addAl(g)} style={{...S.btn,background:'#0ea5e9',color:'white',padding:'8px 14px',fontSize:12,fontWeight:800,marginTop:10}}>+ Agregar alimento</button>
+          </div>
+        ))}
+      </React.Fragment>)}
+
+      <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',width:'100%',padding:14,fontSize:14,fontWeight:900,marginTop:8}}>💾 Guardar calculador</button>
+    </div>
+  );
+}
 function AdminMenu({setVista,iaConfig,setIaConfig}){
   const base=iaConfig.menuConfig||{prompt:'',ninos:[],adultos:[],snacks:[],postres:[],bebidas:[],descartables:[]};
   const [cfg,setCfg]=useState(base);
