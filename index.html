@@ -4583,33 +4583,6 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 </select>
               </label>
               {form.albumMusica&&<audio src={form.albumMusica} controls style={{height:32,marginTop:8,width:'100%',marginBottom:6}}></audio>}
-              {(()=>{
-                const opts=[...new Set([(temA&&temA.img),form.fotoNino,...((form.iaImagenes)||[]),...((form.album)||[]).map(albUrl)].filter(Boolean))];
-                const PALETA=['#000000','#1e293b','#ffffff','#7c3aed','#ec4899','#0ea5e9','#16a34a','#f97316','#f43f5e','#facc15'];
-                return [['albumPortada','albumPortadaColor','🖼️ PORTADA (inicio)','Automática (1ª foto)'],['albumFinal','albumFinalColor','🏁 FINAL (cierre)','Automática (última foto)']].map(([campo,campoCol,lbl,auto])=>(
-                  <div key={campo} style={{marginTop:10}}>
-                    <span style={{fontSize:12,fontWeight:800,color:'#7c3aed'}}>{lbl}</span>
-                    <label style={{...S.btn,display:'inline-block',background:'#0ea5e9',color:'white',padding:'8px 14px',fontSize:12,fontWeight:900,cursor:'pointer',marginTop:6}}>📎 Subir una foto<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>subirFotoCampo(e.target.files[0],campo)}/></label>
-                    {form[campo]&&!form[campoCol]&&<div style={{display:'inline-flex',alignItems:'center',gap:6,marginLeft:8,verticalAlign:'middle'}}><img src={form[campo]} alt="" style={{width:40,height:40,borderRadius:8,objectFit:'cover',border:'2px solid #7c3aed'}}/><button type="button" onClick={()=>setForm({...form,[campo]:''})} style={{fontSize:11,fontWeight:800,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'3px 8px',cursor:'pointer'}}>quitar</button></div>}
-                    {opts.length>0&&(<div style={{fontSize:10,color:'#94a3b8',fontWeight:700,marginTop:8}}>…o elegí una ya cargada:</div>)}
-                    {opts.length>0&&(
-                      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginTop:6}}>
-                        <button type="button" onClick={()=>setForm({...form,[campo]:'',[campoCol]:''})} style={{aspectRatio:'1',borderRadius:8,border:((!form[campo]&&!form[campoCol])?'3px solid #7c3aed':'1px solid #e2e8f0'),background:'#f1f5f9',cursor:'pointer',fontSize:9,fontWeight:800,color:'#64748b',padding:2,lineHeight:1.1}}>{auto}</button>
-                        {opts.map((src,i)=>(
-                          <button type="button" key={i} onClick={()=>setForm({...form,[campo]:src,[campoCol]:''})} style={{aspectRatio:'1',borderRadius:8,overflow:'hidden',border:((form[campo]===src&&!form[campoCol])?'3px solid #7c3aed':'1px solid #e2e8f0'),background:'#000',cursor:'pointer',padding:0}}>
-                            <img src={src} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <div style={{display:'flex',alignItems:'center',gap:6,marginTop:6,flexWrap:'wrap'}}>
-                      <span style={{fontSize:10,color:'#94a3b8',fontWeight:700}}>o color liso:</span>
-                      {PALETA.map(cl=>(<button type="button" key={cl} onClick={()=>setForm({...form,[campoCol]:cl})} title={cl} style={{width:24,height:24,borderRadius:'50%',background:cl,border:(form[campoCol]===cl?'3px solid #7c3aed':'1px solid #cbd5e1'),cursor:'pointer',padding:0}}/>))}
-                      {form[campoCol]&&<button type="button" onClick={()=>setForm({...form,[campoCol]:''})} style={{fontSize:10,fontWeight:800,color:'#dc2626',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'3px 8px',cursor:'pointer'}}>quitar color</button>}
-                    </div>
-                  </div>
-                ));
-              })()}
             </div>
             {((form.album)||[]).length===0?(
               <div style={{textAlign:'center',padding:'28px 16px',color:'#94a3b8',background:'#fafafa',borderRadius:14,border:'1px dashed #e2e8f0'}}>
