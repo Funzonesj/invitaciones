@@ -2379,6 +2379,11 @@ function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
   function addPrecio(id){const a=adic.find(x=>x.id===id)||{};setPrecios(id,[...(a.precios||[]),{detalle:'',precio:''}]);}
   function updPrecio(id,idx,k,v){const a=adic.find(x=>x.id===id)||{};const arr=(a.precios||[]).slice();arr[idx]={...arr[idx],[k]:(k==='precio')?(v===''?'':+v):v};setPrecios(id,arr);}
   function delPrecio(id,idx){const a=adic.find(x=>x.id===id)||{};setPrecios(id,(a.precios||[]).filter((_,i)=>i!==idx));}
+  const faqQA=suc.faqQA||[];
+  function setQA(arr){updSuc('faqQA',arr);}
+  function addQA(){setQA([...faqQA,{q:'',r:''}]);}
+  function updQA(i,k,v){const arr=faqQA.slice();arr[i]={...arr[i],[k]:v};setQA(arr);}
+  function delQA(i){setQA(faqQA.filter((_,x)=>x!==i));}
   const ip={...S.input};
   return(
     <div className="fade-in" style={{maxWidth:720,margin:'0 auto',padding:'20px 16px'}}>
@@ -2435,7 +2440,21 @@ function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
         <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>❓ Preguntas Frecuentes (IA)</h3>
         <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Pegá acá toda la info del salón. La IA responde a los papás <b>SOLO</b> con esto; si la pregunta no está, dice que no tiene la información. Podés copiar y pegar desde tu Word.</p>
         <textarea value={suc.faqTexto||''} onChange={e=>updSuc('faqTexto',e.target.value)} rows={9} style={{...ip,resize:'vertical',fontFamily:'inherit'}} placeholder="Ej: Horarios de atención, qué incluye el paquete, precios, formas de pago, si se puede llevar torta, cantidad máxima de invitados, etc."/>
-        <h4 style={{fontWeight:900,fontSize:12,margin:'14px 0 4px'}}>🤖 Instrucción para la IA (cómo responde) — vale para todos los salones</h4>
+        <h4 style={{fontWeight:900,fontSize:12,margin:'16px 0 4px'}}>❔ Preguntas y respuestas (opcional)</h4>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:8}}>Cargá preguntas con su respuesta. La IA las usa para contestar (además del texto de arriba).</p>
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {faqQA.map((qa,i)=>(
+            <div key={i} style={{background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:10,display:'flex',flexDirection:'column',gap:6}}>
+              <input value={qa.q||''} onChange={e=>updQA(i,'q',e.target.value)} placeholder="Pregunta (ej: ¿Puedo llevar mi propia torta?)" style={{...ip,fontWeight:700,fontSize:12}}/>
+              <div style={{display:'flex',gap:6,alignItems:'flex-start'}}>
+                <textarea value={qa.r||''} onChange={e=>updQA(i,'r',e.target.value)} rows={2} placeholder="Respuesta" style={{...ip,resize:'vertical',fontFamily:'inherit',fontSize:12,flex:1}}/>
+                <button onClick={()=>delQA(i)} style={{background:'none',border:'none',cursor:'pointer',fontSize:15,color:'#ef4444',padding:'8px 4px'}}>🗑️</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={addQA} style={{...S.btn,background:'#ecfdf5',color:'#16a34a',padding:'7px 12px',fontSize:11,fontWeight:800,border:'1px solid #a7f3d0',marginTop:8}}>+ Agregar pregunta</button>
+        <h4 style={{fontWeight:900,fontSize:12,margin:'16px 0 4px'}}>🤖 Instrucción para la IA (cómo responde) — vale para todos los salones</h4>
         <textarea value={iaConfig.faqPrompt!=null?iaConfig.faqPrompt:FAQ_PROMPT_DEF} onChange={e=>setIaConfig(c=>({...c,faqPrompt:e.target.value}))} rows={4} style={{...ip,resize:'vertical',fontFamily:'inherit'}}/>
         <button onClick={()=>setIaConfig(c=>({...c,faqPrompt:FAQ_PROMPT_DEF}))} style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'7px 12px',fontSize:11,fontWeight:700,marginTop:6}}>↺ Restaurar instrucción por defecto</button>
       </div>
@@ -3853,7 +3872,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     const q=faqQ.trim();
     setFaqChat(c=>[...c,{de:'user',txt:q}]);
     setFaqQ('');setFaqTyping(true);
-    const info=(suc&&suc.faqTexto)||'';
+    let info=(suc&&suc.faqTexto)||'';
+    const _qa=((suc&&suc.faqQA)||[]).filter(x=>x&&x.q&&x.q.trim());
+    if(_qa.length){info+=(info?'\n\n':'')+'PREGUNTAS FRECUENTES:\n'+_qa.map(x=>'P: '+x.q+'\nR: '+(x.r||'')).join('\n\n');}
     if(!info.trim()){
       setFaqChat(c=>[...c,{de:'ia',txt:'El salón todavía no cargó su información. Para consultas, comunicate directamente con el salón.'}]);
       setFaqTyping(false);return;
