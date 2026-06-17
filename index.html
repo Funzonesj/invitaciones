@@ -1033,6 +1033,11 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     const salon=sucAct.nombre;
     const base=window.location.href.split('?')[0];
     const loginLink=base+'?papa='+ev.id;
+    let lineaVenc='_El acceso vence a los 7 dias del evento._';
+    if(ev.anio&&ev.mes&&ev.dia){
+      const fV=new Date(+ev.anio,+ev.mes-1,+ev.dia); fV.setDate(fV.getDate()+7);
+      lineaVenc='_El acceso vence a los 7 dias del evento (el '+fV.getDate()+'/'+(fV.getMonth()+1)+'/'+fV.getFullYear()+')._';
+    }
     const lineas=[
       'Hola '+ev.nomPapa+'!',
       '',
@@ -1046,7 +1051,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
       '*Usuario:* '+ev.user,
       '*Contrasena:* '+ev.pass,
       '',
-      '_El acceso vence al dia siguiente del evento._',
+      lineaVenc,
       '- '+salon,
     ];
     abrirWA(waNum(ev.celPapa), lineas.join('\n'));
@@ -1170,7 +1175,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
               ))}
               <label><span style={S.label}>Edad</span>
                 <div style={{display:'flex',gap:4}}>
-                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} required={form.edadUnidad!=='noaplica'} onChange={e=>setForm({...form,edad:e.target.value})} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
+                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} onChange={e=>setForm({...form,edad:e.target.value})} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
                   <select value={form.edadUnidad||'años'} onChange={e=>setForm({...form,edadUnidad:e.target.value,edad:e.target.value==='noaplica'?'':form.edad})} style={{...S.input,flex:1}}>
                     <option value="años">años</option>
                     <option value="meses">meses</option>
@@ -1245,7 +1250,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
                 <label><span style={S.label}>Usuario</span><input value={form.user} onChange={e=>setForm({...form,user:e.target.value})} style={S.input} placeholder="Se genera automático" required/></label>
                 <label><span style={S.label}>Contraseña</span><input value={form.pass} onChange={e=>setForm({...form,pass:e.target.value})} style={S.input} placeholder="Se genera automático" required/></label>
               </div>
-              {form.user&&form.pass&&<p style={{fontSize:10,color:'#15803d',marginTop:6,fontWeight:600}}>✓ Credenciales listas — vencen al día siguiente del cumpleaños</p>}
+              {form.user&&form.pass&&<p style={{fontSize:10,color:'#15803d',marginTop:6,fontWeight:600}}>✓ Credenciales listas — vencen a los 7 días del cumpleaños</p>}
             </div>
             {/* ── Cumpleaños Doble ── */}
             <label style={{display:'flex',alignItems:'center',gap:10,background:'#fefce8',border:'1px solid #fde68a',borderRadius:12,padding:'10px 14px',marginBottom:12,cursor:'pointer'}}>
@@ -3982,6 +3987,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   <div style={{fontSize:10,color:'#64748b',marginBottom:4,textAlign:'center',fontWeight:700}}>↕ Acomodá la imagen (movela para arriba o abajo)</div>
                   <input type="range" min="0" max="100" value={portadaPos} onChange={e=>setPortadaPos(+e.target.value)} style={{width:'100%',accentColor:'#7c3aed'}}/>
                 </div>
+                <button onClick={()=>guardarYVolver()} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'13px',fontSize:14,fontWeight:900,marginBottom:16,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>💾 Guardar y volver al panel de edición</button>
                 <h2 style={{fontWeight:900,fontSize:17,marginBottom:8}}>🎨 {((tematicas||[]).length>=50)?('¡Más de '+(Math.floor((tematicas||[]).length/50)*50).toLocaleString('es-AR')+' Temáticas!'):((tematicas||[]).length+' Temáticas para elegir')}</h2>
                 <input value={ftxt} onChange={e=>setFtxt(e.target.value)} placeholder="🔍 Buscar..." style={{...S.input,marginBottom:10}}/>
                 <div style={{display:'flex',gap:4,overflowX:'auto',paddingBottom:8,marginBottom:12}} className="scrollbar-none">
@@ -4066,7 +4072,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 {form.fotoNino&&(
                   <button onClick={()=>verTarjeta({seccion:seccion,modo:'foto',editPanel:'foto',visto:true})} style={{...S.btn,width:'100%',background:'#ede9fe',color:'#7c3aed',padding:'13px',fontSize:14,fontWeight:900,marginTop:14}}>👁 Ver la tarjeta</button>
                 )}
-                <button onClick={()=>{guardarYVolver();setSeccion('home');setEditoTarjeta(true);}} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>✓ Listo, enviar tu tarjeta</button>
+                <button onClick={()=>guardarYVolver()} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>💾 Guardar y volver al panel de edición</button>
+                <button onClick={()=>{guardarYVolver();setSeccion('home');setEditoTarjeta(true);}} style={{...S.btn,width:'100%',background:'#0f172a',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginTop:8}}>✓ Listo, enviar tu tarjeta</button>
                 <canvas ref={canvasRef} style={{display:'none'}}/>
               </div>
             )}
@@ -4916,7 +4923,7 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
   return (
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',background:suc.fondoPase?('#0f172a'):('linear-gradient(160deg,'+col+', #7c3aed 55%, #0ea5e9)'),backgroundImage:suc.fondoPase?('url('+suc.fondoPase+')'):undefined,backgroundSize:'cover',backgroundPosition:'center',backgroundAttachment:'fixed'}}>
       {cerrar}
-      {musTrack&&<audio ref={musRef} src={musTrack} loop preload="auto"></audio>}
+      {musTrack&&<audio ref={musRef} src={musTrack} preload="auto"></audio>}
       <div style={{flex:1,display:'flex',flexDirection:'column',justifyContent:'center',maxWidth:480,margin:'0 auto',width:'100%'}}>
         <PaseFotos fotos={fotos} col={col} logo={suc.logo} nombre={ev.nombre} fraseIni={ev.albumFraseIni} fraseFin={ev.albumFraseFin} portada={_portadaIni} portadaFin={_portadaFin} portadaColor={ev.albumPortadaColor} portadaFinColor={ev.albumFinalColor} fondo={suc.fondoPase} fotoNino={_cardImg} onEnd={()=>{const el=musRef.current;if(!el)return;let v=el.volume||0.6;const fade=setInterval(()=>{v-=0.04;if(v<=0.02){try{el.pause();el.volume=0.6;}catch(e){}setMusOn(false);clearInterval(fade);}else{try{el.volume=Math.max(0,v);}catch(e){}}},260);}}/>
       </div>
@@ -5123,7 +5130,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   return(
     <div style={{background:'white',minHeight:'100vh',fontFamily:'Arial,sans-serif',maxWidth:480,margin:'0 auto'}}>
       {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.6)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>}
-      {musTrack&&<audio ref={musRef} src={musTrack} loop preload="auto"></audio>}
+      {musTrack&&<audio ref={musRef} src={musTrack} preload="auto"></audio>}
       {musOn&&<div style={{position:'fixed',inset:0,pointerEvents:'none',zIndex:6,overflow:'hidden'}}>
         {[[4,0],[11,1],[18,2],[25,3],[75,0],[82,1],[89,2],[95,3]].map(([lf,k],i)=>(
           <div key={i} style={{position:'absolute',left:lf+'%',bottom:'-6%',fontSize:(30+(i%3)*10)+'px',opacity:.45,animation:'heartUp '+(5+k)+'s '+(i*0.7)+'s ease-in infinite','--hx':((lf<50?-1:1)*(15+i*3))+'px','--hr':((lf<50?-1:1)*20)+'deg'}}>🩵</div>
