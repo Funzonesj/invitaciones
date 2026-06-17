@@ -2363,6 +2363,7 @@ function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
   const [selSuc,setSelSuc]=useState(((sucursales[0]||{}).id)||'sz-1');
   const suc=sucursales.find(s=>s.id===selSuc)||sucursales[0]||{};
   const [msg,setMsg]=useState('');
+  const [copyDest,setCopyDest]=useState('');
   function flash(t){setMsg(t);flashOk(t);setTimeout(()=>setMsg(''),2200);}
   function comprimir(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{const M=1000;let w=img.width,h=img.height;if(w>h&&w>M){h=Math.round(h*M/w);w=M;}else if(h>=w&&h>M){w=Math.round(w*M/h);h=M;}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',0.85));};img.onerror=rej;img.src=ev.target.result;};r.onerror=rej;r.readAsDataURL(file);});}
   async function subirImg(file){const du=await comprimir(file);let u=du;try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:du})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(e){}return u;}
@@ -2415,6 +2416,18 @@ function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
   function addQA(){setQA([...faqQA,{q:'',r:''}]);}
   function updQA(i,k,v){const arr=faqQA.slice();arr[i]={...arr[i],[k]:v};setQA(arr);}
   function delQA(i){setQA(faqQA.filter((_,x)=>x!==i));}
+  const fotosSalon=suc.fotosSalon||[];
+  async function addFotoSalon(file){if(!file)return;flash('Subiendo foto…');const u=await subirImg(file);updSuc('fotosSalon',fotosSalon.concat(u));flash('✓ Foto lista');}
+  function delFotoSalon(fi){updSuc('fotosSalon',fotosSalon.filter((_,x)=>x!==fi));}
+  function copiarA(){
+    const destId=copyDest; if(!destId||destId===selSuc)return;
+    const dest=sucursales.find(s=>s.id===destId);
+    if(!window.confirm('Esto va a REEMPLAZAR las reglas, adicionales y preguntas de "'+((dest&&dest.nombre)||'el otro salón')+'" con una COPIA de "'+(suc.nombre||'')+'" (incluye las fotos). Después podés editar cada salón por separado. ¿Continuar?'))return;
+    const copia={reglas:suc.reglas||'',faqTexto:suc.faqTexto||'',adicionales:JSON.parse(JSON.stringify(suc.adicionales||[])),faqQA:JSON.parse(JSON.stringify(suc.faqQA||[])),fotosSalon:JSON.parse(JSON.stringify(suc.fotosSalon||[]))};
+    setSucursales(p=>p.map(s=>s.id===destId?{...s,...copia}:s));
+    setCopyDest('');
+    flash('✓ Copiado a '+((dest&&dest.nombre)||'el otro salón'));
+  }
   const ip={...S.input};
   return(
     <div className="fade-in" style={{maxWidth:720,margin:'0 auto',padding:'20px 16px'}}>
@@ -2489,6 +2502,36 @@ function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
         <textarea value={iaConfig.faqPrompt!=null?iaConfig.faqPrompt:FAQ_PROMPT_DEF} onChange={e=>setIaConfig(c=>({...c,faqPrompt:e.target.value}))} rows={4} style={{...ip,resize:'vertical',fontFamily:'inherit'}}/>
         <button onClick={()=>setIaConfig(c=>({...c,faqPrompt:FAQ_PROMPT_DEF}))} style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'7px 12px',fontSize:11,fontWeight:700,marginTop:6}}>↺ Restaurar instrucción por defecto</button>
       </div>
+
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>📷 Imágenes del salón</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Fotos del salón (mesas, espacios, medidas…). El papá las ve en una galería debajo de las preguntas frecuentes.</p>
+        {fotosSalon.length>0&&(
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>
+            {fotosSalon.map((f,fi)=>(
+              <div key={fi} style={{position:'relative'}}>
+                <img src={f} alt="" style={{width:84,height:84,objectFit:'cover',borderRadius:10}}/>
+                <button onClick={()=>delFotoSalon(fi)} style={{position:'absolute',top:-6,right:-6,background:'#ef4444',color:'white',border:'none',borderRadius:'50%',width:22,height:22,fontSize:12,cursor:'pointer'}}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <label style={{...S.btn,background:'#0ea5e9',color:'white',padding:'8px 14px',fontSize:12,fontWeight:800,cursor:'pointer'}}>📷 Agregar foto<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>addFotoSalon(e.target.files[0])}/></label>
+      </div>
+
+      {sucursales.length>1&&(
+        <div style={{...S.card,marginBottom:14,border:'1px solid #bae6fd',background:'#f0f9ff'}}>
+          <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>📑 Copiar a otro salón</h3>
+          <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Copia reglas, adicionales, preguntas e imágenes de <b>{suc.nombre}</b> a otro salón. Es una copia independiente: después editás cada salón por separado.</p>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            <select value={copyDest} onChange={e=>setCopyDest(e.target.value)} style={{...ip,flex:1,minWidth:160,marginBottom:0}}>
+              <option value="">Elegí el salón destino…</option>
+              {sucursales.filter(s=>s.id!==selSuc).map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+            <button onClick={copiarA} disabled={!copyDest} style={{...S.btn,background:copyDest?'#0ea5e9':'#e2e8f0',color:copyDest?'white':'#94a3b8',padding:'10px 16px',fontSize:13,fontWeight:800}}>📑 Copiar</button>
+          </div>
+        </div>
+      )}
 
       <button onClick={()=>flash('✓ ¡Guardado!')} style={{...S.btn,background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',width:'100%',padding:14,fontSize:14,fontWeight:900}}>💾 Guardar</button>
     </div>
@@ -3634,6 +3677,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [faqChat,setFaqChat]=useState([]);
   const [faqTyping,setFaqTyping]=useState(false);
   const [adicSel,setAdicSel]=useState(null); // adicional abierto en el detalle
+  const [fotoZoom,setFotoZoom]=useState(null); // foto del salón ampliada
 
   const suc=sucursales.find(s=>s.id===papaSesion.sucId)||sucursales[0];
   // Importante: si la temática real todavía no cargó, NO caer a tematicas[0]
@@ -4624,22 +4668,17 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   <div style={{fontWeight:800,fontSize:14,color:'#1e293b',marginBottom:4}}>Tenes alguna consulta?</div>
                   <div style={{fontSize:12,color:'#94a3b8'}}>Preguntame sobre el salon, el evento o los servicios.</div>
                 </div>
-                {(iaConfig.faqItems||[]).length>0&&(
+                {((suc&&suc.faqQA)||[]).filter(x=>x&&x.q&&x.q.trim()).length>0&&(
                   <div style={{width:'100%'}}>
                     <div style={{fontSize:11,fontWeight:700,color:'#94a3b8',textAlign:'center',marginBottom:8}}>PREGUNTAS FRECUENTES</div>
                     <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                      {(iaConfig.faqItems||[]).slice(0,5).map(function(item){return(
-                        <button key={item.id} onClick={()=>setFaqChat([{de:'user',txt:item.pregunta},{de:'ia',txt:item.respuesta}])}
+                      {((suc&&suc.faqQA)||[]).filter(x=>x&&x.q&&x.q.trim()).slice(0,6).map(function(qa,qi){return(
+                        <button key={qi} onClick={()=>setFaqChat([{de:'user',txt:qa.q},{de:'ia',txt:qa.r||''}])}
                           style={{padding:'10px 14px',borderRadius:12,fontSize:12,border:'1px solid #e2e8f0',background:'#f8fafc',cursor:'pointer',color:'#475569',fontWeight:600,textAlign:'left'}}>
-                          {'❓ '}{item.pregunta}
+                          {'❓ '}{qa.q}
                         </button>
                       );})}
                     </div>
-                  </div>
-                )}
-                {(iaConfig.faqItems||[]).length===0&&(
-                  <div style={{background:'#f8fafc',borderRadius:12,padding:14,fontSize:12,color:'#94a3b8',textAlign:'center',width:'100%'}}>
-                    {'El salon aun no cargo preguntas frecuentes. Podes escribirme igual y te respondo.'}
                   </div>
                 )}
               </div>
@@ -4666,6 +4705,16 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <button type="submit" style={{...S.btn,background:'#7c3aed',color:'white',padding:'10px 18px',flexShrink:0}}>Enviar</button>
           </form>
           {faqChat.length>0&&<button onClick={()=>setFaqChat([])} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:11,marginTop:8}}>Limpiar chat</button>}
+          {((suc&&suc.fotosSalon)||[]).length>0&&(
+            <div style={{...S.card,marginTop:12}}>
+              <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>📷 Imágenes del salón</h3>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(110px,1fr))',gap:8}}>
+                {(suc.fotosSalon||[]).map((f,fi)=>(
+                  <img key={fi} src={f} alt="" onClick={()=>setFotoZoom(f)} style={{width:'100%',aspectRatio:'1',objectFit:'cover',borderRadius:10,cursor:'pointer'}}/>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -4700,6 +4749,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               })}
             </div>
           )}
+        </div>
+      )}
+      {fotoZoom&&(
+        <div onClick={()=>setFotoZoom(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.9)',zIndex:1100,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <img src={fotoZoom} alt="" style={{maxWidth:'100%',maxHeight:'90vh',borderRadius:12}}/>
+          <button onClick={()=>setFotoZoom(null)} style={{position:'fixed',top:14,right:14,background:'rgba(255,255,255,.2)',color:'white',border:'none',borderRadius:'50%',width:42,height:42,fontSize:20,cursor:'pointer'}}>✕</button>
         </div>
       )}
       {adicSel&&(
