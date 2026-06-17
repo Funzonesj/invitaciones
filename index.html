@@ -1908,7 +1908,7 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
         <input value={cfg[kApi]||''} onChange={e=>set(kApi,e.target.value)} style={S.input} placeholder="Pegá aquí la API key del servicio" autoComplete="off"/>
       </label>
       <label style={{display:'block',maxWidth:220}}><span style={S.label}>💲 Precio al papá ($)</span>
-        <input type="number" value={cfg[kPrecio]||0} onChange={e=>set(kPrecio,+e.target.value)} style={S.input}/>
+        <input type="number" value={cfg[kPrecio]==null?'':cfg[kPrecio]} onChange={e=>set(kPrecio,e.target.value===''?'':+e.target.value)} style={S.input}/>
       </label>
     </div>
   );
