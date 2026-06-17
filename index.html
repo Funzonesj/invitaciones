@@ -4155,7 +4155,6 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   <button onClick={()=>verTarjeta({seccion:seccion,modo:'foto',editPanel:'foto',visto:true})} style={{...S.btn,width:'100%',background:'#ede9fe',color:'#7c3aed',padding:'13px',fontSize:14,fontWeight:900,marginTop:14}}>👁 Ver la tarjeta</button>
                 )}
                 <button onClick={()=>guardarYVolver()} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'13px',fontSize:14,fontWeight:900,marginTop:8,boxShadow:'0 4px 12px rgba(22,163,74,.3)'}}>💾 Guardar y volver al panel de edición</button>
-                <button onClick={()=>{guardarYVolver();setSeccion('home');setEditoTarjeta(true);}} style={{...S.btn,width:'100%',background:'#0f172a',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginTop:8}}>✓ Listo, enviar tu tarjeta</button>
                 <canvas ref={canvasRef} style={{display:'none'}}/>
               </div>
             )}
