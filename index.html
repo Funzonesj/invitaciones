@@ -2374,7 +2374,38 @@ function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
   function delAdic(id){setAdic(adic.filter(a=>a.id!==id));}
   async function fotoAdic(id,file){if(!file)return;flash('Subiendo foto…');const u=await subirImg(file);updAdic(id,'foto',u);flash('✓ Foto lista');}
   async function subirVideoF(file){if(!file)return null;const ext=(String(file.name).split('.').pop()||'mp4').toLowerCase();const ct=file.type||'video/mp4';try{const r=await fetch('/api/subir-init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:ct,ext})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.upload_url||!d.file_url)return null;const up=await fetch(d.upload_url,{method:'PUT',headers:{'Content-Type':ct},body:file});if(!up.ok)return null;return d.file_url;}catch(e){return null;}}
-  async function vidAdic(id,file){if(!file)return;flash('Subiendo video… (puede tardar)');const u=await subirVideoF(file);if(u){updAdic(id,'video',u);flash('✓ Video listo');}else flash('No se pudo subir el video');}
+  // Comprime SOLO si puede garantizar MP4 (compatible con todos los celus). Si no, devuelve null y se sube el original.
+  async function comprimirVideoCompat(file,onProg){
+    try{
+      if(!window.MediaRecorder||!MediaRecorder.isTypeSupported)return null;
+      const mp4Type=['video/mp4;codecs=avc1','video/mp4'].find(t=>MediaRecorder.isTypeSupported(t));
+      if(!mp4Type)return null;
+      const url=URL.createObjectURL(file);
+      const v=document.createElement('video');v.src=url;v.playsInline=true;v.preload='auto';
+      await new Promise((res,rej)=>{v.onloadedmetadata=res;v.onerror=rej;});
+      const dur=v.duration; if(!dur||dur===Infinity){URL.revokeObjectURL(url);return null;}
+      let w=v.videoWidth,h=v.videoHeight; if(!w||!h){URL.revokeObjectURL(url);return null;}
+      const M=720; if(w>h&&w>M){h=Math.round(h*M/w);w=M;}else if(h>=w&&h>M){w=Math.round(w*M/h);h=M;}
+      const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');
+      const cs=c.captureStream(30);
+      let audioCtx=null,dest=null;
+      try{audioCtx=new (window.AudioContext||window.webkitAudioContext)();const sn=audioCtx.createMediaElementSource(v);dest=audioCtx.createMediaStreamDestination();sn.connect(dest);}catch(e){audioCtx=null;dest=null;}
+      const stream=new MediaStream([...cs.getVideoTracks(),...(dest?dest.stream.getAudioTracks():[])]);
+      const chunks=[];const rec=new MediaRecorder(stream,{mimeType:mp4Type,videoBitsPerSecond:2200000});
+      rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);};
+      const stopped=new Promise(res=>{rec.onstop=res;});
+      let raf;function draw(){try{ctx.drawImage(v,0,0,w,h);}catch(e){}if(onProg&&dur)onProg(Math.min(99,Math.round((v.currentTime/dur)*100)));raf=requestAnimationFrame(draw);}
+      if(audioCtx&&audioCtx.state==='suspended'){try{await audioCtx.resume();}catch(e){}}
+      rec.start(200);try{v.currentTime=0;}catch(e){}await v.play();draw();
+      await new Promise(res=>{v.onended=res;});
+      cancelAnimationFrame(raf);try{rec.stop();}catch(e){}await stopped;
+      try{v.pause();}catch(e){}URL.revokeObjectURL(url);if(audioCtx){try{audioCtx.close();}catch(e){}}
+      const blob=new Blob(chunks,{type:'video/mp4'});
+      if(!blob.size||blob.size>=file.size)return null;
+      return new File([blob],(file.name||'video').replace(/\.[^.]+$/,'')+'.mp4',{type:'video/mp4'});
+    }catch(e){return null;}
+  }
+  async function vidAdic(id,file){if(!file)return;flash('Preparando video…');let toUp=file;try{const comp=await comprimirVideoCompat(file,p=>setMsg('Comprimiendo video… '+p+'%'));if(comp)toUp=comp;}catch(e){}flash('Subiendo video… (puede tardar)');const u=await subirVideoF(toUp);if(u){updAdic(id,'video',u);flash('✓ Video listo');}else flash('No se pudo subir el video');}
   function setPrecios(id,arr){updAdic(id,'precios',arr);}
   function addPrecio(id){const a=adic.find(x=>x.id===id)||{};setPrecios(id,[...(a.precios||[]),{detalle:'',precio:''}]);}
   function updPrecio(id,idx,k,v){const a=adic.find(x=>x.id===id)||{};const arr=(a.precios||[]).slice();arr[idx]={...arr[idx],[k]:(k==='precio')?(v===''?'':+v):v};setPrecios(id,arr);}
