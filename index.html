@@ -2621,7 +2621,7 @@ function MenuGView({iaConfig,papaSesion}){
   const hayPersonas=(+M||0)+(+H||0)+(+N||0)>0;
   const haySel=Object.keys(sel).some(k=>sel[k]);
   const hayResultado=!!(res.salado.length||res.nino.length||res.dulce.length||res.pernil||res.torta);
-  const nip={...S.input};
+  const nip={...S.input,width:'100%',minWidth:0,boxSizing:'border-box'};
   function imprimir(){
     const L=[];
     if(res.pernil)L.push(['🍖 '+res.pernil.nombre,'consultá en el local (~'+res.pernil.paraPers+' pers)']);
@@ -2643,13 +2643,13 @@ function MenuGView({iaConfig,papaSesion}){
           <div><h2 style={{fontWeight:900,fontSize:18,margin:0}}>Calculadora de Menú</h2><p style={{fontSize:11,color:'#64748b',margin:0}}>Poné cuántos vienen y qué vas a llevar.</p></div>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:10}}>
-          <label><span style={S.label}>👩 Mujeres</span><input type="number" min={0} value={M} onChange={e=>{setM(e.target.value);reset();}} style={nip} placeholder="0"/></label>
-          <label><span style={S.label}>👨 Hombres</span><input type="number" min={0} value={H} onChange={e=>{setH(e.target.value);reset();}} style={nip} placeholder="0"/></label>
-          <label><span style={S.label}>🧒 Niños</span><input type="number" min={0} value={N} onChange={e=>{setN(e.target.value);reset();}} style={nip} placeholder="0"/></label>
+          <label style={{minWidth:0}}><span style={S.label}>👩 Mujeres</span><input type="number" min={0} value={M} onChange={e=>{setM(e.target.value);reset();}} style={nip} placeholder="0"/></label>
+          <label style={{minWidth:0}}><span style={S.label}>👨 Hombres</span><input type="number" min={0} value={H} onChange={e=>{setH(e.target.value);reset();}} style={nip} placeholder="0"/></label>
+          <label style={{minWidth:0}}><span style={S.label}>🧒 Niños</span><input type="number" min={0} value={N} onChange={e=>{setN(e.target.value);reset();}} style={nip} placeholder="0"/></label>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-          <label><span style={S.label}>🕐 Momento</span><select value={hor} onChange={e=>{setHor(e.target.value);reset();}} style={nip}><option value="comida">Almuerzo / Cena</option><option value="merienda">Merienda</option></select></label>
-          <label><span style={S.label}>⏱️ Horas</span><input type="number" min={1} value={horas} onChange={e=>{setHoras(e.target.value);reset();}} style={nip}/></label>
+          <label style={{minWidth:0}}><span style={S.label}>🕐 Momento</span><select value={hor} onChange={e=>{setHor(e.target.value);reset();}} style={nip}><option value="comida">Almuerzo / Cena</option><option value="merienda">Merienda</option></select></label>
+          <label style={{minWidth:0}}><span style={S.label}>⏱️ Horas</span><input type="number" min={1} value={horas} onChange={e=>{setHoras(e.target.value);reset();}} style={nip}/></label>
         </div>
       </div>
       <div style={{...S.card,marginBottom:14}}>
