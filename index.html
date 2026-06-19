@@ -2668,7 +2668,7 @@ function MenuGView({iaConfig,papaSesion}){
       {verResultado&&hayResultado&&(
         <div style={{...S.card}}>
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:10}}>📋 Cantidades a comprar</h3>
-          {res.pernil&&<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'10px 12px',fontSize:12,color:'#9a3412',marginBottom:10,fontWeight:600}}>🍖 <b>{res.pernil.nombre}:</b> consultá la cantidad en el local (para ~{res.pernil.paraPers} personas). Siempre sobra un poco.</div>}
+          {res.pernil&&<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'10px 12px',fontSize:12,color:'#9a3412',marginBottom:10,fontWeight:600}}>🍖 <b>{res.pernil.nombre}:</b> consultá la cantidad en el local gastronómico, según la cantidad de invitados. Siempre sobra un poco.</div>}
           {[['🧑 Para adultos',res.salado],['🧒 Para niños',res.nino],['🍰 Dulce',res.dulce]].map(([l,arr],gi)=>arr.length>0&&(
             <div key={gi} style={{marginBottom:10}}>
               <div style={{fontSize:12,fontWeight:800,color:'#5b21b6',marginBottom:4}}>{l}</div>
@@ -2754,7 +2754,7 @@ function AdminMenuG({setVista,iaConfig,setIaConfig}){
         </div>
         <div style={{...S.card}}>
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:10}}>📋 Cantidades a comprar</h3>
-          {res.pernil&&<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'10px 12px',fontSize:12,color:'#9a3412',marginBottom:10,fontWeight:600}}>🍖 <b>{res.pernil.nombre}:</b> consultá la cantidad en el local donde lo comprás (para ~{res.pernil.paraPers} personas). Ellos lo arman; siempre sobra un poco.</div>}
+          {res.pernil&&<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'10px 12px',fontSize:12,color:'#9a3412',marginBottom:10,fontWeight:600}}>🍖 <b>{res.pernil.nombre}:</b> consultá la cantidad en el local gastronómico, según la cantidad de invitados. Ellos lo arman; siempre sobra un poco.</div>}
           {[['salado','🧑 Salado (adultos)',res.salado],['nino','🧒 De niño',res.nino],['dulce','🍰 Dulce',res.dulce]].map(([k,l,arr])=>arr.length>0&&(
             <div key={k} style={{marginBottom:10}}>
               <div style={{fontSize:12,fontWeight:800,color:'#5b21b6',marginBottom:4}}>{l}</div>
