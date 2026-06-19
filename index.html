@@ -2547,28 +2547,28 @@ const MENUG_DEF={
   snackPapasAd:26, snackManiAd:12, snackNino:18,
   bebidaL:1.5, bebidaHoras:3, bebidaExtraL:0.2,
   alimentos:[
-    {id:'g-emp',nombre:'Empanada',emoji:'🥟',grupo:'salado',g:90,gusto:3},
-    {id:'g-empc',nombre:'Empanada de copetín',emoji:'🥟',grupo:'salado',g:45,gusto:3},
-    {id:'g-piz',nombre:'Pizza/prepizza (porción)',emoji:'🍕',grupo:'salado',g:90,gusto:2},
-    {id:'g-peb',nombre:'Pebete/sánguche',emoji:'🥖',grupo:'salado',g:80,gusto:2},
-    {id:'g-migat',nombre:'Sándwich miga triple',emoji:'🥪',grupo:'salado',g:25,gusto:2},
-    {id:'g-migas',nombre:'Sándwich miga simple',emoji:'🥪',grupo:'salado',g:10,gusto:2},
-    {id:'g-tartsal',nombre:'Tarta salada (porción)',emoji:'🥧',grupo:'salado',g:100,gusto:1},
+    {id:'g-emp',nombre:'Empanada',emoji:'🥟',grupo:'salado',g:90,gusto:3,compra:'docena'},
+    {id:'g-empc',nombre:'Empanada de copetín',emoji:'🥟',grupo:'salado',g:45,gusto:3,compra:'docena'},
+    {id:'g-piz',nombre:'Pizza/prepizza (porción)',emoji:'🍕',grupo:'salado',g:90,gusto:2,compra:'u'},
+    {id:'g-peb',nombre:'Pebete/sánguche',emoji:'🥖',grupo:'salado',g:80,gusto:2,compra:'docena'},
+    {id:'g-migat',nombre:'Sándwich miga triple',emoji:'🥪',grupo:'salado',g:25,gusto:2,compra:'docena'},
+    {id:'g-migas',nombre:'Sándwich miga simple',emoji:'🥪',grupo:'salado',g:10,gusto:2,compra:'docena'},
+    {id:'g-tartsal',nombre:'Tarta salada (porción)',emoji:'🥧',grupo:'salado',g:100,gusto:1,compra:'u'},
     {id:'g-pernil',nombre:'Pernil',emoji:'🍖',grupo:'salado',g:80,gusto:0,especial:'pernil'},
-    {id:'g-pancho',nombre:'Pancho',emoji:'🌭',grupo:'nino',g:90,gusto:3},
-    {id:'g-pizzeta',nombre:'Pizzeta',emoji:'🍕',grupo:'nino',g:45,gusto:3},
-    {id:'g-hamb',nombre:'Hamburguesa',emoji:'🍔',grupo:'nino',g:120,gusto:3},
-    {id:'g-migan',nombre:'Sándwich de miga',emoji:'🥪',grupo:'nino',g:25,gusto:2},
-    {id:'g-empjq',nombre:'Empanada j-y-q',emoji:'🥟',grupo:'nino',g:90,gusto:1},
+    {id:'g-pancho',nombre:'Pancho',emoji:'🌭',grupo:'nino',g:90,gusto:3,compra:'u'},
+    {id:'g-pizzeta',nombre:'Pizzeta',emoji:'🍕',grupo:'nino',g:45,gusto:3,compra:'custom',pack:50,compraU:'bolsón (50u)'},
+    {id:'g-hamb',nombre:'Hamburguesa',emoji:'🍔',grupo:'nino',g:120,gusto:3,compra:'u'},
+    {id:'g-migan',nombre:'Sándwich de miga',emoji:'🥪',grupo:'nino',g:25,gusto:2,compra:'docena'},
+    {id:'g-empjq',nombre:'Empanada j-y-q',emoji:'🥟',grupo:'nino',g:90,gusto:1,compra:'docena'},
     {id:'g-torta',nombre:'Torta',emoji:'🎂',grupo:'dulce',g:100,gusto:0,especial:'torta'},
-    {id:'g-medialuna',nombre:'Medialuna',emoji:'🥐',grupo:'dulce',g:40,gusto:1},
-    {id:'g-factura',nombre:'Factura',emoji:'🥐',grupo:'dulce',g:50,gusto:1},
-    {id:'g-magdalena',nombre:'Magdalena',emoji:'🧁',grupo:'dulce',g:30,gusto:1},
-    {id:'g-brownie',nombre:'Brownie (porción)',emoji:'🍫',grupo:'dulce',g:50,gusto:1},
-    {id:'g-masafina',nombre:'Masa fina',emoji:'🍪',grupo:'dulce',g:15,gusto:1},
-    {id:'g-palmerita',nombre:'Palmerita',emoji:'🍪',grupo:'dulce',g:15,gusto:1},
-    {id:'g-maicena',nombre:'Alfajor de maicena',emoji:'🍪',grupo:'dulce',g:20,gusto:1},
-    {id:'g-pastafrola',nombre:'Pastafrola (porción)',emoji:'🥧',grupo:'dulce',g:80,gusto:1},
+    {id:'g-medialuna',nombre:'Medialuna',emoji:'🥐',grupo:'dulce',g:40,gusto:1,compra:'docena'},
+    {id:'g-factura',nombre:'Factura',emoji:'🥐',grupo:'dulce',g:50,gusto:1,compra:'docena'},
+    {id:'g-magdalena',nombre:'Magdalena',emoji:'🧁',grupo:'dulce',g:30,gusto:1,compra:'docena'},
+    {id:'g-brownie',nombre:'Brownie (porción)',emoji:'🍫',grupo:'dulce',g:50,gusto:1,compra:'u'},
+    {id:'g-masafina',nombre:'Masa fina',emoji:'🍪',grupo:'dulce',g:15,gusto:1,compra:'docena'},
+    {id:'g-palmerita',nombre:'Palmerita',emoji:'🍪',grupo:'dulce',g:15,gusto:1,compra:'docena'},
+    {id:'g-maicena',nombre:'Alfajor de maicena',emoji:'🍪',grupo:'dulce',g:20,gusto:1,compra:'docena'},
+    {id:'g-pastafrola',nombre:'Pastafrola (porción)',emoji:'🥧',grupo:'dulce',g:80,gusto:1,compra:'u'},
   ],
 };
 function calcMenuG(cfg,inp){
@@ -2580,10 +2580,18 @@ function calcMenuG(cfg,inp){
   const sel=inp.sel||{};
   const eleg=al.filter(a=>sel[a.id]);
   const out={salado:[],nino:[],dulce:[],pernil:null,torta:null,snacks:[],bebidaL:0,bebidaPP:0};
+  // Cómo se muestra/compra cada ítem: por unidad, docena, media docena o personalizado (paquete/bolsón).
+  const paquete=(u,a)=>{
+    const m=a.compra||'u';
+    if(m==='docena'){const c=Math.ceil(u/12);return {cant:c,u:'docena'+(c===1?'':'s')};}
+    if(m==='media'){const c=Math.ceil(u/6);return {cant:c,u:'½ doc.'};}
+    if(m==='custom'){const p=(+a.pack>0)?+a.pack:1;return {cant:Math.ceil(u/p),u:a.compraU||('paq. x'+p)};}
+    return {cant:u,u:'u'};
+  };
   const repartir=(lista,total,destino)=>{
     const suma=lista.reduce((s,a)=>s+(+a.gusto||0),0);
     if(suma<=0)return;
-    lista.forEach(a=>{const g=total*(+a.gusto||0)/suma; destino.push({nombre:a.nombre,emoji:a.emoji,unidades:Math.ceil(g/((+a.g)||1)),g:Math.round(g)});});
+    lista.forEach(a=>{const g=total*(+a.gusto||0)/suma;const un=Math.ceil(g/((+a.g)||1));const pk=paquete(un,a);destino.push({nombre:a.nombre,emoji:a.emoji,unidades:un,g:Math.round(g),cant:pk.cant,u:pk.u});});
   };
   // SALADO adultos
   let saladoTot=(M*(+sal.mujer||450)+H*(+sal.hombre||700))*fS;
@@ -2625,10 +2633,10 @@ function MenuGView({iaConfig,papaSesion}){
   function imprimir(){
     const L=[];
     if(res.pernil)L.push(['🍖 '+res.pernil.nombre,'consultá en el local (~'+res.pernil.paraPers+' pers)']);
-    res.salado.forEach(it=>L.push([(it.emoji||'')+' '+it.nombre,it.unidades+' u']));
-    res.nino.forEach(it=>L.push([(it.emoji||'')+' '+it.nombre,it.unidades+' u']));
+    res.salado.forEach(it=>L.push([(it.emoji||'')+' '+it.nombre,it.cant+' '+it.u]));
+    res.nino.forEach(it=>L.push([(it.emoji||'')+' '+it.nombre,it.cant+' '+it.u]));
     if(res.torta)L.push([(res.torta.emoji||'🎂')+' '+res.torta.nombre,res.torta.porciones+' porciones']);
-    res.dulce.forEach(it=>L.push([(it.emoji||'')+' '+it.nombre,it.unidades+' u']));
+    res.dulce.forEach(it=>L.push([(it.emoji||'')+' '+it.nombre,it.cant+' '+it.u]));
     L.push(['🥤 Bebida',res.bebidaL+' L']);
     res.snacks.forEach(x=>L.push([x.nombre,x.g+' g']));
     const rows=L.map(r=>'<div class=r><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join('');
@@ -2672,7 +2680,7 @@ function MenuGView({iaConfig,papaSesion}){
           {[['🧑 Para adultos',res.salado],['🧒 Para niños',res.nino],['🍰 Dulce',res.dulce]].map(([l,arr],gi)=>arr.length>0&&(
             <div key={gi} style={{marginBottom:10}}>
               <div style={{fontSize:12,fontWeight:800,color:'#5b21b6',marginBottom:4}}>{l}</div>
-              {arr.map((it,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8,fontSize:13,padding:'5px 0',borderBottom:'1px solid #f1f5f9'}}><span style={{flex:1,minWidth:0}}>{it.emoji} {it.nombre}</span><b style={{whiteSpace:'nowrap'}}>{it.unidades} u</b></div>))}
+              {arr.map((it,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8,fontSize:13,padding:'5px 0',borderBottom:'1px solid #f1f5f9'}}><span style={{flex:1,minWidth:0}}>{it.emoji} {it.nombre}</span><b style={{whiteSpace:'nowrap'}}>{it.cant} {it.u}</b></div>))}
             </div>
           ))}
           {res.torta&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8,fontSize:13,padding:'5px 0',borderBottom:'1px solid #f1f5f9'}}><span style={{flex:1,minWidth:0}}>{res.torta.emoji} {res.torta.nombre}</span><b style={{whiteSpace:'nowrap'}}>{res.torta.porciones} porciones</b></div>}
@@ -2694,7 +2702,7 @@ function AdminMenuG({setVista,iaConfig,setIaConfig}){
   function guardar(){setIaConfig(c=>({...c,menuG:cfg}));setMsg('✓ Guardado');flashOk('✓ ¡Calculador guardado!');setTimeout(()=>setMsg(''),2500);}
   const setG=(grp,k,v)=>setCfg(c=>({...c,[grp]:{...c[grp],[k]:v===''?'':+v}}));
   const setNum=(k,v)=>setCfg(c=>({...c,[k]:v===''?'':+v}));
-  const updAl=(id,k,v)=>setCfg(c=>({...c,alimentos:c.alimentos.map(a=>a.id===id?{...a,[k]:(k==='g'||k==='gusto')?(v===''?'':+v):v}:a)}));
+  const updAl=(id,k,v)=>setCfg(c=>({...c,alimentos:c.alimentos.map(a=>a.id===id?{...a,[k]:(k==='g'||k==='gusto'||k==='pack')?(v===''?'':+v):v}:a)}));
   const delAl=(id)=>setCfg(c=>({...c,alimentos:c.alimentos.filter(a=>a.id!==id)}));
   const addAl=(grupo)=>setCfg(c=>({...c,alimentos:[...c.alimentos,{id:'g-'+Math.floor(Math.random()*1e6),nombre:'Nuevo',emoji:'🍽️',grupo,g:50,gusto:1}]}));
   // ── probador ──
@@ -2705,13 +2713,31 @@ function AdminMenuG({setVista,iaConfig,setIaConfig}){
   const grupos=[['salado','🧑 Salado (adultos)'],['nino','🧒 De niño'],['dulce','🍰 Dulce']];
   const nip={...S.input,width:60,padding:'5px 6px',fontSize:13,textAlign:'center'};
   const Rows=({lista})=>(<div style={{display:'flex',flexDirection:'column',gap:5}}>{lista.map(it=>(
-    <div key={it.id} style={{display:'flex',alignItems:'center',gap:5,background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'6px 8px',flexWrap:'wrap'}}>
-      <input value={it.emoji||''} maxLength={2} onChange={e=>updAl(it.id,'emoji',e.target.value)} style={{...S.input,width:36,padding:'5px 2px',fontSize:16,textAlign:'center'}}/>
-      <input value={it.nombre||''} onChange={e=>updAl(it.id,'nombre',e.target.value)} style={{...S.input,flex:1,minWidth:90,padding:'5px 8px',fontSize:12,fontWeight:700}}/>
-      <span style={{fontSize:11,color:'#64748b'}}>g/u</span>
-      <input type="number" step="any" min="0" value={it.g} onChange={e=>updAl(it.id,'g',e.target.value)} style={nip}/>
-      {it.especial?(<span style={{fontSize:10,fontWeight:800,color:'#9a3412',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:6,padding:'3px 6px'}}>{it.especial==='pernil'?'🍖 reserva':'🎂 reserva'}</span>):(<React.Fragment><span style={{fontSize:11,color:'#64748b'}}>gusto</span><input type="number" step="1" min="0" value={it.gusto} onChange={e=>updAl(it.id,'gusto',e.target.value)} style={{...nip,width:48}}/></React.Fragment>)}
-      <button onClick={()=>delAl(it.id)} style={{background:'none',border:'none',cursor:'pointer',fontSize:15,color:'#ef4444'}}>🗑️</button>
+    <div key={it.id} style={{background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'6px 8px'}}>
+      <div style={{display:'flex',alignItems:'center',gap:5,flexWrap:'wrap'}}>
+        <input value={it.emoji||''} maxLength={2} onChange={e=>updAl(it.id,'emoji',e.target.value)} style={{...S.input,width:36,padding:'5px 2px',fontSize:16,textAlign:'center'}}/>
+        <input value={it.nombre||''} onChange={e=>updAl(it.id,'nombre',e.target.value)} style={{...S.input,flex:1,minWidth:90,padding:'5px 8px',fontSize:12,fontWeight:700}}/>
+        <span style={{fontSize:11,color:'#64748b'}}>g/u</span>
+        <input type="number" step="any" min="0" value={it.g} onChange={e=>updAl(it.id,'g',e.target.value)} style={nip}/>
+        {it.especial?(<span style={{fontSize:10,fontWeight:800,color:'#9a3412',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:6,padding:'3px 6px'}}>{it.especial==='pernil'?'🍖 reserva':'🎂 reserva'}</span>):(<React.Fragment><span style={{fontSize:11,color:'#64748b'}}>gusto</span><input type="number" step="1" min="0" value={it.gusto} onChange={e=>updAl(it.id,'gusto',e.target.value)} style={{...nip,width:48}}/></React.Fragment>)}
+        <button onClick={()=>delAl(it.id)} style={{background:'none',border:'none',cursor:'pointer',fontSize:15,color:'#ef4444'}}>🗑️</button>
+      </div>
+      {!it.especial&&(
+        <div style={{display:'flex',alignItems:'center',gap:5,flexWrap:'wrap',marginTop:6}}>
+          <span style={{fontSize:11,color:'#64748b'}}>se compra por:</span>
+          <select value={it.compra||'u'} onChange={e=>updAl(it.id,'compra',e.target.value)} style={{...S.input,width:'auto',padding:'5px 6px',fontSize:12}}>
+            <option value="u">Unidad</option>
+            <option value="docena">Docena</option>
+            <option value="media">Media docena</option>
+            <option value="custom">Paquete / bolsón…</option>
+          </select>
+          {it.compra==='custom'&&(<React.Fragment>
+            <span style={{fontSize:11,color:'#64748b'}}>rinde</span>
+            <input type="number" min="1" value={it.pack==null?'':it.pack} onChange={e=>updAl(it.id,'pack',e.target.value)} style={{...nip,width:54}}/>
+            <input value={it.compraU||''} onChange={e=>updAl(it.id,'compraU',e.target.value)} placeholder="nombre (ej: bolsón)" style={{...S.input,flex:1,minWidth:80,padding:'5px 8px',fontSize:12}}/>
+          </React.Fragment>)}
+        </div>
+      )}
     </div>
   ))}</div>);
   return(
@@ -2758,7 +2784,7 @@ function AdminMenuG({setVista,iaConfig,setIaConfig}){
           {[['salado','🧑 Salado (adultos)',res.salado],['nino','🧒 De niño',res.nino],['dulce','🍰 Dulce',res.dulce]].map(([k,l,arr])=>arr.length>0&&(
             <div key={k} style={{marginBottom:10}}>
               <div style={{fontSize:12,fontWeight:800,color:'#5b21b6',marginBottom:4}}>{l}</div>
-              {arr.map((it,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'4px 0',borderBottom:'1px solid #f1f5f9'}}><span>{it.emoji} {it.nombre}</span><b>{it.unidades} u <span style={{color:'#94a3b8',fontWeight:400,fontSize:11}}>({it.g} g)</span></b></div>))}
+              {arr.map((it,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'4px 0',borderBottom:'1px solid #f1f5f9'}}><span>{it.emoji} {it.nombre}</span><b>{it.cant} {it.u} <span style={{color:'#94a3b8',fontWeight:400,fontSize:11}}>({it.g} g)</span></b></div>))}
             </div>
           ))}
           {res.torta&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'4px 0',borderBottom:'1px solid #f1f5f9'}}><span>{res.torta.emoji} {res.torta.nombre}</span><b>{res.torta.porciones} porciones <span style={{color:'#94a3b8',fontWeight:400,fontSize:11}}>({res.torta.g} g)</span></b></div>}
