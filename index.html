@@ -3854,8 +3854,10 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [fotoZoom,setFotoZoom]=useState(null); // foto del salón ampliada
   const [enc,setEnc]=useState((papaSesion&&papaSesion.encuesta)||{}); // respuestas de la encuesta
   // Grabación de audio del mensajito de agradecimiento (para redes). Se guarda en el panel, NO se manda al WhatsApp.
-  const [recState,setRecState]=useState('idle'); // idle | rec | uploading
+  const [recState,setRecState]=useState('idle'); // idle | rec
   const [recSegs,setRecSegs]=useState(0);
+  const [audioLocal,setAudioLocal]=useState(''); // blob URL para escuchar al instante (sin esperar la subida)
+  const [audioSubiendo,setAudioSubiendo]=useState(false); // la subida sigue en segundo plano
   const recRef=useRef(null);const recChunks=useRef([]);const recTimer=useRef(null);
   async function subirAudioEnc(blob){
     try{
@@ -3878,17 +3880,21 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         try{stream.getTracks().forEach(t=>t.stop());}catch(e){}
         if(recTimer.current){clearInterval(recTimer.current);recTimer.current=null;}
         const blob=new Blob(recChunks.current,{type:(mr.mimeType||'audio/webm')});
-        setRecState('uploading');flashOk('Subiendo audio…');
-        const url=await subirAudioEnc(blob);
-        if(url){setEnc(x=>({...x,agradecimientoAudio:url}));flashOk('✓ Audio listo');}
+        // Reproducción INSTANTÁNEA desde el celular (no espera la subida)
+        try{const lu=URL.createObjectURL(blob);setAudioLocal(lu);}catch(e){}
         setRecState('idle');
+        // La subida queda en segundo plano (para guardarlo en el panel / redes)
+        setAudioSubiendo(true);
+        const url=await subirAudioEnc(blob);
+        if(url){setEnc(x=>({...x,agradecimientoAudio:url}));}
+        setAudioSubiendo(false);
       };
       recRef.current=mr;mr.start();setRecState('rec');setRecSegs(0);
       recTimer.current=setInterval(()=>setRecSegs(s=>{const n=s+1;if(n>=120){detenerGrab();}return n;}),1000);
     }catch(e){alert('No pudimos acceder al micrófono. Revisá que el navegador tenga permiso para grabar. 🎤');}
   }
   function detenerGrab(){try{recRef.current&&recRef.current.state!=='inactive'&&recRef.current.stop();}catch(e){}}
-  function borrarAudioAgrad(){if(!window.confirm('¿Borrar el audio grabado?'))return;setEnc(x=>{const n={...x};delete n.agradecimientoAudio;return n;});}
+  function borrarAudioAgrad(){if(!window.confirm('¿Borrar el audio grabado?'))return;try{if(audioLocal)URL.revokeObjectURL(audioLocal);}catch(e){}setAudioLocal('');setAudioSubiendo(false);setEnc(x=>{const n={...x};delete n.agradecimientoAudio;return n;});}
 
   const suc=sucursales.find(s=>s.id===papaSesion.sucId)||sucursales[0];
   // Importante: si la temática real todavía no cargó, NO caer a tematicas[0]
@@ -4198,22 +4204,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const encuestaHecha=!!(papaSesion&&papaSesion.encuesta);
   const eventoPaso=true||(function(){try{const f=new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,(+(String(papaSesion.hFin||'23').split(':')[0]))||23,59);return new Date()>f;}catch(e){return false;}})(); // ⚠️ TEMP pruebas: el 'true||' deja la encuesta SIEMPRE disponible; sacar 'true||' para que sea solo después del evento
   function enviarEncuesta(){
-    const cal=v=>v==='excelente'?'Excelente':v==='buena'?'Buena':v==='mala'?'Mala':'(sin responder)';
-    const sn=v=>v===true?'Sí':v===false?'No':'-';
     if(!enc.encargada||!enc.personal){alert('Marcá al menos la calificación de la Encargada y del Personal.');return;}
+    if(audioSubiendo){alert('Esperá unos segundos, se está guardando el audio del mensajito… 🎤');return;}
+    if(recState==='rec'){alert('Primero detené la grabación del audio. ⏹');return;}
+    // Se guarda directo en el panel del salón (NO abre WhatsApp). El auto-guardado de eventos lo sube a la base.
     const e={...enc,fecha:papaSesion.dia+'/'+papaSesion.mes+'/'+papaSesion.anio,nombre:papaSesion.nombre};
     setPapaSesion(ps=>{const n={...ps,encuesta:e};setEventos(evs=>evs.map(x=>x.id===n.id?{...x,encuesta:e}:x));return n;});
-    const msg='📝 *Encuesta de satisfacción* — '+papaSesion.nombre+' ('+e.fecha+')'+
-      '\n👩 Encargada: '+cal(e.encargada)+
-      '\n🧑‍🍳 Mozos: atentos '+sn(e.m1)+' · presentes '+sn(e.m2)+' · bebida '+sn(e.m3)+' · mesas limpias '+sn(e.m4)+
-      '\n🎮 Auxiliares presentes: '+sn(e.aux)+
-      '\n🚻 Baños limpios: '+(e.banos==='novisito'?'No los visitó':sn(e.banos==='si'))+
-      '\n⭐ Atención del personal: '+cal(e.personal)+
-      (e.pagoExtra==='si'?('\n💵 Abonó extra: $'+(e.pagoMonto!=null&&e.pagoMonto!==''?(+e.pagoMonto).toLocaleString('es-AR'):'?')+(e.pagoConcepto&&e.pagoConcepto.trim()?(' ('+e.pagoConcepto.trim()+')'):'')):(e.pagoExtra==='no'?'\n💵 Abonó extra: No':''))+
-      (e.comentario&&e.comentario.trim()?('\n💬 Comentario: '+e.comentario.trim()):'')+
-      ((e.agradecimientoAudio||(e.agradecimiento&&e.agradecimiento.trim()))?('\n💜 Dejó un mensajito de agradecimiento'+(e.agradecimientoAudio?' (🎤 audio)':'')+' — míralo en el panel de Encuestas'):'')+
-      (e.critica&&e.critica.trim()?('\n🔒 Crítica (privada, solo encargada): '+e.critica.trim()):'');
-    abrirWA(waNum(suc.tel||''),msg);
     flashOk('✓ ¡Gracias por tu encuesta!');
     setSeccion('home');
   }
@@ -5109,21 +5105,22 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <p style={{fontSize:11,color:'#7c3aed',marginBottom:8,lineHeight:1.4}}>Dejales unas palabras lindas a los chicos que trabajaron. Podés <b>grabar un audio 🎤</b> o <b>escribirlo ✍️</b> (o las dos cosas). Queda guardado para el salón.</p>
                 {/* Grabador de audio */}
                 <div style={{background:'white',border:'1px solid #e9d5ff',borderRadius:10,padding:10,marginBottom:8}}>
-                  {!enc.agradecimientoAudio?(
+                  {!(audioLocal||enc.agradecimientoAudio)?(
                     recState==='rec'?(
                       <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
                         <span style={{display:'inline-flex',alignItems:'center',gap:6,fontWeight:800,fontSize:13,color:'#dc2626'}}><span style={{width:10,height:10,borderRadius:'50%',background:'#dc2626',display:'inline-block',animation:'pulse 1s infinite'}}></span>Grabando… {Math.floor(recSegs/60)}:{('0'+(recSegs%60)).slice(-2)}</span>
                         <button onClick={detenerGrab} style={{...S.btn,background:'#dc2626',color:'white',padding:'9px 16px',fontSize:13,fontWeight:800}}>⏹ Detener</button>
                       </div>
-                    ):recState==='uploading'?(
-                      <div style={{fontSize:13,fontWeight:700,color:'#7c3aed'}}>⏳ Subiendo audio…</div>
                     ):(
                       <button onClick={grabarAgrad} style={{...S.btn,background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',padding:'10px 16px',fontSize:13,fontWeight:800,width:'100%'}}>🎤 Grabar un audio</button>
                     )
                   ):(
-                    <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-                      <audio src={enc.agradecimientoAudio} controls style={{height:34,flex:1,minWidth:160}}></audio>
-                      <button onClick={borrarAudioAgrad} style={{...S.btn,background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',padding:'7px 12px',fontSize:12,fontWeight:800}}>🗑 Borrar</button>
+                    <div>
+                      <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                        <audio src={audioLocal||enc.agradecimientoAudio} controls style={{height:34,flex:1,minWidth:160}}></audio>
+                        <button onClick={borrarAudioAgrad} style={{...S.btn,background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',padding:'7px 12px',fontSize:12,fontWeight:800}}>🗑 Borrar</button>
+                      </div>
+                      {audioSubiendo&&<div style={{fontSize:11,color:'#7c3aed',marginTop:6,fontWeight:700}}>⏳ Guardando el audio… (ya lo podés escuchar)</div>}
                     </div>
                   )}
                 </div>
@@ -5135,7 +5132,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <textarea value={enc.critica||''} onChange={e=>setEnc(x=>({...x,critica:e.target.value}))} rows={3} placeholder="Escribí tu crítica o sugerencia (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:0}}/>
               </div>
               <textarea value={enc.comentario||''} onChange={e=>setEnc(x=>({...x,comentario:e.target.value}))} rows={2} placeholder="¿Algo más para agregar? (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:12}}/>
-              <button onClick={enviarEncuesta} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',padding:'15px',fontSize:15,fontWeight:900,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Enviar encuesta</button>
+              <button onClick={enviarEncuesta} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',padding:'15px',fontSize:15,fontWeight:900,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Guardar encuesta</button>
+              <p style={{fontSize:11,color:'#94a3b8',textAlign:'center',marginTop:8}}>Se guarda en el salón. ¡Gracias por tu opinión! 💚</p>
             </div>);
           })()}
         </div>
