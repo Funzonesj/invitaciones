@@ -424,7 +424,7 @@ async function leerLineasPdf(file){
 }
 
 // Interpreta las líneas → eventos
-function parseHorarios(lineas){
+function parseHorarios(lineas,naLegajo){
   const eventos=[]; let dia=null; let buf=[];
   const reDia=/^(LUN|MAR|MI[EÉ]|JUE|VIE|S[AÁ]B|DOM)\.?\s/i;
   const reFecha=/(\d{2})\/(\d{2})\/(\d{4})/;
@@ -443,7 +443,7 @@ function parseHorarios(lineas){
     if(reDia.test(ln)){ const m=ln.match(reFecha); if(m) dia=m[3]+'-'+m[2]+'-'+m[1]; buf=[]; continue; }
     if(/Listado de horarios|Generado:|Indentif|Identif|Personal a/i.test(ln)) continue;
     if(reSoloNum.test(ln)){ buf.push(+ln); continue; }
-    if(reNoAsig.test(ln)){ buf.push(null); continue; }
+    if(reNoAsig.test(ln)){ buf.push('NA'); continue; }
     const mt=ln.match(reTime);
     if(mt && dia){
       const before=ln.slice(0,mt.index).trim();
@@ -464,7 +464,7 @@ function parseHorarios(lineas){
         }
         if(i+1<lineas.length){ const nx=lineas[i+1]; if(!reDia.test(nx)&&!reSoloNum.test(nx)&&!reNoAsig.test(nx)&&!reTime.test(nx)){ parseCliente(lineas[++i],ev); } }
       }
-      rolesTxt.forEach((rt,idx)=>{ const leg=legajos[idx]; if(leg!=null && !isNaN(leg)) ev.roles.push({rol:rt,legajo:leg}); });
+      rolesTxt.forEach((rt,idx)=>{ let leg=legajos[idx]; if(leg==='NA'){ if(naLegajo!=null) ev.roles.push({rol:rt,legajo:+naLegajo}); return; } if(leg!=null && !isNaN(leg)) ev.roles.push({rol:rt,legajo:leg}); });
       if(ev.roles.length) eventos.push(ev);
     }
   }
@@ -497,8 +497,8 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
     const eeAll=await dbAll('fichaje_evento_empleados');
     for(let idx=0;idx<evsAll.length;idx++){ const ev=evsAll[idx]; const mins=idx===0?cfgGen.p1:idx===1?cfgGen.p2:cfgGen.p3; const ing=restarMin(ev.hora_inicio,mins); for(const a of eeAll.filter(x=>x.evento_id===ev.id)) await dbUpdate('fichaje_evento_empleados',a.id,{hora_ingreso_esperada:ing}); }
   }
-  const [cfgGen,setCfgGen]=useState({p1:90,p2:30,p3:30,figuras:[]});
-  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfgGen({p1:+g.data.prep_1||90,p2:+g.data.prep_2||30,p3:+g.data.prep_3||30,figuras:g.data.figuras_hora||[]});})();},[]);
+  const [cfgGen,setCfgGen]=useState({p1:90,p2:30,p3:30,figuras:[],naLegajo:null});
+  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfgGen({p1:+g.data.prep_1||90,p2:+g.data.prep_2||30,p3:+g.data.prep_3||30,figuras:g.data.figuras_hora||[],naLegajo:(g.data.legajo_sin_id!=null?+g.data.legajo_sin_id:null)});})();},[]);
   const empByLegajo=l=>empleados.find(e=>e.legajo===l);
   const nomLegajo=l=>{const e=empByLegajo(l);return e?e.nombre:('#'+l+' (sin cargar)');};
   const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
@@ -513,7 +513,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
   async function elegirPdf(e){ const file=e.target.files[0]; if(!file)return; setLeyendo(true); pdfFileRef.current=file;
     try{
       const lineas=await leerLineasPdf(file);
-      let evs=parseHorarios(lineas);
+      let evs=parseHorarios(lineas,cfgGen.naLegajo);
       evs=calcularIngresos(evs,cfgGen);
       // autodetectar sucursal por paquetes
       const txt=evs.map(x=>x.paquete).join(' ').toLowerCase();
