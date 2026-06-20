@@ -5204,7 +5204,10 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       {seccion==='encuesta'&&(
         <div className="fade-in" style={S.card}>
           <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>{EC.titulo}</h2>
-          <p style={{fontSize:12,color:'#64748b',marginBottom:14}}>{EC.subtitulo}</p>
+          <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>{EC.subtitulo}</p>
+          {(()=>{try{const f=new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia);f.setDate(f.getDate()+3);const dd=('0'+f.getDate()).slice(-2)+'/'+('0'+(f.getMonth()+1)).slice(-2);return(
+            <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:12,padding:'10px 12px',marginBottom:14,fontSize:12,color:'#9a3412',lineHeight:1.5}}>⏳ <b>Importante:</b> tenés <b>3 días después del evento</b> (hasta el <b>{dd}</b>) para completar la encuesta y subir las fotos de los Recuerdos. Después de esa fecha puede que ya no se pueda. ¡No lo dejes pasar! 🙏</div>
+          );}catch(e){return null;}})()}
           {!eventoPaso?(
             <div style={{textAlign:'center',padding:'28px 16px',color:'#94a3b8',background:'#fafafa',borderRadius:14,border:'1px dashed #e2e8f0'}}>
               <div style={{fontSize:38,marginBottom:6}}>🎉</div>
