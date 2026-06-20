@@ -90,6 +90,7 @@ function App(){
       <div className="fade" style={{maxWidth:560,margin:'0 auto',padding:'14px 14px 0'}}>
         {vista==='dashboard'   && <Dashboard sesion={sesion} rol={rol} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx} setVista={setVista}/>}
         {vista==='fichar'      && <Placeholder titulo="📍 Fichar" txt="Acá el empleado va a fichar con GPS + foto + reconocimiento facial. Lo construimos en la próxima etapa."/>}
+        {vista==='miplanilla'  && <MiPlanilla sesion={sesion}/>}
         {vista==='horarios'    && (esDuena||rol==='encargada') && <Horarios sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='registros'   && <Placeholder titulo="📋 Registros de fichaje" txt="Listado de entradas/salidas con estado (en hora / tarde / ausente). Próxima etapa."/>}
         {vista==='pagos'       && (esDuena||rol==='encargada') && <Pagos sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
@@ -131,7 +132,7 @@ function BottomNav({rol,vista,setVista}){
     ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones'],['config','⚙️','Config']]
     : rol==='encargada'
     ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
-    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['registros','📋','Mis fichajes']];
+    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['miplanilla','📅','Mi planilla'],['registros','📋','Mis fichajes']];
   return (
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50}}>
       <div style={{maxWidth:560,margin:'0 auto',display:'flex'}}>
@@ -760,6 +761,83 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
           <div style={{...S.card,background:'#2a2418',border:'1px solid #4a3d1c',fontSize:12,color:C.tx2}}>💜 El <b style={{color:C.oro}}>bonus de encuestas "Excelente"</b> (${(+cfg.bonus_excelente).toLocaleString('es-AR')} por empleado) se sumará automático en la próxima etapa, al conectar con las encuestas del salón.</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ════════ MI PLANILLA (empleado: doble confirmación) ════════ */
+const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const TIPOS=[['simple','Simple','1 evento'],['doble','Doble','2 seguidos'],['2simples','2 simples','2 separados'],['triple','Triple','3 eventos']];
+function tipoCorto(t){return t==='simple'?'S':t==='doble'?'D':t==='2simples'?'2S':t==='triple'?'T':'';}
+function MiPlanilla({sesion}){
+  const hoy=new Date();
+  const [y,setY]=useState(hoy.getFullYear()); const [m,setM]=useState(hoy.getMonth());
+  const [data,setData]=useState({}); const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,bonus_excelente:7000});
+  const [sel,setSel]=useState(null);
+  const cfgId='auto_'+sesion.id; const valorHora=+(sesion.valor_hora||0);
+  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));const mine=c.find(x=>x.id===cfgId);if(mine&&mine.data)setData(mine.data);})();},[]);
+  async function guardar(n){ setData(n); try{await SB.from('fichaje_config').upsert({id:cfgId,data:n});}catch(e){} }
+  function setDia(f,tipo,enc){ const n={...data}; if(!tipo)delete n[f]; else n[f]={tipo,enc:enc||0}; guardar(n); }
+  function horasDe(t){ return t==='simple'?+cfg.horas_simple:t==='doble'?+cfg.horas_doble:t==='2simples'?2*+cfg.horas_simple:t==='triple'?+cfg.horas_triple:0; }
+  function montoDia(d){ return horasDe(d.tipo)*valorHora + (d.enc||0)*(+cfg.bonus_excelente); }
+  const ymStr=y+'-'+('0'+(m+1)).slice(-2);
+  let totMes=0; Object.keys(data).forEach(f=>{ if(f.indexOf(ymStr)===0) totMes+=montoDia(data[f]); });
+  const ndias=new Date(y,m+1,0).getDate(); const off=new Date(y,m,1).getDay();
+  const celdas=[]; for(let i=0;i<off;i++)celdas.push(null); for(let d=1;d<=ndias;d++)celdas.push(d);
+  function fechaDe(d){ return ymStr+'-'+('0'+d).slice(-2); }
+  function prevMes(){ if(m===0){setY(y-1);setM(11);}else setM(m-1); setSel(null); }
+  function nextMes(){ if(m===11){setY(y+1);setM(0);}else setM(m+1); setSel(null); }
+  const selData = sel?data[sel]:null;
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:4}}>📅 Mi planilla</h2>
+      <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Marcá los días que trabajaste y qué hiciste. Es tu registro (después se compara con el del salón).</p>
+      <div style={{...S.card,marginBottom:12}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+          <button onClick={prevMes} style={{...S.btn,...S.btnGhost,padding:'6px 12px',minHeight:0}}>‹</button>
+          <div style={{fontWeight:700,fontFamily:'Syne'}}>{MESES[m]} {y}</div>
+          <button onClick={nextMes} style={{...S.btn,...S.btnGhost,padding:'6px 12px',minHeight:0}}>›</button>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:4}}>
+          {['D','L','M','M','J','V','S'].map((d,i)=><div key={i} style={{textAlign:'center',fontSize:10,color:C.tx2,fontWeight:700,padding:'2px 0'}}>{d}</div>)}
+          {celdas.map((d,i)=>{ if(!d)return <div key={i}></div>; const f=fechaDe(d); const dd=data[f]; const act=sel===f;
+            return (<button key={i} onClick={()=>setSel(f)} style={{aspectRatio:'1',borderRadius:9,border:'1px solid '+(act?C.oro:C.bd),background:dd?'#2a2418':C.surf2,color:C.tx,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:0,position:'relative'}}>
+              <span style={{fontSize:13,fontWeight:dd?800:400}}>{d}</span>
+              {dd&&<span style={{fontSize:9,color:C.oro,fontWeight:800,lineHeight:1}}>{tipoCorto(dd.tipo)}{dd.enc?'·💜':''}</span>}
+            </button>);
+          })}
+        </div>
+      </div>
+
+      {sel && (
+        <div style={{...S.card,marginBottom:12}}>
+          <div style={{fontWeight:700,marginBottom:8}}>{(()=>{const[a,mm,d]=sel.split('-');return d+' de '+MESES[+mm-1];})()}</div>
+          <label style={S.label}>¿Qué trabajaste?</label>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
+            {TIPOS.map(([v,l,sub])=>(
+              <button key={v} onClick={()=>setDia(sel,v,(selData&&selData.enc)||0)} style={{...S.btn,minHeight:0,padding:'8px 10px',fontSize:12,textAlign:'center',...((selData&&selData.tipo===v)?S.btnOro:S.btnGhost)}}>{l}<div style={{fontSize:9,opacity:.7}}>{sub}</div></button>
+            ))}
+          </div>
+          {selData && (
+            <div>
+              <label style={S.label}>¿Cuántas encuestas salieron bien (Excelente)?</label>
+              <div style={{display:'flex',gap:6,marginBottom:10}}>
+                {[0,1,2,3].map(n=>(<button key={n} onClick={()=>setDia(sel,selData.tipo,n)} style={{...S.btn,minHeight:0,padding:'8px 14px',fontSize:13,...((selData.enc||0)===n?S.btnOro:S.btnGhost)}}>{n}</button>))}
+              </div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',background:C.surf2,borderRadius:10,padding:'10px 12px'}}>
+                <span style={{fontSize:12,color:C.tx2}}>Ese día deberías cobrar</span>
+                <span className="num" style={{color:C.verde,fontSize:16}}>${Math.round(montoDia(selData)).toLocaleString('es-AR')}</span>
+              </div>
+              <button onClick={()=>{setDia(sel,null);setSel(null);}} style={{...S.btn,background:'#3a2020',color:C.rojo,width:'100%',marginTop:8,fontSize:13,padding:'9px'}}>Borrar este día</button>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{...S.card,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div><div style={{fontSize:12,color:C.tx2}}>Tu estimación de {MESES[m]}</div><div style={{fontSize:10,color:C.tx2}}>{valorHora?('$'+valorHora.toLocaleString('es-AR')+'/h'):'⚠️ falta tu valor hora'}</div></div>
+        <div className="num" style={{fontSize:26,color:C.verde}}>${Math.round(totMes).toLocaleString('es-AR')}</div>
+      </div>
     </div>
   );
 }
