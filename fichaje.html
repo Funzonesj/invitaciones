@@ -1220,17 +1220,17 @@ function MisHorarios({sesion}){
               <div key={i} style={{...S.card,marginBottom:8,padding:0,overflow:'hidden'}}>
                 <button onClick={()=>setAbierto(op?null:key)} style={{width:'100%',background:'none',border:'none',color:C.tx,cursor:'pointer',display:'flex',alignItems:'center',gap:8,padding:'13px 14px',textAlign:'left',fontSize:15}}>
                   <span style={{color:C.tx2,fontSize:13}}>Ingreso</span>
-                  <span className="num" style={{color:C.verde,fontSize:18}}>{ing}</span>
+                  <span style={{fontFamily:'Arial, Helvetica, sans-serif',fontWeight:'bold',color:C.verde,fontSize:21}}>{ing}</span>
                   <span style={{flex:1}}></span>
                   <span style={{color:C.tx2,fontSize:13}}>{op?'▲':'ver detalle ▼'}</span>
                 </button>
                 {op && (
-                  <div style={{padding:'0 14px 13px',fontSize:13,color:C.tx2,display:'flex',flexDirection:'column',gap:5}}>
-                    <div>🎟️ Paquete: <b style={{color:C.tx}}>{it.e.paquete}</b></div>
-                    <div>👤 Tu puesto: <b style={{color:C.tx}}>{it.a.rol_en_evento}</b></div>
-                    <div>🕐 Evento: <b style={{color:C.tx}}>{it.e.hora_inicio} a {it.e.hora_fin} hs</b></div>
-                    {it.e.festejado&&<div>🎂 Festejado: <b style={{color:C.tx}}>{it.e.festejado}</b></div>}
-                    {it.e.cliente&&<div>👪 Cliente: <b style={{color:C.tx}}>{it.e.cliente}</b></div>}
+                  <div style={{padding:'0 14px 13px',fontSize:14,display:'flex',flexDirection:'column',gap:4}}>
+                    <div style={{fontWeight:700}}>{it.e.paquete}, de {String(it.e.hora_inicio||'').replace(/:00$/,'')} a {String(it.e.hora_fin||'').replace(/:00$/,'')} hs</div>
+                    <div style={{fontWeight:700}}>{it.a.rol_en_evento}</div>
+                    {it.e.cliente&&<div style={{color:C.tx2}}>Mamá: {it.e.cliente}</div>}
+                    {it.e.festejado&&<div style={{color:C.tx2}}>Niño: {it.e.festejado}</div>}
+                    {it.e.adicionales&&!/no registra/i.test(it.e.adicionales)&&<div style={{color:C.oro}}>{it.e.adicionales}</div>}
                   </div>
                 )}
               </div>
