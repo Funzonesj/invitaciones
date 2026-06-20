@@ -4888,7 +4888,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 if(adicSel.precio!==''&&adicSel.precio!=null)return <div style={{fontSize:22,fontWeight:900,color:'#7c3aed',marginBottom:14}}>${(+adicSel.precio).toLocaleString('es-AR')}</div>;
                 return null;
               })()}
-              <button onClick={()=>{const t='Hola! Necesito consultar por '+(adicSel.titulo||adicSel.nombre)+' para mi evento el día '+papaSesion.dia+'/'+papaSesion.mes+'/'+papaSesion.anio+' en el horario de '+papaSesion.hIni+' a '+papaSesion.hFin+' hs.';abrirWA(waNum(adicSel.wa||suc.tel||''),t);}} style={{...S.btn,width:'100%',background:'#22c55e',color:'white',padding:'15px',fontSize:16,fontWeight:900,boxShadow:'0 4px 14px rgba(34,197,94,.35)'}}>💬 Consultar / Contratar</button>
+              <button onClick={()=>{const t='Hola! Necesito consultar sobre mi evento el día '+papaSesion.dia+'/'+papaSesion.mes+'/'+papaSesion.anio+' en el horario de '+papaSesion.hIni+' a '+papaSesion.hFin+' hs. Adicional: '+(adicSel.titulo||adicSel.nombre)+'.';abrirWA(waNum(adicSel.wa||suc.tel||''),t);}} style={{...S.btn,width:'100%',background:'#22c55e',color:'white',padding:'15px',fontSize:16,fontWeight:900,boxShadow:'0 4px 14px rgba(34,197,94,.35)'}}>💬 Consultar / Contratar</button>
             </div>
           </div>
         </div>
