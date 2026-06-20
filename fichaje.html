@@ -689,6 +689,13 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
     const ids=new Set(evs.map(e=>e.id)); const evById={}; evs.forEach(e=>evById[e.id]=e);
     const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>ids.has(a.evento_id));
     const porEmp={}; ee.forEach(a=>{ const key=a.empleado_id||('leg:'+a.legajo); (porEmp[key]=porEmp[key]||[]).push(a); });
+    // Bonus encuesta "Excelente": cruzar con las encuestas del salón (por fecha + hora + salón)
+    const sucNombreSel=(sucNom(sucSel)||'').toLowerCase();
+    const encs=await cargarEncuestasSalon();
+    const excByKey={}; encs.forEach(e=>{ if((e._sucNombre||'').toLowerCase()!==sucNombreSel)return; const exc=e.encuesta&&(e.encuesta.personal==='excelente'||e.encuesta.encargada==='excelente'); if(!exc)return; const fecha=(e.anio||'')+'-'+_pad2(e.mes)+'-'+_pad2(e.dia); excByKey[fecha+'|'+String(e.hIni||'').trim()]=true; });
+    const figMap={}; (cfg.figuras_hora||[]).forEach(f=>{ figMap[String(f.nombre||'').toLowerCase()]=!!f.bonus; });
+    const bonusRolOk=rol=>{ if(!/\d+\s*hs/i.test(rol||''))return true; return figMap[String(rol||'').toLowerCase()]===true; };
+    const bonusMonto=+cfg.bonus_excelente||0;
     const filas=[];
     Object.keys(porEmp).forEach(key=>{
       const asigs=porEmp[key];
@@ -708,10 +715,12 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
         cerrar();
       });
       const horasTot=detalle.reduce((s,d)=>s+d.horas,0);
-      filas.push({key,nombre,legajo:asigs[0].legajo,valorHora,detalle,horasTot,monto:horasTot*valorHora,sinValor:valorHora===0});
+      let bonusCount=0; asigs.forEach(a=>{ const e=evById[a.evento_id]; if(!e)return; if(excByKey[e.fecha+'|'+String(e.hora_inicio||'').trim()] && bonusRolOk(a.rol_en_evento)) bonusCount++; });
+      const bonusTot=bonusCount*bonusMonto;
+      filas.push({key,nombre,legajo:asigs[0].legajo,valorHora,detalle,horasTot,montoHoras:horasTot*valorHora,bonusCount,bonusTot,monto:horasTot*valorHora+bonusTot,sinValor:valorHora===0});
     });
     filas.sort((a,b)=>(a.legajo||999)-(b.legajo||999));
-    setRes({filas,total:filas.reduce((s,f)=>s+f.monto,0)}); setCargando(false);
+    setRes({filas,total:filas.reduce((s,f)=>s+f.monto,0),totalBonus:filas.reduce((s,f)=>s+f.bonusTot,0)}); setCargando(false);
   }
 
   function exportarPDF(){
@@ -723,7 +732,8 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
       doc.setFontSize(11); doc.text((f.legajo!=null?('#'+f.legajo+' '):'')+f.nombre+'  ('+money(f.valorHora)+'/h)',14,y); y+=5;
       doc.setFontSize(9);
       f.detalle.forEach(d=>{ if(y>280){doc.addPage();y=16;} doc.text('  '+d.dia+'  '+d.desc+'  '+d.horas+'hs = '+money(d.horas*f.valorHora),16,y); y+=4.5; });
-      doc.setFontSize(10); doc.text('  TOTAL: '+f.horasTot+'hs = '+money(f.monto),16,y); y+=8;
+      if(f.bonusTot>0){ if(y>280){doc.addPage();y=16;} doc.text('  Bonus encuesta Excelente x'+f.bonusCount+' = '+money(f.bonusTot),16,y); y+=4.5; }
+      doc.setFontSize(10); doc.text('  TOTAL: '+f.horasTot+'hs'+(f.bonusTot?(' + bonus'):'')+' = '+money(f.monto),16,y); y+=8;
     });
     if(y>275){doc.addPage();y=16;} doc.setFontSize(13); doc.text('TOTAL A PAGAR: '+money(res.total),14,y);
     doc.save('liquidacion_'+desde+'_'+hasta+'.pdf');
@@ -759,13 +769,14 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
                 <div style={{fontWeight:700}}>{f.legajo!=null&&<span className="num" style={{color:C.oro}}>#{f.legajo} </span>}{f.nombre}</div>
                 <div className="num" style={{fontSize:18,color:C.verde}}>{money(f.monto)}</div>
               </div>
-              <div style={{fontSize:11,color:C.tx2,marginBottom:6}}>{f.sinValor?<span style={{color:C.amar}}>⚠️ Falta cargar el valor hora</span>:(money(f.valorHora)+'/h · '+f.horasTot+'hs')}</div>
+              <div style={{fontSize:11,color:C.tx2,marginBottom:6}}>{f.sinValor?<span style={{color:C.amar}}>⚠️ Falta cargar el valor hora</span>:(money(f.valorHora)+'/h · '+f.horasTot+'hs'+(f.bonusTot?(' + bonus'):''))}</div>
               <div style={{display:'flex',flexDirection:'column',gap:3}}>
                 {f.detalle.map((d,i)=>(<div key={i} style={{fontSize:12,color:C.tx2,display:'flex',justifyContent:'space-between',gap:8}}><span>{fechaLinda(d.dia)} · {d.desc}</span><span style={{whiteSpace:'nowrap'}}>{d.horas}hs</span></div>))}
+                {f.bonusTot>0 && <div style={{fontSize:12,color:C.oro,fontWeight:700,display:'flex',justifyContent:'space-between',gap:8}}><span>💜 Bonus encuesta Excelente ×{f.bonusCount}</span><span style={{whiteSpace:'nowrap'}}>+{money(f.bonusTot)}</span></div>}
               </div>
             </div>
           ))}
-          <div style={{...S.card,background:'#2a2418',border:'1px solid #4a3d1c',fontSize:12,color:C.tx2}}>💜 El <b style={{color:C.oro}}>bonus de encuestas "Excelente"</b> (${(+cfg.bonus_excelente).toLocaleString('es-AR')} por empleado) se sumará automático en la próxima etapa, al conectar con las encuestas del salón.</div>
+          <div style={{...S.card,background:'#2a2418',border:'1px solid #4a3d1c',fontSize:12,color:C.tx2}}>💜 <b style={{color:C.oro}}>Bonus "Excelente"</b>: ${(+cfg.bonus_excelente).toLocaleString('es-AR')} por cada evento que el papá calificó Excelente. Total bonus del período: <b style={{color:C.oro}}>{money(res.totalBonus||0)}</b>. {(res.totalBonus===0)&&'(Si no aparece, revisá que la encuesta esté Excelente y que la fecha/hora del evento coincida con la cargada en el salón.)'}</div>
         </div>
       ))}
       </React.Fragment>)}
