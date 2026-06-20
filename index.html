@@ -2399,7 +2399,9 @@ function AdminEncuestas({setVista,eventos,sucursales}){
             <div>🎮 <b>Auxiliares:</b> presentes {sn(q.aux)}</div>
             <div>🚻 <b>Baños limpios:</b> {q.banos==='novisito'?'No los visitó':sn(q.banos==='si')}</div>
             <div>⭐ <b>Personal:</b> {cal(q.personal)}</div>
-            {q.auxExtra&&<div>➕ <b>Auxiliar extra:</b> {sn(q.auxExtra==='si')}</div>}
+            {q.pagoExtra&&<div>💵 <b>Abonó extra:</b> {q.pagoExtra==='si'?('$'+((q.pagoMonto!=null&&q.pagoMonto!=='')?(+q.pagoMonto).toLocaleString('es-AR'):'?')+(q.pagoConcepto&&q.pagoConcepto.trim()?(' ('+q.pagoConcepto.trim()+')'):'')):'No'}</div>}
+            {q.agradecimiento&&String(q.agradecimiento).trim()&&<div style={{background:'#faf5ff',border:'1px solid #e9d5ff',borderRadius:8,padding:'8px 10px',marginTop:4}}>💜 <b>Agradecimiento:</b> {q.agradecimiento}</div>}
+            {q.critica&&String(q.critica).trim()&&<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'8px 10px',marginTop:4}}>🔒 <b>Crítica (privada):</b> {q.critica}</div>}
             {q.comentario&&String(q.comentario).trim()&&<div style={{background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:8,padding:'8px 10px',marginTop:4}}>💬 {q.comentario}</div>}
           </div>
         </div>
@@ -4169,7 +4171,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       '\n⭐ Atención del personal: '+cal(e.personal)+
       (e.pagoExtra==='si'?('\n💵 Abonó extra: $'+(e.pagoMonto!=null&&e.pagoMonto!==''?(+e.pagoMonto).toLocaleString('es-AR'):'?')+(e.pagoConcepto&&e.pagoConcepto.trim()?(' ('+e.pagoConcepto.trim()+')'):'')):(e.pagoExtra==='no'?'\n💵 Abonó extra: No':''))+
       (e.comentario&&e.comentario.trim()?('\n💬 Comentario: '+e.comentario.trim()):'')+
-      (e.mensajeChicos&&e.mensajeChicos.trim()?('\n💜 Mensaje para los chicos: '+e.mensajeChicos.trim()):'');
+      (e.agradecimiento&&e.agradecimiento.trim()?('\n💜 Agradecimiento para los chicos: '+e.agradecimiento.trim()):'')+
+      (e.critica&&e.critica.trim()?('\n🔒 Crítica (privada, solo encargada): '+e.critica.trim()):'');
     abrirWA(waNum(suc.tel||''),msg);
     flashOk('✓ ¡Gracias por tu encuesta!');
     setSeccion('home');
@@ -5062,9 +5065,14 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 )}
               </div>
               <div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}>
-                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8',marginBottom:4}}>💜 Un mensajito para los chicos que trabajaron</div>
-                <p style={{fontSize:11,color:'#7c3aed',marginBottom:8,lineHeight:1.4}}>Es muy importante para nosotros: un agradecimiento o una crítica constructiva. Escribilo acá, o al tocar Enviar podés mandarnos un <b>audio por WhatsApp</b>. 🎤</p>
-                <textarea value={enc.mensajeChicos||''} onChange={e=>setEnc(x=>({...x,mensajeChicos:e.target.value}))} rows={3} placeholder="Escribí tu mensaje (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:0}}/>
+                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8',marginBottom:4}}>💜 Mensajito de agradecimiento para los chicos</div>
+                <p style={{fontSize:11,color:'#7c3aed',marginBottom:8,lineHeight:1.4}}>Si querés dejarles unas palabras lindas a los chicos que trabajaron. También podés mandarnos un <b>audio por WhatsApp</b> al tocar Enviar. 🎤</p>
+                <textarea value={enc.agradecimiento||''} onChange={e=>setEnc(x=>({...x,agradecimiento:e.target.value}))} rows={3} placeholder="Escribí tu mensaje de agradecimiento (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:0}}/>
+              </div>
+              <div style={{...S.card,marginBottom:12}}>
+                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>🔒 Crítica constructiva (privada)</div>
+                <p style={{fontSize:11,color:'#64748b',marginBottom:8,lineHeight:1.4}}>Algo que podamos mejorar. Esto lo ve <b>solo la encargada del salón</b> — no los chicos.</p>
+                <textarea value={enc.critica||''} onChange={e=>setEnc(x=>({...x,critica:e.target.value}))} rows={3} placeholder="Escribí tu crítica o sugerencia (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:0}}/>
               </div>
               <textarea value={enc.comentario||''} onChange={e=>setEnc(x=>({...x,comentario:e.target.value}))} rows={2} placeholder="¿Algo más para agregar? (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:12}}/>
               <button onClick={enviarEncuesta} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',padding:'15px',fontSize:15,fontWeight:900,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Enviar encuesta</button>
