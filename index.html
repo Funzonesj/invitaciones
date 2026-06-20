@@ -1104,6 +1104,11 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
 
   const [alertaSup,setAlertaSup]=useState(null); // {ev, accion}
   const [borrarEv,setBorrarEv]=useState(null); // evento a borrar (pide confirmación)
+  const [plazoEv,setPlazoEv]=useState(null); // evento para fijar plazo de encuesta/recuerdos
+  const _diasLimAdm=(iaConfig&&+iaConfig.encuestaDiasLimite)||5;
+  function _autoVence(ev){try{const d=new Date(+ev.anio,+ev.mes-1,+ev.dia);d.setDate(d.getDate()+_diasLimAdm);return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2);}catch(e){return '';}}
+  function _fijarPlazo(ev,fecha){setEventos(evs=>evs.map(x=>x.id===ev.id?{...x,encuestaHasta:fecha||undefined}:x));}
+  function _plazoMasDias(ev,n){try{const d=new Date(+ev.anio,+ev.mes-1,+ev.dia);d.setDate(d.getDate()+_diasLimAdm+n);const iso=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);_fijarPlazo(ev,iso);setPlazoEv({...ev,encuestaHasta:iso});}catch(e){}}
   function confirmarBorrar(){ if(!borrarEv)return; const id=borrarEv.id; setEventos(eventos.filter(x=>x.id!==id)); sbDeleteEvento(id); setBorrarEv(null); flashOk('✓ Tarjeta borrada'); }
   function sub(e){
     e.preventDefault();
@@ -1178,6 +1183,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
           <button onClick={()=>copiarLink(ev.id)} title="Copiar link invitado" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>🔗</button>
           <button onClick={()=>{setInvEvId(ev.id);setVista('admin-asistencias');}} title="Ver asistentes" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18,position:'relative'}}>👥<span style={{position:'absolute',top:0,right:0,background:'#7c3aed',color:'white',fontSize:7,borderRadius:99,width:12,height:12,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{cnt}</span></button>
           <button onClick={()=>{setForm({...ev});setEditId(ev.id);setOpen(true);setTemOpen(false);window.scrollTo(0,0);}} title="Editar" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>✏️</button>
+          <button onClick={()=>setPlazoEv(ev)} title="Plazo de encuesta y recuerdos" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>📅</button>
           <button onClick={()=>setBorrarEv(ev)} title="Borrar tarjeta" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>🗑</button>
         </div>
         {!small&&<button onClick={()=>enviarCredsWA(ev)} style={{background:'#16a34a',color:'white',border:'none',padding:'7px',fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #15803d'}}>🔑 Enviar acceso a papá</button>}
@@ -1351,6 +1357,29 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
             <div style={{display:'flex',gap:10}}>
               <button onClick={()=>setBorrarEv(null)} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#64748b',padding:12}}>Cancelar</button>
               <button onClick={confirmarBorrar} style={{...S.btn,flex:1,background:'#dc2626',color:'white',padding:12,fontWeight:900}}>Sí, borrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {plazoEv&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.65)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}} onClick={()=>setPlazoEv(null)}>
+          <div className="fade-in" style={{...S.card,maxWidth:400,width:'100%',padding:22}} onClick={e=>e.stopPropagation()}>
+            <h3 style={{fontWeight:900,fontSize:17,marginBottom:4}}>📅 Plazo de encuesta y recuerdos</h3>
+            <p style={{fontSize:12,color:'#64748b',marginBottom:12}}><b>{plazoEv.nombre}</b> · {plazoEv.dia}/{plazoEv.mes}/{plazoEv.anio}</p>
+            <div style={{background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:10,padding:'10px 12px',fontSize:12,color:'#475569',marginBottom:14}}>
+              Por defecto el papá tiene hasta <b>{_autoVence(plazoEv)}</b> (evento + {_diasLimAdm} días) para completar la encuesta y subir las fotos. Acá podés darle más tiempo.
+            </div>
+            <div style={{fontSize:12,fontWeight:700,color:'#334155',marginBottom:6}}>Sumar días extra:</div>
+            <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+              {[2,3,5,7].map(n=>(<button key={n} onClick={()=>_plazoMasDias(plazoEv,n)} style={{...S.btn,background:'#eef2ff',color:'#4338ca',border:'1px solid #c7d2fe',padding:'8px 14px',fontSize:13,fontWeight:800}}>+{n} días</button>))}
+            </div>
+            <label style={S.label}>…o habilitar hasta una fecha exacta:</label>
+            <input type="date" value={plazoEv.encuestaHasta||''} onChange={e=>{_fijarPlazo(plazoEv,e.target.value);setPlazoEv({...plazoEv,encuestaHasta:e.target.value});}} style={{...S.input,marginBottom:10}}/>
+            {plazoEv.encuestaHasta&&<div style={{fontSize:12,color:'#16a34a',fontWeight:700,marginBottom:10}}>✓ Habilitado hasta el {(()=>{const[a,m,d]=plazoEv.encuestaHasta.split('-');return d+'/'+m;})()}</div>}
+            <div style={{display:'flex',gap:8}}>
+              {plazoEv.encuestaHasta&&<button onClick={()=>{_fijarPlazo(plazoEv,'');setPlazoEv(null);flashOk('✓ Volvió al plazo automático');}} style={{...S.btn,flex:1,background:'#fef2f2',color:'#dc2626',padding:11}}>Volver a automático</button>}
+              <button onClick={()=>{setPlazoEv(null);flashOk('✓ Plazo guardado');}} style={{...S.btn,flex:1,background:'#16a34a',color:'white',padding:11,fontWeight:900}}>Listo</button>
             </div>
           </div>
         </div>
@@ -4369,7 +4398,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const reglasOk=!!(papaSesion&&papaSesion.reglasOk);
   function aceptarReglas(){setPapaSesion(ps=>{const n={...ps,reglasOk:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,reglasOk:true}:e));return n;});flashOk('✓ ¡Condiciones aceptadas!');}
   const encuestaHecha=!!(papaSesion&&papaSesion.encuesta);
-  const eventoPaso=true||(function(){try{const f=new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,(+(String(papaSesion.hFin||'23').split(':')[0]))||23,59);return new Date()>f;}catch(e){return false;}})(); // ⚠️ TEMP pruebas: el 'true||' deja la encuesta SIEMPRE disponible; sacar 'true||' para que sea solo después del evento
+  const _diasLim=(iaConfig&&+iaConfig.encuestaDiasLimite)||5;
+  const _evFin=(function(){try{return new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,(+(String(papaSesion.hFin||'23').split(':')[0]))||23,59);}catch(e){return null;}})();
+  const eventoPaso=_evFin?(new Date()>_evFin):false; // disponible después del evento
+  const _venceDate=(function(){try{ if(papaSesion.encuestaHasta){return new Date(papaSesion.encuestaHasta+'T23:59:59');} const d=new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,23,59); d.setDate(d.getDate()+_diasLim); return d; }catch(e){return null;}})();
+  const encuestaVencida=_venceDate?(new Date()>_venceDate):false; // cerrada pasada la fecha límite
+  const _venceTxt=_venceDate?(('0'+_venceDate.getDate()).slice(-2)+'/'+('0'+(_venceDate.getMonth()+1)).slice(-2)):'';
   function enviarEncuesta(){
     if(!enc.encargada||!enc.personal){alert('Marcá al menos la calificación de la Encargada y del Personal.');return;}
     if(audioSubiendo){alert('Esperá unos segundos, se está guardando el audio del mensajito… 🎤');return;}
@@ -4952,7 +4986,19 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       )}
 
       {/* ══ PASE DE FOTOS (álbum) ══ */}
-      {seccion==='album'&&!encuestaHecha&&(
+      {seccion==='album'&&encuestaVencida&&(
+        <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
+          <div style={S.card}>
+            <h2 style={{fontWeight:900,fontSize:18,marginBottom:8}}>🎞️ Generador de Recuerdos</h2>
+            <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:14,padding:'18px',textAlign:'center'}}>
+              <div style={{fontSize:38,marginBottom:8}}>⛔</div>
+              <p style={{fontWeight:800,fontSize:14,color:'#9a3412',marginBottom:4}}>El plazo para subir las fotos se cerró el {_venceTxt}.</p>
+              <p style={{fontSize:12,color:'#9a3412',lineHeight:1.4}}>Si necesitás más tiempo, comunicate con el salón para que te habiliten unos días más.</p>
+            </div>
+          </div>
+        </div>
+      )}
+      {seccion==='album'&&!encuestaVencida&&!encuestaHecha&&(
         <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
           <div style={S.card}>
             <h2 style={{fontWeight:900,fontSize:18,marginBottom:8}}>🎞️ Generador de Recuerdos</h2>
@@ -4965,7 +5011,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           </div>
         </div>
       )}
-      {seccion==='album'&&encuestaHecha&&(
+      {seccion==='album'&&encuestaHecha&&!encuestaVencida&&(
         <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
           <div style={S.card}>
             <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>🎞️ Generador de Recuerdos</h2>
@@ -5205,13 +5251,19 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         <div className="fade-in" style={S.card}>
           <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>{EC.titulo}</h2>
           <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>{EC.subtitulo}</p>
-          {(()=>{try{const f=new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia);f.setDate(f.getDate()+3);const dd=('0'+f.getDate()).slice(-2)+'/'+('0'+(f.getMonth()+1)).slice(-2);return(
-            <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:12,padding:'10px 12px',marginBottom:14,fontSize:12,color:'#9a3412',lineHeight:1.5}}>⏳ <b>Importante:</b> tenés <b>3 días después del evento</b> (hasta el <b>{dd}</b>) para completar la encuesta y subir las fotos de los Recuerdos. Después de esa fecha puede que ya no se pueda. ¡No lo dejes pasar! 🙏</div>
-          );}catch(e){return null;}})()}
+          {eventoPaso&&!encuestaVencida&&!encuestaHecha&&_venceTxt&&(
+            <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:12,padding:'10px 12px',marginBottom:14,fontSize:12,color:'#9a3412',lineHeight:1.5}}>⏳ <b>Importante:</b> tenés tiempo <b>hasta el {_venceTxt}</b> para completar la encuesta y subir las fotos de los Recuerdos. Después de esa fecha se cierra. ¡No lo dejes pasar! 🙏</div>
+          )}
           {!eventoPaso?(
             <div style={{textAlign:'center',padding:'28px 16px',color:'#94a3b8',background:'#fafafa',borderRadius:14,border:'1px dashed #e2e8f0'}}>
               <div style={{fontSize:38,marginBottom:6}}>🎉</div>
               <p style={{fontWeight:700,fontSize:13}}>La encuesta estará disponible <b>después de tu evento</b>.</p>
+            </div>
+          ):encuestaVencida?(
+            <div style={{textAlign:'center',padding:'28px 16px',color:'#9a3412',background:'#fff7ed',borderRadius:14,border:'1px solid #fed7aa'}}>
+              <div style={{fontSize:38,marginBottom:6}}>⛔</div>
+              <p style={{fontWeight:800,fontSize:14}}>La encuesta se cerró el {_venceTxt}.</p>
+              <p style={{fontSize:12,marginTop:4}}>Si necesitás completarla, comunicate con el salón para que te habiliten unos días más.</p>
             </div>
           ):encuestaHecha?(
             <div style={{textAlign:'center',padding:'24px 16px',color:'#166534',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:14}}>
