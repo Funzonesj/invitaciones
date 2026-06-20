@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#1A1A1A"/>
 <title>Control de Horarios</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -18,9 +18,9 @@
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;background:#1A1A1A;color:#F5F5F5;font-family:'Inter',system-ui,sans-serif;font-size:15px}
-  h1,h2,h3{font-family:'Syne',sans-serif;margin:0}
+  h1,h2,h3{font-family:Arial,Helvetica,sans-serif;font-weight:bold;margin:0}
   input,select,button,textarea{font-family:inherit}
-  .num{font-family:'Syne',sans-serif;font-weight:800}
+  .num{font-family:Arial,Helvetica,sans-serif;font-weight:800}
   @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
   .fade{animation:fade .25s ease}
   ::placeholder{color:#6b6b6b}
@@ -560,7 +560,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
         Object.keys(porDia).length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:'26px'}}>No hay horarios cargados para {sucNom(sucSel)}.<br/>Subí un PDF o cargá manual.</div> :
         Object.keys(porDia).sort().map(f=>(
           <div key={f} style={{marginBottom:16}}>
-            <div style={{fontWeight:700,color:C.oro,fontSize:14,marginBottom:6,fontFamily:'Syne'}}>{fechaLinda(f)}</div>
+            <div style={{fontWeight:700,color:C.oro,fontSize:14,marginBottom:6,fontFamily:'Arial, Helvetica, sans-serif'}}>{fechaLinda(f)}</div>
             {porDia[f].map(ev=>{ const rs=asign.filter(a=>a.evento_id===ev.id); return (
               <div key={ev.id} style={{...S.card,marginBottom:8}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
@@ -921,7 +921,7 @@ function EncuestaImg({ev,verPrivado}){
     const arr=[q.m1,q.m2,q.m3,q.m4,q.aux]; const bien=arr.filter(x=>x===true).length; const tot=arr.filter(x=>x===true||x===false).length;
     return (
       <div style={{...S.card}}>
-        <div style={{fontWeight:800,fontFamily:'Syne',fontSize:16,marginBottom:10}}>{q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}{(ev.hIni||ev.hFin)?(' · '+(ev.hIni||'')+(ev.hFin?(' a '+ev.hFin):'')+' hs'):''}</div>
+        <div style={{fontWeight:800,fontFamily:'Arial, Helvetica, sans-serif',fontSize:16,marginBottom:10}}>{q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}{(ev.hIni||ev.hFin)?(' · '+(ev.hIni||'')+(ev.hFin?(' a '+ev.hFin):'')+' hs'):''}</div>
         <div style={{fontSize:12,color:C.tx2,marginBottom:6}}>¿Cómo salió?</div>
         <div style={{display:'flex',gap:8,marginBottom:8}}>
           <div style={{flex:1,textAlign:'center',background:C.surf2,borderRadius:10,padding:'10px 6px'}}><div style={{fontSize:11,color:C.tx2}}>Encargada</div><div style={{fontWeight:800,color:cal(q.encargada)[1]}}>{cal(q.encargada)[0]}</div></div>
@@ -934,7 +934,7 @@ function EncuestaImg({ev,verPrivado}){
   }
   return (
     <div style={{...S.card}}>
-      <div style={{fontWeight:800,fontFamily:'Syne',fontSize:16}}>📝 Encuesta del papá</div>
+      <div style={{fontWeight:800,fontFamily:'Arial, Helvetica, sans-serif',fontSize:16}}>📝 Encuesta del papá</div>
       {cab}
       <Row l="👩 Encargada" par={cal(q.encargada)}/>
       <Row l="🧑‍🍳 Mozos atentos" par={sn(q.m1)}/>
@@ -1200,7 +1200,7 @@ function Fichar({sesion,sucursales}){
       {paso==='listo' && res && (
         <div style={{...S.card,textAlign:'center'}}>
           <div style={{fontSize:46,marginBottom:6}}>{res.estado==='tarde'?'⚠️':'✅'}</div>
-          <h3 style={{fontFamily:'Syne',fontSize:20}}>{res.tipo==='entrada'?'Entrada':'Salida'} registrada</h3>
+          <h3 style={{fontFamily:'Arial, Helvetica, sans-serif',fontSize:20}}>{res.tipo==='entrada'?'Entrada':'Salida'} registrada</h3>
           {res.fotoUrl&&<img src={res.fotoUrl} alt="" style={{width:80,height:80,borderRadius:'50%',objectFit:'cover',margin:'10px auto',display:'block',border:'2px solid '+C.oro}}/>}
           <div style={{textAlign:'left',background:C.surf2,borderRadius:12,padding:12,marginTop:8,fontSize:13,display:'flex',flexDirection:'column',gap:6}}>
             <div>📍 Ubicación: <b style={{color:C.verde}}>verificada ✓</b></div>
@@ -1269,7 +1269,7 @@ function MisHorarios({sesion}){
         Object.keys(porDia).length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>No tenés horarios cargados por ahora.</div> :
         Object.keys(porDia).sort().map(f=>(
           <div key={f} style={{marginBottom:12}}>
-            <div style={{fontWeight:700,color:C.oro,fontSize:14,marginBottom:6,fontFamily:'Syne'}}>{fechaLinda(f)}</div>
+            <div style={{fontWeight:700,color:C.oro,fontSize:14,marginBottom:6,fontFamily:'Arial, Helvetica, sans-serif'}}>{fechaLinda(f)}</div>
             {porDia[f].map((it,i)=>{ const key=f+'|'+i; const op=abierto===key; const ing=it.a.hora_ingreso_esperada||it.e.hora_inicio; return (
               <div key={i} style={{...S.card,marginBottom:8,padding:0,overflow:'hidden'}}>
                 <button onClick={()=>setAbierto(op?null:key)} style={{width:'100%',background:'none',border:'none',color:C.tx,cursor:'pointer',display:'flex',alignItems:'center',gap:8,padding:'13px 14px',textAlign:'left',fontSize:15}}>
@@ -1375,7 +1375,7 @@ function MiPlanilla({sesion,sucursales}){
       <div style={{...S.card,marginBottom:12}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
           <button onClick={prevMes} style={{...S.btn,...S.btnGhost,padding:'6px 12px',minHeight:0}}>‹</button>
-          <div style={{fontWeight:700,fontFamily:'Syne'}}>{MESES[m]} {y}</div>
+          <div style={{fontWeight:700,fontFamily:'Arial, Helvetica, sans-serif'}}>{MESES[m]} {y}</div>
           <button onClick={nextMes} style={{...S.btn,...S.btnGhost,padding:'6px 12px',minHeight:0}}>›</button>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:4}}>
