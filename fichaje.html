@@ -94,6 +94,7 @@ function App(){
         {vista==='fichar'      && <Fichar sesion={sesion} sucursales={sucursales}/>}
         {vista==='mishorarios' && <MisHorarios sesion={sesion}/>}
         {vista==='miplanilla'  && <MiPlanilla sesion={sesion} sucursales={sucursales}/>}
+        {vista==='misencuestas'&& <MisEncuestas sesion={sesion} sucursales={sucursales}/>}
         {vista==='horarios'    && (esDuena||rol==='encargada') && <Horarios sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='registros'   && (esDuena||rol==='encargada') && <Registros esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='pagos'       && (esDuena||rol==='encargada') && <Pagos sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
@@ -135,7 +136,7 @@ function BottomNav({rol,vista,setVista}){
     ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones'],['config','⚙️','Config']]
     : rol==='encargada'
     ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
-    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla']];
+    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
   return (
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50}}>
       <div style={{maxWidth:560,margin:'0 auto',display:'flex'}}>
@@ -902,6 +903,17 @@ async function cargarEncuestasSalon(){
       .sort((a,b)=>((b.encuesta&&b.encuesta.ts)||0)-((a.encuesta&&a.encuesta.ts)||0));
   }catch(e){return [];}
 }
+function encuestaNegativos(q){ const o=[]; q=q||{};
+  if(q.encargada==='mala')o.push('Encargada: Mala 😕'); else if(q.encargada==='buena')o.push('Encargada: Buena 🙂');
+  if(q.personal==='mala')o.push('Atención del personal: Mala 😕'); else if(q.personal==='buena')o.push('Atención del personal: Buena 🙂');
+  if(q.m1===false)o.push('No estuvieron atentos a los pedidos');
+  if(q.m2===false)o.push('No estuvieron presentes todo el evento');
+  if(q.m3===false)o.push('No hubo bebida constante (jarra de agua)');
+  if(q.m4===false)o.push('Mesas no quedaron limpias/ordenadas');
+  if(q.aux===false)o.push('Auxiliares no estuvieron presentes en los juegos');
+  if(q.banos==='no')o.push('Los baños no estuvieron limpios');
+  return o;
+}
 function EncuestaImg({ev,verPrivado}){
   const q=ev.encuesta||{};
   const cal=v=>v==='excelente'?['🤩 Excelente',C.verde]:v==='buena'?['🙂 Buena',C.amar]:v==='mala'?['😕 Mala',C.rojo]:['—',C.tx2];
@@ -917,17 +929,17 @@ function EncuestaImg({ev,verPrivado}){
     </div>
   ):null;
   if(!verPrivado){
-    // Vista previa para el EMPLEADO: solo cumpleaños/nombre + bueno/malo + mensajito (sin descarga, sin la encuesta completa)
-    const arr=[q.m1,q.m2,q.m3,q.m4,q.aux]; const bien=arr.filter(x=>x===true).length; const tot=arr.filter(x=>x===true||x===false).length;
+    // Vista para el EMPLEADO: solo fecha+horario + lo NEGATIVO (lo que no se cumplió / mala o buena) + mensajito (sin descarga)
+    const negs=encuestaNegativos(q);
     return (
       <div style={{...S.card}}>
         <div style={{fontWeight:800,fontFamily:'Arial, Helvetica, sans-serif',fontSize:16,marginBottom:10}}>{q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}{(ev.hIni||ev.hFin)?(' · '+(ev.hIni||'')+(ev.hFin?(' a '+ev.hFin):'')+' hs'):''}</div>
-        <div style={{fontSize:12,color:C.tx2,marginBottom:6}}>¿Cómo salió?</div>
-        <div style={{display:'flex',gap:8,marginBottom:8}}>
-          <div style={{flex:1,textAlign:'center',background:C.surf2,borderRadius:10,padding:'10px 6px'}}><div style={{fontSize:11,color:C.tx2}}>Encargada</div><div style={{fontWeight:800,color:cal(q.encargada)[1]}}>{cal(q.encargada)[0]}</div></div>
-          <div style={{flex:1,textAlign:'center',background:C.surf2,borderRadius:10,padding:'10px 6px'}}><div style={{fontSize:11,color:C.tx2}}>Personal</div><div style={{fontWeight:800,color:cal(q.personal)[1]}}>{cal(q.personal)[0]}</div></div>
-        </div>
-        {tot>0&&<div style={{fontSize:13,color:C.tx2}}>👍 Puntos bien: <b style={{color:bien===tot?C.verde:C.amar}}>{bien} de {tot}</b></div>}
+        {negs.length===0
+          ? <div style={{color:C.verde,fontSize:13,fontWeight:700}}>✓ Todo bien, sin observaciones.</div>
+          : <div>
+              <div style={{fontSize:12,color:C.tx2,marginBottom:6}}>A tener en cuenta:</div>
+              {negs.map((n,i)=><div key={i} style={{fontSize:13,color:C.amar,marginBottom:4}}>⚠️ {n}</div>)}
+            </div>}
         {audioMsg(true)}
       </div>
     );
@@ -1292,6 +1304,49 @@ function MisHorarios({sesion}){
           </div>
         ))
       }
+    </div>
+  );
+}
+
+/* ════════ MIS ENCUESTAS (empleado: solo lo negativo, últimas 2 semanas) ════════ */
+function MisEncuestas({sesion,sucursales}){
+  const [encs,setEncs]=useState(null); const [asignF,setAsignF]=useState({}); const [ver,setVer]=useState(null);
+  const misSucNombres=((sesion.sucursales)||[]).map(id=>{const s=(sucursales||[]).find(x=>x.id===id);return s?s.nombre.toLowerCase():'';}).filter(Boolean);
+  const cutoff14=(()=>{const d=new Date();d.setDate(d.getDate()-14);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);})();
+  const hoyISO=fechaHoyISO();
+  useEffect(()=>{(async()=>{
+    setEncs(await cargarEncuestasSalon());
+    const evs=await dbAll('fichaje_eventos'); const evById={}; evs.forEach(e=>evById[e.id]=e);
+    const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>a.empleado_id===sesion.id||(sesion.legajo!=null&&a.legajo===sesion.legajo));
+    const byF={}; ee.forEach(a=>{const e=evById[a.evento_id]; if(e){(byF[e.fecha]=byF[e.fecha]||[]).push(e.hora_inicio);}}); setAsignF(byF);
+  })();},[]);
+  let list=[];
+  if(encs){ list=encs.filter(e=>{ const d=(e.anio||'')+'-'+_pad2(e.mes)+'-'+_pad2(e.dia); if(d<cutoff14||d>hoyISO)return false; if(!asignF[d])return false; if(misSucNombres.length&&(e._sucNombre||'')&&misSucNombres.indexOf((e._sucNombre||'').toLowerCase())<0)return false; return asignF[d].indexOf(e.hIni)>=0; })
+    .sort((a,b)=>(((b.anio||'')+_pad2(b.mes)+_pad2(b.dia)).localeCompare((a.anio||'')+_pad2(a.mes)+_pad2(a.dia)))); }
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:4}}>💬 Mis encuestas</h2>
+      <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Lo que opinaron las familias de tus eventos (últimas 2 semanas). Solo se muestra lo que hay que mejorar y el mensajito.</p>
+      {encs===null ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
+        list.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>Todavía no hay encuestas de tus eventos.</div> :
+        list.map(e=>{ const negs=encuestaNegativos(e.encuesta); const hayMsg=e.encuesta&&(e.encuesta.agradecimientoAudio||(e.encuesta.agradecimiento&&String(e.encuesta.agradecimiento).trim())); return (
+          <button key={e._id} onClick={()=>setVer(e)} style={{...S.card,marginBottom:8,width:'100%',textAlign:'left',cursor:'pointer',border:'1px solid '+C.bd,display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+            <div style={{minWidth:0}}>
+              <div style={{fontWeight:700,fontSize:14}}>{((e.encuesta&&e.encuesta.fecha)||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||'')))}{e.hIni?(' · '+e.hIni+(e.hFin?(' a '+e.hFin):'')+' hs'):''}</div>
+              <div style={{fontSize:11,color:negs.length?C.amar:C.verde}}>{negs.length?('⚠️ '+negs.length+' a mejorar'):'✓ Todo bien'}{hayMsg?' · 💜 mensajito':''}</div>
+            </div>
+            <span style={{color:C.tx2,fontSize:18}}>›</span>
+          </button>
+        );})
+      }
+      {ver && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:120,overflowY:'auto',padding:16}} onClick={()=>setVer(null)}>
+          <div style={{maxWidth:460,margin:'10px auto'}} onClick={ev=>ev.stopPropagation()}>
+            <EncuestaImg ev={ver} verPrivado={false}/>
+            <button onClick={()=>setVer(null)} style={{...S.btn,...S.btnGhost,width:'100%',marginTop:10}}>Cerrar</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
