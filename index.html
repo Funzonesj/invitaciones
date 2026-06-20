@@ -2423,6 +2423,7 @@ function AdminEncuestas({setVista,eventos,setEventos,sucursales,iaConfig,setIaCo
   const exc=conEnc.filter(e=>e.encuesta.encargada==='excelente'||e.encuesta.personal==='excelente').length;
   const aRevisar=conEnc.filter(e=>e.encuesta.pagoExtra==='si'&&!e.encuesta.pagoRevisado).length;
   function marcarPagoRevisado(evId){setEventos(evs=>evs.map(x=>x.id===evId?{...x,encuesta:{...x.encuesta,pagoRevisado:true}}:x));}
+  function borrarEncuesta(evId){if(!window.confirm('¿Borrar esta encuesta? El papá podrá volver a completarla desde su tarjeta.'))return;if(abrir&&abrir.id===evId)setAbrir(null);setEventos(evs=>evs.map(x=>{if(x.id!==evId)return x;const n={...x};delete n.encuesta;return n;}));flashOk('✓ Encuesta borrada');}
   function guardarCfg(){setIaConfig(c=>({...c,encuestaCfg:cfg}));setMsgCfg('✓ Encuesta guardada');flashOk('✓ ¡Encuesta guardada!');setTimeout(()=>setMsgCfg(''),2500);}
   function resetCfg(){if(window.confirm('¿Volver a los textos originales de la encuesta?')){setCfg({...ENCUESTA_DEF});}}
   const tabBtn=(id,txt)=>(<button onClick={()=>setTab(id)} style={{...S.btn,flex:1,padding:'10px',fontSize:13,fontWeight:800,background:tab===id?'#0ea5e9':'#f1f5f9',color:tab===id?'#fff':'#475569'}}>{txt}</button>);
@@ -2476,7 +2477,10 @@ function AdminEncuestas({setVista,eventos,setEventos,sucursales,iaConfig,setIaCo
           <div key={e.id} style={{...S.card,marginBottom:12,border:malo?'2px solid #fecaca':S.card.border}}>
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
               <div style={{fontWeight:900,fontSize:15,marginBottom:2}}>{e.nombre} <span style={{fontSize:11,fontWeight:600,color:'#94a3b8'}}>· {q.fecha||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||''))} · {sucName(e.sucId)}</span></div>
-              <button onClick={()=>setAbrir(e)} style={{...S.btn,background:'#0ea5e9',color:'#fff',padding:'6px 12px',fontSize:12,fontWeight:800,flexShrink:0}}>👁 Abrir</button>
+              <div style={{display:'flex',gap:6,flexShrink:0}}>
+                <button onClick={()=>setAbrir(e)} style={{...S.btn,background:'#0ea5e9',color:'#fff',padding:'6px 12px',fontSize:12,fontWeight:800}}>👁 Abrir</button>
+                <button onClick={()=>borrarEncuesta(e.id)} title="Borrar encuesta" style={{...S.btn,background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',padding:'6px 10px',fontSize:12,fontWeight:800}}>🗑</button>
+              </div>
             </div>
             {malo&&<div style={{display:'inline-block',background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',borderRadius:8,padding:'3px 10px',fontSize:11,fontWeight:900,margin:'4px 0 2px'}}>⚠️ Hay puntos a revisar</div>}
             <div style={{display:'flex',flexDirection:'column',gap:3,fontSize:13,color:'#334155',marginTop:6}}>
