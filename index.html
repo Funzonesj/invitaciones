@@ -4913,7 +4913,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           )}
           {_hayReglas&&!reglasOk&&<div style={{fontSize:11,color:'#9a3412',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'8px 10px',marginTop:8,fontWeight:600}}>⚠️ Tenés que aceptar las condiciones para poder enviar tu invitación.</div>}
           <div style={{display:'flex',gap:8,marginTop:14,flexWrap:'wrap'}}>
-            {suc.tel&&<a href={'https://wa.me/'+waNum(suc.tel)} target="_blank" style={{...S.btn,background:'#22c55e',color:'white',textDecoration:'none',flex:1,textAlign:'center',minWidth:140}}>💬 Consultar</a>}
+            {suc.tel&&<a href={'https://wa.me/'+waNum(suc.tel)+'?text='+encodeURIComponent('Hola! Necesito consultar sobre mi evento del '+papaSesion.dia+'/'+papaSesion.mes+'/'+papaSesion.anio+' ('+(form.nombre||papaSesion.nombre)+') en '+suc.nombre+'.')} target="_blank" style={{...S.btn,background:'#22c55e',color:'white',textDecoration:'none',flex:1,textAlign:'center',minWidth:140}}>💬 Consultar</a>}
           </div>
         </div>
       )}
