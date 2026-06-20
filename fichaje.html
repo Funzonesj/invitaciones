@@ -730,7 +730,7 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
         xhs.forEach(it=>detalle.push({dia,desc:it.a.rol_en_evento+' · '+it.e.paquete,horas:it.horas}));
         normal.sort((p,q)=>toMin(p.e.hora_inicio)-toMin(q.e.hora_inicio));
         let grupo=[], finPrev=null;
-        const cerrar=()=>{ if(!grupo.length)return; const n=grupo.length; const horas=n===1?+cfg.horas_simple:n===2?+cfg.horas_doble:+cfg.horas_triple; const tipo=n===1?'Evento simple':n===2?'Evento doble':(n+' eventos'); detalle.push({dia,desc:tipo+' ('+grupo.map(g=>g.e.paquete).join(' + ')+')',horas}); grupo=[]; };
+        const cerrar=()=>{ if(!grupo.length)return; const n=grupo.length; let horas=n===1?+cfg.horas_simple:n===2?+cfg.horas_doble:+cfg.horas_triple; const tipo=n===1?'Evento simple':n===2?'Evento doble':(n+' eventos'); const deluxe=grupo.filter(g=>/deluxe/i.test(g.e.paquete||'')).length; const extra=deluxe*(+cfg.horas_extra_deluxe||0); if(extra)horas+=extra; detalle.push({dia,desc:tipo+' ('+grupo.map(g=>g.e.paquete).join(' + ')+')'+(extra?(' +'+extra+'h Deluxe'):''),horas}); grupo=[]; };
         normal.forEach(it=>{ const ini=toMin(it.e.hora_inicio); if(finPrev!==null && (ini-finPrev)/60 >= +cfg.gap_horas) cerrar(); grupo.push(it); let fin=toMin(it.e.hora_fin); if(fin<ini)fin+=1440; finPrev=fin; });
         cerrar();
       });
@@ -1257,9 +1257,15 @@ function MiPlanilla({sesion,sucursales}){
     return cands.find(e=>horas.indexOf(e.hIni)>=0)||cands[0]||null;
   };
   async function guardar(n){ setData(n); try{await SB.from('fichaje_config').upsert({id:cfgId,data:n});}catch(e){} }
-  function setDia(f,tipo,enc){ const n={...data}; if(!tipo)delete n[f]; else n[f]={tipo,enc:enc||0}; guardar(n); }
-  function horasDe(t){ return t==='simple'?+cfg.horas_simple:t==='doble'?+cfg.horas_doble:t==='2simples'?2*+cfg.horas_simple:t==='triple'?+cfg.horas_triple:0; }
-  function montoDia(d){ return horasDe(d.tipo)*valorHora + (d.enc||0)*(+cfg.bonus_excelente); }
+  function setTipo(f,tipo){ const n={...data}; const cur=n[f]||{}; n[f]={...cur,tipo,enc:cur.enc||0}; guardar(n); }
+  function setEnc(f,enc){ const n={...data}; if(!n[f])return; n[f]={...n[f],enc}; guardar(n); }
+  function setDeluxe(f,v){ const n={...data}; if(!n[f])return; n[f]={...n[f],deluxe:v}; guardar(n); }
+  function borrarDia(f){ const n={...data}; delete n[f]; guardar(n); }
+  const esFig=t=>typeof t==='string'&&t.indexOf('fig:')===0;
+  function baseHoras(t){ if(esFig(t)){const f=(cfg.figuras_hora||[]).find(x=>('fig:'+x.nombre)===t);return f?+f.horas:0;} return t==='simple'?+cfg.horas_simple:t==='doble'?+cfg.horas_doble:t==='2simples'?2*+cfg.horas_simple:t==='triple'?+cfg.horas_triple:0; }
+  function horasDia(d){ let h=baseHoras(d.tipo); if(d.deluxe&&!esFig(d.tipo)) h+=(+cfg.horas_extra_deluxe||0); return h; }
+  function montoDia(d){ return horasDia(d)*valorHora + (d.enc||0)*(+cfg.bonus_excelente); }
+  const opciones=[...TIPOS, ...((cfg.figuras_hora||[]).map(f=>['fig:'+f.nombre, f.nombre, (f.horas)+' hs']))];
   const ymStr=y+'-'+('0'+(m+1)).slice(-2);
   let totMes=0; Object.keys(data).forEach(f=>{ if(f.indexOf(ymStr)===0) totMes+=montoDia(data[f]); });
   const ndias=new Date(y,m+1,0).getDate(); const off=new Date(y,m,1).getDay();
@@ -1283,7 +1289,7 @@ function MiPlanilla({sesion,sucursales}){
           {celdas.map((d,i)=>{ if(!d)return <div key={i}></div>; const f=fechaDe(d); const dd=data[f]; const act=sel===f;
             return (<button key={i} onClick={()=>setSel(f)} style={{aspectRatio:'1',borderRadius:9,border:'1px solid '+(act?C.oro:C.bd),background:dd?'#2a2418':C.surf2,color:C.tx,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:0,position:'relative'}}>
               <span style={{fontSize:13,fontWeight:dd?800:400}}>{d}</span>
-              {dd&&<span style={{fontSize:9,color:C.oro,fontWeight:800,lineHeight:1}}>{tipoCorto(dd.tipo)}{dd.enc?'·💜':''}</span>}
+              {dd&&<span style={{fontSize:9,color:C.oro,fontWeight:800,lineHeight:1}}>{esFig(dd.tipo)?'⏱':tipoCorto(dd.tipo)}{dd.deluxe?'+':''}{dd.enc?'·💜':''}</span>}
             </button>);
           })}
         </div>
@@ -1295,21 +1301,24 @@ function MiPlanilla({sesion,sucursales}){
           {encDelDia(sel) && <button onClick={()=>setVerEnc(encDelDia(sel))} style={{...S.btn,background:'#2a2418',color:C.oro,border:'1px solid #4a3d1c',width:'100%',marginBottom:10,fontSize:13,padding:'10px'}}>🖼️ Ver la encuesta que puso el papá</button>}
           <label style={S.label}>¿Qué trabajaste?</label>
           <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
-            {TIPOS.map(([v,l,sub])=>(
-              <button key={v} onClick={()=>setDia(sel,v,(selData&&selData.enc)||0)} style={{...S.btn,minHeight:0,padding:'8px 10px',fontSize:12,textAlign:'center',...((selData&&selData.tipo===v)?S.btnOro:S.btnGhost)}}>{l}<div style={{fontSize:9,opacity:.7}}>{sub}</div></button>
+            {opciones.map(([v,l,sub])=>(
+              <button key={v} onClick={()=>setTipo(sel,v)} style={{...S.btn,minHeight:0,padding:'8px 10px',fontSize:12,textAlign:'center',...((selData&&selData.tipo===v)?S.btnOro:S.btnGhost)}}>{l}<div style={{fontSize:9,opacity:.7}}>{sub}</div></button>
             ))}
           </div>
-          {selData && (
+          {selData && selData.tipo && (
             <div>
+              {!esFig(selData.tipo) && (
+                <label style={{display:'flex',alignItems:'center',gap:8,marginBottom:10,fontSize:13,cursor:'pointer'}}><input type="checkbox" checked={!!selData.deluxe} onChange={e=>setDeluxe(sel,e.target.checked)}/> Fue Deluxe (+{cfg.horas_extra_deluxe||1}h)</label>
+              )}
               <label style={S.label}>¿Cuántas encuestas salieron bien (Excelente)?</label>
               <div style={{display:'flex',gap:6,marginBottom:10}}>
-                {[0,1,2,3].map(n=>(<button key={n} onClick={()=>setDia(sel,selData.tipo,n)} style={{...S.btn,minHeight:0,padding:'8px 14px',fontSize:13,...((selData.enc||0)===n?S.btnOro:S.btnGhost)}}>{n}</button>))}
+                {[0,1,2,3].map(n=>(<button key={n} onClick={()=>setEnc(sel,n)} style={{...S.btn,minHeight:0,padding:'8px 14px',fontSize:13,...((selData.enc||0)===n?S.btnOro:S.btnGhost)}}>{n}</button>))}
               </div>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',background:C.surf2,borderRadius:10,padding:'10px 12px'}}>
                 <span style={{fontSize:12,color:C.tx2}}>Ese día deberías cobrar</span>
                 <span className="num" style={{color:C.verde,fontSize:16}}>${Math.round(montoDia(selData)).toLocaleString('es-AR')}</span>
               </div>
-              <button onClick={()=>{setDia(sel,null);setSel(null);}} style={{...S.btn,background:'#3a2020',color:C.rojo,width:'100%',marginTop:8,fontSize:13,padding:'9px'}}>Borrar este día</button>
+              <button onClick={()=>{borrarDia(sel);setSel(null);}} style={{...S.btn,background:'#3a2020',color:C.rojo,width:'100%',marginTop:8,fontSize:13,padding:'9px'}}>Borrar este día</button>
             </div>
           )}
         </div>
@@ -1334,7 +1343,7 @@ function MiPlanilla({sesion,sucursales}){
 
 /* ════════ CONFIGURACIÓN (dueña) ════════ */
 function Configuracion({sucursales,empleados,recargar}){
-  const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,bonus_excelente:7000,prep_1:90,prep_2:30,prep_3:30,figuras_hora:[],tarde_tolerancia_min:5,tarde_max_mes:5,tarde_suspension_dias:30});
+  const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,horas_extra_deluxe:1,bonus_excelente:7000,prep_1:90,prep_2:30,prep_3:30,figuras_hora:[],tarde_tolerancia_min:5,tarde_max_mes:5,tarde_suspension_dias:30});
   const [vh,setVh]=useState({}); const [msg,setMsg]=useState(''); const [guardando,setGuardando]=useState(false);
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data,figuras_hora:g.data.figuras_hora||[]}));})();},[]);
   useEffect(()=>{const o={};(empleados||[]).forEach(e=>{o[e.id]=e.valor_hora??'';});setVh(o);},[empleados]);
@@ -1360,8 +1369,8 @@ function Configuracion({sucursales,empleados,recargar}){
         <div style={{fontWeight:700,fontSize:14,marginBottom:8}}>🕐 Horas por tipo de evento</div>
         <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>El monto = estas horas × el valor hora de cada empleado.</div>
         <div style={{display:'flex',gap:8}}>{num('horas_simple','Simple (hs)','0.5')}{num('horas_doble','Doble (hs)','0.5')}{num('horas_triple','Triple (hs)','0.5')}</div>
-        <div style={{marginTop:10}}>{num('gap_horas','Hueco para separar eventos (hs)','0.5')}</div>
-        <div style={{fontSize:11,color:C.tx2,marginTop:6}}>Si entre dos eventos pasan ese tiempo o más, se cuentan separados (no como doble).</div>
+        <div style={{display:'flex',gap:8,marginTop:10}}>{num('gap_horas','Hueco p/ separar (hs)','0.5')}{num('horas_extra_deluxe','Extra por Deluxe (hs)','0.5')}</div>
+        <div style={{fontSize:11,color:C.tx2,marginTop:6}}>Hueco: si entre dos eventos pasan ese tiempo o más, cuentan separados. Deluxe: si el evento es Deluxe, suma esas horas extra.</div>
       </div>
 
       <div style={{...S.card,marginBottom:12}}>
