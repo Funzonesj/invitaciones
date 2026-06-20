@@ -404,7 +404,7 @@ function App() {
   // Pero si está logueada la ADMINISTRADORA (o el papá), SÍ puede guardar, aunque la URL tenga un link.
   // Y los eventos/config recién se suben tras la carga COMPLETA (fullLoaded), no con la rápida.
   const _puedeEscribir = !_SOLO_LECTURA || !!adminSesion || !!papaSesion;
-  const _puedeConfig   = !_SOLO_LECTURA || !!adminSesion;
+  const _puedeConfig   = !!adminSesion; // SOLO la dueña/admin guarda la config del salón (el papá nunca la pisa)
   React.useEffect(()=>{try{localStorage.setItem('fz_eventos',JSON.stringify(eventos));}catch(e){}; if(fullLoaded&&_puedeEscribir){eventos.forEach(sbUpsertEvento);}},[eventos]);
   React.useEffect(()=>{try{localStorage.setItem('fz_confs',JSON.stringify(confs));}catch(e){}; if(dbReady){confs.forEach(sbUpsertConf);}},[confs]);
   React.useEffect(()=>{try{localStorage.setItem('fz_tematicas',JSON.stringify(tematicas));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_tematicas__',tematicas);}},[tematicas]);
