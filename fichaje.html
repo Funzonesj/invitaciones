@@ -1626,11 +1626,11 @@ function MiPlanilla({sesion,sucursales}){
 /* ════════ CONFIGURACIÓN (dueña) ════════ */
 function Configuracion({sucursales,empleados,recargar}){
   const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,horas_extra_deluxe:1,bonus_excelente:7000,prep_1:90,prep_2:30,prep_3:30,figuras_hora:[],tarde_tolerancia_min:5,tarde_max_mes:5,tarde_suspension_dias:30});
-  const [vh,setVh]=useState({}); const [msg,setMsg]=useState(''); const [guardando,setGuardando]=useState(false);
+  const [vh,setVh]=useState({}); const [msg,setMsg]=useState(''); const [guardando,setGuardando]=useState(false); const [vhOk,setVhOk]=useState(null);
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data,figuras_hora:g.data.figuras_hora||[]}));})();},[]);
   useEffect(()=>{const o={};(empleados||[]).forEach(e=>{o[e.id]=e.valor_hora??'';});setVh(o);},[empleados]);
   async function guardarCfg(){ setGuardando(true); try{ await SB.from('fichaje_config').upsert({id:'general',data:cfg}); setMsg('✓ Configuración guardada'); setTimeout(()=>setMsg(''),2200);}catch(e){alert('Error: '+(e.message||e));} setGuardando(false); }
-  async function guardarValor(em){ const v=vh[em.id]; await dbUpdate('fichaje_empleados',em.id,{valor_hora:v===''?0:+v}); if(recargar)recargar(); }
+  async function guardarValor(em){ const v=vh[em.id]; const ok=await dbUpdate('fichaje_empleados',em.id,{valor_hora:v===''?0:+v}); if(ok){setVhOk(em.id);setTimeout(()=>setVhOk(p=>p===em.id?null:p),1800);} if(recargar)recargar(); }
   function setFig(i,k,val){ setCfg(c=>({...c,figuras_hora:c.figuras_hora.map((f,j)=>j===i?{...f,[k]:val}:f)})); }
   function addFig(){ setCfg(c=>({...c,figuras_hora:[...(c.figuras_hora||[]),{nombre:'Auxiliar 3 hs',horas:3,bonus:false}]})); }
   function delFig(i){ setCfg(c=>({...c,figuras_hora:c.figuras_hora.filter((_,j)=>j!==i)})); }
@@ -1702,8 +1702,8 @@ function Configuracion({sucursales,empleados,recargar}){
           <div key={em.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:'1px solid '+C.bd}}>
             <div style={{flex:1,minWidth:0,fontSize:14}}>{em.legajo!=null&&<span className="num" style={{color:C.oro}}>#{em.legajo} </span>}{em.nombre}</div>
             <span style={{color:C.tx2}}>$</span>
-            <input style={{...S.input,width:110,marginBottom:0}} type="number" value={vh[em.id]===undefined?'':vh[em.id]} onChange={e=>setVh({...vh,[em.id]:e.target.value})} onBlur={()=>guardarValor(em)} placeholder="0"/>
-            <span style={{fontSize:11,color:C.tx2}}>/h</span>
+            <input style={{...S.input,width:96,marginBottom:0}} type="number" value={vh[em.id]===undefined?'':vh[em.id]} onChange={e=>setVh({...vh,[em.id]:e.target.value})} onBlur={()=>guardarValor(em)} placeholder="0"/>
+            <span style={{fontSize:11,color:vhOk===em.id?C.verde:C.tx2,width:42}}>{vhOk===em.id?'✓ ok':'/h'}</span>
           </div>
         ))}
       </div>
