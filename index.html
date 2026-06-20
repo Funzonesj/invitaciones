@@ -4154,7 +4154,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const reglasOk=!!(papaSesion&&papaSesion.reglasOk);
   function aceptarReglas(){setPapaSesion(ps=>{const n={...ps,reglasOk:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,reglasOk:true}:e));return n;});flashOk('✓ ¡Condiciones aceptadas!');}
   const encuestaHecha=!!(papaSesion&&papaSesion.encuesta);
-  const eventoPaso=(function(){try{const f=new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,(+(String(papaSesion.hFin||'23').split(':')[0]))||23,59);return new Date()>f;}catch(e){return false;}})();
+  const eventoPaso=true||(function(){try{const f=new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,(+(String(papaSesion.hFin||'23').split(':')[0]))||23,59);return new Date()>f;}catch(e){return false;}})(); // ⚠️ TEMP pruebas: el 'true||' deja la encuesta SIEMPRE disponible; sacar 'true||' para que sea solo después del evento
   function enviarEncuesta(){
     const cal=v=>v==='excelente'?'Excelente':v==='buena'?'Buena':v==='mala'?'Mala':'(sin responder)';
     const sn=v=>v===true?'Sí':v===false?'No':'-';
