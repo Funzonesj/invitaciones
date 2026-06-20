@@ -1277,6 +1277,22 @@ function MiPlanilla({sesion,sucursales}){
   const maxDx=t=>t==='simple'?1:(t==='doble'||t==='2simples')?2:t==='triple'?3:0;
   function montoDia(d){ return horasDia(d)*valorHora + (d.enc||0)*(+cfg.bonus_excelente); }
   const opciones=[...TIPOS, ...((cfg.figuras_hora||[]).map(f=>['fig:'+f.nombre, f.nombre, (f.horas)+' hs']))];
+  function tipoLabel(t){ if(esFig(t)){const f=(cfg.figuras_hora||[]).find(x=>('fig:'+x.nombre)===t);return f?f.nombre:'Figura';} return t==='simple'?'Simple':t==='doble'?'Doble':t==='2simples'?'2 simples':t==='triple'?'Triple':(t||'-'); }
+  function exportarPlanilla(){
+    if(!exD||!exH){alert('Elegí desde y hasta.');return;}
+    const dias=Object.keys(data).filter(f=>f>=exD&&f<=exH&&data[f]&&data[f].tipo).sort();
+    if(!dias.length){alert('No tenés días cargados en ese rango.');return;}
+    if(!window.jspdf){alert('No se pudo generar el PDF.');return;}
+    const {jsPDF}=window.jspdf; const doc=new jsPDF(); let y=16;
+    doc.setFontSize(14); doc.text('Mi registro — '+(sesion.nombre||''),14,y); y+=7;
+    doc.setFontSize(10); doc.text('Del '+exD+' al '+exH,14,y); y+=8;
+    let tot=0;
+    dias.forEach(f=>{ const d=data[f]; const mn=montoDia(d); tot+=mn; if(y>282){doc.addPage();y=16;}
+      doc.setFontSize(10);
+      doc.text(f+'   '+tipoLabel(d.tipo)+(d.deluxe?(' +'+d.deluxe+' Deluxe'):'')+'   '+horasDia(d)+'hs'+(d.enc?('   '+d.enc+' enc'):'')+'   = $'+Math.round(mn).toLocaleString('es-AR'),14,y); y+=5.5; });
+    y+=4; if(y>282){doc.addPage();y=16;} doc.setFontSize(12); doc.text('TOTAL estimado: $'+Math.round(tot).toLocaleString('es-AR'),14,y);
+    doc.save('mi_registro_'+exD+'_'+exH+'.pdf');
+  }
   const ymStr=y+'-'+('0'+(m+1)).slice(-2);
   let totMes=0; Object.keys(data).forEach(f=>{ if(f.indexOf(ymStr)===0) totMes+=montoDia(data[f]); });
   const ndias=new Date(y,m+1,0).getDate(); const off=new Date(y,m,1).getDay();
@@ -1343,6 +1359,16 @@ function MiPlanilla({sesion,sucursales}){
       <div style={{...S.card,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <div><div style={{fontSize:12,color:C.tx2}}>Tu estimación de {MESES[m]}</div><div style={{fontSize:10,color:C.tx2}}>{valorHora?('$'+valorHora.toLocaleString('es-AR')+'/h'):'⚠️ falta tu valor hora'}</div></div>
         <div className="num" style={{fontSize:26,color:C.verde}}>${Math.round(totMes).toLocaleString('es-AR')}</div>
+      </div>
+
+      <div style={{...S.card,marginTop:12}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:6}}>⬇ Descargar mi registro</div>
+        <div style={{fontSize:11,color:C.tx2,marginBottom:10}}>Elegí un rango y bajá un PDF con lo que anotaste (para tenerlo y comparar si hay alguna duda).</div>
+        <div style={{display:'flex',gap:8,marginBottom:8}}>
+          <div style={{flex:1}}><label style={S.label}>Desde</label><input type="date" style={S.input} value={exD} onChange={e=>setExD(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={S.label}>Hasta</label><input type="date" style={S.input} value={exH} onChange={e=>setExH(e.target.value)}/></div>
+        </div>
+        <button onClick={exportarPlanilla} style={{...S.btn,...S.btnGhost,width:'100%'}}>⬇ Descargar PDF</button>
       </div>
 
       {verEnc && (
