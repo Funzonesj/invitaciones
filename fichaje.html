@@ -13,6 +13,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;background:#1A1A1A;color:#F5F5F5;font-family:'Inter',system-ui,sans-serif;font-size:15px}
@@ -91,7 +92,7 @@ function App(){
         {vista==='fichar'      && <Placeholder titulo="📍 Fichar" txt="Acá el empleado va a fichar con GPS + foto + reconocimiento facial. Lo construimos en la próxima etapa."/>}
         {vista==='horarios'    && (esDuena||rol==='encargada') && <Horarios sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='registros'   && <Placeholder titulo="📋 Registros de fichaje" txt="Listado de entradas/salidas con estado (en hora / tarde / ausente). Próxima etapa."/>}
-        {vista==='pagos'       && <Placeholder titulo="💰 Pagos" txt="Liquidación por rango de fechas: horas × valor hora + bonus de encuestas, exportable a PDF. Próxima etapa."/>}
+        {vista==='pagos'       && (esDuena||rol==='encargada') && <Pagos sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='alertas'     && <Placeholder titulo="🔔 Alertas" txt="Tarde, ausente, sin salida. Próxima etapa."/>}
         {vista==='empleados'   && esDuena && <Empleados empleados={empleados} sucursales={sucursales} recargar={recargar}/>}
         {vista==='sucursales'  && esDuena && <Sucursales sucursales={sucursales} recargar={recargar}/>}
@@ -661,6 +662,123 @@ function ManualEvento({sesion,sucSel,empleados,onGuardado}){
         <div style={{flex:1}}><label style={S.label}>Festejado (opc.)</label><input style={S.input} value={f.festejado} onChange={e=>setF({...f,festejado:e.target.value})}/></div>
       </div>
       <button onClick={guardar} disabled={guard} style={{...S.btn,...S.btnOro}}>{guard?'Guardando…':'Guardar evento'}</button>
+    </div>
+  );
+}
+
+/* ════════ PAGOS ════════ */
+function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
+  const [sucSel,setSucSel]=useState(esDuena?(sucCtx||(sucursales[0]||{}).id||''):(sucCtx||''));
+  const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState('');
+  const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,bonus_excelente:7000});
+  const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false); const [editCfg,setEditCfg]=useState(false);
+  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));})();},[]);
+  const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
+  const money=n=>'$'+Math.round(n).toLocaleString('es-AR');
+  async function guardarCfg(){ try{await SB.from('fichaje_config').upsert({id:'general',data:cfg});setEditCfg(false);alert('✓ Tarifas guardadas');}catch(e){alert('Error: '+(e.message||e));} }
+
+  async function calcular(){
+    if(!sucSel||!desde||!hasta){alert('Elegí sucursal y rango de fechas.');return;}
+    setCargando(true); setRes(null);
+    const evs=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===sucSel && e.fecha>=desde && e.fecha<=hasta);
+    const ids=new Set(evs.map(e=>e.id)); const evById={}; evs.forEach(e=>evById[e.id]=e);
+    const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>ids.has(a.evento_id));
+    const porEmp={}; ee.forEach(a=>{ const key=a.empleado_id||('leg:'+a.legajo); (porEmp[key]=porEmp[key]||[]).push(a); });
+    const filas=[];
+    Object.keys(porEmp).forEach(key=>{
+      const asigs=porEmp[key];
+      const emp=empleados.find(e=>e.id===asigs[0].empleado_id)||empleados.find(e=>e.legajo===asigs[0].legajo);
+      const valorHora=emp?+(emp.valor_hora||0):0;
+      const nombre=emp?emp.nombre:('#'+asigs[0].legajo+' (sin cargar)');
+      const byDia={}; asigs.forEach(a=>{ const e=evById[a.evento_id]; if(e)(byDia[e.fecha]=byDia[e.fecha]||[]).push({a,e}); });
+      const detalle=[];
+      Object.keys(byDia).sort().forEach(dia=>{
+        const xhs=[], normal=[];
+        byDia[dia].forEach(it=>{ const m=String(it.a.rol_en_evento||'').match(/(\d+)\s*hs/i); if(m)xhs.push({...it,horas:+m[1]}); else normal.push(it); });
+        xhs.forEach(it=>detalle.push({dia,desc:it.a.rol_en_evento+' · '+it.e.paquete,horas:it.horas}));
+        normal.sort((p,q)=>toMin(p.e.hora_inicio)-toMin(q.e.hora_inicio));
+        let grupo=[], finPrev=null;
+        const cerrar=()=>{ if(!grupo.length)return; const n=grupo.length; const horas=n===1?+cfg.horas_simple:n===2?+cfg.horas_doble:+cfg.horas_triple; const tipo=n===1?'Evento simple':n===2?'Evento doble':(n+' eventos'); detalle.push({dia,desc:tipo+' ('+grupo.map(g=>g.e.paquete).join(' + ')+')',horas}); grupo=[]; };
+        normal.forEach(it=>{ const ini=toMin(it.e.hora_inicio); if(finPrev!==null && (ini-finPrev)/60 >= +cfg.gap_horas) cerrar(); grupo.push(it); let fin=toMin(it.e.hora_fin); if(fin<ini)fin+=1440; finPrev=fin; });
+        cerrar();
+      });
+      const horasTot=detalle.reduce((s,d)=>s+d.horas,0);
+      filas.push({key,nombre,legajo:asigs[0].legajo,valorHora,detalle,horasTot,monto:horasTot*valorHora,sinValor:valorHora===0});
+    });
+    filas.sort((a,b)=>(a.legajo||999)-(b.legajo||999));
+    setRes({filas,total:filas.reduce((s,f)=>s+f.monto,0)}); setCargando(false);
+  }
+
+  function exportarPDF(){
+    if(!res)return; const {jsPDF}=window.jspdf; const doc=new jsPDF();
+    let y=16; doc.setFontSize(15); doc.text('Liquidación — '+sucNom(sucSel),14,y); y+=7;
+    doc.setFontSize(10); doc.text('Período: '+desde+' al '+hasta,14,y); y+=8;
+    res.filas.forEach(f=>{
+      if(y>270){doc.addPage();y=16;}
+      doc.setFontSize(11); doc.text((f.legajo!=null?('#'+f.legajo+' '):'')+f.nombre+'  ('+money(f.valorHora)+'/h)',14,y); y+=5;
+      doc.setFontSize(9);
+      f.detalle.forEach(d=>{ if(y>280){doc.addPage();y=16;} doc.text('  '+d.dia+'  '+d.desc+'  '+d.horas+'hs = '+money(d.horas*f.valorHora),16,y); y+=4.5; });
+      doc.setFontSize(10); doc.text('  TOTAL: '+f.horasTot+'hs = '+money(f.monto),16,y); y+=8;
+    });
+    if(y>275){doc.addPage();y=16;} doc.setFontSize(13); doc.text('TOTAL A PAGAR: '+money(res.total),14,y);
+    doc.save('liquidacion_'+desde+'_'+hasta+'.pdf');
+  }
+
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:12}}>💰 Pagos</h2>
+      {esDuena && (
+        <div style={{...S.card,marginBottom:12}}>
+          <div onClick={()=>setEditCfg(!editCfg)} style={{display:'flex',justifyContent:'space-between',cursor:'pointer'}}>
+            <span style={{fontWeight:700,fontSize:14}}>⚙️ Tarifas (horas por evento)</span><span style={{color:C.tx2}}>{editCfg?'▲':'▼'}</span>
+          </div>
+          {editCfg && (
+            <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:10}}>
+              <div style={{fontSize:12,color:C.tx2}}>Cuántas horas paga cada tipo de evento. El monto = horas × valor hora de cada empleado.</div>
+              <div style={{display:'flex',gap:8}}>
+                <div style={{flex:1}}><label style={S.label}>Simple (hs)</label><input style={S.input} type="number" step="0.5" value={cfg.horas_simple} onChange={e=>setCfg({...cfg,horas_simple:e.target.value})}/></div>
+                <div style={{flex:1}}><label style={S.label}>Doble (hs)</label><input style={S.input} type="number" step="0.5" value={cfg.horas_doble} onChange={e=>setCfg({...cfg,horas_doble:e.target.value})}/></div>
+                <div style={{flex:1}}><label style={S.label}>Triple (hs)</label><input style={S.input} type="number" step="0.5" value={cfg.horas_triple} onChange={e=>setCfg({...cfg,horas_triple:e.target.value})}/></div>
+              </div>
+              <div style={{display:'flex',gap:8}}>
+                <div style={{flex:1}}><label style={S.label}>Hueco p/ separar (hs)</label><input style={S.input} type="number" step="0.5" value={cfg.gap_horas} onChange={e=>setCfg({...cfg,gap_horas:e.target.value})}/></div>
+                <div style={{flex:1}}><label style={S.label}>Bonus "Excelente" ($)</label><input style={S.input} type="number" value={cfg.bonus_excelente} onChange={e=>setCfg({...cfg,bonus_excelente:e.target.value})}/></div>
+              </div>
+              <button onClick={guardarCfg} style={{...S.btn,...S.btnOro}}>Guardar tarifas</button>
+            </div>
+          )}
+        </div>
+      )}
+      <div style={{...S.card,marginBottom:12,display:'flex',flexDirection:'column',gap:10}}>
+        {esDuena && <select value={sucSel} onChange={e=>setSucSel(e.target.value)} style={S.input}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Desde</label><input type="date" style={S.input} value={desde} onChange={e=>setDesde(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={S.label}>Hasta</label><input type="date" style={S.input} value={hasta} onChange={e=>setHasta(e.target.value)}/></div>
+        </div>
+        <button onClick={calcular} disabled={cargando} style={{...S.btn,...S.btnOro}}>{cargando?'Calculando…':'Calcular pagos'}</button>
+      </div>
+
+      {res && (res.filas.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay horarios cargados en ese rango.</div> : (
+        <div>
+          <div style={{...S.card,marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div><div style={{fontSize:12,color:C.tx2}}>Total a pagar</div><div className="num" style={{fontSize:26,color:C.verde}}>{money(res.total)}</div></div>
+            <button onClick={exportarPDF} style={{...S.btn,...S.btnGhost}}>⬇ PDF</button>
+          </div>
+          {res.filas.map(f=>(
+            <div key={f.key} style={{...S.card,marginBottom:10}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline'}}>
+                <div style={{fontWeight:700}}>{f.legajo!=null&&<span className="num" style={{color:C.oro}}>#{f.legajo} </span>}{f.nombre}</div>
+                <div className="num" style={{fontSize:18,color:C.verde}}>{money(f.monto)}</div>
+              </div>
+              <div style={{fontSize:11,color:C.tx2,marginBottom:6}}>{f.sinValor?<span style={{color:C.amar}}>⚠️ Falta cargar el valor hora</span>:(money(f.valorHora)+'/h · '+f.horasTot+'hs')}</div>
+              <div style={{display:'flex',flexDirection:'column',gap:3}}>
+                {f.detalle.map((d,i)=>(<div key={i} style={{fontSize:12,color:C.tx2,display:'flex',justifyContent:'space-between',gap:8}}><span>{fechaLinda(d.dia)} · {d.desc}</span><span style={{whiteSpace:'nowrap'}}>{d.horas}hs</span></div>))}
+              </div>
+            </div>
+          ))}
+          <div style={{...S.card,background:'#2a2418',border:'1px solid #4a3d1c',fontSize:12,color:C.tx2}}>💜 El <b style={{color:C.oro}}>bonus de encuestas "Excelente"</b> (${(+cfg.bonus_excelente).toLocaleString('es-AR')} por empleado) se sumará automático en la próxima etapa, al conectar con las encuestas del salón.</div>
+        </div>
+      ))}
     </div>
   );
 }
