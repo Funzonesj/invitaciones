@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <meta name="theme-color" content="#1A1A1A"/>
-<title>Fichaje — Fun Zone + Play Point</title>
+<title>Control de Horarios</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -91,6 +91,7 @@ function App(){
       <div className="fade" style={{maxWidth:560,margin:'0 auto',padding:'14px 14px 0'}}>
         {vista==='dashboard'   && <Dashboard sesion={sesion} rol={rol} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx} setVista={setVista}/>}
         {vista==='fichar'      && <Fichar sesion={sesion} sucursales={sucursales}/>}
+        {vista==='mishorarios' && <MisHorarios sesion={sesion}/>}
         {vista==='miplanilla'  && <MiPlanilla sesion={sesion} sucursales={sucursales}/>}
         {vista==='horarios'    && (esDuena||rol==='encargada') && <Horarios sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='registros'   && <Placeholder titulo="📋 Registros de fichaje" txt="Listado de entradas/salidas con estado (en hora / tarde / ausente). Próxima etapa."/>}
@@ -133,7 +134,7 @@ function BottomNav({rol,vista,setVista}){
     ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones'],['config','⚙️','Config']]
     : rol==='encargada'
     ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
-    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['miplanilla','📅','Mi planilla'],['registros','📋','Mis fichajes']];
+    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla']];
   return (
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50}}>
       <div style={{maxWidth:560,margin:'0 auto',display:'flex'}}>
@@ -162,7 +163,7 @@ function Login({empleados,onLogin}){
         <div style={{textAlign:'center',marginBottom:22}}>
           <div style={{fontSize:44}}>🕒</div>
           <h1 style={{fontSize:24,marginTop:6}}>Control de Horarios</h1>
-          <div style={{color:C.tx2,fontSize:13,marginTop:4}}>Fun Zone · Play Point</div>
+          <div style={{color:C.tx2,fontSize:13,marginTop:4}}>Asistencia del personal</div>
         </div>
         <div style={{...S.card,display:'flex',flexDirection:'column',gap:12}}>
           <div><label style={S.label}>Usuario</label><input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} autoCapitalize="none" placeholder="usuario" required/></div>
@@ -697,6 +698,13 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
     const figMap={}; (cfg.figuras_hora||[]).forEach(f=>{ figMap[String(f.nombre||'').toLowerCase()]=!!f.bonus; });
     const bonusRolOk=rol=>{ if(!/\d+\s*hs/i.test(rol||''))return true; return figMap[String(rol||'').toLowerCase()]===true; };
     const bonusMonto=+cfg.bonus_excelente||0;
+    // Penalización por llegadas tarde: cada día tarde no cobra ese día; a las N tardanzas del mes, suspensión de X días.
+    const maxT=+cfg.tarde_max_mes||5, suspD=+cfg.tarde_suspension_dias||30;
+    const allEv=await dbAll('fichaje_eventos'); const evDate={}; allEv.forEach(e=>evDate[e.id]=e.fecha);
+    const fichajes=await dbAll('fichaje_fichajes');
+    const lateByEmp={}; fichajes.forEach(f=>{ if(f.tipo==='entrada'&&f.estado==='tarde'){ const d=f.evento_id?evDate[f.evento_id]:String(f.ts||'').slice(0,10); if(d)(lateByEmp[f.empleado_id]=lateByEmp[f.empleado_id]||[]).push(d); } });
+    const _sumarDias=(iso,n)=>{const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);};
+    function bonusBloqueado(empId,fecha){ const ds=lateByEmp[empId]||[]; if(ds.indexOf(fecha)>=0)return true; const byM={}; ds.forEach(d=>(byM[d.slice(0,7)]=byM[d.slice(0,7)]||[]).push(d)); return Object.values(byM).some(arr=>{ arr.sort(); if(arr.length<maxT)return false; const ini=arr[maxT-1]; return fecha>=ini && fecha<=_sumarDias(ini,suspD); }); }
     const filas=[];
     Object.keys(porEmp).forEach(key=>{
       const asigs=porEmp[key];
@@ -716,9 +724,10 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
         cerrar();
       });
       const horasTot=detalle.reduce((s,d)=>s+d.horas,0);
-      let bonusCount=0; asigs.forEach(a=>{ const e=evById[a.evento_id]; if(!e)return; if(excByKey[e.fecha+'|'+String(e.hora_inicio||'').trim()] && bonusRolOk(a.rol_en_evento)) bonusCount++; });
+      let bonusCount=0, bonusPerdido=0; const empId=emp?emp.id:null;
+      asigs.forEach(a=>{ const e=evById[a.evento_id]; if(!e)return; if(excByKey[e.fecha+'|'+String(e.hora_inicio||'').trim()] && bonusRolOk(a.rol_en_evento)){ if(empId && bonusBloqueado(empId,e.fecha)) bonusPerdido++; else bonusCount++; } });
       const bonusTot=bonusCount*bonusMonto;
-      filas.push({key,nombre,legajo:asigs[0].legajo,valorHora,detalle,horasTot,montoHoras:horasTot*valorHora,bonusCount,bonusTot,monto:horasTot*valorHora+bonusTot,sinValor:valorHora===0});
+      filas.push({key,nombre,legajo:asigs[0].legajo,valorHora,detalle,horasTot,montoHoras:horasTot*valorHora,bonusCount,bonusTot,bonusPerdido,monto:horasTot*valorHora+bonusTot,sinValor:valorHora===0});
     });
     filas.sort((a,b)=>(a.legajo||999)-(b.legajo||999));
     setRes({filas,total:filas.reduce((s,f)=>s+f.monto,0),totalBonus:filas.reduce((s,f)=>s+f.bonusTot,0)}); setCargando(false);
@@ -774,6 +783,7 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
               <div style={{display:'flex',flexDirection:'column',gap:3}}>
                 {f.detalle.map((d,i)=>(<div key={i} style={{fontSize:12,color:C.tx2,display:'flex',justifyContent:'space-between',gap:8}}><span>{fechaLinda(d.dia)} · {d.desc}</span><span style={{whiteSpace:'nowrap'}}>{d.horas}hs</span></div>))}
                 {f.bonusTot>0 && <div style={{fontSize:12,color:C.oro,fontWeight:700,display:'flex',justifyContent:'space-between',gap:8}}><span>💜 Bonus encuesta Excelente ×{f.bonusCount}</span><span style={{whiteSpace:'nowrap'}}>+{money(f.bonusTot)}</span></div>}
+                {f.bonusPerdido>0 && <div style={{fontSize:11,color:C.rojo,fontWeight:700}}>⏰ Perdió {f.bonusPerdido} bonus por llegadas tarde</div>}
               </div>
             </div>
           ))}
@@ -889,7 +899,7 @@ function EncuestaImg({ev,verPrivado}){
   return (
     <div style={{...S.card}}>
       <div style={{fontWeight:800,fontFamily:'Syne',fontSize:16}}>📝 Encuesta del papá</div>
-      <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>{ev.festejado||ev.nombre||''} · {q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}{ev._sucNombre?(' · '+ev._sucNombre):''}</div>
+      <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>{ev.festejado||ev.nombre||''} · {q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}{(verPrivado&&ev._sucNombre)?(' · '+ev._sucNombre):''}</div>
       <Row l="👩 Encargada" par={cal(q.encargada)}/>
       <Row l="🧑‍🍳 Mozos atentos" par={sn(q.m1)}/>
       <Row l="Presentes todo el evento" par={sn(q.m2)}/>
@@ -975,6 +985,8 @@ async function verificarCara(canvas,fotoUrl){
 }
 function Fichar({sesion,sucursales}){
   const [paso,setPaso]=useState('inicio'); const [tipo,setTipo]=useState('entrada'); const [msg,setMsg]=useState(''); const [res,setRes]=useState(null);
+  const [cfg,setCfg]=useState({tarde_tolerancia_min:5,tarde_max_mes:5,tarde_suspension_dias:30});
+  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));})();},[]);
   const sucOkRef=useRef(null); const geoRef=useRef(null); const videoRef=useRef(); const canvasRef=useRef(); const streamRef=useRef();
   const misSucs=((sesion.sucursales)||[]).map(id=>sucursales.find(s=>s.id===id)).filter(Boolean);
   function pararCamara(){try{streamRef.current&&streamRef.current.getTracks().forEach(t=>t.stop());}catch(e){}}
@@ -1004,8 +1016,8 @@ function Fichar({sesion,sucursales}){
     if(facialOk===false){ pararCamara(); setMsg(facialMsg+'. Probá de nuevo, de frente y con buena luz.'); setPaso('error'); return; }
     pararCamara(); setMsg('Guardando…');
     let fotoUrl=dataUrl; try{ fotoUrl=await subirFoto(dataUrl); }catch(e){}
-    const sucOk=sucOkRef.current; const hoy=fechaHoyISO();
-    let eventoId=null, estado='sin_horario', coincide=false, eventoDesc='', ingreso='';
+    const sucOk=sucOkRef.current; const hoy=fechaHoyISO(); const tol=+cfg.tarde_tolerancia_min||5;
+    let eventoId=null, estado='sin_horario', coincide=false, eventoDesc='', ingreso='', minTarde=0;
     try{
       const evs=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===sucOk.id&&e.fecha===hoy);
       const ids=evs.map(e=>e.id); const evById={}; evs.forEach(e=>evById[e.id]=e);
@@ -1013,13 +1025,20 @@ function Fichar({sesion,sucursales}){
       if(mis.length){ coincide=true; const now=ahoraMin();
         mis.sort((a,b)=>Math.abs(toMin(a.hora_ingreso_esperada||evById[a.evento_id].hora_inicio)-now)-Math.abs(toMin(b.hora_ingreso_esperada||evById[b.evento_id].hora_inicio)-now));
         const a=mis[0]; eventoId=a.evento_id; const ev=evById[eventoId]; eventoDesc=ev.paquete+' '+ev.hora_inicio+'-'+ev.hora_fin; ingreso=a.hora_ingreso_esperada||'';
-        if(tipo==='entrada'){ const esp=toMin(a.hora_ingreso_esperada||ev.hora_inicio); estado=(now<=esp+10)?'en_hora':'tarde'; } else { estado='salida'; }
+        if(tipo==='entrada'){ const esp=toMin(a.hora_ingreso_esperada||ev.hora_inicio); minTarde=Math.max(0,now-esp); estado=(minTarde<=tol)?'en_hora':'tarde'; } else { estado='salida'; }
       }
     }catch(e){}
     await dbInsert('fichaje_fichajes',{empleado_id:sesion.id,sucursal_id:sucOk.id,evento_id:eventoId,tipo,lat:geoRef.current.la,lng:geoRef.current.lo,foto_url:fotoUrl,facial_ok:facialOk,estado});
-    // alerta si llegó tarde o sin horario
-    if(tipo==='entrada'&&(estado==='tarde'||estado==='sin_horario')){ try{ await dbInsert('fichaje_alertas',{empleado_id:sesion.id,sucursal_id:sucOk.id,evento_id:eventoId,tipo:estado,descripcion:sesion.nombre+(estado==='tarde'?(' fichó tarde'):(' fichó sin estar en el horario'))}); }catch(e){} }
-    setRes({tipo,sucNombre:sucOk.nombre,facialOk,facialMsg,coincide,estado,eventoDesc,ingreso,fotoUrl}); setPaso('listo');
+    // penalización por tardanza
+    let tardeInfo=null;
+    if(estado==='tarde'){
+      try{ const ym=hoy.slice(0,7); const fs=(await dbAll('fichaje_fichajes')).filter(x=>x.empleado_id===sesion.id&&x.tipo==='entrada'&&x.estado==='tarde'&&String(x.ts||'').slice(0,7)===ym);
+        const cnt=fs.length, max=+cfg.tarde_max_mes||5, susp=+cfg.tarde_suspension_dias||30;
+        tardeInfo={minTarde,cnt,max,susp,reach:cnt>=max,aviso:cnt===max-1};
+      }catch(e){ tardeInfo={minTarde,cnt:0,max:+cfg.tarde_max_mes||5,susp:+cfg.tarde_suspension_dias||30}; }
+    }
+    if(tipo==='entrada'&&(estado==='tarde'||estado==='sin_horario')){ try{ await dbInsert('fichaje_alertas',{empleado_id:sesion.id,sucursal_id:sucOk.id,evento_id:eventoId,tipo:estado,descripcion:sesion.nombre+(estado==='tarde'?(' fichó '+minTarde+' min tarde'+(tardeInfo&&tardeInfo.reach?(' — '+tardeInfo.cnt+'ª tardanza del mes, suspende encuestas '+tardeInfo.susp+' días'):'')):(' fichó sin estar en el horario'))}); }catch(e){} }
+    setRes({tipo,sucNombre:sucOk.nombre,facialOk,facialMsg,coincide,estado,eventoDesc,ingreso,fotoUrl,tardeInfo}); setPaso('listo');
   }
   return (
     <div className="fade">
@@ -1038,7 +1057,7 @@ function Fichar({sesion,sucursales}){
       {paso==='cargando' && <div style={{...S.card,textAlign:'center',padding:30}}><span className="spin"></span><p style={{color:C.tx2,fontSize:13,marginTop:12}}>{msg}</p></div>}
       {paso==='camara' && (
         <div style={{...S.card}}>
-          <p style={{fontSize:13,color:C.tx2,marginBottom:10,textAlign:'center'}}>📍 {sucOkRef.current&&sucOkRef.current.nombre} · Poné tu cara en el centro</p>
+          <p style={{fontSize:13,color:C.tx2,marginBottom:10,textAlign:'center'}}>📍 Ubicación verificada · Poné tu cara en el centro</p>
           <div style={{borderRadius:14,overflow:'hidden',background:'#000',aspectRatio:'3/4',maxHeight:'56vh',margin:'0 auto'}}>
             <video ref={videoRef} playsInline muted style={{width:'100%',height:'100%',objectFit:'cover',transform:'scaleX(-1)'}}></video>
           </div>
@@ -1060,16 +1079,62 @@ function Fichar({sesion,sucursales}){
           <h3 style={{fontFamily:'Syne',fontSize:20}}>{res.tipo==='entrada'?'Entrada':'Salida'} registrada</h3>
           {res.fotoUrl&&<img src={res.fotoUrl} alt="" style={{width:80,height:80,borderRadius:'50%',objectFit:'cover',margin:'10px auto',display:'block',border:'2px solid '+C.oro}}/>}
           <div style={{textAlign:'left',background:C.surf2,borderRadius:12,padding:12,marginTop:8,fontSize:13,display:'flex',flexDirection:'column',gap:6}}>
-            <div>📍 Salón: <b>{res.sucNombre}</b></div>
+            <div>📍 Ubicación: <b style={{color:C.verde}}>verificada ✓</b></div>
             <div>📸 Cara: <b style={{color:res.facialOk===true?C.verde:res.facialOk===false?C.rojo:C.tx2}}>{res.facialOk===true?'verificada ✓':res.facialMsg}</b></div>
             {res.coincide
               ? <div>🗓️ Horario: <b style={{color:C.verde}}>coincide ✓</b> ({res.eventoDesc}){res.ingreso&&res.tipo==='entrada'?(' · entrada esperada '+res.ingreso):''}</div>
               : <div>🗓️ Horario: <b style={{color:C.amar}}>no figurás hoy</b> (queda registrado igual)</div>}
-            {res.tipo==='entrada'&&res.coincide&&<div>⏱️ Estado: <b style={{color:res.estado==='tarde'?C.amar:C.verde}}>{res.estado==='tarde'?'Llegó tarde':'En hora'}</b></div>}
+            {res.tipo==='entrada'&&res.coincide&&<div>⏱️ Estado: <b style={{color:res.estado==='tarde'?C.amar:C.verde}}>{res.estado==='tarde'?('Llegó '+(res.tardeInfo?res.tardeInfo.minTarde:'')+' min tarde'):'En hora'}</b></div>}
           </div>
+          {res.tardeInfo&&(
+            <div style={{marginTop:10,textAlign:'left',background:'#2a1a10',border:'1px solid #4a2d1c',borderRadius:12,padding:12,fontSize:13,color:'#fdba74',lineHeight:1.5}}>
+              <div>⏰ <b>Llegaste {res.tardeInfo.minTarde} min tarde — hoy no cobrás el bonus de encuesta.</b></div>
+              {res.tardeInfo.reach
+                ? <div style={{marginTop:6,color:C.rojo,fontWeight:800}}>🚫 Llevás {res.tardeInfo.cnt} llegadas tarde este mes: no vas a cobrar encuestas por {res.tardeInfo.susp} días.</div>
+                : res.tardeInfo.aviso
+                ? <div style={{marginTop:6,color:C.amar,fontWeight:800}}>⚠️ Llevás {res.tardeInfo.cnt} llegadas tarde. Con UNA más, perdés las encuestas por {res.tardeInfo.susp} días.</div>
+                : <div style={{marginTop:6,color:C.tx2}}>Llevás {res.tardeInfo.cnt} llegada{res.tardeInfo.cnt>1?'s':''} tarde este mes (a las {res.tardeInfo.max} se suspenden las encuestas {res.tardeInfo.susp} días).</div>}
+            </div>
+          )}
           <button onClick={()=>setPaso('inicio')} style={{...S.btn,...S.btnOro,width:'100%',marginTop:14}}>Listo</button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ════════ MIS HORARIOS (empleado: lo que cargó el salón, solo lectura) ════════ */
+function MisHorarios({sesion}){
+  const [items,setItems]=useState(null);
+  useEffect(()=>{(async()=>{
+    const evs=await dbAll('fichaje_eventos'); const evById={}; evs.forEach(e=>evById[e.id]=e);
+    const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>a.empleado_id===sesion.id||(sesion.legajo!=null&&a.legajo===sesion.legajo));
+    const hoy=fechaHoyISO();
+    const list=ee.map(a=>({a,e:evById[a.evento_id]})).filter(x=>x.e&&x.e.fecha>=hoy).sort((p,q)=>(p.e.fecha+p.e.hora_inicio).localeCompare(q.e.fecha+q.e.hora_inicio));
+    setItems(list);
+  })();},[]);
+  const porDia={}; (items||[]).forEach(it=>{(porDia[it.e.fecha]=porDia[it.e.fecha]||[]).push(it);});
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:4}}>📅 Mis horarios</h2>
+      <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Tus próximos eventos asignados. Acordate de fichar a la hora de entrada.</p>
+      {items===null ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
+        Object.keys(porDia).length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>No tenés horarios cargados por ahora.</div> :
+        Object.keys(porDia).sort().map(f=>(
+          <div key={f} style={{marginBottom:14}}>
+            <div style={{fontWeight:700,color:C.oro,fontSize:14,marginBottom:6,fontFamily:'Syne'}}>{fechaLinda(f)}</div>
+            {porDia[f].map((it,i)=>(
+              <div key={i} style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:10}}>
+                <div style={{width:54,textAlign:'center',flexShrink:0}}><div style={{fontSize:11,color:C.tx2}}>entrás</div><div className="num" style={{color:C.verde,fontSize:16}}>{it.a.hora_ingreso_esperada||it.e.hora_inicio}</div></div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700}}><span style={{...S.chip,background:'#2a2418',color:C.oro,marginRight:6}}>{it.a.rol_en_evento}</span>{it.e.paquete}</div>
+                  <div style={{fontSize:12,color:C.tx2}}>Evento {it.e.hora_inicio} - {it.e.hora_fin} hs</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))
+      }
     </div>
   );
 }
@@ -1165,7 +1230,7 @@ function MiPlanilla({sesion,sucursales}){
 
 /* ════════ CONFIGURACIÓN (dueña) ════════ */
 function Configuracion({sucursales,empleados,recargar}){
-  const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,bonus_excelente:7000,prep_1:90,prep_2:30,prep_3:30,figuras_hora:[]});
+  const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,bonus_excelente:7000,prep_1:90,prep_2:30,prep_3:30,figuras_hora:[],tarde_tolerancia_min:5,tarde_max_mes:5,tarde_suspension_dias:30});
   const [vh,setVh]=useState({}); const [msg,setMsg]=useState(''); const [guardando,setGuardando]=useState(false);
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data,figuras_hora:g.data.figuras_hora||[]}));})();},[]);
   useEffect(()=>{const o={};(empleados||[]).forEach(e=>{o[e.id]=e.valor_hora??'';});setVh(o);},[empleados]);
@@ -1217,6 +1282,16 @@ function Configuracion({sucursales,empleados,recargar}){
           </div>
         ))}
         <button onClick={addFig} style={{...S.btn,...S.btnGhost,fontSize:13,padding:'8px 12px',minHeight:0}}>+ Agregar figura</button>
+      </div>
+
+      <div style={{...S.card,marginBottom:12}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:8}}>⏰ Llegadas tarde y encuestas</div>
+        <div style={{background:C.surf2,borderRadius:10,padding:12,fontSize:13,lineHeight:1.9,color:C.tx2,marginBottom:12}}>
+          <div>• Se considera <b style={{color:C.tx}}>tarde</b> si llega más de <input type="number" value={cfg.tarde_tolerancia_min} onChange={e=>setCfg({...cfg,tarde_tolerancia_min:e.target.value})} style={{...S.input,width:56,display:'inline-block',padding:'4px 6px',marginBottom:0,textAlign:'center'}}/> min tarde.</div>
+          <div>• <b style={{color:C.tx}}>Cada día</b> que llega tarde → ese día <b style={{color:C.tx}}>no cobra</b> el bonus de encuesta.</div>
+          <div>• Al llegar a <input type="number" value={cfg.tarde_max_mes} onChange={e=>setCfg({...cfg,tarde_max_mes:e.target.value})} style={{...S.input,width:56,display:'inline-block',padding:'4px 6px',marginBottom:0,textAlign:'center'}}/> llegadas tarde en el mes → no cobra encuestas por <input type="number" value={cfg.tarde_suspension_dias} onChange={e=>setCfg({...cfg,tarde_suspension_dias:e.target.value})} style={{...S.input,width:64,display:'inline-block',padding:'4px 6px',marginBottom:0,textAlign:'center'}}/> días.</div>
+          <div>• En la anteúltima ({(+cfg.tarde_max_mes||5)-1}ª) se le avisa al empleado al fichar.</div>
+        </div>
       </div>
 
       <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:18}}>
