@@ -489,7 +489,12 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
   const [tab,setTab]=useState('ver');
   const [sucSel,setSucSel]=useState(esDuena ? (sucCtx||(sucursales[0]||{}).id||'') : (sucCtx||''));
   const [eventos,setEventos]=useState([]); const [asign,setAsign]=useState([]); const [cargando,setCargando]=useState(false);
-  const [previa,setPrevia]=useState(null); const [leyendo,setLeyendo]=useState(false); const [reempl,setReempl]=useState(null); const pdfFileRef=useRef(null);
+  const [previa,setPrevia]=useState(null); const [leyendo,setLeyendo]=useState(false); const [reempl,setReempl]=useState(null); const pdfFileRef=useRef(null); const [editEv,setEditEv]=useState(null);
+  async function recomputarDia(fecha){
+    const evsAll=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===sucSel&&e.fecha===fecha).sort((a,b)=>toMin(a.hora_inicio)-toMin(b.hora_inicio));
+    const eeAll=await dbAll('fichaje_evento_empleados');
+    for(let idx=0;idx<evsAll.length;idx++){ const ev=evsAll[idx]; const mins=idx===0?cfgGen.p1:idx===1?cfgGen.p2:cfgGen.p3; const ing=restarMin(ev.hora_inicio,mins); for(const a of eeAll.filter(x=>x.evento_id===ev.id)) await dbUpdate('fichaje_evento_empleados',a.id,{hora_ingreso_esperada:ing}); }
+  }
   const [cfgGen,setCfgGen]=useState({p1:90,p2:30,p3:30,figuras:[]});
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfgGen({p1:+g.data.prep_1||90,p2:+g.data.prep_2||30,p3:+g.data.prep_3||30,figuras:g.data.figuras_hora||[]});})();},[]);
   const empByLegajo=l=>empleados.find(e=>e.legajo===l);
@@ -566,7 +571,10 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
               <div key={ev.id} style={{...S.card,marginBottom:8}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
                   <div><div style={{fontWeight:700}}>{ev.paquete}</div><div style={{fontSize:12,color:C.tx2}}>{ev.hora_inicio} - {ev.hora_fin}{ev.orden_dia>1?' · 2º evento':''}</div></div>
-                  <button onClick={()=>borrarEvento(ev.id)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'6px 10px',minHeight:0,fontSize:12}}>🗑</button>
+                  <div style={{display:'flex',gap:6,flexShrink:0}}>
+                    <button onClick={()=>setEditEv({ev,rs})} style={{...S.btn,...S.btnGhost,padding:'6px 10px',minHeight:0,fontSize:12}}>✏️ Editar</button>
+                    <button onClick={()=>borrarEvento(ev.id)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'6px 10px',minHeight:0,fontSize:12}}>🗑</button>
+                  </div>
                 </div>
                 <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:5}}>
                   {rs.map(a=>(
@@ -638,6 +646,58 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
           </div>
         </div>
       )}
+
+      {editEv && <EditEvento ev={editEv.ev} asigs={editEv.rs} empleados={empleados} figuras={cfgGen.figuras||[]} onClose={()=>setEditEv(null)} onSaved={async(fecha)=>{await recomputarDia(fecha);setEditEv(null);cargar();}}/>}
+    </div>
+  );
+}
+
+function EditEvento({ev,asigs,empleados,figuras,onClose,onSaved}){
+  const [f,setF]=useState({fecha:ev.fecha||'',paquete:ev.paquete||'',hora_inicio:ev.hora_inicio||'',hora_fin:ev.hora_fin||'',cliente:ev.cliente||'',festejado:ev.festejado||''});
+  const [roles,setRoles]=useState((asigs||[]).map(a=>({rol:a.rol_en_evento||'Mozo',legajo:a.legajo==null?'':a.legajo})));
+  const [guard,setGuard]=useState(false);
+  const opcionesRol=['Cocinero','Mozo','Auxiliar',...((figuras||[]).map(x=>x.nombre))];
+  function setRol(i,k,v){ setRoles(rs=>rs.map((r,j)=>j===i?{...r,[k]:v}:r)); }
+  async function guardar(){
+    if(!f.fecha||!f.paquete||!f.hora_inicio){alert('Completá fecha, paquete y hora de inicio.');return;}
+    setGuard(true);
+    await dbUpdate('fichaje_eventos',ev.id,{fecha:f.fecha,paquete:f.paquete,hora_inicio:f.hora_inicio,hora_fin:f.hora_fin,cliente:f.cliente||null,festejado:f.festejado||null,modificado_at:new Date().toISOString()});
+    for(const a of (asigs||[])) await dbDelete('fichaje_evento_empleados',a.id);
+    for(const r of roles){ if(r.legajo===''||r.legajo==null)continue; const emp=empleados.find(e=>e.legajo===+r.legajo); await dbInsert('fichaje_evento_empleados',{evento_id:ev.id,empleado_id:emp?emp.id:null,legajo:+r.legajo,rol_en_evento:r.rol,hora_ingreso_esperada:null}); }
+    setGuard(false); onSaved(f.fecha);
+  }
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:100,display:'flex',alignItems:'flex-start',justifyContent:'center',padding:16,overflowY:'auto'}} onClick={onClose}>
+      <div style={{...S.card,maxWidth:440,width:'100%',margin:'10px auto',display:'flex',flexDirection:'column',gap:10}} onClick={e=>e.stopPropagation()}>
+        <div style={{fontWeight:800,fontSize:16}}>✏️ Editar evento</div>
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Fecha</label><input type="date" style={S.input} value={f.fecha} onChange={e=>setF({...f,fecha:e.target.value})}/></div>
+          <div style={{flex:1}}><label style={S.label}>Paquete</label><input style={S.input} value={f.paquete} onChange={e=>setF({...f,paquete:e.target.value})}/></div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Hora inicio</label><input style={S.input} value={f.hora_inicio} onChange={e=>setF({...f,hora_inicio:e.target.value})} placeholder="16:30"/></div>
+          <div style={{flex:1}}><label style={S.label}>Hora fin</label><input style={S.input} value={f.hora_fin} onChange={e=>setF({...f,hora_fin:e.target.value})} placeholder="19:30"/></div>
+        </div>
+        <div>
+          <label style={S.label}>Personal (rol + legajo) — cambiá o reemplazá acá</label>
+          {roles.map((r,i)=>(
+            <div key={i} style={{display:'flex',gap:8,marginBottom:6}}>
+              <select style={{...S.input,flex:1}} value={r.rol} onChange={e=>setRol(i,'rol',e.target.value)}>{opcionesRol.map(x=><option key={x}>{x}</option>)}</select>
+              <input style={{...S.input,width:80}} type="number" value={r.legajo} onChange={e=>setRol(i,'legajo',e.target.value)} placeholder="N°"/>
+              <button onClick={()=>setRoles(rs=>rs.filter((_,j)=>j!==i))} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'0 12px',minHeight:0}}>−</button>
+            </div>
+          ))}
+          <button onClick={()=>setRoles([...roles,{rol:'Mozo',legajo:''}])} style={{...S.btn,...S.btnGhost,fontSize:13,padding:'8px 12px',minHeight:0}}>+ Agregar puesto</button>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Cliente (opc.)</label><input style={S.input} value={f.cliente} onChange={e=>setF({...f,cliente:e.target.value})}/></div>
+          <div style={{flex:1}}><label style={S.label}>Festejado (opc.)</label><input style={S.input} value={f.festejado} onChange={e=>setF({...f,festejado:e.target.value})}/></div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={guardar} disabled={guard} style={{...S.btn,...S.btnOro,flex:1}}>{guard?'Guardando…':'Guardar cambios'}</button>
+          <button onClick={onClose} style={{...S.btn,...S.btnGhost}}>Cancelar</button>
+        </div>
+      </div>
     </div>
   );
 }
