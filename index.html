@@ -2610,9 +2610,16 @@ function calcMenuG(cfg,inp){
   // BEBIDA
   const pp=(+cfg.bebidaL||1.5)+Math.max(0,(+inp.horas||3)-(+cfg.bebidaHoras||3))*(+cfg.bebidaExtraL||0.2);
   out.bebidaPP=Math.round(pp*10)/10; out.bebidaL=Math.ceil(pp*pers);
-  // SNACKS (aparte)
-  if(adultos>0){ out.snacks.push({nombre:'Papas/snacks salados (adultos)',g:Math.round(adultos*(+cfg.snackPapasAd||26))}); out.snacks.push({nombre:'Maní (adultos)',g:Math.round(adultos*(+cfg.snackManiAd||12))}); }
-  if(N>0) out.snacks.push({nombre:'Snacks salados (niños)',g:Math.round(N*(+cfg.snackNino||18))});
+  // SNACKS (aparte) — en paquetes de 500 g, redondeando para arriba. Las papas las comen TODOS.
+  const paqG=500;
+  const snk=(nombre,emoji,total)=>{ if(total<=0)return; out.snacks.push({nombre:nombre,emoji:emoji,g:total,cant:Math.ceil(total/paqG),u:'paq. de '+paqG+'g'}); };
+  if(pers>0) snk('Papas','🍟',Math.round(pers*(+cfg.snackPapasAd||25)));
+  if(adultos>0) snk('Maní','🥜',Math.round(adultos*(+cfg.snackManiAd||12)));
+  if(N>0) snk('Palitos / chizitos','🥨',Math.round(N*(+cfg.snackNino||18)));
+  // INGREDIENTES para preparar (ej: el pancho se desglosa en salchichas + pan + mayonesa)
+  out.ingredientes=[];
+  const _pan=eleg.find(a=>a.id==='g-pancho');
+  if(_pan){ const pn=((out.nino.find(x=>x.nombre===_pan.nombre)||{}).unidades)||0; if(pn>0){ out.ingredientes.push({nombre:'Salchichas para pancho',emoji:'🌭',cant:Math.ceil(pn/6),u:'paq. (6u)'}); out.ingredientes.push({nombre:'Pan de pancho',emoji:'🥖',cant:Math.ceil(pn/6),u:'paq. (6u)'}); out.ingredientes.push({nombre:'Mayonesa',emoji:'🥫',cant:Math.ceil(pn*10/500),u:'pote ~500g'}); } }
   return out;
 }
 // Calculador en gramos que usa el PAPÁ (lee la config de iaConfig.menuG armada en el admin)
@@ -2638,7 +2645,8 @@ function MenuGView({iaConfig,papaSesion}){
     if(res.torta)L.push([(res.torta.emoji||'🎂')+' '+res.torta.nombre,res.torta.porciones+' porciones']);
     res.dulce.forEach(it=>L.push([(it.emoji||'')+' '+it.nombre,it.cant+' '+it.u]));
     L.push(['🥤 Bebida',res.bebidaL+' L']);
-    res.snacks.forEach(x=>L.push([x.nombre,x.g+' g']));
+    res.snacks.forEach(x=>L.push([(x.emoji||'')+' '+x.nombre,x.cant+' '+x.u+' (~'+x.g+' g)']));
+    (res.ingredientes||[]).forEach(x=>L.push([(x.emoji||'')+' '+x.nombre,x.cant+' '+x.u]));
     const rows=L.map(r=>'<div class=r><span>'+r[0]+'</span><b>'+r[1]+'</b></div>').join('');
     const html='<html><head><meta charset=utf-8><title>Menu</title><style>body{font-family:Arial,sans-serif;padding:24px;max-width:600px;margin:auto;color:#0f172a}h1{font-size:20px;margin:0 0 4px}.sub{color:#555;font-size:13px;margin-bottom:12px}.r{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dotted #e2e8f0;font-size:15px}.r b{white-space:nowrap;padding-left:14px}</style></head><body><h1>🍽️ Menú — '+((papaSesion&&papaSesion.nombre)||'')+'</h1><div class=sub>'+(+M||0)+' mujeres · '+(+H||0)+' hombres · '+(+N||0)+' niños · '+horas+' hs</div>'+rows+'</body></html>';
     const w=window.open('','_blank');if(!w){alert('Permití las ventanas emergentes para descargar la lista.');return;}w.document.write(html);w.document.close();w.focus();setTimeout(()=>{try{w.print();}catch(e){}},400);
@@ -2685,7 +2693,8 @@ function MenuGView({iaConfig,papaSesion}){
           ))}
           {res.torta&&<div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8,fontSize:13,padding:'5px 0',borderBottom:'1px solid #f1f5f9'}}><span style={{flex:1,minWidth:0}}>{res.torta.emoji} {res.torta.nombre}</span><b style={{whiteSpace:'nowrap'}}>{res.torta.porciones} porciones</b></div>}
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8,fontSize:13,padding:'6px 0',marginTop:6,borderTop:'2px solid #e2e8f0'}}><span style={{flex:1,minWidth:0}}>🥤 Bebida</span><b style={{whiteSpace:'nowrap'}}>{res.bebidaL} L</b></div>
-          {res.snacks.length>0&&<div style={{marginTop:8}}><div style={{fontSize:11,color:'#64748b',marginBottom:4}}>Snacks aparte:</div>{res.snacks.map((x,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',gap:8,fontSize:12,color:'#64748b'}}><span style={{flex:1,minWidth:0}}>{x.nombre}</span><span style={{whiteSpace:'nowrap'}}>{x.g} g</span></div>))}</div>}
+          {res.snacks.length>0&&<div style={{marginTop:8}}><div style={{fontSize:11,color:'#64748b',marginBottom:4}}>Snacks aparte:</div>{res.snacks.map((x,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',gap:8,fontSize:12,color:'#64748b'}}><span style={{flex:1,minWidth:0}}>{x.emoji} {x.nombre}</span><span style={{whiteSpace:'nowrap'}}>{x.cant} {x.u} <span style={{color:'#94a3b8'}}>(≈{x.g} g)</span></span></div>))}</div>}
+          {res.ingredientes&&res.ingredientes.length>0&&<div style={{marginTop:8}}><div style={{fontSize:11,color:'#64748b',marginBottom:4}}>🧂 Para preparar:</div>{res.ingredientes.map((x,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',gap:8,fontSize:12,color:'#64748b'}}><span style={{flex:1,minWidth:0}}>{x.emoji} {x.nombre}</span><span style={{whiteSpace:'nowrap'}}>{x.cant} {x.u}</span></div>))}</div>}
           <button onClick={imprimir} style={{...S.btn,width:'100%',background:'#0ea5e9',color:'white',padding:'12px',fontSize:13,fontWeight:900,marginTop:14}}>🖨️ Descargar / Imprimir la lista</button>
           <div style={{marginTop:10,fontSize:11,color:'#92400e',background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:8}}>💡 Cantidades estimadas en base a años de experiencia. Sumá un 10% de margen.</div>
         </div>
@@ -2789,7 +2798,8 @@ function AdminMenuG({setVista,iaConfig,setIaConfig}){
           ))}
           {res.torta&&<div style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'4px 0',borderBottom:'1px solid #f1f5f9'}}><span>{res.torta.emoji} {res.torta.nombre}</span><b>{res.torta.porciones} porciones <span style={{color:'#94a3b8',fontWeight:400,fontSize:11}}>({res.torta.g} g)</span></b></div>}
           <div style={{display:'flex',justifyContent:'space-between',fontSize:13,padding:'6px 0',marginTop:6,borderTop:'2px solid #e2e8f0'}}><span>🥤 Bebida</span><b>{res.bebidaL} L <span style={{color:'#94a3b8',fontWeight:400,fontSize:11}}>({res.bebidaPP} L c/u)</span></b></div>
-          {res.snacks.length>0&&<div style={{marginTop:8}}><div style={{fontSize:11,color:'#64748b',marginBottom:4}}>Snacks aparte:</div>{res.snacks.map((s,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#64748b'}}><span>{s.nombre}</span><span>{s.g} g</span></div>))}</div>}
+          {res.snacks.length>0&&<div style={{marginTop:8}}><div style={{fontSize:11,color:'#64748b',marginBottom:4}}>Snacks aparte:</div>{res.snacks.map((s,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#64748b'}}><span>{s.emoji} {s.nombre}</span><span>{s.cant} {s.u} (≈{s.g} g)</span></div>))}</div>}
+          {res.ingredientes&&res.ingredientes.length>0&&<div style={{marginTop:8}}><div style={{fontSize:11,color:'#64748b',marginBottom:4}}>🧂 Para preparar:</div>{res.ingredientes.map((s,i)=>(<div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:12,color:'#64748b'}}><span>{s.emoji} {s.nombre}</span><span>{s.cant} {s.u}</span></div>))}</div>}
           {(!res.salado.length&&!res.nino.length&&!res.dulce.length&&!res.pernil&&!res.torta)&&<p style={{fontSize:12,color:'#94a3b8'}}>Cargá la gente y elegí algún plato para ver el cálculo.</p>}
         </div>
       </React.Fragment>)}
@@ -2819,7 +2829,7 @@ function AdminMenuG({setVista,iaConfig,setIaConfig}){
             <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🍰 Tarde/merienda: factor del salado</span><input type="number" step="0.05" value={cfg.meriendaFactor} onChange={e=>setNum('meriendaFactor',e.target.value)} style={nip}/></label>
             <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🥤 Bebida: litros por persona (3 hs)</span><input type="number" step="0.1" value={cfg.bebidaL} onChange={e=>setNum('bebidaL',e.target.value)} style={nip}/></label>
             <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🥤 Bebida: +litros por cada hora extra</span><input type="number" step="0.1" value={cfg.bebidaExtraL} onChange={e=>setNum('bebidaExtraL',e.target.value)} style={nip}/></label>
-            <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🍟 Snack salado: g por adulto (papas)</span><input type="number" value={cfg.snackPapasAd} onChange={e=>setNum('snackPapasAd',e.target.value)} style={nip}/></label>
+            <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🍟 Papas: g por persona (todos)</span><input type="number" value={cfg.snackPapasAd} onChange={e=>setNum('snackPapasAd',e.target.value)} style={nip}/></label>
             <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🥜 Maní: g por adulto</span><input type="number" value={cfg.snackManiAd} onChange={e=>setNum('snackManiAd',e.target.value)} style={nip}/></label>
             <label style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><span>🍿 Snack salado: g por niño</span><input type="number" value={cfg.snackNino} onChange={e=>setNum('snackNino',e.target.value)} style={nip}/></label>
           </div>
