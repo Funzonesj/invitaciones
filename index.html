@@ -2619,7 +2619,7 @@ function calcMenuG(cfg,inp){
   // INGREDIENTES para preparar (ej: el pancho se desglosa en salchichas + pan + mayonesa)
   out.ingredientes=[];
   const _pan=eleg.find(a=>a.id==='g-pancho');
-  if(_pan){ const pn=((out.nino.find(x=>x.nombre===_pan.nombre)||{}).unidades)||0; if(pn>0){ out.ingredientes.push({nombre:'Salchichas para pancho',emoji:'🌭',cant:Math.ceil(pn/6),u:'paq. (6u)'}); out.ingredientes.push({nombre:'Pan de pancho',emoji:'🥖',cant:Math.ceil(pn/6),u:'paq. (6u)'}); out.ingredientes.push({nombre:'Mayonesa',emoji:'🥫',cant:Math.ceil(pn*10/500),u:'pote ~500g'}); } }
+  if(_pan){ const pn=((out.nino.find(x=>x.nombre===_pan.nombre)||{}).unidades)||0; if(pn>0){ out.ingredientes.push({nombre:'Salchichas para pancho',emoji:'🌭',cant:Math.ceil(pn/6),u:'paq. (6u)'}); out.ingredientes.push({nombre:'Pan de pancho',emoji:'🥖',cant:Math.ceil(pn/6),u:'paq. (6u)'}); out.ingredientes.push({nombre:'Mayonesa',emoji:'🥫',cant:Math.ceil(pn*10/250),u:'pote ~250g'}); out.ingredientes.push({nombre:'Ketchup',emoji:'🍅',cant:Math.ceil(pn*10/250),u:'pote ~250g'}); } }
   return out;
 }
 // Calculador en gramos que usa el PAPÁ (lee la config de iaConfig.menuG armada en el admin)
