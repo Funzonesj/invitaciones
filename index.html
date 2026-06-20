@@ -2441,8 +2441,11 @@ function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
 
       <div style={{...S.card,marginBottom:14}}>
         <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>📋 Reglas del salón</h3>
-        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Lo que ve el papá en "Reglas del salón".</p>
-        <textarea value={suc.reglas||''} onChange={e=>updSuc('reglas',e.target.value)} rows={6} style={{...ip,resize:'vertical',fontFamily:'inherit'}} placeholder="Horarios, cantidad de invitados, alimentos permitidos, qué incluye, qué no, etc."/>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Escribí o pegá acá las reglas. Es lo que ve el papá en "Reglas del salón".</p>
+        <textarea value={suc.reglas||''} onChange={e=>updSuc('reglas',e.target.value)} rows={7} style={{...ip,resize:'vertical',fontFamily:'inherit'}} placeholder="Horarios, cantidad de invitados, alimentos permitidos, qué incluye, qué no, etc."/>
+        {sucursales.filter(s=>s.id!==selSuc&&s.reglas&&String(s.reglas).trim()).map(s=>(
+          <button key={s.id} onClick={()=>{if(window.confirm('¿Traer las reglas de "'+s.nombre+'" a este salón? Reemplaza lo que esté escrito acá.')){updSuc('reglas',s.reglas);flash('✓ Reglas traídas de '+s.nombre);}}} style={{...S.btn,background:'#eff6ff',color:'#0369a1',border:'1px solid #bae6fd',padding:'8px 12px',fontSize:12,fontWeight:800,marginTop:8}}>📋 Traer reglas de {s.nombre}</button>
+        ))}
       </div>
 
       <div style={{...S.card,marginBottom:14}}>
