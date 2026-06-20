@@ -2484,7 +2484,7 @@ function AdminEncuestas({setVista,eventos,setEventos,sucursales,iaConfig,setIaCo
             <h2 style={{fontWeight:900,fontSize:18}}>{EC.titulo}</h2>
             <button onClick={()=>setAbrir(null)} style={{...S.btn,background:'#f1f5f9',color:'#475569',padding:'6px 12px',fontSize:13}}>✕</button>
           </div>
-          <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>{e.nombre} · {q.fecha||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||''))} · {sucName(e.sucId)}</p>
+          <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>{e.nombre} · {q.fecha||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||''))}{(e.hIni||e.hFin)?(' · '+(e.hIni||'')+(e.hFin?(' a '+e.hFin):'')+' hs'):''} · {sucName(e.sucId)}</p>
           <div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}><div style={{fontWeight:900,fontSize:13,color:'#6b21a8'}}>{EC.tEncargada}</div><CalRO v={q.encargada}/></div>
           <div style={{...S.card,marginBottom:12}}><div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>{EC.tMozos}</div><FilaRO v={q.m1} texto={EC.m1}/><FilaRO v={q.m2} texto={EC.m2}/><FilaRO v={q.m3} texto={EC.m3}/><FilaRO v={q.m4} texto={EC.m4}/></div>
           <div style={{...S.card,marginBottom:12}}><div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>{EC.tAux}</div><FilaRO v={q.aux} texto={EC.aux}/></div>
@@ -2526,7 +2526,7 @@ function AdminEncuestas({setVista,eventos,setEventos,sucursales,iaConfig,setIaCo
         ):conEnc.map(e=>{const q=e.encuesta;const malo=hayMalo(q);return(
           <div key={e.id} style={{...S.card,marginBottom:12,border:malo?'2px solid #fecaca':S.card.border}}>
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
-              <div style={{fontWeight:900,fontSize:15,marginBottom:2}}>{e.nombre} <span style={{fontSize:11,fontWeight:600,color:'#94a3b8'}}>· {q.fecha||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||''))} · {sucName(e.sucId)}</span></div>
+              <div style={{fontWeight:900,fontSize:15,marginBottom:2}}>{e.nombre} <span style={{fontSize:11,fontWeight:600,color:'#94a3b8'}}>· {q.fecha||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||''))}{e.hIni?(' · '+e.hIni+' hs'):''} · {sucName(e.sucId)}</span></div>
               <div style={{display:'flex',gap:6,flexShrink:0}}>
                 <button onClick={()=>setAbrir(e)} style={{...S.btn,background:'#0ea5e9',color:'#fff',padding:'6px 12px',fontSize:12,fontWeight:800}}>👁 Abrir</button>
                 <button onClick={()=>borrarEncuesta(e.id)} title="Borrar encuesta" style={{...S.btn,background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',padding:'6px 10px',fontSize:12,fontWeight:800}}>🗑</button>

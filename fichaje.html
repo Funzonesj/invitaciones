@@ -907,10 +907,36 @@ function EncuestaImg({ev,verPrivado}){
   const cal=v=>v==='excelente'?['🤩 Excelente',C.verde]:v==='buena'?['🙂 Buena',C.amar]:v==='mala'?['😕 Mala',C.rojo]:['—',C.tx2];
   const sn=v=>v===true?['Sí',C.verde]:v===false?['No',C.rojo]:['—',C.tx2];
   const Row=({l,par})=>(<div style={{display:'flex',justifyContent:'space-between',gap:8,padding:'5px 0',borderBottom:'1px solid '+C.bd,fontSize:13}}><span style={{color:C.tx2}}>{l}</span><b style={{color:par[1]}}>{par[0]}</b></div>);
+  const cab=(<div style={{fontSize:12,color:C.tx2,marginBottom:10}}>{ev.festejado||ev.nombre||''} · {q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}{(verPrivado&&ev._sucNombre)?(' · '+ev._sucNombre):''}</div>);
+  // Audio sin descarga (para el empleado)
+  const audioMsg=(noDl)=>(q.agradecimientoAudio||(q.agradecimiento&&String(q.agradecimiento).trim()))?(
+    <div style={{marginTop:8,background:'#2a2418',border:'1px solid #4a3d1c',borderRadius:8,padding:10}}>
+      <div style={{fontSize:12.5,color:C.oro,fontWeight:700,marginBottom:6}}>💜 Mensajito de la familia</div>
+      {q.agradecimientoAudio&&<audio src={q.agradecimientoAudio} controls controlsList={noDl?'nodownload noplaybackrate':undefined} onContextMenu={noDl?(e=>e.preventDefault()):undefined} style={{height:32,width:'100%',marginBottom:6}}></audio>}
+      {q.agradecimiento&&<div style={{fontSize:13}}>{q.agradecimiento}</div>}
+    </div>
+  ):null;
+  if(!verPrivado){
+    // Vista previa para el EMPLEADO: solo cumpleaños/nombre + bueno/malo + mensajito (sin descarga, sin la encuesta completa)
+    const arr=[q.m1,q.m2,q.m3,q.m4,q.aux]; const bien=arr.filter(x=>x===true).length; const tot=arr.filter(x=>x===true||x===false).length;
+    return (
+      <div style={{...S.card}}>
+        <div style={{fontWeight:800,fontFamily:'Syne',fontSize:16}}>🎂 {ev.festejado||ev.nombre||'Cumpleaños'}</div>
+        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>{q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}</div>
+        <div style={{fontSize:12,color:C.tx2,marginBottom:6}}>¿Cómo salió?</div>
+        <div style={{display:'flex',gap:8,marginBottom:8}}>
+          <div style={{flex:1,textAlign:'center',background:C.surf2,borderRadius:10,padding:'10px 6px'}}><div style={{fontSize:11,color:C.tx2}}>Encargada</div><div style={{fontWeight:800,color:cal(q.encargada)[1]}}>{cal(q.encargada)[0]}</div></div>
+          <div style={{flex:1,textAlign:'center',background:C.surf2,borderRadius:10,padding:'10px 6px'}}><div style={{fontSize:11,color:C.tx2}}>Personal</div><div style={{fontWeight:800,color:cal(q.personal)[1]}}>{cal(q.personal)[0]}</div></div>
+        </div>
+        {tot>0&&<div style={{fontSize:13,color:C.tx2}}>👍 Puntos bien: <b style={{color:bien===tot?C.verde:C.amar}}>{bien} de {tot}</b></div>}
+        {audioMsg(true)}
+      </div>
+    );
+  }
   return (
     <div style={{...S.card}}>
       <div style={{fontWeight:800,fontFamily:'Syne',fontSize:16}}>📝 Encuesta del papá</div>
-      <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>{ev.festejado||ev.nombre||''} · {q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}{(verPrivado&&ev._sucNombre)?(' · '+ev._sucNombre):''}</div>
+      {cab}
       <Row l="👩 Encargada" par={cal(q.encargada)}/>
       <Row l="🧑‍🍳 Mozos atentos" par={sn(q.m1)}/>
       <Row l="Presentes todo el evento" par={sn(q.m2)}/>
@@ -920,15 +946,9 @@ function EncuestaImg({ev,verPrivado}){
       <Row l="🚻 Baños limpios" par={q.banos==='novisito'?['No los visitó',C.tx2]:sn(q.banos==='si')}/>
       <Row l="⭐ Atención del personal" par={cal(q.personal)}/>
       {q.pagoExtra==='si'&&<div style={{marginTop:8,fontSize:12.5,color:C.amar,fontWeight:700}}>💵 Abonó extra: ${q.pagoMonto!=null&&q.pagoMonto!==''?(+q.pagoMonto).toLocaleString('es-AR'):'?'}{q.pagoConcepto?(' ('+q.pagoConcepto+')'):''}</div>}
-      {(q.agradecimientoAudio||(q.agradecimiento&&String(q.agradecimiento).trim()))&&(
-        <div style={{marginTop:8,background:'#2a2418',border:'1px solid #4a3d1c',borderRadius:8,padding:10}}>
-          <div style={{fontSize:12.5,color:C.oro,fontWeight:700,marginBottom:6}}>💜 Mensajito para los chicos</div>
-          {q.agradecimientoAudio&&<audio src={q.agradecimientoAudio} controls style={{height:32,width:'100%',marginBottom:6}}></audio>}
-          {q.agradecimiento&&<div style={{fontSize:13}}>{q.agradecimiento}</div>}
-        </div>
-      )}
+      {audioMsg(false)}
       {q.comentario&&String(q.comentario).trim()&&<div style={{marginTop:8,fontSize:12.5,color:C.tx2}}>💬 {q.comentario}</div>}
-      {verPrivado && q.critica && String(q.critica).trim() && <div style={{marginTop:8,background:'#2a1a10',border:'1px solid #4a2d1c',borderRadius:8,padding:10,fontSize:12.5,color:'#fdba74'}}>🔒 Crítica (privada): {q.critica}</div>}
+      {q.critica&&String(q.critica).trim()&&<div style={{marginTop:8,background:'#2a1a10',border:'1px solid #4a2d1c',borderRadius:8,padding:10,fontSize:12.5,color:'#fdba74'}}>🔒 Crítica (privada): {q.critica}</div>}
     </div>
   );
 }
