@@ -97,7 +97,7 @@ function App(){
         {vista==='horarios'    && (esDuena||rol==='encargada') && <Horarios sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='registros'   && <Placeholder titulo="📋 Registros de fichaje" txt="Listado de entradas/salidas con estado (en hora / tarde / ausente). Próxima etapa."/>}
         {vista==='pagos'       && (esDuena||rol==='encargada') && <Pagos sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
-        {vista==='alertas'     && <Placeholder titulo="🔔 Alertas" txt="Tarde, ausente, sin salida. Próxima etapa."/>}
+        {vista==='alertas'     && (esDuena||rol==='encargada') && <Alertas esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='empleados'   && esDuena && <Empleados empleados={empleados} sucursales={sucursales} recargar={recargar}/>}
         {vista==='sucursales'  && esDuena && <Sucursales sucursales={sucursales} recargar={recargar}/>}
         {vista==='config'      && esDuena && <Configuracion sucursales={sucursales} empleados={empleados} recargar={recargar}/>}
@@ -967,6 +967,45 @@ function EncuestasView({esDuena,sucCtx,sucursales}){
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ════════ ALERTAS (encargada/dueña) ════════ */
+function Alertas({esDuena,sucursales,empleados,sucCtx}){
+  const [sucSel,setSucSel]=useState(''); const [alertas,setAlertas]=useState(null);
+  async function cargar(){ const a=await dbAll('fichaje_alertas'); setAlertas(a.sort((x,y)=>String(y.created_at||'').localeCompare(String(x.created_at||'')))); }
+  useEffect(()=>{cargar();},[]);
+  const empNom=id=>{const e=empleados.find(x=>x.id===id);return e?e.nombre:'(empleado)';};
+  async function marcarLeida(id){ await dbUpdate('fichaje_alertas',id,{leida:true}); cargar(); }
+  async function borrar(id){ if(!window.confirm('¿Borrar esta alerta?'))return; await dbDelete('fichaje_alertas',id); cargar(); }
+  const ic={tarde:['⏰',C.amar],sin_horario:['❓',C.rojo],ausente:['❌',C.rojo]};
+  const fmtTs=ts=>{try{const d=new Date(ts);return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}catch(e){return '';}};
+  let list=alertas||[];
+  const miSuc = esDuena? sucSel : sucCtx;
+  if(miSuc) list=list.filter(a=>a.sucursal_id===miSuc);
+  const sinLeer=list.filter(a=>!a.leida).length;
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:4}}>🔔 Alertas</h2>
+      <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Llegadas tarde y fichajes fuera de horario. {sinLeer>0?(sinLeer+' sin leer.'):'Todo al día. ✓'}</p>
+      {esDuena && <select value={sucSel} onChange={e=>setSucSel(e.target.value)} style={{...S.input,marginBottom:12}}><option value="">Todos los salones</option>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
+      {alertas===null ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
+        list.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}><div style={{fontSize:34,marginBottom:6}}>✅</div>No hay alertas.</div> :
+        list.map(a=>{const I=ic[a.tipo]||['🔔',C.tx2];return (
+          <div key={a.id} style={{...S.card,marginBottom:8,border:'1px solid '+(a.leida?C.bd:I[1]),opacity:a.leida?.6:1,display:'flex',gap:10,alignItems:'flex-start'}}>
+            <span style={{fontSize:22}}>{I[0]}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:a.leida?500:700}}>{a.descripcion||(empNom(a.empleado_id)+' — '+a.tipo)}</div>
+              <div style={{fontSize:11,color:C.tx2,marginTop:2}}>{fmtTs(a.created_at)}{a.leida?' · leída':''}</div>
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:4,flexShrink:0}}>
+              {!a.leida&&<button onClick={()=>marcarLeida(a.id)} style={{...S.btn,background:C.surf2,color:C.verde,border:'1px solid '+C.bd,padding:'5px 8px',minHeight:0,fontSize:11}}>✓ Leída</button>}
+              <button onClick={()=>borrar(a.id)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'5px 8px',minHeight:0,fontSize:11}}>🗑</button>
+            </div>
+          </div>
+        );})
+      }
     </div>
   );
 }
