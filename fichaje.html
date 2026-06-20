@@ -1277,10 +1277,13 @@ function MiPlanilla({sesion,sucursales}){
   const maxDx=t=>t==='simple'?1:(t==='doble'||t==='2simples')?2:t==='triple'?3:0;
   function montoDia(d){ return horasDia(d)*valorHora + (d.enc||0)*(+cfg.bonus_excelente); }
   const opciones=[...TIPOS, ...((cfg.figuras_hora||[]).map(f=>['fig:'+f.nombre, f.nombre, (f.horas)+' hs']))];
+  const hoyISO=fechaHoyISO();
+  const cutoff15=(()=>{const d=new Date();d.setDate(d.getDate()-15);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);})();
+  const diaEditable=f=>f>=cutoff15&&f<=hoyISO;
   function tipoLabel(t){ if(esFig(t)){const f=(cfg.figuras_hora||[]).find(x=>('fig:'+x.nombre)===t);return f?f.nombre:'Figura';} return t==='simple'?'Simple':t==='doble'?'Doble':t==='2simples'?'2 simples':t==='triple'?'Triple':(t||'-'); }
   function exportarPlanilla(){
     if(!exD||!exH){alert('Elegí desde y hasta.');return;}
-    const dias=Object.keys(data).filter(f=>f>=exD&&f<=exH&&data[f]&&data[f].tipo).sort();
+    const dias=Object.keys(data).filter(f=>f>=exD&&f<=exH&&f>=cutoff15&&data[f]&&data[f].tipo).sort();
     if(!dias.length){alert('No tenés días cargados en ese rango.');return;}
     if(!window.jspdf){alert('No se pudo generar el PDF.');return;}
     const {jsPDF}=window.jspdf; const doc=new jsPDF(); let y=16;
@@ -1304,7 +1307,7 @@ function MiPlanilla({sesion,sucursales}){
   return (
     <div className="fade">
       <h2 style={{fontSize:20,marginBottom:4}}>📅 Mi planilla</h2>
-      <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Marcá los días que trabajaste y qué hiciste. Es tu registro (después se compara con el del salón).</p>
+      <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Marcá los días que trabajaste y qué hiciste. Es tu registro (después se compara con el del salón). Podés ver/cargar los <b style={{color:C.tx}}>últimos 15 días</b>.</p>
       <div style={{...S.card,marginBottom:12}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
           <button onClick={prevMes} style={{...S.btn,...S.btnGhost,padding:'6px 12px',minHeight:0}}>‹</button>
@@ -1313,8 +1316,8 @@ function MiPlanilla({sesion,sucursales}){
         </div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:4}}>
           {['D','L','M','M','J','V','S'].map((d,i)=><div key={i} style={{textAlign:'center',fontSize:10,color:C.tx2,fontWeight:700,padding:'2px 0'}}>{d}</div>)}
-          {celdas.map((d,i)=>{ if(!d)return <div key={i}></div>; const f=fechaDe(d); const dd=data[f]; const act=sel===f;
-            return (<button key={i} onClick={()=>setSel(f)} style={{aspectRatio:'1',borderRadius:9,border:'1px solid '+(act?C.oro:C.bd),background:dd?'#2a2418':C.surf2,color:C.tx,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:0,position:'relative'}}>
+          {celdas.map((d,i)=>{ if(!d)return <div key={i}></div>; const f=fechaDe(d); const dd=data[f]; const act=sel===f; const ed=diaEditable(f);
+            return (<button key={i} onClick={()=>{if(ed)setSel(f);}} style={{aspectRatio:'1',borderRadius:9,border:'1px solid '+(act?C.oro:C.bd),background:dd?'#2a2418':C.surf2,color:C.tx,opacity:ed?1:.3,cursor:ed?'pointer':'default',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:0,position:'relative'}}>
               <span style={{fontSize:13,fontWeight:dd?800:400}}>{d}</span>
               {dd&&<span style={{fontSize:9,color:C.oro,fontWeight:800,lineHeight:1}}>{esFig(dd.tipo)?'⏱':tipoCorto(dd.tipo)}{dd.deluxe?('+'+dd.deluxe):''}{dd.enc?'·💜':''}</span>}
             </button>);
@@ -1365,8 +1368,8 @@ function MiPlanilla({sesion,sucursales}){
         <div style={{fontWeight:700,fontSize:14,marginBottom:6}}>⬇ Descargar mi registro</div>
         <div style={{fontSize:11,color:C.tx2,marginBottom:10}}>Elegí un rango y bajá un PDF con lo que anotaste (para tenerlo y comparar si hay alguna duda).</div>
         <div style={{display:'flex',gap:8,marginBottom:8}}>
-          <div style={{flex:1}}><label style={S.label}>Desde</label><input type="date" style={S.input} value={exD} onChange={e=>setExD(e.target.value)}/></div>
-          <div style={{flex:1}}><label style={S.label}>Hasta</label><input type="date" style={S.input} value={exH} onChange={e=>setExH(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={S.label}>Desde</label><input type="date" min={cutoff15} max={hoyISO} style={S.input} value={exD} onChange={e=>setExD(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={S.label}>Hasta</label><input type="date" min={cutoff15} max={hoyISO} style={S.input} value={exH} onChange={e=>setExH(e.target.value)}/></div>
         </div>
         <button onClick={exportarPlanilla} style={{...S.btn,...S.btnGhost,width:'100%'}}>⬇ Descargar PDF</button>
       </div>
