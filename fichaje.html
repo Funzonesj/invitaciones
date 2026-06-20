@@ -96,6 +96,7 @@ function App(){
         {vista==='alertas'     && <Placeholder titulo="🔔 Alertas" txt="Tarde, ausente, sin salida. Próxima etapa."/>}
         {vista==='empleados'   && esDuena && <Empleados empleados={empleados} sucursales={sucursales} recargar={recargar}/>}
         {vista==='sucursales'  && esDuena && <Sucursales sucursales={sucursales} recargar={recargar}/>}
+        {vista==='config'      && esDuena && <Configuracion sucursales={sucursales} empleados={empleados} recargar={recargar}/>}
       </div>
       <BottomNav rol={rol} vista={vista} setVista={setVista}/>
     </div>
@@ -127,7 +128,7 @@ function Header({sesion,esDuena,sucursales,sucActiva,setSucActiva,onSalir}){
 /* ── Bottom nav (según rol) ── */
 function BottomNav({rol,vista,setVista}){
   const items = rol==='dueno'
-    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones']]
+    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones'],['config','⚙️','Config']]
     : rol==='encargada'
     ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
     : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['registros','📋','Mis fichajes']];
@@ -463,15 +464,16 @@ function parseHorarios(lineas){
   return eventos;
 }
 
-// Regla de ingreso: depende del EVENTO, no del empleado.
-// 1º evento del día → todos entran prep1 antes (1.5h). 2º, 3º... evento → todos prepNuevo antes (30min).
-function calcularIngresos(eventos, prep1, prepNuevo){
+// Regla de ingreso: depende del EVENTO, no del empleado. Minutos configurables por posición.
+// 1º evento del día → p1 antes · 2º → p2 antes · 3º y más → p3 antes.
+function calcularIngresos(eventos, preps){
+  const p1=+(preps&&preps.p1)||90, p2=+(preps&&preps.p2)||30, p3=+(preps&&preps.p3)||30;
   const byDia={}; eventos.forEach(e=>{(byDia[e.dia]=byDia[e.dia]||[]).push(e);});
   Object.values(byDia).forEach(list=>{
     list.sort((a,b)=>toMin(a.hora_inicio)-toMin(b.hora_inicio));
     list.forEach((e,idx)=>{
       e.orden_dia=idx+1;
-      const mins = idx===0 ? prep1 : prepNuevo;
+      const mins = idx===0?p1 : idx===1?p2 : p3;
       e.roles.forEach(r=>{ r.ingreso=restarMin(e.hora_inicio,mins); });
     });
   });
@@ -483,7 +485,8 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
   const [sucSel,setSucSel]=useState(esDuena ? (sucCtx||(sucursales[0]||{}).id||'') : (sucCtx||''));
   const [eventos,setEventos]=useState([]); const [asign,setAsign]=useState([]); const [cargando,setCargando]=useState(false);
   const [previa,setPrevia]=useState(null); const [leyendo,setLeyendo]=useState(false); const [reempl,setReempl]=useState(null);
-  const cfgGen = {prep1:90,prepNuevo:30};
+  const [cfgGen,setCfgGen]=useState({p1:90,p2:30,p3:30,figuras:[]});
+  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfgGen({p1:+g.data.prep_1||90,p2:+g.data.prep_2||30,p3:+g.data.prep_3||30,figuras:g.data.figuras_hora||[]});})();},[]);
   const empByLegajo=l=>empleados.find(e=>e.legajo===l);
   const nomLegajo=l=>{const e=empByLegajo(l);return e?e.nombre:('#'+l+' (sin cargar)');};
   const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
@@ -499,7 +502,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
     try{
       const lineas=await leerLineasPdf(file);
       let evs=parseHorarios(lineas);
-      evs=calcularIngresos(evs,cfgGen.prep1,cfgGen.prepNuevo);
+      evs=calcularIngresos(evs,cfgGen);
       // autodetectar sucursal por paquetes
       const txt=evs.map(x=>x.paquete).join(' ').toLowerCase();
       let sucAuto=sucSel;
@@ -603,7 +606,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
         )
       )}
 
-      {tab==='manual' && <ManualEvento sesion={sesion} sucSel={sucSel} empleados={empleados} onGuardado={()=>setTab('ver')}/>}
+      {tab==='manual' && <ManualEvento sesion={sesion} sucSel={sucSel} empleados={empleados} figuras={cfgGen.figuras||[]} onGuardado={()=>setTab('ver')}/>}
 
       {reempl && (
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',padding:18}} onClick={()=>setReempl(null)}>
@@ -623,7 +626,8 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
   );
 }
 
-function ManualEvento({sesion,sucSel,empleados,onGuardado}){
+function ManualEvento({sesion,sucSel,empleados,figuras,onGuardado}){
+  const opcionesRol=['Cocinero','Mozo','Auxiliar',...((figuras||[]).map(f=>f.nombre))];
   const [f,setF]=useState({fecha:'',paquete:'',hora_inicio:'',hora_fin:'',cliente:'',festejado:''});
   const [roles,setRoles]=useState([{rol:'Cocinero',legajo:''}]);
   const [guard,setGuard]=useState(false);
@@ -650,7 +654,7 @@ function ManualEvento({sesion,sucSel,empleados,onGuardado}){
         <label style={S.label}>Personal (rol + legajo)</label>
         {roles.map((r,i)=>(
           <div key={i} style={{display:'flex',gap:8,marginBottom:6}}>
-            <select style={{...S.input,flex:1}} value={r.rol} onChange={e=>setRol(i,'rol',e.target.value)}>{['Cocinero','Mozo','Auxiliar','Mozo 4 hs','Auxiliar 4 hs'].map(x=><option key={x}>{x}</option>)}</select>
+            <select style={{...S.input,flex:1}} value={r.rol} onChange={e=>setRol(i,'rol',e.target.value)}>{opcionesRol.map(x=><option key={x}>{x}</option>)}</select>
             <input style={{...S.input,width:80}} type="number" value={r.legajo} onChange={e=>setRol(i,'legajo',e.target.value)} placeholder="N°"/>
             <button onClick={()=>setRoles(rs=>rs.filter((_,j)=>j!==i))} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'0 12px',minHeight:0}}>−</button>
           </div>
@@ -671,11 +675,10 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
   const [sucSel,setSucSel]=useState(esDuena?(sucCtx||(sucursales[0]||{}).id||''):(sucCtx||''));
   const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState('');
   const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,bonus_excelente:7000});
-  const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false); const [editCfg,setEditCfg]=useState(false);
+  const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false);
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));})();},[]);
   const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
   const money=n=>'$'+Math.round(n).toLocaleString('es-AR');
-  async function guardarCfg(){ try{await SB.from('fichaje_config').upsert({id:'general',data:cfg});setEditCfg(false);alert('✓ Tarifas guardadas');}catch(e){alert('Error: '+(e.message||e));} }
 
   async function calcular(){
     if(!sucSel||!desde||!hasta){alert('Elegí sucursal y rango de fechas.');return;}
@@ -727,28 +730,6 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
   return (
     <div className="fade">
       <h2 style={{fontSize:20,marginBottom:12}}>💰 Pagos</h2>
-      {esDuena && (
-        <div style={{...S.card,marginBottom:12}}>
-          <div onClick={()=>setEditCfg(!editCfg)} style={{display:'flex',justifyContent:'space-between',cursor:'pointer'}}>
-            <span style={{fontWeight:700,fontSize:14}}>⚙️ Tarifas (horas por evento)</span><span style={{color:C.tx2}}>{editCfg?'▲':'▼'}</span>
-          </div>
-          {editCfg && (
-            <div style={{marginTop:12,display:'flex',flexDirection:'column',gap:10}}>
-              <div style={{fontSize:12,color:C.tx2}}>Cuántas horas paga cada tipo de evento. El monto = horas × valor hora de cada empleado.</div>
-              <div style={{display:'flex',gap:8}}>
-                <div style={{flex:1}}><label style={S.label}>Simple (hs)</label><input style={S.input} type="number" step="0.5" value={cfg.horas_simple} onChange={e=>setCfg({...cfg,horas_simple:e.target.value})}/></div>
-                <div style={{flex:1}}><label style={S.label}>Doble (hs)</label><input style={S.input} type="number" step="0.5" value={cfg.horas_doble} onChange={e=>setCfg({...cfg,horas_doble:e.target.value})}/></div>
-                <div style={{flex:1}}><label style={S.label}>Triple (hs)</label><input style={S.input} type="number" step="0.5" value={cfg.horas_triple} onChange={e=>setCfg({...cfg,horas_triple:e.target.value})}/></div>
-              </div>
-              <div style={{display:'flex',gap:8}}>
-                <div style={{flex:1}}><label style={S.label}>Hueco p/ separar (hs)</label><input style={S.input} type="number" step="0.5" value={cfg.gap_horas} onChange={e=>setCfg({...cfg,gap_horas:e.target.value})}/></div>
-                <div style={{flex:1}}><label style={S.label}>Bonus "Excelente" ($)</label><input style={S.input} type="number" value={cfg.bonus_excelente} onChange={e=>setCfg({...cfg,bonus_excelente:e.target.value})}/></div>
-              </div>
-              <button onClick={guardarCfg} style={{...S.btn,...S.btnOro}}>Guardar tarifas</button>
-            </div>
-          )}
-        </div>
-      )}
       <div style={{...S.card,marginBottom:12,display:'flex',flexDirection:'column',gap:10}}>
         {esDuena && <select value={sucSel} onChange={e=>setSucSel(e.target.value)} style={S.input}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
         <div style={{display:'flex',gap:8}}>
@@ -779,6 +760,84 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
           <div style={{...S.card,background:'#2a2418',border:'1px solid #4a3d1c',fontSize:12,color:C.tx2}}>💜 El <b style={{color:C.oro}}>bonus de encuestas "Excelente"</b> (${(+cfg.bonus_excelente).toLocaleString('es-AR')} por empleado) se sumará automático en la próxima etapa, al conectar con las encuestas del salón.</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ════════ CONFIGURACIÓN (dueña) ════════ */
+function Configuracion({sucursales,empleados,recargar}){
+  const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,bonus_excelente:7000,prep_1:90,prep_2:30,prep_3:30,figuras_hora:[]});
+  const [vh,setVh]=useState({}); const [msg,setMsg]=useState(''); const [guardando,setGuardando]=useState(false);
+  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data,figuras_hora:g.data.figuras_hora||[]}));})();},[]);
+  useEffect(()=>{const o={};(empleados||[]).forEach(e=>{o[e.id]=e.valor_hora??'';});setVh(o);},[empleados]);
+  async function guardarCfg(){ setGuardando(true); try{ await SB.from('fichaje_config').upsert({id:'general',data:cfg}); setMsg('✓ Configuración guardada'); setTimeout(()=>setMsg(''),2200);}catch(e){alert('Error: '+(e.message||e));} setGuardando(false); }
+  async function guardarValor(em){ const v=vh[em.id]; await dbUpdate('fichaje_empleados',em.id,{valor_hora:v===''?0:+v}); if(recargar)recargar(); }
+  function setFig(i,k,val){ setCfg(c=>({...c,figuras_hora:c.figuras_hora.map((f,j)=>j===i?{...f,[k]:val}:f)})); }
+  function addFig(){ setCfg(c=>({...c,figuras_hora:[...(c.figuras_hora||[]),{nombre:'Auxiliar 3 hs',horas:3,bonus:false}]})); }
+  function delFig(i){ setCfg(c=>({...c,figuras_hora:c.figuras_hora.filter((_,j)=>j!==i)})); }
+  const num=(k,lbl,step)=>(<div style={{flex:1}}><label style={S.label}>{lbl}</label><input style={S.input} type="number" step={step||'1'} value={cfg[k]} onChange={e=>setCfg({...cfg,[k]:e.target.value})}/></div>);
+  const orden=[...empleados].sort((a,b)=>(a.legajo||999)-(b.legajo||999));
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:12}}>⚙️ Configuración</h2>
+
+      <div style={{...S.card,marginBottom:12}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>💜 Bonus de encuesta "Excelente"</div>
+        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>Lo que cobra cada empleado cuando el papá califica el evento como Excelente.</div>
+        <label style={S.label}>Monto del bonus ($)</label>
+        <input style={S.input} type="number" value={cfg.bonus_excelente} onChange={e=>setCfg({...cfg,bonus_excelente:e.target.value})}/>
+      </div>
+
+      <div style={{...S.card,marginBottom:12}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:8}}>🕐 Horas por tipo de evento</div>
+        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>El monto = estas horas × el valor hora de cada empleado.</div>
+        <div style={{display:'flex',gap:8}}>{num('horas_simple','Simple (hs)','0.5')}{num('horas_doble','Doble (hs)','0.5')}{num('horas_triple','Triple (hs)','0.5')}</div>
+        <div style={{marginTop:10}}>{num('gap_horas','Hueco para separar eventos (hs)','0.5')}</div>
+        <div style={{fontSize:11,color:C.tx2,marginTop:6}}>Si entre dos eventos pasan ese tiempo o más, se cuentan separados (no como doble).</div>
+      </div>
+
+      <div style={{...S.card,marginBottom:12}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:8}}>⏱️ Minutos de ingreso antes del evento</div>
+        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>Cuánto antes entra el personal según sea el 1°, 2° o 3° evento del día.</div>
+        <div style={{display:'flex',gap:8}}>{num('prep_1','1° evento (min)')}{num('prep_2','2° evento (min)')}{num('prep_3','3° evento (min)')}</div>
+      </div>
+
+      <div style={{...S.card,marginBottom:12}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>➕ Figuras por hora (extra)</div>
+        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>Personas que se suman a un evento y se pagan <b>por hora</b> (aparte del cocinero/mozo). Marcá si a cada una le suma el bonus de encuesta.</div>
+        {(cfg.figuras_hora||[]).map((f,i)=>(
+          <div key={i} style={{background:C.surf2,borderRadius:10,padding:10,marginBottom:8}}>
+            <div style={{display:'flex',gap:8,marginBottom:8}}>
+              <input style={{...S.input,flex:1}} value={f.nombre} onChange={e=>setFig(i,'nombre',e.target.value)} placeholder="Auxiliar 3 hs"/>
+              <input style={{...S.input,width:80}} type="number" step="0.5" value={f.horas} onChange={e=>setFig(i,'horas',+e.target.value)} placeholder="hs"/>
+              <button onClick={()=>delFig(i)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'0 12px',minHeight:0}}>🗑</button>
+            </div>
+            <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,cursor:'pointer'}}>
+              <input type="checkbox" checked={!!f.bonus} onChange={e=>setFig(i,'bonus',e.target.checked)}/> ¿Le suma el bonus de encuesta?
+            </label>
+          </div>
+        ))}
+        <button onClick={addFig} style={{...S.btn,...S.btnGhost,fontSize:13,padding:'8px 12px',minHeight:0}}>+ Agregar figura</button>
+      </div>
+
+      <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:18}}>
+        <button onClick={guardarCfg} disabled={guardando} style={{...S.btn,...S.btnOro,flex:1}}>{guardando?'Guardando…':'Guardar configuración'}</button>
+        {msg && <span style={{color:C.verde,fontWeight:700,fontSize:13}}>{msg}</span>}
+      </div>
+
+      <div style={{...S.card}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>💵 Valor hora por empleado</div>
+        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>Cada empleado cobra su valor hora. Se guarda al salir de cada casillero.</div>
+        {orden.length===0 ? <div style={{color:C.tx2,fontSize:13}}>Todavía no hay empleados cargados.</div> :
+          orden.map(em=>(
+          <div key={em.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:'1px solid '+C.bd}}>
+            <div style={{flex:1,minWidth:0,fontSize:14}}>{em.legajo!=null&&<span className="num" style={{color:C.oro}}>#{em.legajo} </span>}{em.nombre}</div>
+            <span style={{color:C.tx2}}>$</span>
+            <input style={{...S.input,width:110,marginBottom:0}} type="number" value={vh[em.id]===undefined?'':vh[em.id]} onChange={e=>setVh({...vh,[em.id]:e.target.value})} onBlur={()=>guardarValor(em)} placeholder="0"/>
+            <span style={{fontSize:11,color:C.tx2}}>/h</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
