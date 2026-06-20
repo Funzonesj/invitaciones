@@ -550,7 +550,7 @@ function App() {
 
       <main style={{flex:1}}>
         {vista==='admin-login'       && <AdminLogin     onLogin={loginAdmin}/>}
-        {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} tematicas={tematicas} esSA={esSA} iaConfig={iaConfig} setIaConfig={setIaConfig} pedidos={pedidos} setPedidos={setPedidos} refrescarPedidos={refrescarPedidos}/>}
+        {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} sucursales={sucursales} tematicas={tematicas} esSA={esSA} iaConfig={iaConfig} setIaConfig={setIaConfig} pedidos={pedidos} setPedidos={setPedidos} refrescarPedidos={refrescarPedidos}/>}
         {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig} setIaConfig={setIaConfig} setPapaSesion={setPapaSesion}/>}
         {vista==='admin-tematicas'   && <AdminTematicas setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-excel'       && <AdminExcel     setVista={setVista} sucActId={sucActId} eventos={eventos} setEventos={setEventos}/>}
@@ -910,7 +910,7 @@ function AdminPapaBotones({setVista,iaConfig,setIaConfig}){
 }
 
 /* ── ADMIN DASHBOARD ─────────────────────────────────────── */
-function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaConfig,pedidos=[],setPedidos,refrescarPedidos}){
+function AdminDashboard({setVista,sucAct,evsLocal,eventos=[],sucursales=[],tematicas,esSA,iaConfig,setIaConfig,pedidos=[],setPedidos,refrescarPedidos}){
   const [edit,setEdit]=useState(false);
   const [editId,setEditId]=useState(null);
   const dragRef=useRef(null);
@@ -962,13 +962,23 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
           </div>
         </div>
       )}
-      {/* Alerta: pagos extra declarados en encuestas, pendientes de revisar */}
-      {(()=>{const pp=(evsLocal||[]).filter(e=>e&&e.encuesta&&e.encuesta.pagoExtra==='si'&&!e.encuesta.pagoRevisado);if(!pp.length)return null;return(
+      {/* Alerta: pagos extra declarados en encuestas, pendientes de revisar.
+          Dueña (esSA): TODOS los salones, aclarando cuál. Encargada: solo su salón (evsLocal). */}
+      {(()=>{
+        const base=esSA?(eventos||[]):(evsLocal||[]);
+        const pp=base.filter(e=>e&&e.encuesta&&e.encuesta.pagoExtra==='si'&&!e.encuesta.pagoRevisado&&!String(e.id||'').startsWith('__config'));
+        if(!pp.length)return null;
+        const sucNom=id=>{const s=(sucursales||[]).find(x=>x.id===id);return s?(s.nombre||'Salón'):'Salón';};
+        // Conteo por salón (para la dueña)
+        const porSuc={};pp.forEach(e=>{porSuc[e.sucId]=(porSuc[e.sucId]||0)+1;});
+        const detalle=Object.keys(porSuc).map(id=>sucNom(id)+': '+porSuc[id]).join(' · ');
+        return(
         <div onClick={()=>{if(esSA)setVista('admin-encuestas');}} style={{cursor:esSA?'pointer':'default',background:'#fffbeb',border:'2px solid #fde68a',borderRadius:14,padding:'14px 16px',marginBottom:16,display:'flex',alignItems:'center',gap:12}}>
           <span style={{fontSize:28}}>💵</span>
           <div style={{flex:1}}>
             <div style={{fontWeight:900,fontSize:14,color:'#b45309'}}>⚠️ Revisar pago de encuestas</div>
-            <div style={{fontSize:12,color:'#92400e'}}>{pp.length} papá{pp.length>1?'s':''} declararon haber abonado algo extra el día del evento. Verificá que esté registrado.{esSA?' Tocá para ver.':' Avisale a la dueña.'}</div>
+            <div style={{fontSize:12,color:'#92400e'}}>{pp.length} papá{pp.length>1?'s':''} declararon haber abonado algo extra el día del evento. Verificá que esté registrado.{esSA?' Tocá para ver.':(' ('+sucNom((evsLocal[0]||{}).sucId||sucAct.id)+') Avisale a la dueña.')}</div>
+            {esSA&&<div style={{fontSize:12,fontWeight:800,color:'#b45309',marginTop:4}}>📍 {detalle}</div>}
           </div>
           {esSA&&<span style={{background:'#d97706',color:'white',borderRadius:99,padding:'4px 12px',fontSize:13,fontWeight:900}}>Ver</span>}
         </div>
