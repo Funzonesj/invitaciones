@@ -283,11 +283,13 @@ function Sucursales({sucursales,recargar}){
 
 /* ── Empleados (dueña) ── */
 function Empleados({empleados,sucursales,recargar}){
-  const vacio={legajo:'',nombre:'',rol_habitual:'Mozo',valor_hora:'',sucursales:[],foto_url:'',usuario:'',clave:'',rol_sistema:'empleado',sucursal_encargada:''};
+  const vacio={legajo:'',nombre:'',rol_habitual:[],valor_hora:'',sucursales:[],foto_url:'',usuario:'',clave:'',rol_sistema:'empleado',sucursal_encargada:''};
   const [form,setForm]=useState(vacio); const [editId,setEditId]=useState(null); const [subiendo,setSubiendo]=useState(false);
-  function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',rol_habitual:em.rol_habitual||'Mozo',valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||''}); window.scrollTo(0,0); }
+  const parseRoles=v=>Array.isArray(v)?v:(v?String(v).split(',').map(s=>s.trim()).filter(Boolean):[]);
+  function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',rol_habitual:parseRoles(em.rol_habitual),valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||''}); window.scrollTo(0,0); }
   function limpiar(){ setEditId(null); setForm(vacio); }
   function toggleSuc(id){ setForm(f=>({...f,sucursales:(f.sucursales||[]).includes(id)?f.sucursales.filter(x=>x!==id):[...(f.sucursales||[]),id]})); }
+  function toggleRol(r){ setForm(f=>({...f,rol_habitual:(f.rol_habitual||[]).includes(r)?f.rol_habitual.filter(x=>x!==r):[...(f.rol_habitual||[]),r]})); }
   async function elegirFoto(e){ const file=e.target.files[0]; if(!file)return; setSubiendo(true);
     const reader=new FileReader();
     reader.onload=async ev=>{ const url=await subirFoto(ev.target.result); setForm(f=>({...f,foto_url:url})); setSubiendo(false); };
@@ -296,7 +298,7 @@ function Empleados({empleados,sucursales,recargar}){
   async function guardar(){
     if(!form.nombre.trim()){ alert('Poné el nombre.'); return; }
     if(!form.usuario.trim()||!form.clave){ alert('Poné usuario y contraseña para que pueda ingresar.'); return; }
-    const row={ legajo:form.legajo===''?null:+form.legajo, nombre:form.nombre.trim(), rol_habitual:form.rol_habitual, valor_hora:form.valor_hora===''?0:+form.valor_hora, sucursales:form.sucursales, foto_url:form.foto_url||null, usuario:form.usuario.trim(), clave:String(form.clave), rol_sistema:form.rol_sistema, sucursal_encargada:form.rol_sistema==='encargada'?(form.sucursal_encargada||null):null, activo:true };
+    const row={ legajo:form.legajo===''?null:+form.legajo, nombre:form.nombre.trim(), rol_habitual:(form.rol_habitual||[]).join(', '), valor_hora:form.valor_hora===''?0:+form.valor_hora, sucursales:form.sucursales, foto_url:form.foto_url||null, usuario:form.usuario.trim(), clave:String(form.clave), rol_sistema:form.rol_sistema, sucursal_encargada:form.rol_sistema==='encargada'?(form.sucursal_encargada||null):null, activo:true };
     let ok;
     if(editId) ok=await dbUpdate('fichaje_empleados',editId,row); else ok=!!(await dbInsert('fichaje_empleados',row));
     if(ok){ await recargar(); limpiar(); }
@@ -319,14 +321,15 @@ function Empleados({empleados,sucursales,recargar}){
           <div style={{width:90}}><label style={S.label}>Legajo N°</label><input style={S.input} type="number" value={form.legajo} onChange={e=>setForm({...form,legajo:e.target.value})} placeholder="1"/></div>
           <div style={{flex:1}}><label style={S.label}>Nombre completo</label><input style={S.input} value={form.nombre} onChange={e=>setForm({...form,nombre:e.target.value})} placeholder="Lorena Pérez"/></div>
         </div>
-        <div style={{display:'flex',gap:8}}>
-          <div style={{flex:1}}><label style={S.label}>Rol habitual</label>
-            <select style={S.input} value={form.rol_habitual} onChange={e=>setForm({...form,rol_habitual:e.target.value})}>
-              {['Cocinero','Mozo','Auxiliar'].map(r=><option key={r} value={r}>{r}</option>)}
-            </select>
+        <div>
+          <label style={S.label}>Roles que puede hacer (elegí uno o varios)</label>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {['Cocinero','Mozo','Auxiliar'].map(r=>(
+              <button key={r} onClick={()=>toggleRol(r)} style={{...S.btn,minHeight:0,padding:'8px 14px',fontSize:13,...((form.rol_habitual||[]).includes(r)?{background:C.oro,color:'#1A1A1A'}:S.btnGhost)}}>{r}</button>
+            ))}
           </div>
-          <div style={{flex:1}}><label style={S.label}>Valor hora ($)</label><input style={S.input} type="number" value={form.valor_hora} onChange={e=>setForm({...form,valor_hora:e.target.value})} placeholder="0"/></div>
         </div>
+        <div><label style={S.label}>Valor hora ($)</label><input style={S.input} type="number" value={form.valor_hora} onChange={e=>setForm({...form,valor_hora:e.target.value})} placeholder="0"/></div>
         <div>
           <label style={S.label}>Sucursales donde trabaja</label>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
@@ -340,12 +343,17 @@ function Empleados({empleados,sucursales,recargar}){
           <div style={{flex:1}}><label style={S.label}>Contraseña</label><input style={S.input} value={form.clave} onChange={e=>setForm({...form,clave:e.target.value})} placeholder="••••"/></div>
         </div>
         <div>
-          <label style={S.label}>Rol en el sistema</label>
+          <label style={S.label}>¿Qué puede hacer en la app? (permisos)</label>
           <select style={S.input} value={form.rol_sistema} onChange={e=>setForm({...form,rol_sistema:e.target.value})}>
-            <option value="empleado">Empleado (solo ficha)</option>
-            <option value="encargada">Encargada (gestiona su sucursal)</option>
-            <option value="dueno">Dueña (acceso total)</option>
+            <option value="empleado">Empleado — solo fichar</option>
+            <option value="encargada">Encargada — gestiona su salón</option>
+            <option value="dueno">Dueña — acceso total</option>
           </select>
+          <div style={{fontSize:11,color:C.tx2,marginTop:6,lineHeight:1.6}}>
+            <b style={{color:C.tx}}>Empleado</b>: solo marca entrada y salida.<br/>
+            <b style={{color:C.tx}}>Encargada</b>: ve y maneja los horarios, fichajes y pagos de su salón.<br/>
+            <b style={{color:C.tx}}>Dueña</b>: ve y maneja todo, los dos salones.
+          </div>
         </div>
         {form.rol_sistema==='encargada' && (
           <div><label style={S.label}>Sucursal que maneja</label>
