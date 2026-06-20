@@ -90,7 +90,7 @@ function App(){
       <div className="fade" style={{maxWidth:560,margin:'0 auto',padding:'14px 14px 0'}}>
         {vista==='dashboard'   && <Dashboard sesion={sesion} rol={rol} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx} setVista={setVista}/>}
         {vista==='fichar'      && <Placeholder titulo="📍 Fichar" txt="Acá el empleado va a fichar con GPS + foto + reconocimiento facial. Lo construimos en la próxima etapa."/>}
-        {vista==='miplanilla'  && <MiPlanilla sesion={sesion}/>}
+        {vista==='miplanilla'  && <MiPlanilla sesion={sesion} sucursales={sucursales}/>}
         {vista==='horarios'    && (esDuena||rol==='encargada') && <Horarios sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='registros'   && <Placeholder titulo="📋 Registros de fichaje" txt="Listado de entradas/salidas con estado (en hora / tarde / ausente). Próxima etapa."/>}
         {vista==='pagos'       && (esDuena||rol==='encargada') && <Pagos sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
@@ -540,7 +540,8 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
           {sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
         </select>
       )}
-      <div style={{display:'flex',gap:8,marginBottom:14}}>{tabBtn('ver','📅 Ver')}{tabBtn('pdf','📄 Subir PDF')}{tabBtn('manual','✏️ Manual')}</div>
+      <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>{tabBtn('ver','📅 Ver')}{tabBtn('pdf','📄 PDF')}{tabBtn('manual','✏️ Manual')}{tabBtn('encuestas','📝 Encuestas')}</div>
+      {tab==='encuestas' && <EncuestasView esDuena={esDuena} sucCtx={sucCtx} sucursales={sucursales}/>}
 
       {tab==='ver' && (cargando ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
         Object.keys(porDia).length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:'26px'}}>No hay horarios cargados para {sucNom(sucSel)}.<br/>Subí un PDF o cargá manual.</div> :
@@ -765,17 +766,100 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
   );
 }
 
+/* ════════ ENCUESTAS DEL SALÓN (lectura desde la app de invitaciones) ════════ */
+const _pad2=n=>('0'+(n||'')).slice(-2);
+async function cargarEncuestasSalon(){
+  try{
+    const r=await SB.from('eventos').select('id,data'); const rows=r.data||[];
+    const cfgSuc=(rows.find(x=>x.id==='__config_suc__')||{}).data||[];
+    const nameById={}; (cfgSuc||[]).forEach(s=>{nameById[s.id]=s.nombre;});
+    return rows.filter(x=>x.data&&x.data.encuesta&&!String(x.id).startsWith('__config'))
+      .map(x=>({...x.data,_id:x.id,_sucNombre:nameById[x.data.sucId]||''}))
+      .sort((a,b)=>((b.encuesta&&b.encuesta.ts)||0)-((a.encuesta&&a.encuesta.ts)||0));
+  }catch(e){return [];}
+}
+function EncuestaImg({ev,verPrivado}){
+  const q=ev.encuesta||{};
+  const cal=v=>v==='excelente'?['🤩 Excelente',C.verde]:v==='buena'?['🙂 Buena',C.amar]:v==='mala'?['😕 Mala',C.rojo]:['—',C.tx2];
+  const sn=v=>v===true?['Sí',C.verde]:v===false?['No',C.rojo]:['—',C.tx2];
+  const Row=({l,par})=>(<div style={{display:'flex',justifyContent:'space-between',gap:8,padding:'5px 0',borderBottom:'1px solid '+C.bd,fontSize:13}}><span style={{color:C.tx2}}>{l}</span><b style={{color:par[1]}}>{par[0]}</b></div>);
+  return (
+    <div style={{...S.card}}>
+      <div style={{fontWeight:800,fontFamily:'Syne',fontSize:16}}>📝 Encuesta del papá</div>
+      <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>{ev.festejado||ev.nombre||''} · {q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}{ev._sucNombre?(' · '+ev._sucNombre):''}</div>
+      <Row l="👩 Encargada" par={cal(q.encargada)}/>
+      <Row l="🧑‍🍳 Mozos atentos" par={sn(q.m1)}/>
+      <Row l="Presentes todo el evento" par={sn(q.m2)}/>
+      <Row l="Bebida constante" par={sn(q.m3)}/>
+      <Row l="Mesas limpias" par={sn(q.m4)}/>
+      <Row l="🎮 Auxiliares presentes" par={sn(q.aux)}/>
+      <Row l="🚻 Baños limpios" par={q.banos==='novisito'?['No los visitó',C.tx2]:sn(q.banos==='si')}/>
+      <Row l="⭐ Atención del personal" par={cal(q.personal)}/>
+      {q.pagoExtra==='si'&&<div style={{marginTop:8,fontSize:12.5,color:C.amar,fontWeight:700}}>💵 Abonó extra: ${q.pagoMonto!=null&&q.pagoMonto!==''?(+q.pagoMonto).toLocaleString('es-AR'):'?'}{q.pagoConcepto?(' ('+q.pagoConcepto+')'):''}</div>}
+      {(q.agradecimientoAudio||(q.agradecimiento&&String(q.agradecimiento).trim()))&&(
+        <div style={{marginTop:8,background:'#2a2418',border:'1px solid #4a3d1c',borderRadius:8,padding:10}}>
+          <div style={{fontSize:12.5,color:C.oro,fontWeight:700,marginBottom:6}}>💜 Mensajito para los chicos</div>
+          {q.agradecimientoAudio&&<audio src={q.agradecimientoAudio} controls style={{height:32,width:'100%',marginBottom:6}}></audio>}
+          {q.agradecimiento&&<div style={{fontSize:13}}>{q.agradecimiento}</div>}
+        </div>
+      )}
+      {q.comentario&&String(q.comentario).trim()&&<div style={{marginTop:8,fontSize:12.5,color:C.tx2}}>💬 {q.comentario}</div>}
+      {verPrivado && q.critica && String(q.critica).trim() && <div style={{marginTop:8,background:'#2a1a10',border:'1px solid #4a2d1c',borderRadius:8,padding:10,fontSize:12.5,color:'#fdba74'}}>🔒 Crítica (privada): {q.critica}</div>}
+    </div>
+  );
+}
+function EncuestasView({esDuena,sucCtx,sucursales}){
+  const [evs,setEvs]=useState(null); const [busca,setBusca]=useState(''); const [fecha,setFecha]=useState(''); const [abrir,setAbrir]=useState(null);
+  const miSuc = esDuena?'':((sucursales.find(x=>x.id===sucCtx)||{}).nombre||'');
+  useEffect(()=>{(async()=>{setEvs(await cargarEncuestasSalon());})();},[]);
+  if(evs===null) return <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div>;
+  let list=evs;
+  if(miSuc) list=list.filter(e=>(e._sucNombre||'').toLowerCase()===miSuc.toLowerCase());
+  if(fecha) list=list.filter(e=>((e.anio||'')+'-'+_pad2(e.mes)+'-'+_pad2(e.dia))===fecha);
+  if(busca.trim()){const t=busca.toLowerCase();list=list.filter(e=>((e.nombre||'')+' '+(e.festejado||'')+' '+((e.encuesta&&e.encuesta.nombre)||'')).toLowerCase().indexOf(t)>=0);}
+  const exc=e=>e.encuesta&&(e.encuesta.encargada==='excelente'||e.encuesta.personal==='excelente');
+  return (
+    <div>
+      <div style={{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+        <input value={busca} onChange={e=>setBusca(e.target.value)} placeholder="🔎 Buscar festejado/nombre…" style={{...S.input,flex:1,minWidth:150}}/>
+        <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} style={{...S.input,width:'auto'}}/>
+      </div>
+      {list.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay encuestas{(busca||fecha)?' con ese filtro':''}.</div> :
+        list.map(e=>(
+          <button key={e._id} onClick={()=>setAbrir(e)} style={{...S.card,marginBottom:8,width:'100%',textAlign:'left',cursor:'pointer',border:'1px solid '+C.bd,display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+            <div style={{minWidth:0}}>
+              <div style={{fontWeight:700}}>{e.festejado||e.nombre||'(sin nombre)'}</div>
+              <div style={{fontSize:11,color:C.tx2}}>{(e.encuesta&&e.encuesta.fecha)||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||''))}{e._sucNombre?(' · '+e._sucNombre):''}</div>
+            </div>
+            {exc(e)?<span style={{...S.chip,background:'#16331f',color:C.verde,flexShrink:0}}>🤩 Excelente</span>:<span style={{color:C.tx2,fontSize:18}}>›</span>}
+          </button>
+        ))
+      }
+      {abrir && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:120,overflowY:'auto',padding:16}} onClick={()=>setAbrir(null)}>
+          <div style={{maxWidth:460,margin:'10px auto'}} onClick={ev=>ev.stopPropagation()}>
+            <EncuestaImg ev={abrir} verPrivado={true}/>
+            <button onClick={()=>setAbrir(null)} style={{...S.btn,...S.btnGhost,width:'100%',marginTop:10}}>Cerrar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ════════ MI PLANILLA (empleado: doble confirmación) ════════ */
 const MESES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const TIPOS=[['simple','Simple','1 evento'],['doble','Doble','2 seguidos'],['2simples','2 simples','2 separados'],['triple','Triple','3 eventos']];
 function tipoCorto(t){return t==='simple'?'S':t==='doble'?'D':t==='2simples'?'2S':t==='triple'?'T':'';}
-function MiPlanilla({sesion}){
+function MiPlanilla({sesion,sucursales}){
   const hoy=new Date();
   const [y,setY]=useState(hoy.getFullYear()); const [m,setM]=useState(hoy.getMonth());
   const [data,setData]=useState({}); const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,bonus_excelente:7000});
-  const [sel,setSel]=useState(null);
+  const [sel,setSel]=useState(null); const [encs,setEncs]=useState([]); const [verEnc,setVerEnc]=useState(null);
   const cfgId='auto_'+sesion.id; const valorHora=+(sesion.valor_hora||0);
-  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));const mine=c.find(x=>x.id===cfgId);if(mine&&mine.data)setData(mine.data);})();},[]);
+  const misSucNombres=((sesion.sucursales)||[]).map(id=>{const s=(sucursales||[]).find(x=>x.id===id);return s?s.nombre.toLowerCase():'';}).filter(Boolean);
+  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));const mine=c.find(x=>x.id===cfgId);if(mine&&mine.data)setData(mine.data);setEncs(await cargarEncuestasSalon());})();},[]);
+  const encDelDia=f=>encs.find(e=>{ const d=(e.anio||'')+'-'+_pad2(e.mes)+'-'+_pad2(e.dia); if(d!==f)return false; if(misSucNombres.length && (e._sucNombre||'') && misSucNombres.indexOf((e._sucNombre||'').toLowerCase())<0)return false; return true; });
   async function guardar(n){ setData(n); try{await SB.from('fichaje_config').upsert({id:cfgId,data:n});}catch(e){} }
   function setDia(f,tipo,enc){ const n={...data}; if(!tipo)delete n[f]; else n[f]={tipo,enc:enc||0}; guardar(n); }
   function horasDe(t){ return t==='simple'?+cfg.horas_simple:t==='doble'?+cfg.horas_doble:t==='2simples'?2*+cfg.horas_simple:t==='triple'?+cfg.horas_triple:0; }
@@ -812,6 +896,7 @@ function MiPlanilla({sesion}){
       {sel && (
         <div style={{...S.card,marginBottom:12}}>
           <div style={{fontWeight:700,marginBottom:8}}>{(()=>{const[a,mm,d]=sel.split('-');return d+' de '+MESES[+mm-1];})()}</div>
+          {encDelDia(sel) && <button onClick={()=>setVerEnc(encDelDia(sel))} style={{...S.btn,background:'#2a2418',color:C.oro,border:'1px solid #4a3d1c',width:'100%',marginBottom:10,fontSize:13,padding:'10px'}}>🖼️ Ver la encuesta que puso el papá</button>}
           <label style={S.label}>¿Qué trabajaste?</label>
           <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
             {TIPOS.map(([v,l,sub])=>(
@@ -838,6 +923,15 @@ function MiPlanilla({sesion}){
         <div><div style={{fontSize:12,color:C.tx2}}>Tu estimación de {MESES[m]}</div><div style={{fontSize:10,color:C.tx2}}>{valorHora?('$'+valorHora.toLocaleString('es-AR')+'/h'):'⚠️ falta tu valor hora'}</div></div>
         <div className="num" style={{fontSize:26,color:C.verde}}>${Math.round(totMes).toLocaleString('es-AR')}</div>
       </div>
+
+      {verEnc && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.75)',zIndex:120,overflowY:'auto',padding:16}} onClick={()=>setVerEnc(null)}>
+          <div style={{maxWidth:460,margin:'10px auto'}} onClick={ev=>ev.stopPropagation()}>
+            <EncuestaImg ev={verEnc} verPrivado={false}/>
+            <button onClick={()=>setVerEnc(null)} style={{...S.btn,...S.btnGhost,width:'100%',marginTop:10}}>Cerrar</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
