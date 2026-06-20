@@ -459,7 +459,7 @@ function App() {
   }
   function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
 
-  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-menu2','admin-salon','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-catalogo-ia','admin-mejorador','admin-diseno','admin-config'].includes(vista);
+  const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-menu2','admin-salon','admin-encuestas','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-catalogo-ia','admin-mejorador','admin-diseno','admin-config'].includes(vista);
   const isPapa  = ['papa-login','papa-creador'].includes(vista);
 
   // Mientras carga la base: mostrar cargando SOLO si el evento todavía no está disponible (si ya está, abre directo).
@@ -568,6 +568,7 @@ function App() {
         {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-menu2'       && esSA && <AdminMenuG setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-salon'       && esSA && <AdminSalon setVista={setVista} sucursales={sucursales} setSucursales={setSucursales} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
+        {vista==='admin-encuestas'   && esSA && <AdminEncuestas setVista={setVista} eventos={eventos} sucursales={sucursales}/>}
         {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso} adminSesion={adminSesion} sucAct={sucAct}/>}
@@ -934,6 +935,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
     {e:'🍽️',t:'Menú Interactivo',      s:'Prompt y comidas',            v:'admin-menu',       bdr:'#f59e0b',ownerOnly:true},
     {e:'🧮',t:'Calculador v2 (gramos)', s:'Nuevo · por gramos',          v:'admin-menu2',      bdr:'#f59e0b',ownerOnly:true},
     {e:'🏛️',t:'Info del Salón',         s:'Reglas, adicionales y FAQ',   v:'admin-salon',      bdr:'#0ea5e9',ownerOnly:true},
+    {e:'📝',t:'Encuestas',             s:'Respuestas de los papás',     v:'admin-encuestas',  bdr:'#0ea5e9',ownerOnly:true},
     {e:'🎟️',t:'Formatos de Tarjeta',   s:'Por tipo de evento',          v:'admin-formatos',   bdr:'#ec4899',ownerOnly:true},
     {e:'🎴',t:'Diseño de Tarjeta',     s:'Editar textos de la invitación',v:'admin-diseno',    bdr:'#d946ef',ownerOnly:true},
     {e:'📦',t:'Descargables',          s:'Recursos para papás',         v:'admin-descargables',bdr:'#16a34a',ownerOnly:true},
@@ -2367,6 +2369,45 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
 }
 
 /* ── ADMIN MENÚ INTERACTIVO ──────────────────────────────── */
+// ── Encuestas (admin): ver las respuestas de los papás ──
+function AdminEncuestas({setVista,eventos,sucursales}){
+  const [fSuc,setFSuc]=useState('');
+  const cal=v=>v==='excelente'?'🤩 Excelente':v==='buena'?'🙂 Buena':v==='mala'?'😕 Mala':'—';
+  const sn=v=>v===true?'Sí':v===false?'No':'—';
+  const sucName=id=>{const s=(sucursales||[]).find(x=>x.id===id);return s?s.nombre:'';};
+  const conEnc=(eventos||[]).filter(e=>e&&e.encuesta&&!String(e.id||'').startsWith('__config')).filter(e=>!fSuc||e.sucId===fSuc).sort((a,b)=>((b.encuesta&&b.encuesta.ts)||0)-((a.encuesta&&a.encuesta.ts)||0));
+  const exc=conEnc.filter(e=>e.encuesta.encargada==='excelente'||e.encuesta.personal==='excelente').length;
+  return(
+    <div className="fade-in" style={{maxWidth:720,margin:'0 auto',padding:'20px 16px'}}>
+      <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
+      <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>📝 Encuestas</h1>
+      <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Respuestas de los papás después del evento. {conEnc.length} encuesta{conEnc.length===1?'':'s'} · {exc} con "Excelente".</p>
+      {(sucursales||[]).length>1&&(
+        <select value={fSuc} onChange={e=>setFSuc(e.target.value)} style={{...S.input,marginBottom:14}}>
+          <option value="">Todos los salones</option>
+          {(sucursales||[]).map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+        </select>
+      )}
+      {conEnc.length===0?(
+        <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}><div style={{fontSize:40,marginBottom:8}}>📭</div><p style={{fontWeight:700}}>Todavía no hay encuestas completadas.</p></div>
+      ):conEnc.map(e=>{const q=e.encuesta;return(
+        <div key={e.id} style={{...S.card,marginBottom:12}}>
+          <div style={{fontWeight:900,fontSize:15,marginBottom:2}}>{e.nombre} <span style={{fontSize:11,fontWeight:600,color:'#94a3b8'}}>· {q.fecha||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||''))} · {sucName(e.sucId)}</span></div>
+          <div style={{display:'flex',flexDirection:'column',gap:3,fontSize:13,color:'#334155',marginTop:6}}>
+            <div>👩 <b>Encargada:</b> {cal(q.encargada)}</div>
+            <div>🧑‍🍳 <b>Mozos:</b> atentos {sn(q.m1)} · presentes {sn(q.m2)} · bebida {sn(q.m3)} · mesas {sn(q.m4)}</div>
+            <div>🎮 <b>Auxiliares:</b> presentes {sn(q.aux)}</div>
+            <div>🚻 <b>Baños limpios:</b> {q.banos==='novisito'?'No los visitó':sn(q.banos==='si')}</div>
+            <div>⭐ <b>Personal:</b> {cal(q.personal)}</div>
+            {q.auxExtra&&<div>➕ <b>Auxiliar extra:</b> {sn(q.auxExtra==='si')}</div>}
+            {q.comentario&&String(q.comentario).trim()&&<div style={{background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:8,padding:'8px 10px',marginTop:4}}>💬 {q.comentario}</div>}
+          </div>
+        </div>
+      );})}
+    </div>
+  );
+}
+
 // ── Info del Salón (admin): Reglas + Adicionales + Preguntas Frecuentes (por sucursal) ──
 const FAQ_PROMPT_DEF='Sos el asistente de este salón. Respondé las preguntas del cliente usando ÚNICAMENTE la información del salón que te paso. Si la respuesta no está en esa información, respondé exactamente: "No tengo esa información, consultá directamente con el salón." No inventes ni supongas nada. Respondé en español, de forma completa, clara y amable, sin cambiar los datos.';
 function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
