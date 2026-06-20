@@ -2422,8 +2422,8 @@ function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
   function copiarA(){
     const destId=copyDest; if(!destId||destId===selSuc)return;
     const dest=sucursales.find(s=>s.id===destId);
-    if(!window.confirm('Esto va a REEMPLAZAR las reglas, adicionales y preguntas de "'+((dest&&dest.nombre)||'el otro salón')+'" con una COPIA de "'+(suc.nombre||'')+'" (incluye las fotos). Después podés editar cada salón por separado. ¿Continuar?'))return;
-    const copia={reglas:suc.reglas||'',faqTexto:suc.faqTexto||'',adicionales:JSON.parse(JSON.stringify(suc.adicionales||[])),faqQA:JSON.parse(JSON.stringify(suc.faqQA||[])),fotosSalon:JSON.parse(JSON.stringify(suc.fotosSalon||[]))};
+    if(!window.confirm('Esto va a REEMPLAZAR las reglas y las preguntas frecuentes de "'+((dest&&dest.nombre)||'el otro salón')+'" con una COPIA de "'+(suc.nombre||'')+'". (NO copia adicionales ni fotos del salón.) Después podés editar cada salón por separado. ¿Continuar?'))return;
+    const copia={reglas:suc.reglas||'',faqTexto:suc.faqTexto||'',faqQA:JSON.parse(JSON.stringify(suc.faqQA||[]))};
     setSucursales(p=>p.map(s=>s.id===destId?{...s,...copia}:s));
     setCopyDest('');
     flash('✓ Copiado a '+((dest&&dest.nombre)||'el otro salón'));
@@ -2522,7 +2522,7 @@ function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
       {sucursales.length>1&&(
         <div style={{...S.card,marginBottom:14,border:'1px solid #bae6fd',background:'#f0f9ff'}}>
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>📑 Copiar a otro salón</h3>
-          <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Copia reglas, adicionales, preguntas e imágenes de <b>{suc.nombre}</b> a otro salón. Es una copia independiente: después editás cada salón por separado.</p>
+          <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Copia las <b>reglas</b> y las <b>preguntas frecuentes</b> (texto y preguntas/respuestas) de <b>{suc.nombre}</b> a otro salón. <b>NO</b> copia adicionales ni fotos del salón. Es una copia independiente: después editás cada salón por separado.</p>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             <select value={copyDest} onChange={e=>setCopyDest(e.target.value)} style={{...ip,flex:1,minWidth:160,marginBottom:0}}>
               <option value="">Elegí el salón destino…</option>
