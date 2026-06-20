@@ -764,11 +764,13 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
   return (
     <div className="fade">
       <h2 style={{fontSize:20,marginBottom:12}}>💰 Pagos</h2>
-      <div style={{display:'flex',gap:8,marginBottom:14}}>
-        <button onClick={()=>setTab('liq')} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:13,...(tab==='liq'?S.btnOro:S.btnGhost)}}>💵 Liquidación</button>
-        <button onClick={()=>setTab('comp')} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:13,...(tab==='comp'?S.btnOro:S.btnGhost)}}>🔍 Comparar</button>
+      <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
+        <button onClick={()=>setTab('liq')} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:12.5,...(tab==='liq'?S.btnOro:S.btnGhost)}}>💵 Liquidación</button>
+        <button onClick={()=>setTab('comp')} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:12.5,...(tab==='comp'?S.btnOro:S.btnGhost)}}>🔍 Comparar</button>
+        <button onClick={()=>setTab('stats')} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:12.5,...(tab==='stats'?S.btnOro:S.btnGhost)}}>📊 Encuestas</button>
       </div>
       {tab==='comp' && <Comparacion esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
+      {tab==='stats' && <StatsEncuestas esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
       {tab==='liq' && (<React.Fragment>
       <div style={{...S.card,marginBottom:12,display:'flex',flexDirection:'column',gap:10}}>
         {esDuena && <select value={sucSel} onChange={e=>setSucSel(e.target.value)} style={S.input}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
@@ -803,6 +805,62 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
         </div>
       ))}
       </React.Fragment>)}
+    </div>
+  );
+}
+
+/* ════════ ESTADÍSTICA DE ENCUESTAS POR EMPLEADO ════════ */
+function StatsEncuestas({esDuena,sucursales,empleados,sucCtx}){
+  const [sucSel,setSucSel]=useState(esDuena?(sucCtx||(sucursales[0]||{}).id||''):(sucCtx||''));
+  const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState(''); const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false); const [open,setOpen]=useState(null);
+  const fechaCorta=iso=>{try{const p=iso.split('-');return p[2]+'/'+p[1];}catch(e){return iso;}};
+  async function calcular(){
+    if(!sucSel||!desde||!hasta){alert('Elegí salón y rango de fechas.');return;}
+    setCargando(true); setRes(null);
+    const sucNombre=((sucursales.find(s=>s.id===sucSel)||{}).nombre||'').toLowerCase();
+    const evs=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===sucSel&&e.fecha>=desde&&e.fecha<=hasta);
+    const evById={}; evs.forEach(e=>evById[e.id]=e); const ids=new Set(evs.map(e=>e.id));
+    const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>ids.has(a.evento_id));
+    const encs=await cargarEncuestasSalon();
+    const encByKey={}; encs.forEach(e=>{ if((e._sucNombre||'').toLowerCase()!==sucNombre)return; const fecha=(e.anio||'')+'-'+_pad2(e.mes)+'-'+_pad2(e.dia); encByKey[fecha+'|'+String(e.hIni||'').trim()]=e; });
+    const porEmp={};
+    ee.forEach(a=>{ const e=evById[a.evento_id]; if(!e)return; const enc=encByKey[e.fecha+'|'+String(e.hora_inicio||'').trim()]; if(!enc)return; const emp=empleados.find(x=>x.id===a.empleado_id)||empleados.find(x=>x.legajo===a.legajo); const key=emp?emp.id:('leg:'+a.legajo); (porEmp[key]=porEmp[key]||{emp,legajo:a.legajo,items:[]}).items.push({fecha:e.fecha,negs:encuestaNegativos(enc.encuesta)}); });
+    const filas=Object.keys(porEmp).map(k=>{ const o=porEmp[k]; const total=o.items.length; const conObs=o.items.filter(it=>it.negs.length>0); return { nombre:o.emp?o.emp.nombre:('#'+o.legajo+' (sin cargar)'), legajo:o.emp?o.emp.legajo:o.legajo, total, obs:conObs.length, detalle:conObs }; });
+    filas.sort((a,b)=>(b.obs-a.obs)||((a.legajo||999)-(b.legajo||999)));
+    setRes(filas); setCargando(false);
+  }
+  return (
+    <div>
+      <div style={{...S.card,marginBottom:12,display:'flex',flexDirection:'column',gap:10}}>
+        {esDuena && <select value={sucSel} onChange={e=>setSucSel(e.target.value)} style={S.input}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Desde</label><input type="date" style={S.input} value={desde} onChange={e=>setDesde(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={S.label}>Hasta</label><input type="date" style={S.input} value={hasta} onChange={e=>setHasta(e.target.value)}/></div>
+        </div>
+        <button onClick={calcular} disabled={cargando} style={{...S.btn,...S.btnOro}}>{cargando?'Calculando…':'📊 Ver estadística'}</button>
+        <div style={{fontSize:11,color:C.tx2}}>Por empleado: cuántas encuestas tuvieron algo malo o que no fue Excelente.</div>
+      </div>
+      {res && (res.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay encuestas en ese rango.</div> :
+        res.map((f,i)=>(
+          <div key={i} style={{...S.card,marginBottom:8}}>
+            <div onClick={()=>setOpen(open===i?null:i)} style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,cursor:f.obs?'pointer':'default'}}>
+              <div style={{fontWeight:700}}>{f.legajo!=null&&<span className="num" style={{color:C.oro}}>#{f.legajo} </span>}{f.nombre}</div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{...S.chip,background:f.obs?'#3a3320':'#16331f',color:f.obs?C.amar:C.verde}}>{f.obs} con observación{f.obs!==1?'es':''} de {f.total}</span>
+                {f.obs>0&&<span style={{color:C.tx2}}>{open===i?'▲':'▼'}</span>}
+              </div>
+            </div>
+            {open===i&&f.obs>0&&(
+              <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:6}}>
+                {f.detalle.map((d,j)=>(<div key={j} style={{background:C.surf2,borderRadius:8,padding:'8px 10px'}}>
+                  <div style={{fontSize:12,color:C.oro,fontWeight:700,marginBottom:3}}>{fechaCorta(d.fecha)}</div>
+                  {d.negs.map((n,k)=><div key={k} style={{fontSize:12,color:C.amar}}>⚠️ {n}</div>)}
+                </div>))}
+              </div>
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 }
