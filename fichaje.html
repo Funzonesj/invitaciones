@@ -14,6 +14,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;background:#1A1A1A;color:#F5F5F5;font-family:'Inter',system-ui,sans-serif;font-size:15px}
@@ -89,7 +90,7 @@ function App(){
       <Header sesion={sesion} esDuena={esDuena} sucursales={sucursales} sucActiva={sucActiva} setSucActiva={setSucActiva} onSalir={salir}/>
       <div className="fade" style={{maxWidth:560,margin:'0 auto',padding:'14px 14px 0'}}>
         {vista==='dashboard'   && <Dashboard sesion={sesion} rol={rol} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx} setVista={setVista}/>}
-        {vista==='fichar'      && <Placeholder titulo="📍 Fichar" txt="Acá el empleado va a fichar con GPS + foto + reconocimiento facial. Lo construimos en la próxima etapa."/>}
+        {vista==='fichar'      && <Fichar sesion={sesion} sucursales={sucursales}/>}
         {vista==='miplanilla'  && <MiPlanilla sesion={sesion} sucursales={sucursales}/>}
         {vista==='horarios'    && (esDuena||rol==='encargada') && <Horarios sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='registros'   && <Placeholder titulo="📋 Registros de fichaje" txt="Listado de entradas/salidas con estado (en hora / tarde / ausente). Próxima etapa."/>}
@@ -943,6 +944,130 @@ function EncuestasView({esDuena,sucCtx,sucursales}){
             <EncuestaImg ev={abrir} verPrivado={true}/>
             <button onClick={()=>setAbrir(null)} style={{...S.btn,...S.btnGhost,width:'100%',marginTop:10}}>Cerrar</button>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ════════ FICHAJE (empleado: GPS + cámara + reconocimiento facial) ════════ */
+function fechaHoyISO(){ const d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+function ahoraMin(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
+function cargarImg(url){ return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('img')); i.src=url; }); }
+let _faceReady=false, _faceFail=false;
+async function ensureFace(){ if(_faceReady)return true; if(_faceFail||!window.faceapi)return false;
+  try{ const M='https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+    await faceapi.nets.tinyFaceDetector.loadFromUri(M);
+    await faceapi.nets.faceLandmark68Net.loadFromUri(M);
+    await faceapi.nets.faceRecognitionNet.loadFromUri(M);
+    _faceReady=true; return true;
+  }catch(e){ _faceFail=true; return false; }
+}
+async function descriptorDe(el){ try{ const d=await faceapi.detectSingleFace(el,new faceapi.TinyFaceDetectorOptions({inputSize:320,scoreThreshold:0.4})).withFaceLandmarks().withFaceDescriptor(); return d?d.descriptor:null; }catch(e){ return null; } }
+async function verificarCara(canvas,fotoUrl){
+  if(!fotoUrl) return {ok:null,msg:'Sin foto de perfil para comparar'};
+  const ok=await ensureFace(); if(!ok) return {ok:null,msg:'Reconocimiento facial no disponible'};
+  const live=await descriptorDe(canvas); if(!live) return {ok:false,msg:'No se detectó tu cara'};
+  let reg=null; try{ const img=await cargarImg(fotoUrl); reg=await descriptorDe(img); }catch(e){}
+  if(!reg) return {ok:null,msg:'No se pudo leer tu foto de perfil'};
+  const dist=faceapi.euclideanDistance(live,reg);
+  return {ok:dist<0.55, msg:dist<0.55?'Cara verificada ✓':'La cara no coincide'};
+}
+function Fichar({sesion,sucursales}){
+  const [paso,setPaso]=useState('inicio'); const [tipo,setTipo]=useState('entrada'); const [msg,setMsg]=useState(''); const [res,setRes]=useState(null);
+  const sucOkRef=useRef(null); const geoRef=useRef(null); const videoRef=useRef(); const canvasRef=useRef(); const streamRef=useRef();
+  const misSucs=((sesion.sucursales)||[]).map(id=>sucursales.find(s=>s.id===id)).filter(Boolean);
+  function pararCamara(){try{streamRef.current&&streamRef.current.getTracks().forEach(t=>t.stop());}catch(e){}}
+  useEffect(()=>()=>pararCamara(),[]);
+  function comenzar(t){ setTipo(t); setRes(null); setMsg('Obteniendo tu ubicación…'); setPaso('cargando');
+    if(!navigator.geolocation){ setMsg('Tu teléfono no permite ubicación.'); setPaso('error'); return; }
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const la=pos.coords.latitude, lo=pos.coords.longitude; geoRef.current={la,lo};
+      let ok=null,best=1e12,hayCoords=false;
+      misSucs.forEach(s=>{ if(s.lat==null||s.lng==null)return; hayCoords=true; const d=distancia(la,lo,s.lat,s.lng); if(d<=(s.radio_metros||80)&&d<best){best=d;ok=s;} });
+      if(!hayCoords){ setMsg('El salón todavía no tiene la ubicación GPS cargada. Avisale a la dueña.'); setPaso('error'); return; }
+      if(!ok){ setMsg('Estás lejos del salón 📍. Acercate para poder fichar.'); setPaso('error'); return; }
+      sucOkRef.current=ok; abrirCamara();
+    }, err=>{ setMsg('No pudimos obtener tu ubicación. Activá el GPS y dale permiso al navegador.'); setPaso('error'); }, {enableHighAccuracy:true,timeout:12000});
+  }
+  async function abrirCamara(){ setPaso('camara'); setMsg('');
+    try{ const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false}); streamRef.current=st; setTimeout(()=>{ if(videoRef.current){videoRef.current.srcObject=st;videoRef.current.play().catch(()=>{});} },80); }
+    catch(e){ setMsg('No pudimos abrir la cámara. Dale permiso a la cámara y probá de nuevo.'); setPaso('error'); }
+  }
+  async function capturar(){
+    const v=videoRef.current,cv=canvasRef.current; if(!v||!cv)return;
+    cv.width=v.videoWidth||320; cv.height=v.videoHeight||240; cv.getContext('2d').drawImage(v,0,0,cv.width,cv.height);
+    const dataUrl=cv.toDataURL('image/jpeg',0.85);
+    setPaso('procesando'); setMsg('Verificando tu cara…');
+    let facialOk=null, facialMsg='';
+    try{ const r=await verificarCara(cv,sesion.foto_url); facialOk=r.ok; facialMsg=r.msg; }catch(e){ facialOk=null; facialMsg='No se pudo verificar'; }
+    if(facialOk===false){ pararCamara(); setMsg(facialMsg+'. Probá de nuevo, de frente y con buena luz.'); setPaso('error'); return; }
+    pararCamara(); setMsg('Guardando…');
+    let fotoUrl=dataUrl; try{ fotoUrl=await subirFoto(dataUrl); }catch(e){}
+    const sucOk=sucOkRef.current; const hoy=fechaHoyISO();
+    let eventoId=null, estado='sin_horario', coincide=false, eventoDesc='', ingreso='';
+    try{
+      const evs=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===sucOk.id&&e.fecha===hoy);
+      const ids=evs.map(e=>e.id); const evById={}; evs.forEach(e=>evById[e.id]=e);
+      const mis=(await dbAll('fichaje_evento_empleados')).filter(a=>ids.indexOf(a.evento_id)>=0&&(a.empleado_id===sesion.id||(sesion.legajo!=null&&a.legajo===sesion.legajo)));
+      if(mis.length){ coincide=true; const now=ahoraMin();
+        mis.sort((a,b)=>Math.abs(toMin(a.hora_ingreso_esperada||evById[a.evento_id].hora_inicio)-now)-Math.abs(toMin(b.hora_ingreso_esperada||evById[b.evento_id].hora_inicio)-now));
+        const a=mis[0]; eventoId=a.evento_id; const ev=evById[eventoId]; eventoDesc=ev.paquete+' '+ev.hora_inicio+'-'+ev.hora_fin; ingreso=a.hora_ingreso_esperada||'';
+        if(tipo==='entrada'){ const esp=toMin(a.hora_ingreso_esperada||ev.hora_inicio); estado=(now<=esp+10)?'en_hora':'tarde'; } else { estado='salida'; }
+      }
+    }catch(e){}
+    await dbInsert('fichaje_fichajes',{empleado_id:sesion.id,sucursal_id:sucOk.id,evento_id:eventoId,tipo,lat:geoRef.current.la,lng:geoRef.current.lo,foto_url:fotoUrl,facial_ok:facialOk,estado});
+    // alerta si llegó tarde o sin horario
+    if(tipo==='entrada'&&(estado==='tarde'||estado==='sin_horario')){ try{ await dbInsert('fichaje_alertas',{empleado_id:sesion.id,sucursal_id:sucOk.id,evento_id:eventoId,tipo:estado,descripcion:sesion.nombre+(estado==='tarde'?(' fichó tarde'):(' fichó sin estar en el horario'))}); }catch(e){} }
+    setRes({tipo,sucNombre:sucOk.nombre,facialOk,facialMsg,coincide,estado,eventoDesc,ingreso,fotoUrl}); setPaso('listo');
+  }
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:12}}>📍 Fichar</h2>
+      {paso==='inicio' && (
+        <div style={{...S.card,textAlign:'center',padding:'24px 16px'}}>
+          <div style={{fontSize:40,marginBottom:8}}>🕒</div>
+          <p style={{color:C.tx2,fontSize:13,marginBottom:16}}>Vas a fichar con tu ubicación y una foto (reconocimiento facial). Funciona desde cualquier teléfono — te reconoce por la cara.</p>
+          <div style={{display:'flex',gap:10}}>
+            <button onClick={()=>comenzar('entrada')} style={{...S.btn,...S.btnOro,flex:1,padding:'15px'}}>➡️ Entrada</button>
+            <button onClick={()=>comenzar('salida')} style={{...S.btn,background:C.surf2,color:C.tx,border:'1px solid '+C.bd,flex:1,padding:'15px'}}>⬅️ Salida</button>
+          </div>
+          {!sesion.foto_url && <div style={{fontSize:11,color:C.amar,marginTop:12}}>⚠️ No tenés foto de perfil cargada — la dueña debe cargarla para el reconocimiento facial.</div>}
+        </div>
+      )}
+      {paso==='cargando' && <div style={{...S.card,textAlign:'center',padding:30}}><span className="spin"></span><p style={{color:C.tx2,fontSize:13,marginTop:12}}>{msg}</p></div>}
+      {paso==='camara' && (
+        <div style={{...S.card}}>
+          <p style={{fontSize:13,color:C.tx2,marginBottom:10,textAlign:'center'}}>📍 {sucOkRef.current&&sucOkRef.current.nombre} · Poné tu cara en el centro</p>
+          <div style={{borderRadius:14,overflow:'hidden',background:'#000',aspectRatio:'3/4',maxHeight:'56vh',margin:'0 auto'}}>
+            <video ref={videoRef} playsInline muted style={{width:'100%',height:'100%',objectFit:'cover',transform:'scaleX(-1)'}}></video>
+          </div>
+          <button onClick={capturar} style={{...S.btn,...S.btnOro,width:'100%',marginTop:12,padding:'15px',fontSize:16}}>📸 Sacar foto y fichar</button>
+          <button onClick={()=>{pararCamara();setPaso('inicio');}} style={{...S.btn,background:C.surf2,color:C.tx2,width:'100%',marginTop:8}}>Cancelar</button>
+        </div>
+      )}
+      {paso==='procesando' && <div style={{...S.card,textAlign:'center',padding:30}}><span className="spin"></span><p style={{color:C.tx2,fontSize:13,marginTop:12}}>{msg}</p></div>}
+      {paso==='error' && (
+        <div style={{...S.card,textAlign:'center',padding:'24px 16px'}}>
+          <div style={{fontSize:38,marginBottom:8}}>⚠️</div>
+          <p style={{color:C.tx,fontSize:14,marginBottom:16}}>{msg}</p>
+          <button onClick={()=>setPaso('inicio')} style={{...S.btn,...S.btnOro,width:'100%'}}>Volver a intentar</button>
+        </div>
+      )}
+      {paso==='listo' && res && (
+        <div style={{...S.card,textAlign:'center'}}>
+          <div style={{fontSize:46,marginBottom:6}}>{res.estado==='tarde'?'⚠️':'✅'}</div>
+          <h3 style={{fontFamily:'Syne',fontSize:20}}>{res.tipo==='entrada'?'Entrada':'Salida'} registrada</h3>
+          {res.fotoUrl&&<img src={res.fotoUrl} alt="" style={{width:80,height:80,borderRadius:'50%',objectFit:'cover',margin:'10px auto',display:'block',border:'2px solid '+C.oro}}/>}
+          <div style={{textAlign:'left',background:C.surf2,borderRadius:12,padding:12,marginTop:8,fontSize:13,display:'flex',flexDirection:'column',gap:6}}>
+            <div>📍 Salón: <b>{res.sucNombre}</b></div>
+            <div>📸 Cara: <b style={{color:res.facialOk===true?C.verde:res.facialOk===false?C.rojo:C.tx2}}>{res.facialOk===true?'verificada ✓':res.facialMsg}</b></div>
+            {res.coincide
+              ? <div>🗓️ Horario: <b style={{color:C.verde}}>coincide ✓</b> ({res.eventoDesc}){res.ingreso&&res.tipo==='entrada'?(' · entrada esperada '+res.ingreso):''}</div>
+              : <div>🗓️ Horario: <b style={{color:C.amar}}>no figurás hoy</b> (queda registrado igual)</div>}
+            {res.tipo==='entrada'&&res.coincide&&<div>⏱️ Estado: <b style={{color:res.estado==='tarde'?C.amar:C.verde}}>{res.estado==='tarde'?'Llegó tarde':'En hora'}</b></div>}
+          </div>
+          <button onClick={()=>setPaso('inicio')} style={{...S.btn,...S.btnOro,width:'100%',marginTop:14}}>Listo</button>
         </div>
       )}
     </div>
