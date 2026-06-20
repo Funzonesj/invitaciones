@@ -56,6 +56,7 @@ async function dbInsert(tabla,row){ try{const{data,error}=await SB.from(tabla).i
 async function dbUpdate(tabla,id,row){ try{const{error}=await SB.from(tabla).update(row).eq('id',id);if(error)throw error;return true;}catch(e){alert('Error al actualizar: '+(e.message||e));return false;} }
 async function dbDelete(tabla,id){ try{const{error}=await SB.from(tabla).delete().eq('id',id);if(error)throw error;return true;}catch(e){alert('Error al borrar: '+(e.message||e));return false;} }
 async function subirFoto(dataUri){ try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:dataUri})});const d=await r.json().catch(()=>({}));return (r.ok&&d.url)?d.url:dataUri;}catch(e){return dataUri;} }
+async function subirPDF(file){ try{ const r=await fetch('/api/subir-init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:'application/pdf',ext:'pdf'})}); const d=await r.json().catch(()=>({})); if(!r.ok||!d.upload_url||!d.file_url)return null; const up=await fetch(d.upload_url,{method:'PUT',headers:{'Content-Type':'application/pdf'},body:file}); if(!up.ok)return null; return d.file_url; }catch(e){return null;} }
 function distancia(la1,lo1,la2,lo2){const R=6371000,t=x=>x*Math.PI/180;const d1=t(la2-la1),d2=t(lo2-lo1);const a=Math.sin(d1/2)**2+Math.cos(t(la1))*Math.cos(t(la2))*Math.sin(d2/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 
 /* ════════════════════════════════════════════ */
@@ -487,7 +488,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
   const [tab,setTab]=useState('ver');
   const [sucSel,setSucSel]=useState(esDuena ? (sucCtx||(sucursales[0]||{}).id||'') : (sucCtx||''));
   const [eventos,setEventos]=useState([]); const [asign,setAsign]=useState([]); const [cargando,setCargando]=useState(false);
-  const [previa,setPrevia]=useState(null); const [leyendo,setLeyendo]=useState(false); const [reempl,setReempl]=useState(null);
+  const [previa,setPrevia]=useState(null); const [leyendo,setLeyendo]=useState(false); const [reempl,setReempl]=useState(null); const pdfFileRef=useRef(null);
   const [cfgGen,setCfgGen]=useState({p1:90,p2:30,p3:30,figuras:[]});
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfgGen({p1:+g.data.prep_1||90,p2:+g.data.prep_2||30,p3:+g.data.prep_3||30,figuras:g.data.figuras_hora||[]});})();},[]);
   const empByLegajo=l=>empleados.find(e=>e.legajo===l);
@@ -501,7 +502,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
   }
   useEffect(()=>{ if(tab==='ver') cargar(); },[tab,sucSel]);
 
-  async function elegirPdf(e){ const file=e.target.files[0]; if(!file)return; setLeyendo(true);
+  async function elegirPdf(e){ const file=e.target.files[0]; if(!file)return; setLeyendo(true); pdfFileRef.current=file;
     try{
       const lineas=await leerLineasPdf(file);
       let evs=parseHorarios(lineas);
@@ -524,6 +525,8 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
       const row=await dbInsert('fichaje_eventos',{ sucursal_id:previa.sucursal_id, fecha:ev.dia, paquete:ev.paquete, hora_inicio:ev.hora_inicio, hora_fin:ev.hora_fin, orden_dia:ev.orden_dia||1, cliente:ev.cliente||null, festejado:ev.festejado||null, adicionales:ev.adicionales||null, origen:'pdf', creado_por:sesion.id });
       if(row){ for(const r of ev.roles){ const emp=empByLegajo(r.legajo); await dbInsert('fichaje_evento_empleados',{ evento_id:row.id, empleado_id:emp?emp.id:null, legajo:r.legajo, rol_en_evento:r.rol, hora_ingreso_esperada:r.ingreso||null }); } }
     }
+    // Guardar el PDF para que lo vean los empleados (reemplaza compartir por WhatsApp)
+    if(pdfFileRef.current){ try{ const url=await subirPDF(pdfFileRef.current); if(url){ await SB.from('fichaje_config').upsert({id:'pdf_'+previa.sucursal_id,data:{url,subido:fechaHoyISO()}}); } }catch(e){} pdfFileRef.current=null; }
     setCargando(false); setPrevia(null); setTab('ver');
     alert('✓ Horarios guardados');
   }
@@ -1105,19 +1108,29 @@ function Fichar({sesion,sucursales}){
 
 /* ════════ MIS HORARIOS (empleado: lo que cargó el salón, solo lectura) ════════ */
 function MisHorarios({sesion}){
-  const [items,setItems]=useState(null);
+  const [items,setItems]=useState(null); const [pdfs,setPdfs]=useState([]);
   useEffect(()=>{(async()=>{
     const evs=await dbAll('fichaje_eventos'); const evById={}; evs.forEach(e=>evById[e.id]=e);
     const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>a.empleado_id===sesion.id||(sesion.legajo!=null&&a.legajo===sesion.legajo));
     const hoy=fechaHoyISO();
     const list=ee.map(a=>({a,e:evById[a.evento_id]})).filter(x=>x.e&&x.e.fecha>=hoy).sort((p,q)=>(p.e.fecha+p.e.hora_inicio).localeCompare(q.e.fecha+q.e.hora_inicio));
     setItems(list);
+    const cfgs=await dbAll('fichaje_config');
+    const ps=((sesion.sucursales)||[]).map(id=>cfgs.find(c=>c.id==='pdf_'+id)).filter(Boolean).map(c=>c.data).filter(d=>d&&d.url);
+    setPdfs(ps);
   })();},[]);
   const porDia={}; (items||[]).forEach(it=>{(porDia[it.e.fecha]=porDia[it.e.fecha]||[]).push(it);});
   return (
     <div className="fade">
       <h2 style={{fontSize:20,marginBottom:4}}>📅 Mis horarios</h2>
       <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Tus próximos eventos asignados. Acordate de fichar a la hora de entrada.</p>
+      {pdfs.map((p,i)=>(
+        <a key={i} href={p.url} target="_blank" rel="noopener" style={{...S.card,marginBottom:10,display:'flex',alignItems:'center',gap:12,textDecoration:'none',color:C.tx,border:'1px solid '+C.oro}}>
+          <span style={{fontSize:28}}>📄</span>
+          <div style={{flex:1}}><div style={{fontWeight:700}}>Ver la planilla completa (PDF)</div><div style={{fontSize:11,color:C.tx2}}>{p.subido?('Subida el '+p.subido):'Horario semanal'}</div></div>
+          <span style={{color:C.oro,fontSize:18}}>›</span>
+        </a>
+      ))}
       {items===null ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
         Object.keys(porDia).length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>No tenés horarios cargados por ahora.</div> :
         Object.keys(porDia).sort().map(f=>(
