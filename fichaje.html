@@ -921,8 +921,7 @@ function EncuestaImg({ev,verPrivado}){
     const arr=[q.m1,q.m2,q.m3,q.m4,q.aux]; const bien=arr.filter(x=>x===true).length; const tot=arr.filter(x=>x===true||x===false).length;
     return (
       <div style={{...S.card}}>
-        <div style={{fontWeight:800,fontFamily:'Syne',fontSize:16}}>🎂 {ev.festejado||ev.nombre||'Cumpleaños'}</div>
-        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>{q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}</div>
+        <div style={{fontWeight:800,fontFamily:'Syne',fontSize:18,marginBottom:10}}>🎂 {ev.festejado||ev.nombre||'Cumpleaños'}</div>
         <div style={{fontSize:12,color:C.tx2,marginBottom:6}}>¿Cómo salió?</div>
         <div style={{display:'flex',gap:8,marginBottom:8}}>
           <div style={{flex:1,textAlign:'center',background:C.surf2,borderRadius:10,padding:'10px 6px'}}><div style={{fontSize:11,color:C.tx2}}>Encargada</div><div style={{fontWeight:800,color:cal(q.encargada)[1]}}>{cal(q.encargada)[0]}</div></div>
@@ -1240,11 +1239,22 @@ function MiPlanilla({sesion,sucursales}){
   const hoy=new Date();
   const [y,setY]=useState(hoy.getFullYear()); const [m,setM]=useState(hoy.getMonth());
   const [data,setData]=useState({}); const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,bonus_excelente:7000});
-  const [sel,setSel]=useState(null); const [encs,setEncs]=useState([]); const [verEnc,setVerEnc]=useState(null);
+  const [sel,setSel]=useState(null); const [encs,setEncs]=useState([]); const [verEnc,setVerEnc]=useState(null); const [asignF,setAsignF]=useState({});
   const cfgId='auto_'+sesion.id; const valorHora=+(sesion.valor_hora||0);
   const misSucNombres=((sesion.sucursales)||[]).map(id=>{const s=(sucursales||[]).find(x=>x.id===id);return s?s.nombre.toLowerCase():'';}).filter(Boolean);
-  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));const mine=c.find(x=>x.id===cfgId);if(mine&&mine.data)setData(mine.data);setEncs(await cargarEncuestasSalon());})();},[]);
-  const encDelDia=f=>encs.find(e=>{ const d=(e.anio||'')+'-'+_pad2(e.mes)+'-'+_pad2(e.dia); if(d!==f)return false; if(misSucNombres.length && (e._sucNombre||'') && misSucNombres.indexOf((e._sucNombre||'').toLowerCase())<0)return false; return true; });
+  useEffect(()=>{(async()=>{
+    const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));const mine=c.find(x=>x.id===cfgId);if(mine&&mine.data)setData(mine.data);
+    setEncs(await cargarEncuestasSalon());
+    // eventos en los que participó el empleado (fecha -> horas)
+    const evs=await dbAll('fichaje_eventos'); const evById={}; evs.forEach(e=>evById[e.id]=e);
+    const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>a.empleado_id===sesion.id||(sesion.legajo!=null&&a.legajo===sesion.legajo));
+    const byF={}; ee.forEach(a=>{const e=evById[a.evento_id]; if(e){(byF[e.fecha]=byF[e.fecha]||[]).push(e.hora_inicio);}}); setAsignF(byF);
+  })();},[]);
+  // Solo encuestas de eventos en los que el empleado participó (mismo día + su salón; prefiere coincidencia de hora)
+  const encDelDia=f=>{ const horas=asignF[f]; if(!horas)return null;
+    const cands=encs.filter(e=>{ const d=(e.anio||'')+'-'+_pad2(e.mes)+'-'+_pad2(e.dia); if(d!==f)return false; if(misSucNombres.length && (e._sucNombre||'') && misSucNombres.indexOf((e._sucNombre||'').toLowerCase())<0)return false; return true; });
+    return cands.find(e=>horas.indexOf(e.hIni)>=0)||cands[0]||null;
+  };
   async function guardar(n){ setData(n); try{await SB.from('fichaje_config').upsert({id:cfgId,data:n});}catch(e){} }
   function setDia(f,tipo,enc){ const n={...data}; if(!tipo)delete n[f]; else n[f]={tipo,enc:enc||0}; guardar(n); }
   function horasDe(t){ return t==='simple'?+cfg.horas_simple:t==='doble'?+cfg.horas_doble:t==='2simples'?2*+cfg.horas_simple:t==='triple'?+cfg.horas_triple:0; }
