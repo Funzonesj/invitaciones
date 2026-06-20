@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#1A1A1A"/>
+<title>Fichaje — Fun Zone + Play Point</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;background:#1A1A1A;color:#F5F5F5;font-family:'Inter',system-ui,sans-serif;font-size:15px}
+  h1,h2,h3{font-family:'Syne',sans-serif;margin:0}
+  input,select,button,textarea{font-family:inherit}
+  .num{font-family:'Syne',sans-serif;font-weight:800}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .fade{animation:fade .25s ease}
+  ::placeholder{color:#6b6b6b}
+  .spin{width:22px;height:22px;border:3px solid #3a3a3a;border-top-color:#E8A838;border-radius:50%;animation:sp 1s linear infinite;display:inline-block}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+/* ── Supabase (misma instancia que el salón) ── */
+const SB_URL = 'https://tnubhbtihssubnfpwuvu.supabase.co';
+const SB_KEY = 'sb_publishable_ZLLncEbfaSqZz15N6-MrXQ_g4K_ndB-';
+const SB = (window.supabase && SB_URL && SB_KEY) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+
+/* ── Estilos compartidos ── */
+const C = { bg:'#1A1A1A', surf:'#242424', surf2:'#2e2e2e', oro:'#E8A838', rojo:'#E84040', amar:'#F0C040', verde:'#4CAF7D', tx:'#F5F5F5', tx2:'#9E9E9E', bd:'#3a3a3a' };
+const S = {
+  card:{background:C.surf,borderRadius:16,padding:16,border:'1px solid '+C.bd},
+  input:{width:'100%',background:C.surf2,border:'1px solid '+C.bd,borderRadius:10,padding:'12px 13px',color:C.tx,fontSize:15,outline:'none'},
+  label:{display:'block',fontSize:12,color:C.tx2,marginBottom:6,fontWeight:500},
+  btn:{border:'none',borderRadius:12,padding:'13px 16px',fontWeight:700,fontSize:15,cursor:'pointer',minHeight:48},
+  btnOro:{background:C.oro,color:'#1A1A1A'},
+  btnGhost:{background:C.surf2,color:C.tx,border:'1px solid '+C.bd},
+  chip:{display:'inline-block',padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700},
+};
+
+/* ── Helpers DB ── */
+async function dbAll(tabla){ if(!SB)return[]; try{const{data}=await SB.from(tabla).select('*');return data||[];}catch(e){return[];} }
+async function dbInsert(tabla,row){ try{const{data,error}=await SB.from(tabla).insert(row).select();if(error)throw error;return data&&data[0];}catch(e){alert('Error al guardar: '+(e.message||e));return null;} }
+async function dbUpdate(tabla,id,row){ try{const{error}=await SB.from(tabla).update(row).eq('id',id);if(error)throw error;return true;}catch(e){alert('Error al actualizar: '+(e.message||e));return false;} }
+async function dbDelete(tabla,id){ try{const{error}=await SB.from(tabla).delete().eq('id',id);if(error)throw error;return true;}catch(e){alert('Error al borrar: '+(e.message||e));return false;} }
+async function subirFoto(dataUri){ try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:dataUri})});const d=await r.json().catch(()=>({}));return (r.ok&&d.url)?d.url:dataUri;}catch(e){return dataUri;} }
+function distancia(la1,lo1,la2,lo2){const R=6371000,t=x=>x*Math.PI/180;const d1=t(la2-la1),d2=t(lo2-lo1);const a=Math.sin(d1/2)**2+Math.cos(t(la1))*Math.cos(t(la2))*Math.sin(d2/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+
+/* ════════════════════════════════════════════ */
+function App(){
+  const [boot,setBoot]=useState(true);
+  const [sesion,setSesion]=useState(()=>{try{return JSON.parse(localStorage.getItem('fichaje_sesion')||'null');}catch(e){return null;}});
+  const [vista,setVista]=useState('dashboard');
+  const [sucursales,setSucursales]=useState([]);
+  const [empleados,setEmpleados]=useState([]);
+  const [sucActiva,setSucActiva]=useState(''); // para la dueña: '' = todas
+
+  async function recargar(){
+    const [su,em]=await Promise.all([dbAll('fichaje_sucursales'),dbAll('fichaje_empleados')]);
+    setSucursales(su); setEmpleados(em);
+  }
+  useEffect(()=>{ (async()=>{ await recargar(); setBoot(false); })(); },[]);
+  useEffect(()=>{ if(sesion) localStorage.setItem('fichaje_sesion',JSON.stringify(sesion)); else localStorage.removeItem('fichaje_sesion'); },[sesion]);
+
+  function salir(){ setSesion(null); setVista('dashboard'); }
+
+  if(boot) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><span className="spin"></span></div>;
+  if(!SB) return <div style={{padding:24}}>No se pudo conectar a la base de datos.</div>;
+  if(!sesion) return <Login empleados={empleados} onLogin={setSesion}/>;
+
+  const rol = sesion.rol_sistema || 'empleado';
+  const esDuena = rol==='dueno';
+  // sucursal en contexto (empleado/encargada: la suya; dueña: la elegida o todas)
+  const sucCtx = esDuena ? sucActiva : (sesion.sucursal_encargada || (sesion.sucursales&&sesion.sucursales[0]) || '');
+
+  return (
+    <div style={{minHeight:'100vh',paddingBottom:78}}>
+      <Header sesion={sesion} esDuena={esDuena} sucursales={sucursales} sucActiva={sucActiva} setSucActiva={setSucActiva} onSalir={salir}/>
+      <div className="fade" style={{maxWidth:560,margin:'0 auto',padding:'14px 14px 0'}}>
+        {vista==='dashboard'   && <Dashboard sesion={sesion} rol={rol} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx} setVista={setVista}/>}
+        {vista==='fichar'      && <Placeholder titulo="📍 Fichar" txt="Acá el empleado va a fichar con GPS + foto + reconocimiento facial. Lo construimos en la próxima etapa."/>}
+        {vista==='horarios'    && <Placeholder titulo="🗓️ Horarios" txt="Subir el PDF semanal (lector automático), carga manual y reemplazo de empleados. Próxima etapa."/>}
+        {vista==='registros'   && <Placeholder titulo="📋 Registros de fichaje" txt="Listado de entradas/salidas con estado (en hora / tarde / ausente). Próxima etapa."/>}
+        {vista==='pagos'       && <Placeholder titulo="💰 Pagos" txt="Liquidación por rango de fechas: horas × valor hora + bonus de encuestas, exportable a PDF. Próxima etapa."/>}
+        {vista==='alertas'     && <Placeholder titulo="🔔 Alertas" txt="Tarde, ausente, sin salida. Próxima etapa."/>}
+        {vista==='empleados'   && esDuena && <Empleados empleados={empleados} sucursales={sucursales} recargar={recargar}/>}
+        {vista==='sucursales'  && esDuena && <Sucursales sucursales={sucursales} recargar={recargar}/>}
+      </div>
+      <BottomNav rol={rol} vista={vista} setVista={setVista}/>
+    </div>
+  );
+}
+
+/* ── Header ── */
+function Header({sesion,esDuena,sucursales,sucActiva,setSucActiva,onSalir}){
+  return (
+    <div style={{position:'sticky',top:0,zIndex:50,background:C.bg,borderBottom:'1px solid '+C.bd}}>
+      <div style={{maxWidth:560,margin:'0 auto',padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
+        <div style={{width:34,height:34,borderRadius:9,background:C.oro,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🕒</div>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:700,fontSize:14,lineHeight:1.1}}>{sesion.nombre}</div>
+          <div style={{fontSize:11,color:C.tx2}}>{sesion.rol_sistema==='dueno'?'Dueña':sesion.rol_sistema==='encargada'?'Encargada':'Empleado'}</div>
+        </div>
+        {esDuena && (
+          <select value={sucActiva} onChange={e=>setSucActiva(e.target.value)} style={{...S.input,width:'auto',padding:'8px 10px',fontSize:13}}>
+            <option value="">Todas</option>
+            {sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+        )}
+        <button onClick={onSalir} style={{...S.btn,...S.btnGhost,padding:'8px 12px',minHeight:0,fontSize:13}}>Salir</button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Bottom nav (según rol) ── */
+function BottomNav({rol,vista,setVista}){
+  const items = rol==='dueno'
+    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones']]
+    : rol==='encargada'
+    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
+    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['registros','📋','Mis fichajes']];
+  return (
+    <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50}}>
+      <div style={{maxWidth:560,margin:'0 auto',display:'flex'}}>
+        {items.map(([v,e,l])=>(
+          <button key={v} onClick={()=>setVista(v)} style={{flex:1,background:'none',border:'none',padding:'9px 2px 7px',cursor:'pointer',color:vista===v?C.oro:C.tx2}}>
+            <div style={{fontSize:20,lineHeight:1}}>{e}</div>
+            <div style={{fontSize:10,marginTop:3,fontWeight:vista===v?700:500}}>{l}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Login ── */
+function Login({empleados,onLogin}){
+  const [u,setU]=useState(''); const [p,setP]=useState(''); const [err,setErr]=useState('');
+  function entrar(e){ e.preventDefault();
+    const found=(empleados||[]).find(x=>x.activo!==false && ((x.usuario||'').toLowerCase()===u.trim().toLowerCase()) && String(x.clave||'')===p);
+    if(!found){ setErr('Usuario o contraseña incorrectos.'); return; }
+    onLogin(found);
+  }
+  return (
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+      <form onSubmit={entrar} className="fade" style={{width:'100%',maxWidth:360}}>
+        <div style={{textAlign:'center',marginBottom:22}}>
+          <div style={{fontSize:44}}>🕒</div>
+          <h1 style={{fontSize:24,marginTop:6}}>Control de Horarios</h1>
+          <div style={{color:C.tx2,fontSize:13,marginTop:4}}>Fun Zone · Play Point</div>
+        </div>
+        <div style={{...S.card,display:'flex',flexDirection:'column',gap:12}}>
+          <div><label style={S.label}>Usuario</label><input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} autoCapitalize="none" placeholder="usuario" required/></div>
+          <div><label style={S.label}>Contraseña</label><input style={S.input} type="password" value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="••••••" required/></div>
+          {err && <div style={{color:C.rojo,fontSize:13,fontWeight:500}}>{err}</div>}
+          <button style={{...S.btn,...S.btnOro}}>Ingresar</button>
+        </div>
+        <p style={{color:C.tx2,fontSize:11,textAlign:'center',marginTop:14}}>Solo la dueña crea los usuarios. Si no tenés acceso, pedíselo a ella.</p>
+      </form>
+    </div>
+  );
+}
+
+/* ── Dashboard ── */
+function Metric({n,l,col}){ return (
+  <div style={{...S.card,flex:1,minWidth:130}}>
+    <div className="num" style={{fontSize:30,color:col||C.oro,lineHeight:1}}>{n}</div>
+    <div style={{fontSize:12,color:C.tx2,marginTop:6}}>{l}</div>
+  </div>
+);}
+function Dashboard({sesion,rol,sucursales,empleados,sucCtx,setVista}){
+  const empSuc = sucCtx ? empleados.filter(e=>(e.sucursales||[]).includes(sucCtx)) : empleados;
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:4}}>Hola, {String(sesion.nombre||'').split(' ')[0]} 👋</h2>
+      <p style={{color:C.tx2,fontSize:13,marginBottom:14}}>{rol==='dueno'?'Vista general':rol==='encargada'?'Tu sucursal':'Tu actividad'}</p>
+      {rol==='empleado' ? (
+        <div style={{...S.card,textAlign:'center',padding:'26px 16px'}}>
+          <div style={{fontSize:40}}>📍</div>
+          <p style={{fontWeight:700,marginTop:8}}>¿Listo para fichar?</p>
+          <p style={{color:C.tx2,fontSize:13,margin:'6px 0 14px'}}>Tocá el botón y seguí los pasos (ubicación + foto).</p>
+          <button onClick={()=>setVista('fichar')} style={{...S.btn,...S.btnOro,width:'100%'}}>📍 Fichar ahora</button>
+        </div>
+      ) : (
+        <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+          <Metric n={empSuc.length} l="Empleados activos"/>
+          <Metric n={sucCtx?1:sucursales.length} l={sucCtx?'Sucursal en foco':'Sucursales'} col={C.verde}/>
+          <Metric n="0" l="Eventos hoy" col={C.amar}/>
+          <Metric n="0" l="Alertas" col={C.rojo}/>
+        </div>
+      )}
+      <div style={{...S.card,marginTop:14,background:'#2a2418',border:'1px solid #4a3d1c'}}>
+        <div style={{fontWeight:700,color:C.oro,fontSize:13}}>🚧 App en construcción</div>
+        <div style={{fontSize:12,color:C.tx2,marginTop:4,lineHeight:1.5}}>Ya funcionan: login, roles, <b style={{color:C.tx}}>Sucursales</b> y <b style={{color:C.tx}}>Empleados</b>. En las próximas etapas: horarios + lector de PDF, fichaje con cámara y pagos.</div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Placeholder ── */
+function Placeholder({titulo,txt}){ return (
+  <div className="fade">
+    <h2 style={{fontSize:20,marginBottom:12}}>{titulo}</h2>
+    <div style={{...S.card,textAlign:'center',padding:'30px 18px'}}>
+      <div style={{fontSize:38}}>🚧</div>
+      <p style={{color:C.tx2,fontSize:13,marginTop:10,lineHeight:1.6}}>{txt}</p>
+    </div>
+  </div>
+);}
+
+/* ── Sucursales (dueña) ── */
+function Sucursales({sucursales,recargar}){
+  const vacio={nombre:'',direccion:'',lat:'',lng:'',radio_metros:80,activa:true};
+  const [form,setForm]=useState(vacio); const [editId,setEditId]=useState(null);
+  const [geoMsg,setGeoMsg]=useState('');
+  function editar(s){ setEditId(s.id); setForm({nombre:s.nombre||'',direccion:s.direccion||'',lat:s.lat??'',lng:s.lng??'',radio_metros:s.radio_metros||80,activa:s.activa!==false}); window.scrollTo(0,0); }
+  function limpiar(){ setEditId(null); setForm(vacio); setGeoMsg(''); }
+  function usarUbicacion(){
+    if(!navigator.geolocation){ setGeoMsg('Este dispositivo no tiene GPS.'); return; }
+    setGeoMsg('Obteniendo ubicación…');
+    navigator.geolocation.getCurrentPosition(
+      pos=>{ setForm(f=>({...f,lat:+pos.coords.latitude.toFixed(6),lng:+pos.coords.longitude.toFixed(6)})); setGeoMsg('✓ Ubicación tomada (precisión '+Math.round(pos.coords.accuracy)+' m). Hacelo parada en la puerta del salón.'); },
+      err=>{ setGeoMsg('No se pudo: '+err.message); },
+      {enableHighAccuracy:true,timeout:10000}
+    );
+  }
+  async function guardar(){
+    if(!form.nombre.trim()){ alert('Poné el nombre del salón.'); return; }
+    const row={ nombre:form.nombre.trim(), direccion:form.direccion.trim(), lat:form.lat===''?null:+form.lat, lng:form.lng===''?null:+form.lng, radio_metros:+form.radio_metros||80, activa:form.activa };
+    let ok;
+    if(editId) ok=await dbUpdate('fichaje_sucursales',editId,row); else ok=!!(await dbInsert('fichaje_sucursales',row));
+    if(ok){ await recargar(); limpiar(); }
+  }
+  async function borrar(s){ if(!window.confirm('¿Borrar '+s.nombre+'?'))return; if(await dbDelete('fichaje_sucursales',s.id)) await recargar(); }
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:12}}>🏢 Sucursales</h2>
+      <div style={{...S.card,display:'flex',flexDirection:'column',gap:12,marginBottom:16}}>
+        <div style={{fontWeight:700,fontSize:14}}>{editId?'Editar salón':'Nuevo salón'}</div>
+        <div><label style={S.label}>Nombre</label><input style={S.input} value={form.nombre} onChange={e=>setForm({...form,nombre:e.target.value})} placeholder="Fun Zone"/></div>
+        <div><label style={S.label}>Dirección</label><input style={S.input} value={form.direccion} onChange={e=>setForm({...form,direccion:e.target.value})} placeholder="Calle 123, San Juan"/></div>
+        <div style={{background:C.surf2,borderRadius:10,padding:12,border:'1px solid '+C.bd}}>
+          <div style={{fontSize:12,color:C.tx2,marginBottom:8}}>📍 Ubicación (para validar el fichaje por GPS)</div>
+          <button onClick={usarUbicacion} style={{...S.btn,...S.btnGhost,width:'100%',marginBottom:8}}>📍 Usar mi ubicación actual</button>
+          <div style={{display:'flex',gap:8}}>
+            <div style={{flex:1}}><label style={S.label}>Latitud</label><input style={S.input} value={form.lat} onChange={e=>setForm({...form,lat:e.target.value})} placeholder="(vacío)"/></div>
+            <div style={{flex:1}}><label style={S.label}>Longitud</label><input style={S.input} value={form.lng} onChange={e=>setForm({...form,lng:e.target.value})} placeholder="(vacío)"/></div>
+          </div>
+          {geoMsg && <div style={{fontSize:11,color:C.verde,marginTop:8}}>{geoMsg}</div>}
+        </div>
+        <div><label style={S.label}>Radio permitido (metros)</label><input style={S.input} type="number" value={form.radio_metros} onChange={e=>setForm({...form,radio_metros:e.target.value})}/></div>
+        <label style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><input type="checkbox" checked={form.activa} onChange={e=>setForm({...form,activa:e.target.checked})}/> Activa</label>
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={guardar} style={{...S.btn,...S.btnOro,flex:1}}>{editId?'Guardar cambios':'Crear salón'}</button>
+          {editId && <button onClick={limpiar} style={{...S.btn,...S.btnGhost}}>Cancelar</button>}
+        </div>
+      </div>
+      {sucursales.map(s=>(
+        <div key={s.id} style={{...S.card,marginBottom:10,display:'flex',alignItems:'center',gap:12}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:700}}>{s.nombre} {s.activa===false&&<span style={{...S.chip,background:'#3a2020',color:C.rojo}}>inactiva</span>}</div>
+            <div style={{fontSize:12,color:C.tx2}}>{s.direccion||'—'}</div>
+            <div style={{fontSize:11,color:(s.lat!=null?C.verde:C.amar),marginTop:2}}>{s.lat!=null?('📍 GPS cargado · radio '+(s.radio_metros||80)+'m'):'⚠️ Sin GPS (cargalo parada en el salón)'}</div>
+          </div>
+          <button onClick={()=>editar(s)} style={{...S.btn,...S.btnGhost,padding:'8px 12px',minHeight:0,fontSize:13}}>Editar</button>
+          <button onClick={()=>borrar(s)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'8px 11px',minHeight:0,fontSize:13}}>🗑</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Empleados (dueña) ── */
+function Empleados({empleados,sucursales,recargar}){
+  const vacio={legajo:'',nombre:'',rol_habitual:'Mozo',valor_hora:'',sucursales:[],foto_url:'',usuario:'',clave:'',rol_sistema:'empleado',sucursal_encargada:''};
+  const [form,setForm]=useState(vacio); const [editId,setEditId]=useState(null); const [subiendo,setSubiendo]=useState(false);
+  function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',rol_habitual:em.rol_habitual||'Mozo',valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||''}); window.scrollTo(0,0); }
+  function limpiar(){ setEditId(null); setForm(vacio); }
+  function toggleSuc(id){ setForm(f=>({...f,sucursales:(f.sucursales||[]).includes(id)?f.sucursales.filter(x=>x!==id):[...(f.sucursales||[]),id]})); }
+  async function elegirFoto(e){ const file=e.target.files[0]; if(!file)return; setSubiendo(true);
+    const reader=new FileReader();
+    reader.onload=async ev=>{ const url=await subirFoto(ev.target.result); setForm(f=>({...f,foto_url:url})); setSubiendo(false); };
+    reader.readAsDataURL(file);
+  }
+  async function guardar(){
+    if(!form.nombre.trim()){ alert('Poné el nombre.'); return; }
+    if(!form.usuario.trim()||!form.clave){ alert('Poné usuario y contraseña para que pueda ingresar.'); return; }
+    const row={ legajo:form.legajo===''?null:+form.legajo, nombre:form.nombre.trim(), rol_habitual:form.rol_habitual, valor_hora:form.valor_hora===''?0:+form.valor_hora, sucursales:form.sucursales, foto_url:form.foto_url||null, usuario:form.usuario.trim(), clave:String(form.clave), rol_sistema:form.rol_sistema, sucursal_encargada:form.rol_sistema==='encargada'?(form.sucursal_encargada||null):null, activo:true };
+    let ok;
+    if(editId) ok=await dbUpdate('fichaje_empleados',editId,row); else ok=!!(await dbInsert('fichaje_empleados',row));
+    if(ok){ await recargar(); limpiar(); }
+  }
+  async function borrar(em){ if(!window.confirm('¿Borrar a '+em.nombre+'?'))return; if(await dbDelete('fichaje_empleados',em.id)) await recargar(); }
+  const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
+  const orden=[...empleados].sort((a,b)=>(a.legajo||999)-(b.legajo||999));
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:12}}>👥 Empleados</h2>
+      <div style={{...S.card,display:'flex',flexDirection:'column',gap:12,marginBottom:16}}>
+        <div style={{fontWeight:700,fontSize:14}}>{editId?'Editar empleado':'Nuevo empleado'}</div>
+        <div style={{display:'flex',gap:12,alignItems:'center'}}>
+          <div style={{width:64,height:64,borderRadius:12,background:C.surf2,border:'1px solid '+C.bd,overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {subiendo?<span className="spin"></span>:form.foto_url?<img src={form.foto_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:26}}>🙂</span>}
+          </div>
+          <label style={{...S.btn,...S.btnGhost,cursor:'pointer',fontSize:13,padding:'10px 14px'}}>📷 Foto<input type="file" accept="image/*" style={{display:'none'}} onChange={elegirFoto}/></label>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <div style={{width:90}}><label style={S.label}>Legajo N°</label><input style={S.input} type="number" value={form.legajo} onChange={e=>setForm({...form,legajo:e.target.value})} placeholder="1"/></div>
+          <div style={{flex:1}}><label style={S.label}>Nombre completo</label><input style={S.input} value={form.nombre} onChange={e=>setForm({...form,nombre:e.target.value})} placeholder="Lorena Pérez"/></div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Rol habitual</label>
+            <select style={S.input} value={form.rol_habitual} onChange={e=>setForm({...form,rol_habitual:e.target.value})}>
+              {['Cocinero','Mozo','Auxiliar'].map(r=><option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div style={{flex:1}}><label style={S.label}>Valor hora ($)</label><input style={S.input} type="number" value={form.valor_hora} onChange={e=>setForm({...form,valor_hora:e.target.value})} placeholder="0"/></div>
+        </div>
+        <div>
+          <label style={S.label}>Sucursales donde trabaja</label>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+            {sucursales.map(s=>(
+              <button key={s.id} onClick={()=>toggleSuc(s.id)} style={{...S.btn,minHeight:0,padding:'8px 12px',fontSize:13,...((form.sucursales||[]).includes(s.id)?{background:C.oro,color:'#1A1A1A'}:S.btnGhost)}}>{s.nombre}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Usuario (para login)</label><input style={S.input} value={form.usuario} onChange={e=>setForm({...form,usuario:e.target.value})} autoCapitalize="none" placeholder="lorena"/></div>
+          <div style={{flex:1}}><label style={S.label}>Contraseña</label><input style={S.input} value={form.clave} onChange={e=>setForm({...form,clave:e.target.value})} placeholder="••••"/></div>
+        </div>
+        <div>
+          <label style={S.label}>Rol en el sistema</label>
+          <select style={S.input} value={form.rol_sistema} onChange={e=>setForm({...form,rol_sistema:e.target.value})}>
+            <option value="empleado">Empleado (solo ficha)</option>
+            <option value="encargada">Encargada (gestiona su sucursal)</option>
+            <option value="dueno">Dueña (acceso total)</option>
+          </select>
+        </div>
+        {form.rol_sistema==='encargada' && (
+          <div><label style={S.label}>Sucursal que maneja</label>
+            <select style={S.input} value={form.sucursal_encargada} onChange={e=>setForm({...form,sucursal_encargada:e.target.value})}>
+              <option value="">Elegí…</option>
+              {sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+            </select>
+          </div>
+        )}
+        <div style={{display:'flex',gap:8}}>
+          <button onClick={guardar} style={{...S.btn,...S.btnOro,flex:1}}>{editId?'Guardar cambios':'Crear empleado'}</button>
+          {editId && <button onClick={limpiar} style={{...S.btn,...S.btnGhost}}>Cancelar</button>}
+        </div>
+      </div>
+      {orden.map(em=>(
+        <div key={em.id} style={{...S.card,marginBottom:10,display:'flex',alignItems:'center',gap:12}}>
+          <div style={{width:46,height:46,borderRadius:10,background:C.surf2,overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            {em.foto_url?<img src={em.foto_url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:20}}>🙂</span>}
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:700}}>{em.legajo!=null&&<span className="num" style={{color:C.oro}}>#{em.legajo} </span>}{em.nombre}</div>
+            <div style={{fontSize:12,color:C.tx2}}>{em.rol_habitual||'—'} · {em.valor_hora?('$'+(+em.valor_hora).toLocaleString('es-AR')+'/h'):'sin valor hora'}</div>
+            <div style={{fontSize:11,color:C.tx2,marginTop:2}}>
+              <span style={{...S.chip,background:'#2a2418',color:C.oro,marginRight:4}}>{em.rol_sistema==='dueno'?'Dueña':em.rol_sistema==='encargada'?'Encargada':'Empleado'}</span>
+              {(em.sucursales||[]).map(sucNom).filter(Boolean).join(' · ')}
+            </div>
+          </div>
+          <button onClick={()=>editar(em)} style={{...S.btn,...S.btnGhost,padding:'8px 12px',minHeight:0,fontSize:13}}>Editar</button>
+          <button onClick={()=>borrar(em)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'8px 11px',minHeight:0,fontSize:13}}>🗑</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
