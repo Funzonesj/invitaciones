@@ -2416,7 +2416,9 @@ const ENCUESTA_DEF={
 function AdminEncuestas({setVista,eventos,setEventos,sucursales,iaConfig,setIaConfig}){
   const [tab,setTab]=useState('respuestas');
   const [fSuc,setFSuc]=useState('');
+  const [fBusca,setFBusca]=useState(''); const [fFecha,setFFecha]=useState('');
   const [abrir,setAbrir]=useState(null); // evento abierto en vista completa
+  const _pad=n=>('0'+(n||'')).slice(-2);
   const EC={...ENCUESTA_DEF,...((iaConfig&&iaConfig.encuestaCfg)||{})};
   const [cfg,setCfg]=useState(EC);
   const [msgCfg,setMsgCfg]=useState('');
@@ -2429,7 +2431,11 @@ function AdminEncuestas({setVista,eventos,setEventos,sucursales,iaConfig,setIaCo
   const banCol=v=>v==='no'?'#dc2626':v==='si'?'#16a34a':'#94a3b8';
   const hayMalo=q=>(q.encargada&&q.encargada!=='excelente')||(q.personal&&q.personal!=='excelente')||q.m1===false||q.m2===false||q.m3===false||q.m4===false||q.aux===false||q.banos==='no';
   const V=({t,c})=>(<b style={{color:c}}>{t}</b>);
-  const conEnc=(eventos||[]).filter(e=>e&&e.encuesta&&!String(e.id||'').startsWith('__config')).filter(e=>!fSuc||e.sucId===fSuc).sort((a,b)=>((b.encuesta&&b.encuesta.ts)||0)-((a.encuesta&&a.encuesta.ts)||0));
+  const conEnc=(eventos||[]).filter(e=>e&&e.encuesta&&!String(e.id||'').startsWith('__config'))
+    .filter(e=>!fSuc||e.sucId===fSuc)
+    .filter(e=>{ if(!fFecha)return true; const d=(e.anio||'')+'-'+_pad(e.mes)+'-'+_pad(e.dia); return d===fFecha; })
+    .filter(e=>{ if(!fBusca.trim())return true; const t=fBusca.toLowerCase(); const blob=((e.nombre||'')+' '+((e.encuesta&&e.encuesta.festejado)||'')+' '+((e.encuesta&&e.encuesta.nombre)||'')).toLowerCase(); return blob.indexOf(t)>=0; })
+    .sort((a,b)=>((b.encuesta&&b.encuesta.ts)||0)-((a.encuesta&&a.encuesta.ts)||0));
   const exc=conEnc.filter(e=>e.encuesta.encargada==='excelente'||e.encuesta.personal==='excelente').length;
   const aRevisar=conEnc.filter(e=>e.encuesta.pagoExtra==='si'&&!e.encuesta.pagoRevisado).length;
   function marcarPagoRevisado(evId){setEventos(evs=>evs.map(x=>x.id===evId?{...x,encuesta:{...x.encuesta,pagoRevisado:true}}:x));}
@@ -2476,13 +2482,18 @@ function AdminEncuestas({setVista,eventos,setEventos,sucursales,iaConfig,setIaCo
         {aRevisar>0&&(<div style={{background:'#fffbeb',border:'2px solid #fde68a',borderRadius:14,padding:'12px 14px',marginBottom:14,display:'flex',alignItems:'center',gap:10}}><span style={{fontSize:26}}>💵</span><div style={{flex:1}}><div style={{fontWeight:900,fontSize:13.5,color:'#b45309'}}>⚠️ Revisar pago de encuestas</div><div style={{fontSize:12,color:'#92400e'}}>{aRevisar} papá{aRevisar>1?'s':''} declararon un pago extra el día del evento. Verificá que esté registrado.</div></div></div>)}
         <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>{conEnc.length} encuesta{conEnc.length===1?'':'s'} · {exc} con "Excelente".</p>
         {(sucursales||[]).length>1&&(
-          <select value={fSuc} onChange={e=>setFSuc(e.target.value)} style={{...S.input,marginBottom:14}}>
+          <select value={fSuc} onChange={e=>setFSuc(e.target.value)} style={{...S.input,marginBottom:10}}>
             <option value="">Todos los salones</option>
             {(sucursales||[]).map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
           </select>
         )}
+        <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap',alignItems:'center'}}>
+          <input value={fBusca} onChange={e=>setFBusca(e.target.value)} placeholder="🔎 Buscar por nombre o festejado…" style={{...S.input,flex:1,minWidth:160,marginBottom:0}}/>
+          <input type="date" value={fFecha} onChange={e=>setFFecha(e.target.value)} style={{...S.input,width:'auto',marginBottom:0}}/>
+          {(fBusca||fFecha)&&<button onClick={()=>{setFBusca('');setFFecha('');}} style={{...S.btn,background:'#f1f5f9',color:'#475569',padding:'8px 12px'}}>✕ Limpiar</button>}
+        </div>
         {conEnc.length===0?(
-          <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}><div style={{fontSize:40,marginBottom:8}}>📭</div><p style={{fontWeight:700}}>Todavía no hay encuestas completadas.</p></div>
+          <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}><div style={{fontSize:40,marginBottom:8}}>📭</div><p style={{fontWeight:700}}>{(fBusca||fFecha)?'No se encontraron encuestas con ese filtro.':'Todavía no hay encuestas completadas.'}</p></div>
         ):conEnc.map(e=>{const q=e.encuesta;const malo=hayMalo(q);return(
           <div key={e.id} style={{...S.card,marginBottom:12,border:malo?'2px solid #fecaca':S.card.border}}>
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
