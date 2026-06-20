@@ -921,7 +921,7 @@ function EncuestaImg({ev,verPrivado}){
     const arr=[q.m1,q.m2,q.m3,q.m4,q.aux]; const bien=arr.filter(x=>x===true).length; const tot=arr.filter(x=>x===true||x===false).length;
     return (
       <div style={{...S.card}}>
-        <div style={{fontWeight:800,fontFamily:'Syne',fontSize:18,marginBottom:10}}>🎂 {ev.festejado||ev.nombre||'Cumpleaños'}</div>
+        <div style={{fontWeight:800,fontFamily:'Syne',fontSize:16,marginBottom:10}}>{q.fecha||((ev.dia||'')+'/'+(ev.mes||'')+'/'+(ev.anio||''))}{(ev.hIni||ev.hFin)?(' · '+(ev.hIni||'')+(ev.hFin?(' a '+ev.hFin):'')+' hs'):''}</div>
         <div style={{fontSize:12,color:C.tx2,marginBottom:6}}>¿Cómo salió?</div>
         <div style={{display:'flex',gap:8,marginBottom:8}}>
           <div style={{flex:1,textAlign:'center',background:C.surf2,borderRadius:10,padding:'10px 6px'}}><div style={{fontSize:11,color:C.tx2}}>Encargada</div><div style={{fontWeight:800,color:cal(q.encargada)[1]}}>{cal(q.encargada)[0]}</div></div>
