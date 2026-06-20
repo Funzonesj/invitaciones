@@ -462,27 +462,16 @@ function parseHorarios(lineas){
   return eventos;
 }
 
-// Aplica la regla de ingreso por BLOQUES de turno.
-// Eventos seguidos (hueco <= gapBloque) = mismo turno: 1ª tanda entra prep1 antes; quien se suma después, prepNuevo; quien sigue, no re-ingresa.
-// Si entre un evento y el próximo hay un hueco grande (se fueron y volvieron) = turno nuevo: vuelve a entrar prep1 antes.
-function calcularIngresos(eventos, prep1, prepNuevo, gapBloque){
-  gapBloque = gapBloque||150;
+// Regla de ingreso: depende del EVENTO, no del empleado.
+// 1º evento del día → todos entran prep1 antes (1.5h). 2º, 3º... evento → todos prepNuevo antes (30min).
+function calcularIngresos(eventos, prep1, prepNuevo){
   const byDia={}; eventos.forEach(e=>{(byDia[e.dia]=byDia[e.dia]||[]).push(e);});
   Object.values(byDia).forEach(list=>{
     list.sort((a,b)=>toMin(a.hora_inicio)-toMin(b.hora_inicio));
-    let finPrev=null; let vistos=new Set();
     list.forEach((e,idx)=>{
-      const ini=toMin(e.hora_inicio);
-      const nuevoBloque = (finPrev===null) || (ini-finPrev > gapBloque);
-      if(nuevoBloque) vistos=new Set();
       e.orden_dia=idx+1;
-      e.roles.forEach(r=>{
-        if(nuevoBloque) r.ingreso=restarMin(e.hora_inicio,prep1);
-        else if(vistos.has(r.legajo)) r.ingreso=null;
-        else r.ingreso=restarMin(e.hora_inicio,prepNuevo);
-      });
-      e.roles.forEach(r=>vistos.add(r.legajo));
-      let fin=toMin(e.hora_fin); if(fin<ini) fin+=1440; finPrev=fin;
+      const mins = idx===0 ? prep1 : prepNuevo;
+      e.roles.forEach(r=>{ r.ingreso=restarMin(e.hora_inicio,mins); });
     });
   });
   return eventos;
