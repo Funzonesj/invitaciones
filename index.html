@@ -3805,6 +3805,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [faqTyping,setFaqTyping]=useState(false);
   const [adicSel,setAdicSel]=useState(null); // adicional abierto en el detalle
   const [fotoZoom,setFotoZoom]=useState(null); // foto del salón ampliada
+  const [enc,setEnc]=useState((papaSesion&&papaSesion.encuesta)||{}); // respuestas de la encuesta
 
   const suc=sucursales.find(s=>s.id===papaSesion.sucId)||sucursales[0];
   // Importante: si la temática real todavía no cargó, NO caer a tematicas[0]
@@ -4103,6 +4104,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     ['faq','💬','Consultas','#e11d48'],
     ['adicionales','➕','Adicionales','#8b5cf6'],
     ['reglas','📋','Reglas del Salón','#0ea5e9'],
+    ['encuesta','📝','Encuesta','#0ea5e9'],
     ['recordar','📣','Recordar invitados','#f97316'],
   ].map(([v,e,l,c])=>[v,(_PT[v]&&_PT[v].e)||e,(_PT[v]&&_PT[v].t!==undefined&&_PT[v].t!=='')?_PT[v].t:l,c]).filter(([v])=>!(_PT[v]&&_PT[v].oculto))
    .sort((a,b)=>{const ia=_PORD.indexOf(a[0]),ib=_PORD.indexOf(b[0]);if(ia<0&&ib<0)return 0;if(ia<0)return 1;if(ib<0)return -1;return ia-ib;});
@@ -4110,6 +4112,26 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const _hayReglas=!!(suc&&suc.reglas&&String(suc.reglas).trim());
   const reglasOk=!!(papaSesion&&papaSesion.reglasOk);
   function aceptarReglas(){setPapaSesion(ps=>{const n={...ps,reglasOk:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,reglasOk:true}:e));return n;});flashOk('✓ ¡Condiciones aceptadas!');}
+  const encuestaHecha=!!(papaSesion&&papaSesion.encuesta);
+  const eventoPaso=(function(){try{const f=new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,(+(String(papaSesion.hFin||'23').split(':')[0]))||23,59);return new Date()>f;}catch(e){return false;}})();
+  function enviarEncuesta(){
+    const cal=v=>v==='excelente'?'Excelente':v==='buena'?'Buena':v==='mala'?'Mala':'(sin responder)';
+    const sn=v=>v===true?'Sí':v===false?'No':'-';
+    if(!enc.encargada||!enc.personal){alert('Marcá al menos la calificación de la Encargada y del Personal.');return;}
+    const e={...enc,fecha:papaSesion.dia+'/'+papaSesion.mes+'/'+papaSesion.anio,nombre:papaSesion.nombre};
+    setPapaSesion(ps=>{const n={...ps,encuesta:e};setEventos(evs=>evs.map(x=>x.id===n.id?{...x,encuesta:e}:x));return n;});
+    const msg='📝 *Encuesta de satisfacción* — '+papaSesion.nombre+' ('+e.fecha+')'+
+      '\n👩 Encargada: '+cal(e.encargada)+
+      '\n🧑‍🍳 Mozos: atentos '+sn(e.m1)+' · presentes '+sn(e.m2)+' · bebida '+sn(e.m3)+' · mesas limpias '+sn(e.m4)+
+      '\n🎮 Auxiliares presentes: '+sn(e.aux)+
+      '\n🚻 Baños limpios: '+(e.banos==='novisito'?'No los visitó':sn(e.banos==='si'))+
+      '\n⭐ Atención del personal: '+cal(e.personal)+
+      (e.auxExtra?('\n➕ Contrató auxiliar extra: '+sn(e.auxExtra==='si')):'')+
+      (e.comentario&&e.comentario.trim()?('\n💬 Comentario: '+e.comentario.trim()):'');
+    abrirWA(waNum(suc.tel||''),msg);
+    flashOk('✓ ¡Gracias por tu encuesta!');
+    setSeccion('home');
+  }
   function compartirInvitacionWA(){
     if(_hayReglas&&!reglasOk){alert('Antes de enviar tu invitación, leé y aceptá las condiciones en "Reglas del salón".');setSeccion('reglas');return;}
     const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -4682,7 +4704,20 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       )}
 
       {/* ══ PASE DE FOTOS (álbum) ══ */}
-      {seccion==='album'&&(
+      {seccion==='album'&&!encuestaHecha&&(
+        <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
+          <div style={S.card}>
+            <h2 style={{fontWeight:900,fontSize:18,marginBottom:8}}>🎞️ Generador de Recuerdos</h2>
+            <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:14,padding:'18px',textAlign:'center'}}>
+              <div style={{fontSize:38,marginBottom:8}}>📝</div>
+              <p style={{fontWeight:800,fontSize:14,color:'#9a3412',marginBottom:4}}>Antes de crear los recuerdos, completá la encuesta</p>
+              <p style={{fontSize:12,color:'#9a3412',marginBottom:14,lineHeight:1.4}}>Tu opinión nos ayuda muchísimo. Es rapidita, son unos toques. 💜</p>
+              <button onClick={()=>setSeccion('encuesta')} style={{...S.btn,background:'#16a34a',color:'white',padding:'13px 22px',fontSize:14,fontWeight:900}}>📝 Ir a la encuesta →</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {seccion==='album'&&encuestaHecha&&(
         <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
           <div style={S.card}>
             <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>🎞️ Generador de Recuerdos</h2>
@@ -4915,6 +4950,72 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <div style={{display:'flex',gap:8,marginTop:14,flexWrap:'wrap'}}>
             {suc.tel&&<a href={'https://wa.me/'+waNum(suc.tel)+'?text='+encodeURIComponent('Hola! Necesito consultar sobre mi evento el día '+papaSesion.dia+'/'+papaSesion.mes+'/'+papaSesion.anio+' en el horario de '+papaSesion.hIni+' a '+papaSesion.hFin+' hs.')} target="_blank" style={{...S.btn,background:'#22c55e',color:'white',textDecoration:'none',flex:1,textAlign:'center',minWidth:140}}>💬 Consultar</a>}
           </div>
+        </div>
+      )}
+
+      {seccion==='encuesta'&&(
+        <div className="fade-in" style={S.card}>
+          <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>📝 Encuesta de satisfacción</h2>
+          <p style={{fontSize:12,color:'#64748b',marginBottom:14}}>Tu opinión nos interesa 💜</p>
+          {!eventoPaso?(
+            <div style={{textAlign:'center',padding:'28px 16px',color:'#94a3b8',background:'#fafafa',borderRadius:14,border:'1px dashed #e2e8f0'}}>
+              <div style={{fontSize:38,marginBottom:6}}>🎉</div>
+              <p style={{fontWeight:700,fontSize:13}}>La encuesta estará disponible <b>después de tu evento</b>.</p>
+            </div>
+          ):encuestaHecha?(
+            <div style={{textAlign:'center',padding:'24px 16px',color:'#166534',background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:14}}>
+              <div style={{fontSize:40,marginBottom:6}}>✅</div>
+              <p style={{fontWeight:800,fontSize:14}}>¡Gracias! Ya completaste la encuesta.</p>
+              <p style={{fontSize:12,color:'#64748b',marginTop:4}}>Ya podés usar el Generador de Recuerdos.</p>
+            </div>
+          ):(()=>{
+            const Cal=({campo})=>(<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginTop:6}}>
+              {[['mala','😕 Mala','#ef4444'],['buena','🙂 Buena','#f59e0b'],['excelente','🤩 Excelente','#16a34a']].map(([v,l,c])=>(
+                <button key={v} onClick={()=>setEnc(x=>({...x,[campo]:v}))} style={{border:'2px solid '+(enc[campo]===v?c:'#e2e8f0'),background:enc[campo]===v?c:'#fff',color:enc[campo]===v?'#fff':'#334155',borderRadius:10,padding:'9px 4px',fontSize:11.5,fontWeight:800,cursor:'pointer'}}>{l}</button>
+              ))}
+            </div>);
+            const SiNo=({campo})=>(<div style={{display:'flex',gap:6,flexShrink:0}}>
+              {[['si','Sí',true],['no','No',false]].map(([k,l,val])=>(
+                <button key={k} onClick={()=>setEnc(x=>({...x,[campo]:val}))} style={{border:'2px solid '+(enc[campo]===val?'#7c3aed':'#e2e8f0'),background:enc[campo]===val?'#7c3aed':'#fff',color:enc[campo]===val?'#fff':'#334155',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800,cursor:'pointer'}}>{l}</button>
+              ))}
+            </div>);
+            const Fila=({campo,texto})=>(<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'8px 0',borderBottom:'1px solid #f1f5f9'}}><span style={{fontSize:12.5,color:'#334155',flex:1}}>{texto}</span><SiNo campo={campo}/></div>);
+            return(<div>
+              <div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}>
+                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8'}}>👩 Atención de la Encargada</div>
+                <Cal campo="encargada"/>
+              </div>
+              <div style={{...S.card,marginBottom:12}}>
+                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>🧑‍🍳 Atención de los mozos</div>
+                <Fila campo="m1" texto="1) Estuvieron atentos a los pedidos"/>
+                <Fila campo="m2" texto="2) Estuvieron presentes durante todo el evento"/>
+                <Fila campo="m3" texto="3) Hubo bebida constantemente (incluida jarra de agua)"/>
+                <Fila campo="m4" texto="4) Mantuvieron las mesas limpias y ordenadas"/>
+              </div>
+              <div style={{...S.card,marginBottom:12}}>
+                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>🎮 Auxiliares de juegos</div>
+                <Fila campo="aux" texto="5) Estuvieron presentes en los juegos"/>
+              </div>
+              <div style={{...S.card,marginBottom:12}}>
+                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:6}}>🚻 Limpieza</div>
+                <div style={{fontSize:12.5,color:'#334155',marginBottom:6}}>6) ¿Los baños estuvieron limpios?</div>
+                <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                  {[['si','Sí'],['no','No'],['novisito','No los visité']].map(([v,l])=>(
+                    <button key={v} onClick={()=>setEnc(x=>({...x,banos:v}))} style={{border:'2px solid '+(enc.banos===v?'#7c3aed':'#e2e8f0'),background:enc.banos===v?'#7c3aed':'#fff',color:enc.banos===v?'#fff':'#334155',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800,cursor:'pointer'}}>{l}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}>
+                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8'}}>⭐ Atención del personal (en general)</div>
+                <Cal campo="personal"/>
+              </div>
+              <div style={{...S.card,marginBottom:12}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}><span style={{fontSize:12.5,color:'#334155',flex:1}}>¿Contrató auxiliar extra?</span><div style={{display:'flex',gap:6}}>{[['si','Sí'],['no','No']].map(([v,l])=>(<button key={v} onClick={()=>setEnc(x=>({...x,auxExtra:v}))} style={{border:'2px solid '+(enc.auxExtra===v?'#7c3aed':'#e2e8f0'),background:enc.auxExtra===v?'#7c3aed':'#fff',color:enc.auxExtra===v?'#fff':'#334155',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800,cursor:'pointer'}}>{l}</button>))}</div></div>
+              </div>
+              <textarea value={enc.comentario||''} onChange={e=>setEnc(x=>({...x,comentario:e.target.value}))} rows={3} placeholder="¿Algo para agregar? (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:12}}/>
+              <button onClick={enviarEncuesta} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',padding:'15px',fontSize:15,fontWeight:900,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Enviar encuesta</button>
+            </div>);
+          })()}
         </div>
       )}
 
