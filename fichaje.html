@@ -677,7 +677,7 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
   const [sucSel,setSucSel]=useState(esDuena?(sucCtx||(sucursales[0]||{}).id||''):(sucCtx||''));
   const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState('');
   const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,bonus_excelente:7000});
-  const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false);
+  const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false); const [tab,setTab]=useState('liq');
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));})();},[]);
   const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
   const money=n=>'$'+Math.round(n).toLocaleString('es-AR');
@@ -732,6 +732,12 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
   return (
     <div className="fade">
       <h2 style={{fontSize:20,marginBottom:12}}>💰 Pagos</h2>
+      <div style={{display:'flex',gap:8,marginBottom:14}}>
+        <button onClick={()=>setTab('liq')} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:13,...(tab==='liq'?S.btnOro:S.btnGhost)}}>💵 Liquidación</button>
+        <button onClick={()=>setTab('comp')} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:13,...(tab==='comp'?S.btnOro:S.btnGhost)}}>🔍 Comparar</button>
+      </div>
+      {tab==='comp' && <Comparacion esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
+      {tab==='liq' && (<React.Fragment>
       <div style={{...S.card,marginBottom:12,display:'flex',flexDirection:'column',gap:10}}>
         {esDuena && <select value={sucSel} onChange={e=>setSucSel(e.target.value)} style={S.input}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
         <div style={{display:'flex',gap:8}}>
@@ -762,9 +768,94 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
           <div style={{...S.card,background:'#2a2418',border:'1px solid #4a3d1c',fontSize:12,color:C.tx2}}>💜 El <b style={{color:C.oro}}>bonus de encuestas "Excelente"</b> (${(+cfg.bonus_excelente).toLocaleString('es-AR')} por empleado) se sumará automático en la próxima etapa, al conectar con las encuestas del salón.</div>
         </div>
       ))}
+      </React.Fragment>)}
     </div>
   );
 }
+
+/* ════════ COMPARACIÓN: sistema vs lo que declaró el empleado ════════ */
+function Comparacion({esDuena,sucursales,empleados,sucCtx}){
+  const [sucSel,setSucSel]=useState(esDuena?(sucCtx||(sucursales[0]||{}).id||''):(sucCtx||''));
+  const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState('');
+  const [gapH,setGapH]=useState(2); const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false);
+  useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data&&g.data.gap_horas)setGapH(+g.data.gap_horas);})();},[]);
+  const TL={simple:'Simple',doble:'Doble','2simples':'2 simples',triple:'Triple',varios:'Varios'};
+  const tl=t=>t?TL[t]||t:'—';
+  function tipoSistema(evs){
+    const norm=evs.slice().sort((a,b)=>toMin(a.hora_inicio)-toMin(b.hora_inicio));
+    const groups=[]; let cur=[],finPrev=null;
+    norm.forEach(ev=>{const ini=toMin(ev.hora_inicio); if(finPrev!==null && (ini-finPrev)/60>=gapH){groups.push(cur);cur=[];} cur.push(ev); let fin=toMin(ev.hora_fin); if(fin<ini)fin+=1440; finPrev=fin;});
+    if(cur.length)groups.push(cur);
+    if(groups.length===0)return null;
+    if(groups.length===1){const n=groups[0].length;return n===1?'simple':n===2?'doble':'triple';}
+    if(groups.length===2&&groups[0].length===1&&groups[1].length===1)return '2simples';
+    return 'varios';
+  }
+  async function calcular(){
+    if(!sucSel||!desde||!hasta){alert('Elegí sucursal y rango de fechas.');return;}
+    setCargando(true); setRes(null);
+    const empById={}; empleados.forEach(e=>empById[e.id]=e);
+    const evs=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===sucSel && e.fecha>=desde && e.fecha<=hasta);
+    const evById={}; evs.forEach(e=>evById[e.id]=e); const ids=new Set(evs.map(e=>e.id));
+    const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>ids.has(a.evento_id));
+    const cfgs=await dbAll('fichaje_config');
+    const declByEmp={}; cfgs.forEach(c=>{ if(String(c.id).indexOf('auto_')===0&&c.data) declByEmp[String(c.id).slice(5)]=c.data; });
+    const sys={}; // empId -> {fecha:[ev]}
+    ee.forEach(a=>{ const e=evById[a.evento_id]; if(!e)return; const emp=empById[a.empleado_id]||empleados.find(x=>x.legajo===a.legajo); const key=emp?emp.id:('leg:'+a.legajo); const esFig=/\d+\s*hs/i.test(a.rol_en_evento||''); (sys[key]=sys[key]||{}); (sys[key][e.fecha]=sys[key][e.fecha]||[]); if(!esFig) sys[key][e.fecha].push({hora_inicio:e.hora_inicio,hora_fin:e.hora_fin}); });
+    const keys=new Set([...Object.keys(sys),...Object.keys(declByEmp)]);
+    const filas=[];
+    keys.forEach(key=>{
+      const emp=empById[key]; const nombre=emp?emp.nombre:(key.indexOf('leg:')===0?('#'+key.slice(4)+' (sin cargar)'):'(?)'); const legajo=emp?emp.legajo:null;
+      const sDias=sys[key]||{}; const dDataAll=declByEmp[key]||{};
+      const dDias={}; Object.keys(dDataAll).forEach(f=>{ if(f>=desde&&f<=hasta) dDias[f]=dDataAll[f]; });
+      const fechas=[...new Set([...Object.keys(sDias),...Object.keys(dDias)])].sort();
+      if(!fechas.length)return;
+      const rows=fechas.map(f=>{ const st=sDias[f]?tipoSistema(sDias[f]):null; const dt=dDias[f]?dDias[f].tipo:null;
+        let estado; if(st&&dt) estado=(st===dt)?'ok':'dif'; else if(st&&!dt) estado='noDecl'; else estado='noSis';
+        return {f,st,dt,estado}; });
+      const difs=rows.filter(r=>r.estado!=='ok').length;
+      filas.push({key,nombre,legajo,rows,difs});
+    });
+    filas.sort((a,b)=>(b.difs-a.difs)||((a.legajo||999)-(b.legajo||999)));
+    setRes(filas); setCargando(false);
+  }
+  const ic={ok:['✅',C.verde],dif:['⚠️',C.amar],noSis:['❓',C.rojo],noDecl:['〰️',C.tx2]};
+  const txtEstado={ok:'Coincide',dif:'Distinto',noSis:'Dice que trabajó, no está cargado',noDecl:'Cargado, no lo confirmó'};
+  return (
+    <div>
+      <div style={{...S.card,marginBottom:12,display:'flex',flexDirection:'column',gap:10}}>
+        {esDuena && <select value={sucSel} onChange={e=>setSucSel(e.target.value)} style={S.input}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Desde</label><input type="date" style={S.input} value={desde} onChange={e=>setDesde(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={S.label}>Hasta</label><input type="date" style={S.input} value={hasta} onChange={e=>setHasta(e.target.value)}/></div>
+        </div>
+        <button onClick={calcular} disabled={cargando} style={{...S.btn,...S.btnOro}}>{cargando?'Comparando…':'Comparar'}</button>
+        <div style={{fontSize:11,color:C.tx2}}>Cruza lo cargado (horarios) con lo que cada empleado anotó en "Mi planilla".</div>
+      </div>
+      {res && (res.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay datos en ese rango.</div> :
+        res.map(f=>(
+          <div key={f.key} style={{...S.card,marginBottom:10,border:'1px solid '+(f.difs?'#4a3d1c':C.bd)}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:6}}>
+              <div style={{fontWeight:700}}>{f.legajo!=null&&<span className="num" style={{color:C.oro}}>#{f.legajo} </span>}{f.nombre}</div>
+              {f.difs?<span style={{...S.chip,background:'#3a3320',color:C.amar}}>⚠️ {f.difs} a revisar</span>:<span style={{...S.chip,background:'#16331f',color:C.verde}}>✅ Todo coincide</span>}
+            </div>
+            <div style={{display:'flex',flexDirection:'column',gap:3}}>
+              {f.rows.map((r,i)=>(
+                <div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,background:r.estado!=='ok'?'#2a241833':'transparent',borderRadius:6,padding:'4px 6px'}}>
+                  <span style={{flexShrink:0}}>{ic[r.estado][0]}</span>
+                  <span style={{width:64,flexShrink:0,color:C.tx2}}>{fechaLinda(r.f)}</span>
+                  <span style={{flex:1}}>Sistema: <b style={{color:C.tx}}>{tl(r.st)}</b> · Él: <b style={{color:ic[r.estado][1]}}>{tl(r.dt)}</b></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+/* ════════ ENCUESTAS DEL SALÓN (lectura desde la app de invitaciones) ════════ */
 
 /* ════════ ENCUESTAS DEL SALÓN (lectura desde la app de invitaciones) ════════ */
 const _pad2=n=>('0'+(n||'')).slice(-2);
