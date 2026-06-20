@@ -360,6 +360,17 @@ function App() {
   React.useEffect(()=>{
     if(!SB){return;}
     (async()=>{
+      // Config del salón SIEMPRE FRESCA (sin caché del navegador), antes que nada y para todos.
+      // El navegador cacheaba la config vieja (sin reglas/FAQ) y por eso "no aparecían"; con no-store + cache-buster se evita.
+      try{
+        const _cu=SB_URL+'/rest/v1/eventos?id=in.(__config_suc__,__config_ia__)&select=id,data';
+        const _rr=await fetch(_cu,{cache:'no-store',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY}});
+        const cr=await _rr.json();
+        const _f=function(id){var r=cr.find(function(x){return x.id===id;});return r?r.data:null;};
+        const cs=_f('__config_suc__'),ci=_f('__config_ia__');
+        if(cs&&cs.length)setSucursales(cs);
+        if(ci)setIaConfig(prev=>{const m={...prev,...ci};if(!m.promptVideo||!String(m.promptVideo).includes('{frase}'))m.promptVideo=PROMPT_VIDEO_DEF;if(!m.fraseVideo)m.fraseVideo=FRASE_VIDEO_DEF;return m;});
+      }catch(e){}
       // 1) Links de invitación/papá: traer SOLO ese evento primero (rápido) y mostrar ya
       const quickId=_INV_PARAM||_PAPA_PARAM||_REC_PARAM;
       if(quickId){
@@ -385,9 +396,8 @@ function App() {
           return [...d.eventos, ...extra];
         });
         setConfs(d.confs);
-        if(d.cfgIa)  setIaConfig(prev=>{const m={...prev,...d.cfgIa};if(!m.promptVideo||!String(m.promptVideo).includes('{frase}'))m.promptVideo=PROMPT_VIDEO_DEF;if(!m.fraseVideo)m.fraseVideo=FRASE_VIDEO_DEF;if(m.fraseVideo&&(m.fraseVideo.indexOf('vengo a invitarte')>=0||m.fraseVideo.indexOf('más divertido')>=0))m.fraseVideo=FRASE_VIDEO_DEF;return m;});
+        // sucursales e iaConfig ya se cargaron FRESCOS arriba (sin caché). Acá solo lo pesado/admin:
         if(d.cfgTem && d.cfgTem.length) setTematicas(d.cfgTem);
-        if(d.cfgSuc && d.cfgSuc.length) setSucursales(d.cfgSuc);
         if(d.cfgUsr) setUsuarios(d.cfgUsr);
         if(d.cfgPed) setPedidos(d.cfgPed);
         if(_PAPA_PARAM && !_PAPA_DATA){
