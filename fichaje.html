@@ -1175,7 +1175,7 @@ function Fichar({sesion,sucursales}){
 
 /* ════════ MIS HORARIOS (empleado: lo que cargó el salón, solo lectura) ════════ */
 function MisHorarios({sesion}){
-  const [items,setItems]=useState(null); const [pdfs,setPdfs]=useState([]); const [verHist,setVerHist]=useState(false);
+  const [items,setItems]=useState(null); const [pdfs,setPdfs]=useState([]); const [verHist,setVerHist]=useState(false); const [abierto,setAbierto]=useState(null);
   useEffect(()=>{(async()=>{
     const evs=await dbAll('fichaje_eventos'); const evById={}; evs.forEach(e=>evById[e.id]=e);
     const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>a.empleado_id===sesion.id||(sesion.legajo!=null&&a.legajo===sesion.legajo));
@@ -1214,17 +1214,27 @@ function MisHorarios({sesion}){
       {items===null ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
         Object.keys(porDia).length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>No tenés horarios cargados por ahora.</div> :
         Object.keys(porDia).sort().map(f=>(
-          <div key={f} style={{marginBottom:14}}>
+          <div key={f} style={{marginBottom:12}}>
             <div style={{fontWeight:700,color:C.oro,fontSize:14,marginBottom:6,fontFamily:'Syne'}}>{fechaLinda(f)}</div>
-            {porDia[f].map((it,i)=>(
-              <div key={i} style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:10}}>
-                <div style={{width:54,textAlign:'center',flexShrink:0}}><div style={{fontSize:11,color:C.tx2}}>entrás</div><div className="num" style={{color:C.verde,fontSize:16}}>{it.a.hora_ingreso_esperada||it.e.hora_inicio}</div></div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:700}}><span style={{...S.chip,background:'#2a2418',color:C.oro,marginRight:6}}>{it.a.rol_en_evento}</span>{it.e.paquete}</div>
-                  <div style={{fontSize:12,color:C.tx2}}>Evento {it.e.hora_inicio} - {it.e.hora_fin} hs</div>
-                </div>
+            {porDia[f].map((it,i)=>{ const key=f+'|'+i; const op=abierto===key; const ing=it.a.hora_ingreso_esperada||it.e.hora_inicio; return (
+              <div key={i} style={{...S.card,marginBottom:8,padding:0,overflow:'hidden'}}>
+                <button onClick={()=>setAbierto(op?null:key)} style={{width:'100%',background:'none',border:'none',color:C.tx,cursor:'pointer',display:'flex',alignItems:'center',gap:8,padding:'13px 14px',textAlign:'left',fontSize:15}}>
+                  <span style={{color:C.tx2,fontSize:13}}>Ingreso</span>
+                  <span className="num" style={{color:C.verde,fontSize:18}}>{ing}</span>
+                  <span style={{flex:1}}></span>
+                  <span style={{color:C.tx2,fontSize:13}}>{op?'▲':'ver detalle ▼'}</span>
+                </button>
+                {op && (
+                  <div style={{padding:'0 14px 13px',fontSize:13,color:C.tx2,display:'flex',flexDirection:'column',gap:5}}>
+                    <div>🎟️ Paquete: <b style={{color:C.tx}}>{it.e.paquete}</b></div>
+                    <div>👤 Tu puesto: <b style={{color:C.tx}}>{it.a.rol_en_evento}</b></div>
+                    <div>🕐 Evento: <b style={{color:C.tx}}>{it.e.hora_inicio} a {it.e.hora_fin} hs</b></div>
+                    {it.e.festejado&&<div>🎂 Festejado: <b style={{color:C.tx}}>{it.e.festejado}</b></div>}
+                    {it.e.cliente&&<div>👪 Cliente: <b style={{color:C.tx}}>{it.e.cliente}</b></div>}
+                  </div>
+                )}
               </div>
-            ))}
+            );})}
           </div>
         ))
       }
@@ -1240,7 +1250,7 @@ function MiPlanilla({sesion,sucursales}){
   const hoy=new Date();
   const [y,setY]=useState(hoy.getFullYear()); const [m,setM]=useState(hoy.getMonth());
   const [data,setData]=useState({}); const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,bonus_excelente:7000});
-  const [sel,setSel]=useState(null); const [encs,setEncs]=useState([]); const [verEnc,setVerEnc]=useState(null); const [asignF,setAsignF]=useState({});
+  const [sel,setSel]=useState(null); const [encs,setEncs]=useState([]); const [verEnc,setVerEnc]=useState(null); const [asignF,setAsignF]=useState({}); const [exD,setExD]=useState(''); const [exH,setExH]=useState('');
   const cfgId='auto_'+sesion.id; const valorHora=+(sesion.valor_hora||0);
   const misSucNombres=((sesion.sucursales)||[]).map(id=>{const s=(sucursales||[]).find(x=>x.id===id);return s?s.nombre.toLowerCase():'';}).filter(Boolean);
   useEffect(()=>{(async()=>{
@@ -1263,7 +1273,8 @@ function MiPlanilla({sesion,sucursales}){
   function borrarDia(f){ const n={...data}; delete n[f]; guardar(n); }
   const esFig=t=>typeof t==='string'&&t.indexOf('fig:')===0;
   function baseHoras(t){ if(esFig(t)){const f=(cfg.figuras_hora||[]).find(x=>('fig:'+x.nombre)===t);return f?+f.horas:0;} return t==='simple'?+cfg.horas_simple:t==='doble'?+cfg.horas_doble:t==='2simples'?2*+cfg.horas_simple:t==='triple'?+cfg.horas_triple:0; }
-  function horasDia(d){ let h=baseHoras(d.tipo); if(d.deluxe&&!esFig(d.tipo)) h+=(+cfg.horas_extra_deluxe||0); return h; }
+  function horasDia(d){ let h=baseHoras(d.tipo); if(!esFig(d.tipo)) h+=(+d.deluxe||0)*(+cfg.horas_extra_deluxe||0); return h; }
+  const maxDx=t=>t==='simple'?1:(t==='doble'||t==='2simples')?2:t==='triple'?3:0;
   function montoDia(d){ return horasDia(d)*valorHora + (d.enc||0)*(+cfg.bonus_excelente); }
   const opciones=[...TIPOS, ...((cfg.figuras_hora||[]).map(f=>['fig:'+f.nombre, f.nombre, (f.horas)+' hs']))];
   const ymStr=y+'-'+('0'+(m+1)).slice(-2);
@@ -1289,7 +1300,7 @@ function MiPlanilla({sesion,sucursales}){
           {celdas.map((d,i)=>{ if(!d)return <div key={i}></div>; const f=fechaDe(d); const dd=data[f]; const act=sel===f;
             return (<button key={i} onClick={()=>setSel(f)} style={{aspectRatio:'1',borderRadius:9,border:'1px solid '+(act?C.oro:C.bd),background:dd?'#2a2418':C.surf2,color:C.tx,cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:0,position:'relative'}}>
               <span style={{fontSize:13,fontWeight:dd?800:400}}>{d}</span>
-              {dd&&<span style={{fontSize:9,color:C.oro,fontWeight:800,lineHeight:1}}>{esFig(dd.tipo)?'⏱':tipoCorto(dd.tipo)}{dd.deluxe?'+':''}{dd.enc?'·💜':''}</span>}
+              {dd&&<span style={{fontSize:9,color:C.oro,fontWeight:800,lineHeight:1}}>{esFig(dd.tipo)?'⏱':tipoCorto(dd.tipo)}{dd.deluxe?('+'+dd.deluxe):''}{dd.enc?'·💜':''}</span>}
             </button>);
           })}
         </div>
@@ -1307,8 +1318,13 @@ function MiPlanilla({sesion,sucursales}){
           </div>
           {selData && selData.tipo && (
             <div>
-              {!esFig(selData.tipo) && (
-                <label style={{display:'flex',alignItems:'center',gap:8,marginBottom:10,fontSize:13,cursor:'pointer'}}><input type="checkbox" checked={!!selData.deluxe} onChange={e=>setDeluxe(sel,e.target.checked)}/> Fue Deluxe (+{cfg.horas_extra_deluxe||1}h)</label>
+              {!esFig(selData.tipo) && maxDx(selData.tipo)>0 && (
+                <div style={{marginBottom:10}}>
+                  <label style={S.label}>¿Cuántos fueron Deluxe? (+{cfg.horas_extra_deluxe||1}h cada uno)</label>
+                  <div style={{display:'flex',gap:6}}>
+                    {Array.from({length:maxDx(selData.tipo)+1},(_,n)=>(<button key={n} onClick={()=>setDeluxe(sel,n)} style={{...S.btn,minHeight:0,padding:'8px 14px',fontSize:13,...(((selData.deluxe||0)===n)?S.btnOro:S.btnGhost)}}>{n}</button>))}
+                  </div>
+                </div>
               )}
               <label style={S.label}>¿Cuántas encuestas salieron bien (Excelente)?</label>
               <div style={{display:'flex',gap:6,marginBottom:10}}>
