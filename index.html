@@ -568,7 +568,7 @@ function App() {
         {vista==='admin-menu'        && esSA && <AdminMenu setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-menu2'       && esSA && <AdminMenuG setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-salon'       && esSA && <AdminSalon setVista={setVista} sucursales={sucursales} setSucursales={setSucursales} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
-        {vista==='admin-encuestas'   && esSA && <AdminEncuestas setVista={setVista} eventos={eventos} sucursales={sucursales}/>}
+        {vista==='admin-encuestas'   && esSA && <AdminEncuestas setVista={setVista} eventos={eventos} setEventos={setEventos} sucursales={sucursales} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso} adminSesion={adminSesion} sucAct={sucAct}/>}
@@ -962,6 +962,17 @@ function AdminDashboard({setVista,sucAct,evsLocal,tematicas,esSA,iaConfig,setIaC
           </div>
         </div>
       )}
+      {/* Alerta: pagos extra declarados en encuestas, pendientes de revisar */}
+      {(()=>{const pp=(evsLocal||[]).filter(e=>e&&e.encuesta&&e.encuesta.pagoExtra==='si'&&!e.encuesta.pagoRevisado);if(!pp.length)return null;return(
+        <div onClick={()=>{if(esSA)setVista('admin-encuestas');}} style={{cursor:esSA?'pointer':'default',background:'#fffbeb',border:'2px solid #fde68a',borderRadius:14,padding:'14px 16px',marginBottom:16,display:'flex',alignItems:'center',gap:12}}>
+          <span style={{fontSize:28}}>💵</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:900,fontSize:14,color:'#b45309'}}>⚠️ Revisar pago de encuestas</div>
+            <div style={{fontSize:12,color:'#92400e'}}>{pp.length} papá{pp.length>1?'s':''} declararon haber abonado algo extra el día del evento. Verificá que esté registrado.{esSA?' Tocá para ver.':' Avisale a la dueña.'}</div>
+          </div>
+          {esSA&&<span style={{background:'#d97706',color:'white',borderRadius:99,padding:'4px 12px',fontSize:13,fontWeight:900}}>Ver</span>}
+        </div>
+      );})()}
       {/* Notificación: pedidos de personajes de los papás */}
       {pedPend.length>0&&(
         <div onClick={()=>setVerPedidos(true)} style={{cursor:'pointer',background:'#fff7ed',border:'2px solid #fed7aa',borderRadius:14,padding:'14px 16px',marginBottom:16,display:'flex',alignItems:'center',gap:12}}>
@@ -2370,46 +2381,176 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
 
 /* ── ADMIN MENÚ INTERACTIVO ──────────────────────────────── */
 // ── Encuestas (admin): ver las respuestas de los papás ──
-function AdminEncuestas({setVista,eventos,sucursales}){
+// Encuesta del papá: textos editables (se guardan en iaConfig.encuestaCfg). La estructura es fija; la dueña edita el texto de cada pregunta.
+const ENCUESTA_DEF={
+  titulo:'📝 Encuesta de satisfacción',
+  subtitulo:'Tu opinión nos interesa 💜',
+  tEncargada:'👩 Atención de la Encargada',
+  tMozos:'🧑‍🍳 Atención de los mozos',
+  m1:'1) Estuvieron atentos a los pedidos',
+  m2:'2) Estuvieron presentes durante todo el evento',
+  m3:'3) Hubo bebida constantemente (incluida jarra de agua)',
+  m4:'4) Mantuvieron las mesas limpias y ordenadas',
+  tAux:'🎮 Auxiliares de juegos',
+  aux:'5) Estuvieron presentes en los juegos',
+  tLimpieza:'🚻 Limpieza',
+  banos:'6) ¿Los baños estuvieron limpios?',
+  tPersonal:'⭐ Atención del personal (en general)',
+  pago:'¿Abonó algo extra el día del evento?',
+  tAgrad:'💜 Mensajito de agradecimiento para los chicos',
+  dAgrad:'Dejales unas palabras lindas a los chicos que trabajaron. Podés grabar un audio 🎤 o escribirlo ✍️ (o las dos cosas). Queda guardado para el salón.',
+  tCritica:'🔒 Crítica constructiva (privada)',
+  dCritica:'Algo que podamos mejorar. Esto lo ve solo la encargada del salón — no los chicos.',
+  comentario:'¿Algo más para agregar? (opcional)'
+};
+function AdminEncuestas({setVista,eventos,setEventos,sucursales,iaConfig,setIaConfig}){
+  const [tab,setTab]=useState('respuestas');
   const [fSuc,setFSuc]=useState('');
-  const cal=v=>v==='excelente'?'🤩 Excelente':v==='buena'?'🙂 Buena':v==='mala'?'😕 Mala':'—';
-  const sn=v=>v===true?'Sí':v===false?'No':'—';
+  const [abrir,setAbrir]=useState(null); // evento abierto en vista completa
+  const EC={...ENCUESTA_DEF,...((iaConfig&&iaConfig.encuestaCfg)||{})};
+  const [cfg,setCfg]=useState(EC);
+  const [msgCfg,setMsgCfg]=useState('');
   const sucName=id=>{const s=(sucursales||[]).find(x=>x.id===id);return s?s.nombre:'';};
+  const calTxt=v=>v==='excelente'?'🤩 Excelente':v==='buena'?'🙂 Buena':v==='mala'?'😕 Mala':'—';
+  const calCol=v=>v==='excelente'?'#16a34a':v==='buena'?'#b45309':v==='mala'?'#dc2626':'#94a3b8';
+  const snTxt=v=>v===true?'Sí':v===false?'No':'—';
+  const snCol=v=>v===false?'#dc2626':v===true?'#16a34a':'#94a3b8';
+  const banTxt=v=>v==='novisito'?'No los visitó':v==='si'?'Sí':v==='no'?'No':'—';
+  const banCol=v=>v==='no'?'#dc2626':v==='si'?'#16a34a':'#94a3b8';
+  const hayMalo=q=>(q.encargada&&q.encargada!=='excelente')||(q.personal&&q.personal!=='excelente')||q.m1===false||q.m2===false||q.m3===false||q.m4===false||q.aux===false||q.banos==='no';
+  const V=({t,c})=>(<b style={{color:c}}>{t}</b>);
   const conEnc=(eventos||[]).filter(e=>e&&e.encuesta&&!String(e.id||'').startsWith('__config')).filter(e=>!fSuc||e.sucId===fSuc).sort((a,b)=>((b.encuesta&&b.encuesta.ts)||0)-((a.encuesta&&a.encuesta.ts)||0));
   const exc=conEnc.filter(e=>e.encuesta.encargada==='excelente'||e.encuesta.personal==='excelente').length;
+  const aRevisar=conEnc.filter(e=>e.encuesta.pagoExtra==='si'&&!e.encuesta.pagoRevisado).length;
+  function marcarPagoRevisado(evId){setEventos(evs=>evs.map(x=>x.id===evId?{...x,encuesta:{...x.encuesta,pagoRevisado:true}}:x));}
+  function guardarCfg(){setIaConfig(c=>({...c,encuestaCfg:cfg}));setMsgCfg('✓ Encuesta guardada');flashOk('✓ ¡Encuesta guardada!');setTimeout(()=>setMsgCfg(''),2500);}
+  function resetCfg(){if(window.confirm('¿Volver a los textos originales de la encuesta?')){setCfg({...ENCUESTA_DEF});}}
+  const tabBtn=(id,txt)=>(<button onClick={()=>setTab(id)} style={{...S.btn,flex:1,padding:'10px',fontSize:13,fontWeight:800,background:tab===id?'#0ea5e9':'#f1f5f9',color:tab===id?'#fff':'#475569'}}>{txt}</button>);
+  // Vista completa de una encuesta (como la ve el papá, marcada)
+  const CalRO=({v})=>(<div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginTop:6}}>{[['mala','😕 Mala','#ef4444'],['buena','🙂 Buena','#f59e0b'],['excelente','🤩 Excelente','#16a34a']].map(([val,l,c])=>(<div key={val} style={{border:'2px solid '+(v===val?c:'#e2e8f0'),background:v===val?c:'#fff',color:v===val?'#fff':'#cbd5e1',borderRadius:10,padding:'9px 4px',fontSize:11.5,fontWeight:800,textAlign:'center'}}>{l}</div>))}</div>);
+  const SiNoRO=({v})=>(<div style={{display:'flex',gap:6,flexShrink:0}}>{[['Sí',true],['No',false]].map(([l,val])=>(<div key={l} style={{border:'2px solid '+(v===val?(val?'#16a34a':'#dc2626'):'#e2e8f0'),background:v===val?(val?'#16a34a':'#dc2626'):'#fff',color:v===val?'#fff':'#cbd5e1',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800}}>{l}</div>))}</div>);
+  const FilaRO=({v,texto})=>(<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'8px 0',borderBottom:'1px solid #f1f5f9'}}><span style={{fontSize:12.5,color:'#334155',flex:1}}>{texto}</span><SiNoRO v={v}/></div>);
+  function VistaCompleta({e}){const q=e.encuesta;return(
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:1100,display:'flex',alignItems:'flex-start',justifyContent:'center',padding:16,overflowY:'auto'}} onClick={()=>setAbrir(null)}>
+      <div className="fade-in" style={{maxWidth:480,width:'100%',margin:'10px auto'}} onClick={ev=>ev.stopPropagation()}>
+        <div style={{...S.card}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+            <h2 style={{fontWeight:900,fontSize:18}}>{EC.titulo}</h2>
+            <button onClick={()=>setAbrir(null)} style={{...S.btn,background:'#f1f5f9',color:'#475569',padding:'6px 12px',fontSize:13}}>✕</button>
+          </div>
+          <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>{e.nombre} · {q.fecha||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||''))} · {sucName(e.sucId)}</p>
+          <div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}><div style={{fontWeight:900,fontSize:13,color:'#6b21a8'}}>{EC.tEncargada}</div><CalRO v={q.encargada}/></div>
+          <div style={{...S.card,marginBottom:12}}><div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>{EC.tMozos}</div><FilaRO v={q.m1} texto={EC.m1}/><FilaRO v={q.m2} texto={EC.m2}/><FilaRO v={q.m3} texto={EC.m3}/><FilaRO v={q.m4} texto={EC.m4}/></div>
+          <div style={{...S.card,marginBottom:12}}><div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>{EC.tAux}</div><FilaRO v={q.aux} texto={EC.aux}/></div>
+          <div style={{...S.card,marginBottom:12}}><div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:6}}>{EC.tLimpieza}</div><div style={{fontSize:12.5,color:'#334155',marginBottom:6}}>{EC.banos}</div><div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{[['si','Sí'],['no','No'],['novisito','No los visité']].map(([val,l])=>(<div key={val} style={{border:'2px solid '+(q.banos===val?(val==='no'?'#dc2626':'#7c3aed'):'#e2e8f0'),background:q.banos===val?(val==='no'?'#dc2626':'#7c3aed'):'#fff',color:q.banos===val?'#fff':'#cbd5e1',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800}}>{l}</div>))}</div></div>
+          <div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}><div style={{fontWeight:900,fontSize:13,color:'#6b21a8'}}>{EC.tPersonal}</div><CalRO v={q.personal}/></div>
+          <div style={{...S.card,marginBottom:12}}><div style={{fontSize:12.5,color:'#334155',marginBottom:6}}>{EC.pago}</div><div style={{display:'flex',gap:6}}>{[['si','Sí'],['no','No']].map(([val,l])=>(<div key={val} style={{border:'2px solid '+(q.pagoExtra===val?'#7c3aed':'#e2e8f0'),background:q.pagoExtra===val?'#7c3aed':'#fff',color:q.pagoExtra===val?'#fff':'#cbd5e1',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800}}>{l}</div>))}</div>{q.pagoExtra==='si'&&<div style={{marginTop:8,fontSize:13,color:'#16a34a',fontWeight:800}}>💵 ${q.pagoMonto!=null&&q.pagoMonto!==''?(+q.pagoMonto).toLocaleString('es-AR'):'?'}{q.pagoConcepto&&q.pagoConcepto.trim()?(' — '+q.pagoConcepto.trim()):''}</div>}</div>
+          {(q.agradecimientoAudio||(q.agradecimiento&&String(q.agradecimiento).trim()))&&<div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}><div style={{fontWeight:900,fontSize:13,color:'#6b21a8',marginBottom:6}}>{EC.tAgrad}</div>{q.agradecimientoAudio&&<div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6,flexWrap:'wrap'}}><audio src={q.agradecimientoAudio} controls style={{height:32,flex:1,minWidth:160}}></audio><a href={q.agradecimientoAudio} download style={{fontSize:11,fontWeight:800,color:'#7c3aed',textDecoration:'none'}}>⬇ Descargar</a></div>}{q.agradecimiento&&String(q.agradecimiento).trim()&&<div style={{fontSize:13,color:'#334155'}}>{q.agradecimiento}</div>}</div>}
+          {q.critica&&String(q.critica).trim()&&<div style={{...S.card,background:'#fff7ed',border:'1px solid #fed7aa',marginBottom:12}}><div style={{fontWeight:900,fontSize:13,color:'#9a3412',marginBottom:4}}>{EC.tCritica}</div><div style={{fontSize:13,color:'#7c2d12'}}>{q.critica}</div></div>}
+          {q.comentario&&String(q.comentario).trim()&&<div style={{...S.card,marginBottom:12}}><div style={{fontWeight:900,fontSize:12,color:'#64748b',marginBottom:4}}>💬 Comentario</div><div style={{fontSize:13,color:'#334155'}}>{q.comentario}</div></div>}
+          <button onClick={()=>setAbrir(null)} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#475569',padding:'12px'}}>Cerrar</button>
+        </div>
+      </div>
+    </div>
+  );}
+  const inp=(k,label,area)=>(<label style={{display:'block',marginBottom:10}}><span style={S.label}>{label}</span>{area?(<textarea value={cfg[k]||''} onChange={e=>setCfg(x=>({...x,[k]:e.target.value}))} rows={2} style={{...S.input,resize:'vertical',fontFamily:'inherit'}}/>):(<input value={cfg[k]||''} onChange={e=>setCfg(x=>({...x,[k]:e.target.value}))} style={S.input}/>)}</label>);
   return(
     <div className="fade-in" style={{maxWidth:720,margin:'0 auto',padding:'20px 16px'}}>
       <button style={S.back} onClick={()=>setVista('admin-dashboard')}>← Volver</button>
       <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>📝 Encuestas</h1>
-      <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Respuestas de los papás después del evento. {conEnc.length} encuesta{conEnc.length===1?'':'s'} · {exc} con "Excelente".</p>
-      {(sucursales||[]).length>1&&(
-        <select value={fSuc} onChange={e=>setFSuc(e.target.value)} style={{...S.input,marginBottom:14}}>
-          <option value="">Todos los salones</option>
-          {(sucursales||[]).map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
-        </select>
-      )}
-      {conEnc.length===0?(
-        <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}><div style={{fontSize:40,marginBottom:8}}>📭</div><p style={{fontWeight:700}}>Todavía no hay encuestas completadas.</p></div>
-      ):conEnc.map(e=>{const q=e.encuesta;return(
-        <div key={e.id} style={{...S.card,marginBottom:12}}>
-          <div style={{fontWeight:900,fontSize:15,marginBottom:2}}>{e.nombre} <span style={{fontSize:11,fontWeight:600,color:'#94a3b8'}}>· {q.fecha||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||''))} · {sucName(e.sucId)}</span></div>
-          <div style={{display:'flex',flexDirection:'column',gap:3,fontSize:13,color:'#334155',marginTop:6}}>
-            <div>👩 <b>Encargada:</b> {cal(q.encargada)}</div>
-            <div>🧑‍🍳 <b>Mozos:</b> atentos {sn(q.m1)} · presentes {sn(q.m2)} · bebida {sn(q.m3)} · mesas {sn(q.m4)}</div>
-            <div>🎮 <b>Auxiliares:</b> presentes {sn(q.aux)}</div>
-            <div>🚻 <b>Baños limpios:</b> {q.banos==='novisito'?'No los visitó':sn(q.banos==='si')}</div>
-            <div>⭐ <b>Personal:</b> {cal(q.personal)}</div>
-            {q.pagoExtra&&<div>💵 <b>Abonó extra:</b> {q.pagoExtra==='si'?('$'+((q.pagoMonto!=null&&q.pagoMonto!=='')?(+q.pagoMonto).toLocaleString('es-AR'):'?')+(q.pagoConcepto&&q.pagoConcepto.trim()?(' ('+q.pagoConcepto.trim()+')'):'')):'No'}</div>}
-            {(q.agradecimientoAudio||(q.agradecimiento&&String(q.agradecimiento).trim()))&&<div style={{background:'#faf5ff',border:'1px solid #e9d5ff',borderRadius:8,padding:'8px 10px',marginTop:4}}>
-              <div>💜 <b>Agradecimiento para los chicos</b> <span style={{fontSize:10,color:'#7c3aed'}}>(para redes)</span></div>
-              {q.agradecimientoAudio&&<div style={{display:'flex',alignItems:'center',gap:8,marginTop:6,flexWrap:'wrap'}}><audio src={q.agradecimientoAudio} controls style={{height:32,flex:1,minWidth:160}}></audio><a href={q.agradecimientoAudio} download style={{fontSize:11,fontWeight:800,color:'#7c3aed',textDecoration:'none'}}>⬇ Descargar</a></div>}
-              {q.agradecimiento&&String(q.agradecimiento).trim()&&<div style={{marginTop:6}}>{q.agradecimiento}</div>}
-            </div>}
-            {q.critica&&String(q.critica).trim()&&<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'8px 10px',marginTop:4}}>🔒 <b>Crítica (privada):</b> {q.critica}</div>}
-            {q.comentario&&String(q.comentario).trim()&&<div style={{background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:8,padding:'8px 10px',marginTop:4}}>💬 {q.comentario}</div>}
+      <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Lo que opinan los papás después del evento, y la configuración de las preguntas.</p>
+      <div style={{display:'flex',gap:8,marginBottom:16}}>{tabBtn('respuestas','💬 Lo que dicen los papás')}{tabBtn('config','⚙️ Configuración de la encuesta')}</div>
+
+      {tab==='respuestas'&&(<div>
+        {aRevisar>0&&(<div style={{background:'#fffbeb',border:'2px solid #fde68a',borderRadius:14,padding:'12px 14px',marginBottom:14,display:'flex',alignItems:'center',gap:10}}><span style={{fontSize:26}}>💵</span><div style={{flex:1}}><div style={{fontWeight:900,fontSize:13.5,color:'#b45309'}}>⚠️ Revisar pago de encuestas</div><div style={{fontSize:12,color:'#92400e'}}>{aRevisar} papá{aRevisar>1?'s':''} declararon un pago extra el día del evento. Verificá que esté registrado.</div></div></div>)}
+        <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>{conEnc.length} encuesta{conEnc.length===1?'':'s'} · {exc} con "Excelente".</p>
+        {(sucursales||[]).length>1&&(
+          <select value={fSuc} onChange={e=>setFSuc(e.target.value)} style={{...S.input,marginBottom:14}}>
+            <option value="">Todos los salones</option>
+            {(sucursales||[]).map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+          </select>
+        )}
+        {conEnc.length===0?(
+          <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}><div style={{fontSize:40,marginBottom:8}}>📭</div><p style={{fontWeight:700}}>Todavía no hay encuestas completadas.</p></div>
+        ):conEnc.map(e=>{const q=e.encuesta;const malo=hayMalo(q);return(
+          <div key={e.id} style={{...S.card,marginBottom:12,border:malo?'2px solid #fecaca':S.card.border}}>
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:8}}>
+              <div style={{fontWeight:900,fontSize:15,marginBottom:2}}>{e.nombre} <span style={{fontSize:11,fontWeight:600,color:'#94a3b8'}}>· {q.fecha||((e.dia||'')+'/'+(e.mes||'')+'/'+(e.anio||''))} · {sucName(e.sucId)}</span></div>
+              <button onClick={()=>setAbrir(e)} style={{...S.btn,background:'#0ea5e9',color:'#fff',padding:'6px 12px',fontSize:12,fontWeight:800,flexShrink:0}}>👁 Abrir</button>
+            </div>
+            {malo&&<div style={{display:'inline-block',background:'#fef2f2',color:'#dc2626',border:'1px solid #fecaca',borderRadius:8,padding:'3px 10px',fontSize:11,fontWeight:900,margin:'4px 0 2px'}}>⚠️ Hay puntos a revisar</div>}
+            <div style={{display:'flex',flexDirection:'column',gap:3,fontSize:13,color:'#334155',marginTop:6}}>
+              <div>👩 <b>Encargada:</b> <V t={calTxt(q.encargada)} c={calCol(q.encargada)}/></div>
+              <div>🧑‍🍳 <b>Mozos:</b> atentos <V t={snTxt(q.m1)} c={snCol(q.m1)}/> · presentes <V t={snTxt(q.m2)} c={snCol(q.m2)}/> · bebida <V t={snTxt(q.m3)} c={snCol(q.m3)}/> · mesas <V t={snTxt(q.m4)} c={snCol(q.m4)}/></div>
+              <div>🎮 <b>Auxiliares:</b> presentes <V t={snTxt(q.aux)} c={snCol(q.aux)}/></div>
+              <div>🚻 <b>Baños limpios:</b> <V t={banTxt(q.banos)} c={banCol(q.banos)}/></div>
+              <div>⭐ <b>Personal:</b> <V t={calTxt(q.personal)} c={calCol(q.personal)}/></div>
+              {q.pagoExtra==='si'&&<div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:8,padding:'8px 10px',marginTop:4}}>
+                <div>💵 <b>Abonó extra:</b> ${(q.pagoMonto!=null&&q.pagoMonto!=='')?(+q.pagoMonto).toLocaleString('es-AR'):'?'}{q.pagoConcepto&&q.pagoConcepto.trim()?(' ('+q.pagoConcepto.trim()+')'):''}</div>
+                {q.pagoRevisado?(<div style={{fontSize:11,color:'#16a34a',fontWeight:800,marginTop:4}}>✓ Pago revisado</div>):(<button onClick={()=>marcarPagoRevisado(e.id)} style={{...S.btn,background:'#16a34a',color:'#fff',padding:'5px 10px',fontSize:11,fontWeight:800,marginTop:6}}>✓ Marcar pago revisado</button>)}
+              </div>}
+              {q.pagoExtra==='no'&&<div>💵 <b>Abonó extra:</b> No</div>}
+              {(q.agradecimientoAudio||(q.agradecimiento&&String(q.agradecimiento).trim()))&&<div style={{background:'#faf5ff',border:'1px solid #e9d5ff',borderRadius:8,padding:'8px 10px',marginTop:4}}>
+                <div>💜 <b>Agradecimiento para los chicos</b> <span style={{fontSize:10,color:'#7c3aed'}}>(para redes)</span></div>
+                {q.agradecimientoAudio&&<div style={{display:'flex',alignItems:'center',gap:8,marginTop:6,flexWrap:'wrap'}}><audio src={q.agradecimientoAudio} controls style={{height:32,flex:1,minWidth:160}}></audio><a href={q.agradecimientoAudio} download style={{fontSize:11,fontWeight:800,color:'#7c3aed',textDecoration:'none'}}>⬇ Descargar</a></div>}
+                {q.agradecimiento&&String(q.agradecimiento).trim()&&<div style={{marginTop:6}}>{q.agradecimiento}</div>}
+              </div>}
+              {q.critica&&String(q.critica).trim()&&<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:8,padding:'8px 10px',marginTop:4}}>🔒 <b>Crítica (privada):</b> {q.critica}</div>}
+              {q.comentario&&String(q.comentario).trim()&&<div style={{background:'#f8fafc',border:'1px solid #eef1f6',borderRadius:8,padding:'8px 10px',marginTop:4}}>💬 {q.comentario}</div>}
+            </div>
           </div>
+        );})}
+      </div>)}
+
+      {tab==='config'&&(<div>
+        <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:12,padding:'10px 12px',marginBottom:14,fontSize:12,color:'#1e40af'}}>Acá editás <b>las preguntas tal cual las ve el papá</b>. Cambiá el texto que quieras y tocá Guardar. (Las opciones Sí/No y las caritas no cambian.)</div>
+        <div style={{...S.card,marginBottom:12}}>
+          {inp('titulo','Título de la encuesta')}
+          {inp('subtitulo','Subtítulo')}
         </div>
-      );})}
+        <div style={{...S.card,marginBottom:12}}>
+          {inp('tEncargada','Título — Encargada (con caritas)')}
+        </div>
+        <div style={{...S.card,marginBottom:12}}>
+          {inp('tMozos','Título — Mozos')}
+          {inp('m1','Pregunta mozos 1 (Sí/No)')}
+          {inp('m2','Pregunta mozos 2 (Sí/No)')}
+          {inp('m3','Pregunta mozos 3 (Sí/No)')}
+          {inp('m4','Pregunta mozos 4 (Sí/No)')}
+        </div>
+        <div style={{...S.card,marginBottom:12}}>
+          {inp('tAux','Título — Auxiliares')}
+          {inp('aux','Pregunta auxiliares (Sí/No)')}
+        </div>
+        <div style={{...S.card,marginBottom:12}}>
+          {inp('tLimpieza','Título — Limpieza')}
+          {inp('banos','Pregunta baños (Sí / No / No los visité)')}
+        </div>
+        <div style={{...S.card,marginBottom:12}}>
+          {inp('tPersonal','Título — Personal (con caritas)')}
+        </div>
+        <div style={{...S.card,marginBottom:12}}>
+          {inp('pago','Pregunta — ¿Abonó algo extra? (Sí/No + monto)')}
+        </div>
+        <div style={{...S.card,marginBottom:12}}>
+          {inp('tAgrad','Título — Mensajito de agradecimiento')}
+          {inp('dAgrad','Texto explicativo del agradecimiento',true)}
+        </div>
+        <div style={{...S.card,marginBottom:12}}>
+          {inp('tCritica','Título — Crítica privada')}
+          {inp('dCritica','Texto explicativo de la crítica',true)}
+        </div>
+        <div style={{...S.card,marginBottom:12}}>
+          {inp('comentario','Texto del campo "Algo más" (al final)')}
+        </div>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+          <button onClick={guardarCfg} style={{...S.btn,background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'#fff',padding:'12px 20px',fontWeight:900,flex:1,minWidth:160}}>✓ Guardar encuesta</button>
+          <button onClick={resetCfg} style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'12px 16px',fontWeight:700}}>↺ Volver a los textos originales</button>
+          {msgCfg&&<span style={{color:'#16a34a',fontWeight:800,fontSize:13}}>{msgCfg}</span>}
+        </div>
+      </div>)}
+
+      {abrir&&<VistaCompleta e={abrir}/>}
     </div>
   );
 }
@@ -3853,6 +3994,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [adicSel,setAdicSel]=useState(null); // adicional abierto en el detalle
   const [fotoZoom,setFotoZoom]=useState(null); // foto del salón ampliada
   const [enc,setEnc]=useState((papaSesion&&papaSesion.encuesta)||{}); // respuestas de la encuesta
+  const EC={...ENCUESTA_DEF,...((iaConfig&&iaConfig.encuestaCfg)||{})}; // textos de la encuesta (editables por la dueña)
   // Grabación de audio del mensajito de agradecimiento (para redes). Se guarda en el panel, NO se manda al WhatsApp.
   const [recState,setRecState]=useState('idle'); // idle | rec
   const [recSegs,setRecSegs]=useState(0);
@@ -4208,7 +4350,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     if(audioSubiendo){alert('Esperá unos segundos, se está guardando el audio del mensajito… 🎤');return;}
     if(recState==='rec'){alert('Primero detené la grabación del audio. ⏹');return;}
     // Se guarda directo en el panel del salón (NO abre WhatsApp). El auto-guardado de eventos lo sube a la base.
-    const e={...enc,fecha:papaSesion.dia+'/'+papaSesion.mes+'/'+papaSesion.anio,nombre:papaSesion.nombre};
+    const e={...enc,fecha:papaSesion.dia+'/'+papaSesion.mes+'/'+papaSesion.anio,nombre:papaSesion.nombre,ts:Date.now()};
     setPapaSesion(ps=>{const n={...ps,encuesta:e};setEventos(evs=>evs.map(x=>x.id===n.id?{...x,encuesta:e}:x));return n;});
     flashOk('✓ ¡Gracias por tu encuesta!');
     setSeccion('home');
@@ -5036,8 +5178,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {seccion==='encuesta'&&(
         <div className="fade-in" style={S.card}>
-          <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>📝 Encuesta de satisfacción</h2>
-          <p style={{fontSize:12,color:'#64748b',marginBottom:14}}>Tu opinión nos interesa 💜</p>
+          <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>{EC.titulo}</h2>
+          <p style={{fontSize:12,color:'#64748b',marginBottom:14}}>{EC.subtitulo}</p>
           {!eventoPaso?(
             <div style={{textAlign:'center',padding:'28px 16px',color:'#94a3b8',background:'#fafafa',borderRadius:14,border:'1px dashed #e2e8f0'}}>
               <div style={{fontSize:38,marginBottom:6}}>🎉</div>
@@ -5063,23 +5205,23 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             const Fila=({campo,texto})=>(<div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,padding:'8px 0',borderBottom:'1px solid #f1f5f9'}}><span style={{fontSize:12.5,color:'#334155',flex:1}}>{texto}</span><SiNo campo={campo}/></div>);
             return(<div>
               <div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}>
-                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8'}}>👩 Atención de la Encargada</div>
+                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8'}}>{EC.tEncargada}</div>
                 <Cal campo="encargada"/>
               </div>
               <div style={{...S.card,marginBottom:12}}>
-                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>🧑‍🍳 Atención de los mozos</div>
-                <Fila campo="m1" texto="1) Estuvieron atentos a los pedidos"/>
-                <Fila campo="m2" texto="2) Estuvieron presentes durante todo el evento"/>
-                <Fila campo="m3" texto="3) Hubo bebida constantemente (incluida jarra de agua)"/>
-                <Fila campo="m4" texto="4) Mantuvieron las mesas limpias y ordenadas"/>
+                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>{EC.tMozos}</div>
+                <Fila campo="m1" texto={EC.m1}/>
+                <Fila campo="m2" texto={EC.m2}/>
+                <Fila campo="m3" texto={EC.m3}/>
+                <Fila campo="m4" texto={EC.m4}/>
               </div>
               <div style={{...S.card,marginBottom:12}}>
-                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>🎮 Auxiliares de juegos</div>
-                <Fila campo="aux" texto="5) Estuvieron presentes en los juegos"/>
+                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>{EC.tAux}</div>
+                <Fila campo="aux" texto={EC.aux}/>
               </div>
               <div style={{...S.card,marginBottom:12}}>
-                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:6}}>🚻 Limpieza</div>
-                <div style={{fontSize:12.5,color:'#334155',marginBottom:6}}>6) ¿Los baños estuvieron limpios?</div>
+                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:6}}>{EC.tLimpieza}</div>
+                <div style={{fontSize:12.5,color:'#334155',marginBottom:6}}>{EC.banos}</div>
                 <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                   {[['si','Sí'],['no','No'],['novisito','No los visité']].map(([v,l])=>(
                     <button key={v} onClick={()=>setEnc(x=>({...x,banos:v}))} style={{border:'2px solid '+(enc.banos===v?'#7c3aed':'#e2e8f0'),background:enc.banos===v?'#7c3aed':'#fff',color:enc.banos===v?'#fff':'#334155',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800,cursor:'pointer'}}>{l}</button>
@@ -5087,11 +5229,11 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 </div>
               </div>
               <div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}>
-                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8'}}>⭐ Atención del personal (en general)</div>
+                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8'}}>{EC.tPersonal}</div>
                 <Cal campo="personal"/>
               </div>
               <div style={{...S.card,marginBottom:12}}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}><span style={{fontSize:12.5,color:'#334155',flex:1}}>¿Abonó algo extra el día del evento?</span><div style={{display:'flex',gap:6}}>{[['si','Sí'],['no','No']].map(([v,l])=>(<button key={v} onClick={()=>setEnc(x=>({...x,pagoExtra:v}))} style={{border:'2px solid '+(enc.pagoExtra===v?'#7c3aed':'#e2e8f0'),background:enc.pagoExtra===v?'#7c3aed':'#fff',color:enc.pagoExtra===v?'#fff':'#334155',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800,cursor:'pointer'}}>{l}</button>))}</div></div>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}><span style={{fontSize:12.5,color:'#334155',flex:1}}>{EC.pago}</span><div style={{display:'flex',gap:6}}>{[['si','Sí'],['no','No']].map(([v,l])=>(<button key={v} onClick={()=>setEnc(x=>({...x,pagoExtra:v}))} style={{border:'2px solid '+(enc.pagoExtra===v?'#7c3aed':'#e2e8f0'),background:enc.pagoExtra===v?'#7c3aed':'#fff',color:enc.pagoExtra===v?'#fff':'#334155',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800,cursor:'pointer'}}>{l}</button>))}</div></div>
                 {enc.pagoExtra==='si'&&(
                   <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap',alignItems:'center'}}>
                     <input value={enc.pagoConcepto||''} onChange={e=>setEnc(x=>({...x,pagoConcepto:e.target.value}))} placeholder="¿En concepto de qué?" style={{...S.input,flex:1,minWidth:140,fontSize:12,marginBottom:0}}/>
@@ -5101,8 +5243,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 )}
               </div>
               <div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}>
-                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8',marginBottom:4}}>💜 Mensajito de agradecimiento para los chicos</div>
-                <p style={{fontSize:11,color:'#7c3aed',marginBottom:8,lineHeight:1.4}}>Dejales unas palabras lindas a los chicos que trabajaron. Podés <b>grabar un audio 🎤</b> o <b>escribirlo ✍️</b> (o las dos cosas). Queda guardado para el salón.</p>
+                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8',marginBottom:4}}>{EC.tAgrad}</div>
+                <p style={{fontSize:11,color:'#7c3aed',marginBottom:8,lineHeight:1.4}}>{EC.dAgrad}</p>
                 {/* Grabador de audio */}
                 <div style={{background:'white',border:'1px solid #e9d5ff',borderRadius:10,padding:10,marginBottom:8}}>
                   {!(audioLocal||enc.agradecimientoAudio)?(
@@ -5127,11 +5269,11 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <textarea value={enc.agradecimiento||''} onChange={e=>setEnc(x=>({...x,agradecimiento:e.target.value}))} rows={3} placeholder="…o escribí tu mensaje acá (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:0}}/>
               </div>
               <div style={{...S.card,marginBottom:12}}>
-                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>🔒 Crítica constructiva (privada)</div>
-                <p style={{fontSize:11,color:'#64748b',marginBottom:8,lineHeight:1.4}}>Algo que podamos mejorar. Esto lo ve <b>solo la encargada del salón</b> — no los chicos.</p>
+                <div style={{fontWeight:900,fontSize:13,color:'#334155',marginBottom:4}}>{EC.tCritica}</div>
+                <p style={{fontSize:11,color:'#64748b',marginBottom:8,lineHeight:1.4}}>{EC.dCritica}</p>
                 <textarea value={enc.critica||''} onChange={e=>setEnc(x=>({...x,critica:e.target.value}))} rows={3} placeholder="Escribí tu crítica o sugerencia (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:0}}/>
               </div>
-              <textarea value={enc.comentario||''} onChange={e=>setEnc(x=>({...x,comentario:e.target.value}))} rows={2} placeholder="¿Algo más para agregar? (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:12}}/>
+              <textarea value={enc.comentario||''} onChange={e=>setEnc(x=>({...x,comentario:e.target.value}))} rows={2} placeholder={EC.comentario} style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:12}}/>
               <button onClick={enviarEncuesta} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',padding:'15px',fontSize:15,fontWeight:900,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Guardar encuesta</button>
               <p style={{fontSize:11,color:'#94a3b8',textAlign:'center',marginTop:8}}>Se guarda en el salón. ¡Gracias por tu opinión! 💚</p>
             </div>);
