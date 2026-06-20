@@ -4167,8 +4167,9 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       '\n🎮 Auxiliares presentes: '+sn(e.aux)+
       '\n🚻 Baños limpios: '+(e.banos==='novisito'?'No los visitó':sn(e.banos==='si'))+
       '\n⭐ Atención del personal: '+cal(e.personal)+
-      (e.auxExtra?('\n➕ Contrató auxiliar extra: '+sn(e.auxExtra==='si')):'')+
-      (e.comentario&&e.comentario.trim()?('\n💬 Comentario: '+e.comentario.trim()):'');
+      (e.pagoExtra==='si'?('\n💵 Abonó extra: $'+(e.pagoMonto!=null&&e.pagoMonto!==''?(+e.pagoMonto).toLocaleString('es-AR'):'?')+(e.pagoConcepto&&e.pagoConcepto.trim()?(' ('+e.pagoConcepto.trim()+')'):'')):(e.pagoExtra==='no'?'\n💵 Abonó extra: No':''))+
+      (e.comentario&&e.comentario.trim()?('\n💬 Comentario: '+e.comentario.trim()):'')+
+      (e.mensajeChicos&&e.mensajeChicos.trim()?('\n💜 Mensaje para los chicos: '+e.mensajeChicos.trim()):'');
     abrirWA(waNum(suc.tel||''),msg);
     flashOk('✓ ¡Gracias por tu encuesta!');
     setSeccion('home');
@@ -5051,9 +5052,21 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <Cal campo="personal"/>
               </div>
               <div style={{...S.card,marginBottom:12}}>
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}><span style={{fontSize:12.5,color:'#334155',flex:1}}>¿Contrató auxiliar extra?</span><div style={{display:'flex',gap:6}}>{[['si','Sí'],['no','No']].map(([v,l])=>(<button key={v} onClick={()=>setEnc(x=>({...x,auxExtra:v}))} style={{border:'2px solid '+(enc.auxExtra===v?'#7c3aed':'#e2e8f0'),background:enc.auxExtra===v?'#7c3aed':'#fff',color:enc.auxExtra===v?'#fff':'#334155',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800,cursor:'pointer'}}>{l}</button>))}</div></div>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}><span style={{fontSize:12.5,color:'#334155',flex:1}}>¿Abonó algo extra el día del evento?</span><div style={{display:'flex',gap:6}}>{[['si','Sí'],['no','No']].map(([v,l])=>(<button key={v} onClick={()=>setEnc(x=>({...x,pagoExtra:v}))} style={{border:'2px solid '+(enc.pagoExtra===v?'#7c3aed':'#e2e8f0'),background:enc.pagoExtra===v?'#7c3aed':'#fff',color:enc.pagoExtra===v?'#fff':'#334155',borderRadius:10,padding:'7px 14px',fontSize:12,fontWeight:800,cursor:'pointer'}}>{l}</button>))}</div></div>
+                {enc.pagoExtra==='si'&&(
+                  <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap',alignItems:'center'}}>
+                    <input value={enc.pagoConcepto||''} onChange={e=>setEnc(x=>({...x,pagoConcepto:e.target.value}))} placeholder="¿En concepto de qué?" style={{...S.input,flex:1,minWidth:140,fontSize:12,marginBottom:0}}/>
+                    <span style={{fontSize:13,fontWeight:800,color:'#16a34a'}}>$</span>
+                    <input type="number" min="0" value={enc.pagoMonto==null?'':enc.pagoMonto} onChange={e=>setEnc(x=>({...x,pagoMonto:e.target.value===''?'':+e.target.value}))} placeholder="Monto" style={{...S.input,width:110,fontSize:12,marginBottom:0}}/>
+                  </div>
+                )}
               </div>
-              <textarea value={enc.comentario||''} onChange={e=>setEnc(x=>({...x,comentario:e.target.value}))} rows={3} placeholder="¿Algo para agregar? (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:12}}/>
+              <div style={{...S.card,background:'#faf5ff',border:'1px solid #e9d5ff',marginBottom:12}}>
+                <div style={{fontWeight:900,fontSize:13,color:'#6b21a8',marginBottom:4}}>💜 Un mensajito para los chicos que trabajaron</div>
+                <p style={{fontSize:11,color:'#7c3aed',marginBottom:8,lineHeight:1.4}}>Es muy importante para nosotros: un agradecimiento o una crítica constructiva. Escribilo acá, o al tocar Enviar podés mandarnos un <b>audio por WhatsApp</b>. 🎤</p>
+                <textarea value={enc.mensajeChicos||''} onChange={e=>setEnc(x=>({...x,mensajeChicos:e.target.value}))} rows={3} placeholder="Escribí tu mensaje (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:0}}/>
+              </div>
+              <textarea value={enc.comentario||''} onChange={e=>setEnc(x=>({...x,comentario:e.target.value}))} rows={2} placeholder="¿Algo más para agregar? (opcional)" style={{...S.input,resize:'vertical',fontFamily:'inherit',marginBottom:12}}/>
               <button onClick={enviarEncuesta} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',padding:'15px',fontSize:15,fontWeight:900,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Enviar encuesta</button>
             </div>);
           })()}
