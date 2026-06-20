@@ -11,6 +11,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}</script>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0;background:#1A1A1A;color:#F5F5F5;font-family:'Inter',system-ui,sans-serif;font-size:15px}
@@ -87,7 +89,7 @@ function App(){
       <div className="fade" style={{maxWidth:560,margin:'0 auto',padding:'14px 14px 0'}}>
         {vista==='dashboard'   && <Dashboard sesion={sesion} rol={rol} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx} setVista={setVista}/>}
         {vista==='fichar'      && <Placeholder titulo="📍 Fichar" txt="Acá el empleado va a fichar con GPS + foto + reconocimiento facial. Lo construimos en la próxima etapa."/>}
-        {vista==='horarios'    && <Placeholder titulo="🗓️ Horarios" txt="Subir el PDF semanal (lector automático), carga manual y reemplazo de empleados. Próxima etapa."/>}
+        {vista==='horarios'    && (esDuena||rol==='encargada') && <Horarios sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='registros'   && <Placeholder titulo="📋 Registros de fichaje" txt="Listado de entradas/salidas con estado (en hora / tarde / ausente). Próxima etapa."/>}
         {vista==='pagos'       && <Placeholder titulo="💰 Pagos" txt="Liquidación por rango de fechas: horas × valor hora + bonus de encuestas, exportable a PDF. Próxima etapa."/>}
         {vista==='alertas'     && <Placeholder titulo="🔔 Alertas" txt="Tarde, ausente, sin salida. Próxima etapa."/>}
@@ -375,6 +377,293 @@ function Empleados({empleados,sucursales,recargar}){
           <button onClick={()=>borrar(em)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'8px 11px',minHeight:0,fontSize:13}}>🗑</button>
         </div>
       ))}
+    </div>
+  );
+}
+
+/* ════════ HORARIOS: lector de PDF + regla de ingreso ════════ */
+function toMin(hhmm){ const m=String(hhmm||'').match(/(\d{1,2}):(\d{2})/); return m?(+m[1]*60+ +m[2]):0; }
+function fmtMin(t){ t=((t%1440)+1440)%1440; const h=Math.floor(t/60),m=t%60; return ('0'+h).slice(-2)+':'+('0'+m).slice(-2); }
+function restarMin(hhmm,min){ return fmtMin(toMin(hhmm)-min); }
+const DOW=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
+function fechaLinda(iso){ try{const[a,m,d]=iso.split('-');const dt=new Date(+a,+m-1,+d);return DOW[dt.getDay()]+' '+d+'/'+m;}catch(e){return iso;} }
+
+// Lee el texto del PDF (pdf.js), reconstruyendo líneas por posición vertical
+async function leerLineasPdf(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+  const lineas=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const tc=await page.getTextContent();
+    const byY={};
+    tc.items.forEach(it=>{ const y=Math.round(it.transform[5]); let key=y; for(const k in byY){ if(Math.abs(k-y)<=3){key=+k;break;} } (byY[key]=byY[key]||[]).push(it); });
+    Object.keys(byY).map(Number).sort((a,b)=>b-a).forEach(y=>{
+      const ln=byY[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
+      if(ln) lineas.push(ln);
+    });
+  }
+  return lineas;
+}
+
+// Interpreta las líneas → eventos
+function parseHorarios(lineas){
+  const eventos=[]; let dia=null; let buf=[];
+  const reDia=/^(LUN|MAR|MI[EÉ]|JUE|VIE|S[AÁ]B|DOM)\.?\s/i;
+  const reFecha=/(\d{2})\/(\d{2})\/(\d{4})/;
+  const reTime=/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/;
+  const reRolG=/(Cocinero|Mozo|Auxiliar)(\s*\d+\s*hs)?\s*-\s*\d{1,2}:\d{2}/gi;
+  const reSoloNum=/^\d{1,3}$/;
+  const reNoAsig=/No Asignado/i;
+  function parseCliente(txt,ev){
+    if(!txt) return;
+    const mm=txt.match(/^(.*?)\s*\((Madre|Padre|Tutor[a]?)\)\s*(.*)$/i);
+    if(mm){ let pre=mm[1].trim().replace(/^No registra adicionales\s*/i,''); ev.cliente=pre; ev.festejado=mm[3].replace(/,\s*$/,'').trim(); }
+    else if(!/^No registra adicionales/i.test(txt)) ev.adicionales=txt.trim();
+  }
+  for(let i=0;i<lineas.length;i++){
+    const ln=lineas[i];
+    if(reDia.test(ln)){ const m=ln.match(reFecha); if(m) dia=m[3]+'-'+m[2]+'-'+m[1]; buf=[]; continue; }
+    if(/Listado de horarios|Generado:|Indentif|Identif|Personal a/i.test(ln)) continue;
+    if(reSoloNum.test(ln)){ buf.push(+ln); continue; }
+    if(reNoAsig.test(ln)){ buf.push(null); continue; }
+    const mt=ln.match(reTime);
+    if(mt && dia){
+      const before=ln.slice(0,mt.index).trim();
+      let leadNums=[], pkg=before;
+      const lead=before.match(/^([\d\s]+?)\s+([A-Za-zÁÉÍÓÚáéíóúñ].*)$/);
+      if(lead){ leadNums=lead[1].trim().split(/\s+/).map(Number); pkg=lead[2].trim(); }
+      const legajos=[...buf,...leadNums]; buf=[];
+      const ev={ dia, paquete:pkg, hora_inicio:mt[1], hora_fin:mt[2], roles:[], cliente:'', festejado:'', adicionales:'' };
+      let rest=ln.slice(mt.index+mt[0].length).trim();
+      const rolesTxt=[];
+      if(rest){
+        let m2, last=0; reRolG.lastIndex=0;
+        while((m2=reRolG.exec(rest))){ rolesTxt.push((m2[1]+(m2[2]||'')).replace(/\s+/g,' ').trim()); last=m2.index+m2[0].length; }
+        parseCliente(rest.slice(last).trim(),ev);
+      } else {
+        while(i+1<lineas.length && /^(Cocinero|Mozo|Auxiliar)(\s*\d+\s*hs)?\s*-\s*\d{1,2}:\d{2}/i.test(lineas[i+1])){
+          rolesTxt.push(lineas[++i].replace(/\s*-\s*\d{1,2}:\d{2}.*$/,'').replace(/\s+/g,' ').trim());
+        }
+        if(i+1<lineas.length){ const nx=lineas[i+1]; if(!reDia.test(nx)&&!reSoloNum.test(nx)&&!reNoAsig.test(nx)&&!reTime.test(nx)){ parseCliente(lineas[++i],ev); } }
+      }
+      rolesTxt.forEach((rt,idx)=>{ const leg=legajos[idx]; if(leg!=null && !isNaN(leg)) ev.roles.push({rol:rt,legajo:leg}); });
+      if(ev.roles.length) eventos.push(ev);
+    }
+  }
+  return eventos;
+}
+
+// Aplica la regla de ingreso por BLOQUES de turno.
+// Eventos seguidos (hueco <= gapBloque) = mismo turno: 1ª tanda entra prep1 antes; quien se suma después, prepNuevo; quien sigue, no re-ingresa.
+// Si entre un evento y el próximo hay un hueco grande (se fueron y volvieron) = turno nuevo: vuelve a entrar prep1 antes.
+function calcularIngresos(eventos, prep1, prepNuevo, gapBloque){
+  gapBloque = gapBloque||150;
+  const byDia={}; eventos.forEach(e=>{(byDia[e.dia]=byDia[e.dia]||[]).push(e);});
+  Object.values(byDia).forEach(list=>{
+    list.sort((a,b)=>toMin(a.hora_inicio)-toMin(b.hora_inicio));
+    let finPrev=null; let vistos=new Set();
+    list.forEach((e,idx)=>{
+      const ini=toMin(e.hora_inicio);
+      const nuevoBloque = (finPrev===null) || (ini-finPrev > gapBloque);
+      if(nuevoBloque) vistos=new Set();
+      e.orden_dia=idx+1;
+      e.roles.forEach(r=>{
+        if(nuevoBloque) r.ingreso=restarMin(e.hora_inicio,prep1);
+        else if(vistos.has(r.legajo)) r.ingreso=null;
+        else r.ingreso=restarMin(e.hora_inicio,prepNuevo);
+      });
+      e.roles.forEach(r=>vistos.add(r.legajo));
+      let fin=toMin(e.hora_fin); if(fin<ini) fin+=1440; finPrev=fin;
+    });
+  });
+  return eventos;
+}
+
+function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
+  const [tab,setTab]=useState('ver');
+  const [sucSel,setSucSel]=useState(esDuena ? (sucCtx||(sucursales[0]||{}).id||'') : (sucCtx||''));
+  const [eventos,setEventos]=useState([]); const [asign,setAsign]=useState([]); const [cargando,setCargando]=useState(false);
+  const [previa,setPrevia]=useState(null); const [leyendo,setLeyendo]=useState(false); const [reempl,setReempl]=useState(null);
+  const cfgGen = {prep1:90,prepNuevo:30};
+  const empByLegajo=l=>empleados.find(e=>e.legajo===l);
+  const nomLegajo=l=>{const e=empByLegajo(l);return e?e.nombre:('#'+l+' (sin cargar)');};
+  const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
+
+  async function cargar(){ if(!sucSel)return; setCargando(true);
+    const ev=await dbAll('fichaje_eventos'); const ee=await dbAll('fichaje_evento_empleados');
+    setEventos(ev.filter(e=>e.sucursal_id===sucSel).sort((a,b)=>(a.fecha+a.hora_inicio).localeCompare(b.fecha+b.hora_inicio)));
+    setAsign(ee); setCargando(false);
+  }
+  useEffect(()=>{ if(tab==='ver') cargar(); },[tab,sucSel]);
+
+  async function elegirPdf(e){ const file=e.target.files[0]; if(!file)return; setLeyendo(true);
+    try{
+      const lineas=await leerLineasPdf(file);
+      let evs=parseHorarios(lineas);
+      evs=calcularIngresos(evs,cfgGen.prep1,cfgGen.prepNuevo);
+      // autodetectar sucursal por paquetes
+      const txt=evs.map(x=>x.paquete).join(' ').toLowerCase();
+      let sucAuto=sucSel;
+      if(/point/.test(txt)){ const pp=sucursales.find(s=>/play/i.test(s.nombre)); if(pp)sucAuto=pp.id; }
+      else if(/estrella|deluxe|express/.test(txt)){ const fz=sucursales.find(s=>/fun/i.test(s.nombre)); if(fz)sucAuto=fz.id; }
+      if(!evs.length){ alert('No pude leer eventos de ese PDF. Probá con la carga manual o avisame.'); }
+      setPrevia({sucursal_id:sucAuto, eventos:evs}); setTab('pdf');
+    }catch(err){ alert('No se pudo leer el PDF: '+(err.message||err)); }
+    setLeyendo(false); e.target.value='';
+  }
+
+  async function guardarPrevia(){
+    if(!previa||!previa.sucursal_id){ alert('Elegí la sucursal.'); return; }
+    setCargando(true);
+    for(const ev of previa.eventos){
+      const row=await dbInsert('fichaje_eventos',{ sucursal_id:previa.sucursal_id, fecha:ev.dia, paquete:ev.paquete, hora_inicio:ev.hora_inicio, hora_fin:ev.hora_fin, orden_dia:ev.orden_dia||1, cliente:ev.cliente||null, festejado:ev.festejado||null, adicionales:ev.adicionales||null, origen:'pdf', creado_por:sesion.id });
+      if(row){ for(const r of ev.roles){ const emp=empByLegajo(r.legajo); await dbInsert('fichaje_evento_empleados',{ evento_id:row.id, empleado_id:emp?emp.id:null, legajo:r.legajo, rol_en_evento:r.rol, hora_ingreso_esperada:r.ingreso||null }); } }
+    }
+    setCargando(false); setPrevia(null); setTab('ver');
+    alert('✓ Horarios guardados');
+  }
+
+  async function borrarEvento(id){ if(!window.confirm('¿Borrar este evento?'))return; await dbDelete('fichaje_evento_empleados','00000000-0000-0000-0000-000000000000'); /*noop*/ const lst=asign.filter(a=>a.evento_id===id); for(const a of lst) await dbDelete('fichaje_evento_empleados',a.id); await dbDelete('fichaje_eventos',id); cargar(); }
+  async function hacerReemplazo(asgId, nuevoEmpId){ const emp=empleados.find(e=>e.id===nuevoEmpId); if(!emp)return; await dbUpdate('fichaje_evento_empleados',asgId,{empleado_id:emp.id,legajo:emp.legajo,fue_reemplazo:true}); setReempl(null); cargar(); }
+
+  const tabBtn=(id,t)=>(<button onClick={()=>setTab(id)} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:13,...(tab===id?S.btnOro:S.btnGhost)}}>{t}</button>);
+  const porDia={}; eventos.forEach(e=>{(porDia[e.fecha]=porDia[e.fecha]||[]).push(e);});
+
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:12}}>🗓️ Horarios</h2>
+      {esDuena && (
+        <select value={sucSel} onChange={e=>setSucSel(e.target.value)} style={{...S.input,marginBottom:12}}>
+          {sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+        </select>
+      )}
+      <div style={{display:'flex',gap:8,marginBottom:14}}>{tabBtn('ver','📅 Ver')}{tabBtn('pdf','📄 Subir PDF')}{tabBtn('manual','✏️ Manual')}</div>
+
+      {tab==='ver' && (cargando ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
+        Object.keys(porDia).length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:'26px'}}>No hay horarios cargados para {sucNom(sucSel)}.<br/>Subí un PDF o cargá manual.</div> :
+        Object.keys(porDia).sort().map(f=>(
+          <div key={f} style={{marginBottom:16}}>
+            <div style={{fontWeight:700,color:C.oro,fontSize:14,marginBottom:6,fontFamily:'Syne'}}>{fechaLinda(f)}</div>
+            {porDia[f].map(ev=>{ const rs=asign.filter(a=>a.evento_id===ev.id); return (
+              <div key={ev.id} style={{...S.card,marginBottom:8}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+                  <div><div style={{fontWeight:700}}>{ev.paquete}</div><div style={{fontSize:12,color:C.tx2}}>{ev.hora_inicio} - {ev.hora_fin}{ev.orden_dia>1?' · 2º evento':''}</div></div>
+                  <button onClick={()=>borrarEvento(ev.id)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'6px 10px',minHeight:0,fontSize:12}}>🗑</button>
+                </div>
+                <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:5}}>
+                  {rs.map(a=>(
+                    <div key={a.id} style={{display:'flex',alignItems:'center',gap:8,fontSize:13,background:C.surf2,borderRadius:8,padding:'7px 9px'}}>
+                      <span style={{...S.chip,background:'#2a2418',color:C.oro,flexShrink:0}}>{a.rol_en_evento}</span>
+                      <span style={{flex:1,minWidth:0}}>{a.empleado_id?nomLegajo(a.legajo):('#'+a.legajo+' (sin cargar)')}{a.fue_reemplazo&&<span style={{color:C.amar,fontSize:10}}> ↺</span>}</span>
+                      {a.hora_ingreso_esperada && <span style={{fontSize:11,color:C.verde,flexShrink:0}}>entra {a.hora_ingreso_esperada}</span>}
+                      <button onClick={()=>setReempl(a)} style={{...S.btn,...S.btnGhost,padding:'4px 8px',minHeight:0,fontSize:11}}>cambiar</button>
+                    </div>
+                  ))}
+                </div>
+                {ev.cliente && <div style={{fontSize:11,color:C.tx2,marginTop:6}}>👤 {ev.cliente}{ev.festejado?(' · 🎂 '+ev.festejado):''}</div>}
+              </div>
+            );})}
+          </div>
+        ))
+      )}
+
+      {tab==='pdf' && (
+        !previa ? (
+          <div style={{...S.card,textAlign:'center',padding:'28px 16px'}}>
+            <div style={{fontSize:38}}>📄</div>
+            <p style={{color:C.tx2,fontSize:13,margin:'10px 0 16px',lineHeight:1.5}}>Subí el PDF de horarios (Fun Zone o Play Point). Lo leo y te muestro todo para confirmar antes de guardar.</p>
+            <label style={{...S.btn,...S.btnOro,cursor:'pointer',display:'inline-block'}}>{leyendo?'Leyendo…':'📄 Elegir PDF'}<input type="file" accept="application/pdf" style={{display:'none'}} onChange={elegirPdf}/></label>
+          </div>
+        ) : (
+          <div>
+            <div style={{...S.card,marginBottom:12}}>
+              <label style={S.label}>Guardar en sucursal</label>
+              <select value={previa.sucursal_id} onChange={e=>setPrevia({...previa,sucursal_id:e.target.value})} style={S.input}>
+                <option value="">Elegí…</option>
+                {sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
+              </select>
+              <div style={{fontSize:12,color:C.tx2,marginTop:8}}>{previa.eventos.length} eventos leídos. Revisá y guardá. ⤵</div>
+            </div>
+            {previa.eventos.map((ev,i)=>(
+              <div key={i} style={{...S.card,marginBottom:8}}>
+                <div style={{fontWeight:700,fontSize:13}}>{fechaLinda(ev.dia)} · {ev.paquete} <span style={{color:C.tx2,fontWeight:400}}>{ev.hora_inicio}-{ev.hora_fin}{ev.orden_dia>1?' · 2º':''}</span></div>
+                <div style={{marginTop:6,display:'flex',flexDirection:'column',gap:4}}>
+                  {ev.roles.map((r,j)=>(<div key={j} style={{fontSize:12.5,display:'flex',gap:8,alignItems:'center'}}>
+                    <span style={{...S.chip,background:'#2a2418',color:C.oro}}>{r.rol}</span>
+                    <span style={{flex:1}}>{nomLegajo(r.legajo)}</span>
+                    {r.ingreso?<span style={{color:C.verde,fontSize:11}}>entra {r.ingreso}</span>:<span style={{color:C.tx2,fontSize:11}}>sigue</span>}
+                  </div>))}
+                </div>
+              </div>
+            ))}
+            <div style={{display:'flex',gap:8,marginTop:8}}>
+              <button onClick={guardarPrevia} disabled={cargando} style={{...S.btn,...S.btnOro,flex:1}}>{cargando?'Guardando…':'✓ Guardar todo'}</button>
+              <button onClick={()=>setPrevia(null)} style={{...S.btn,...S.btnGhost}}>Cancelar</button>
+            </div>
+          </div>
+        )
+      )}
+
+      {tab==='manual' && <ManualEvento sesion={sesion} sucSel={sucSel} empleados={empleados} onGuardado={()=>setTab('ver')}/>}
+
+      {reempl && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',padding:18}} onClick={()=>setReempl(null)}>
+          <div style={{...S.card,maxWidth:360,width:'100%'}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontWeight:700,marginBottom:4}}>Reemplazar empleado</div>
+            <div style={{fontSize:12,color:C.tx2,marginBottom:12}}>Puesto: {reempl.rol_en_evento}. Elegí quién lo cubre:</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:'50vh',overflowY:'auto'}}>
+              {empleados.filter(e=>e.activo!==false).map(e=>(
+                <button key={e.id} onClick={()=>hacerReemplazo(reempl.id,e.id)} style={{...S.btn,...S.btnGhost,textAlign:'left'}}>{e.legajo!=null?('#'+e.legajo+' '):''}{e.nombre}</button>
+              ))}
+            </div>
+            <button onClick={()=>setReempl(null)} style={{...S.btn,...S.btnGhost,width:'100%',marginTop:10}}>Cerrar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ManualEvento({sesion,sucSel,empleados,onGuardado}){
+  const [f,setF]=useState({fecha:'',paquete:'',hora_inicio:'',hora_fin:'',cliente:'',festejado:''});
+  const [roles,setRoles]=useState([{rol:'Cocinero',legajo:''}]);
+  const [guard,setGuard]=useState(false);
+  function setRol(i,k,v){ setRoles(rs=>rs.map((r,j)=>j===i?{...r,[k]:v}:r)); }
+  async function guardar(){
+    if(!sucSel){alert('Elegí la sucursal arriba.');return;}
+    if(!f.fecha||!f.paquete||!f.hora_inicio){alert('Completá fecha, paquete y hora de inicio.');return;}
+    setGuard(true);
+    const row=await dbInsert('fichaje_eventos',{sucursal_id:sucSel,fecha:f.fecha,paquete:f.paquete,hora_inicio:f.hora_inicio,hora_fin:f.hora_fin,orden_dia:1,cliente:f.cliente||null,festejado:f.festejado||null,origen:'manual',creado_por:sesion.id});
+    if(row){ for(const r of roles){ if(!r.legajo)continue; const emp=empleados.find(e=>e.legajo===+r.legajo); await dbInsert('fichaje_evento_empleados',{evento_id:row.id,empleado_id:emp?emp.id:null,legajo:+r.legajo,rol_en_evento:r.rol,hora_ingreso_esperada:restarMin(f.hora_inicio,90)}); } }
+    setGuard(false); alert('✓ Evento guardado'); onGuardado();
+  }
+  return (
+    <div style={{...S.card,display:'flex',flexDirection:'column',gap:12}}>
+      <div style={{display:'flex',gap:8}}>
+        <div style={{flex:1}}><label style={S.label}>Fecha</label><input type="date" style={S.input} value={f.fecha} onChange={e=>setF({...f,fecha:e.target.value})}/></div>
+        <div style={{flex:1}}><label style={S.label}>Paquete</label><input style={S.input} value={f.paquete} onChange={e=>setF({...f,paquete:e.target.value})} placeholder="Estrella"/></div>
+      </div>
+      <div style={{display:'flex',gap:8}}>
+        <div style={{flex:1}}><label style={S.label}>Hora inicio</label><input style={S.input} value={f.hora_inicio} onChange={e=>setF({...f,hora_inicio:e.target.value})} placeholder="16:30"/></div>
+        <div style={{flex:1}}><label style={S.label}>Hora fin</label><input style={S.input} value={f.hora_fin} onChange={e=>setF({...f,hora_fin:e.target.value})} placeholder="19:30"/></div>
+      </div>
+      <div>
+        <label style={S.label}>Personal (rol + legajo)</label>
+        {roles.map((r,i)=>(
+          <div key={i} style={{display:'flex',gap:8,marginBottom:6}}>
+            <select style={{...S.input,flex:1}} value={r.rol} onChange={e=>setRol(i,'rol',e.target.value)}>{['Cocinero','Mozo','Auxiliar','Mozo 4 hs','Auxiliar 4 hs'].map(x=><option key={x}>{x}</option>)}</select>
+            <input style={{...S.input,width:80}} type="number" value={r.legajo} onChange={e=>setRol(i,'legajo',e.target.value)} placeholder="N°"/>
+            <button onClick={()=>setRoles(rs=>rs.filter((_,j)=>j!==i))} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'0 12px',minHeight:0}}>−</button>
+          </div>
+        ))}
+        <button onClick={()=>setRoles([...roles,{rol:'Mozo',legajo:''}])} style={{...S.btn,...S.btnGhost,fontSize:13,padding:'8px 12px',minHeight:0}}>+ Agregar puesto</button>
+      </div>
+      <div style={{display:'flex',gap:8}}>
+        <div style={{flex:1}}><label style={S.label}>Cliente (opc.)</label><input style={S.input} value={f.cliente} onChange={e=>setF({...f,cliente:e.target.value})}/></div>
+        <div style={{flex:1}}><label style={S.label}>Festejado (opc.)</label><input style={S.input} value={f.festejado} onChange={e=>setF({...f,festejado:e.target.value})}/></div>
+      </div>
+      <button onClick={guardar} disabled={guard} style={{...S.btn,...S.btnOro}}>{guard?'Guardando…':'Guardar evento'}</button>
     </div>
   );
 }

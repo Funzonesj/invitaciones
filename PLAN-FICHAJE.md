@@ -15,6 +15,17 @@ Formato real (ver `horarios del 22.06 al 28.06.pdf`, Play Point). Por cada event
 - Cliente `... (Madre)` y Festejado = informativos.
 - Paquetes Play Point: `Point 1`, `Point 2`, `Point Extreme`. Fun Zone tiene su propio PDF (distinto, mismo manejo — pendiente).
 
+### Hallazgos al comparar los 2 PDF (Play Point + Fun Zone) — confirmado 2026-06-20
+- **Misma estructura** en ambos; solo cambian los paquetes:
+  - **Play Point:** Point 1, Point 2, Point Extreme.
+  - **Fun Zone:** Super Estrella, Estrella, Deluxe, Cumple Express.
+- El **orden de los roles VARÍA** por evento (Cocinero/Mozo/Auxiliar en cualquier orden). El legajo[i] mapea al rol[i] **por posición** (NO por un orden fijo). → `rol_en_evento` sale de la posición en el PDF, no del rol habitual del empleado.
+- **Un mismo empleado tiene distinto rol según el evento** (ej. legajo 14 es Mozo / Auxiliar / Cocinero en distintos días). Confirmado por Lili: se adaptan al puesto que se necesite.
+- **Eventos de 1 sola línea:** cuando hay 1 solo empleado, el PDF puede aplanar todo en una línea (ej. `11 Cumple Express 09:30 - 12:00 Auxiliar - 13:00 ...`). El parser debe manejar bloque multilínea Y línea única.
+- Variantes de rol: `Mozo 4 hs`, `Auxiliar 4 hs` (texto del rol tal cual).
+- Legajos Fun Zone: 3, 11, 14, 15, 19, 22, 26. Play Point: 1, 2, 5, 31.
+- El salón lo define quién sube el PDF (la encargada sube al suyo); igual se puede autodetectar por los nombres de paquete.
+
 ### Hora de entrada esperada (lo que SÍ importa)
 - **Primer evento del día:** entrada = inicio del evento − **1 h 30 min** (limpieza/prep).
 - **Segundo evento, empleado NUEVO** (no estuvo en el primero): entrada = inicio del 2º evento − **30 min**.

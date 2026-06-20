@@ -116,6 +116,19 @@ create table if not exists fichaje_config (
 );
 
 -- ============================================================
+--  DESTRABAR (quitar candado RLS para que la app lea/escriba con la clave pública)
+--  La seguridad se endurece más adelante, junto con la del salón.
+-- ============================================================
+alter table fichaje_sucursales        disable row level security;
+alter table fichaje_empleados         disable row level security;
+alter table fichaje_eventos           disable row level security;
+alter table fichaje_evento_empleados  disable row level security;
+alter table fichaje_fichajes          disable row level security;
+alter table fichaje_alertas           disable row level security;
+alter table fichaje_bonuses           disable row level security;
+alter table fichaje_config            disable row level security;
+
+-- ============================================================
 --  SEMILLA INICIAL
 -- ============================================================
 -- Dos sucursales (las coordenadas GPS las cargás parada en cada salón
