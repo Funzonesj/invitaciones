@@ -95,7 +95,7 @@ function App(){
         {vista==='mishorarios' && <MisHorarios sesion={sesion}/>}
         {vista==='miplanilla'  && <MiPlanilla sesion={sesion} sucursales={sucursales}/>}
         {vista==='horarios'    && (esDuena||rol==='encargada') && <Horarios sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
-        {vista==='registros'   && <Placeholder titulo="📋 Registros de fichaje" txt="Listado de entradas/salidas con estado (en hora / tarde / ausente). Próxima etapa."/>}
+        {vista==='registros'   && (esDuena||rol==='encargada') && <Registros esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='pagos'       && (esDuena||rol==='encargada') && <Pagos sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='alertas'     && (esDuena||rol==='encargada') && <Alertas esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='empleados'   && esDuena && <Empleados empleados={empleados} sucursales={sucursales} recargar={recargar}/>}
@@ -984,6 +984,60 @@ function EncuestasView({esDuena,sucCtx,sucursales}){
             <EncuestaImg ev={abrir} verPrivado={true}/>
             <button onClick={()=>setAbrir(null)} style={{...S.btn,...S.btnGhost,width:'100%',marginTop:10}}>Cerrar</button>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ════════ REGISTROS / CONSULTOR (encargada/dueña): fichajes por empleado y fecha ════════ */
+function Registros({esDuena,sucursales,empleados,sucCtx}){
+  const [sucSel,setSucSel]=useState(''); const [empSel,setEmpSel]=useState(''); const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState('');
+  const [data,setData]=useState(null); const [cargando,setCargando]=useState(false);
+  const empNom=id=>{const e=empleados.find(x=>x.id===id);return e?((e.legajo!=null?('#'+e.legajo+' '):'')+e.nombre):'(empleado)';};
+  const fmtTs=ts=>{try{const d=new Date(ts);return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}catch(e){return '';}};
+  const estChip={en_hora:['En hora',C.verde],tarde:['Tarde',C.amar],sin_horario:['Sin horario',C.rojo],salida:['Salida',C.tx2]};
+  const miSuc=esDuena?sucSel:sucCtx;
+  const empsFiltro=empleados.filter(e=>!miSuc||((e.sucursales||[]).includes(miSuc))).sort((a,b)=>(a.legajo||999)-(b.legajo||999));
+  async function buscar(){ setCargando(true); setData(null);
+    const f=await dbAll('fichaje_fichajes'); const evs=await dbAll('fichaje_eventos'); const evById={}; evs.forEach(e=>evById[e.id]=e);
+    let list=f.slice();
+    if(miSuc) list=list.filter(x=>x.sucursal_id===miSuc);
+    if(empSel) list=list.filter(x=>x.empleado_id===empSel);
+    if(desde) list=list.filter(x=>String(x.ts||'').slice(0,10)>=desde);
+    if(hasta) list=list.filter(x=>String(x.ts||'').slice(0,10)<=hasta);
+    list.sort((a,b)=>String(b.ts||'').localeCompare(String(a.ts||'')));
+    setData({list,evById}); setCargando(false);
+  }
+  return (
+    <div className="fade">
+      <h2 style={{fontSize:20,marginBottom:4}}>📋 Fichajes</h2>
+      <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Consultá quién fichó, cuándo y su estado. Filtrá por empleado y fecha.</p>
+      <div style={{...S.card,marginBottom:12,display:'flex',flexDirection:'column',gap:10}}>
+        {esDuena && <select value={sucSel} onChange={e=>{setSucSel(e.target.value);setEmpSel('');}} style={S.input}><option value="">Todos los salones</option>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
+        <select value={empSel} onChange={e=>setEmpSel(e.target.value)} style={S.input}><option value="">Todos los empleados</option>{empsFiltro.map(e=><option key={e.id} value={e.id}>{(e.legajo!=null?('#'+e.legajo+' '):'')+e.nombre}</option>)}</select>
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Desde</label><input type="date" style={S.input} value={desde} onChange={e=>setDesde(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={S.label}>Hasta</label><input type="date" style={S.input} value={hasta} onChange={e=>setHasta(e.target.value)}/></div>
+        </div>
+        <button onClick={buscar} disabled={cargando} style={{...S.btn,...S.btnOro}}>{cargando?'Buscando…':'🔎 Buscar'}</button>
+      </div>
+      {data && (data.list.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay fichajes con ese filtro.</div> :
+        <div>
+          <div style={{fontSize:12,color:C.tx2,marginBottom:8}}>{data.list.length} fichaje{data.list.length===1?'':'s'}</div>
+          {data.list.map(x=>{const ev=x.evento_id?data.evById[x.evento_id]:null; const est=estChip[x.estado]||['—',C.tx2]; return (
+            <div key={x.id} style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:20}}>{x.tipo==='salida'?'⬅️':'➡️'}</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700,fontSize:14}}>{empNom(x.empleado_id)}</div>
+                <div style={{fontSize:12,color:C.tx2}}>{fmtTs(x.ts)} · {x.tipo==='salida'?'Salida':'Entrada'}{ev?(' · '+ev.paquete):''}</div>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3,flexShrink:0}}>
+                <span style={{...S.chip,background:'#242424',color:est[1],border:'1px solid '+C.bd}}>{est[0]}</span>
+                <span style={{fontSize:10,color:x.facial_ok===true?C.verde:x.facial_ok===false?C.rojo:C.tx2}}>{x.facial_ok===true?'cara ✓':x.facial_ok===false?'cara ✗':'cara —'}</span>
+              </div>
+            </div>
+          );})}
         </div>
       )}
     </div>
