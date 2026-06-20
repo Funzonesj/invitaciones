@@ -525,8 +525,16 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
       const row=await dbInsert('fichaje_eventos',{ sucursal_id:previa.sucursal_id, fecha:ev.dia, paquete:ev.paquete, hora_inicio:ev.hora_inicio, hora_fin:ev.hora_fin, orden_dia:ev.orden_dia||1, cliente:ev.cliente||null, festejado:ev.festejado||null, adicionales:ev.adicionales||null, origen:'pdf', creado_por:sesion.id });
       if(row){ for(const r of ev.roles){ const emp=empByLegajo(r.legajo); await dbInsert('fichaje_evento_empleados',{ evento_id:row.id, empleado_id:emp?emp.id:null, legajo:r.legajo, rol_en_evento:r.rol, hora_ingreso_esperada:r.ingreso||null }); } }
     }
-    // Guardar el PDF para que lo vean los empleados (reemplaza compartir por WhatsApp)
-    if(pdfFileRef.current){ try{ const url=await subirPDF(pdfFileRef.current); if(url){ await SB.from('fichaje_config').upsert({id:'pdf_'+previa.sucursal_id,data:{url,subido:fechaHoyISO()}}); } }catch(e){} pdfFileRef.current=null; }
+    // Guardar el PDF en el historial (no reemplaza: queda la lista por semana)
+    if(pdfFileRef.current){ try{ const url=await subirPDF(pdfFileRef.current); if(url){
+      const fechas=previa.eventos.map(e=>e.dia).filter(Boolean).sort();
+      const fmt=iso=>{try{const p=iso.split('-');return p[2]+'/'+p[1];}catch(e){return iso;}};
+      const entry={url,subido:fechaHoyISO(),desde:fechas[0]?fmt(fechas[0]):'',hasta:fechas.length?fmt(fechas[fechas.length-1]):''};
+      const cfgs=await dbAll('fichaje_config'); const ex=cfgs.find(c=>c.id==='pdf_'+previa.sucursal_id);
+      let lista=(ex&&ex.data&&ex.data.lista)?ex.data.lista:((ex&&ex.data&&ex.data.url)?[{url:ex.data.url,subido:ex.data.subido}]:[]);
+      lista=[entry,...lista].slice(0,8);
+      await SB.from('fichaje_config').upsert({id:'pdf_'+previa.sucursal_id,data:{lista}});
+    } }catch(e){} pdfFileRef.current=null; }
     setCargando(false); setPrevia(null); setTab('ver');
     alert('✓ Horarios guardados');
   }
@@ -1108,7 +1116,7 @@ function Fichar({sesion,sucursales}){
 
 /* ════════ MIS HORARIOS (empleado: lo que cargó el salón, solo lectura) ════════ */
 function MisHorarios({sesion}){
-  const [items,setItems]=useState(null); const [pdfs,setPdfs]=useState([]);
+  const [items,setItems]=useState(null); const [pdfs,setPdfs]=useState([]); const [verHist,setVerHist]=useState(false);
   useEffect(()=>{(async()=>{
     const evs=await dbAll('fichaje_eventos'); const evById={}; evs.forEach(e=>evById[e.id]=e);
     const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>a.empleado_id===sesion.id||(sesion.legajo!=null&&a.legajo===sesion.legajo));
@@ -1116,21 +1124,34 @@ function MisHorarios({sesion}){
     const list=ee.map(a=>({a,e:evById[a.evento_id]})).filter(x=>x.e&&x.e.fecha>=hoy).sort((p,q)=>(p.e.fecha+p.e.hora_inicio).localeCompare(q.e.fecha+q.e.hora_inicio));
     setItems(list);
     const cfgs=await dbAll('fichaje_config');
-    const ps=((sesion.sucursales)||[]).map(id=>cfgs.find(c=>c.id==='pdf_'+id)).filter(Boolean).map(c=>c.data).filter(d=>d&&d.url);
+    const ps=((sesion.sucursales)||[]).map(id=>cfgs.find(c=>c.id==='pdf_'+id)).filter(Boolean).map(c=>c.data)
+      .map(d=>(d&&d.lista)?d.lista:((d&&d.url)?[{url:d.url,subido:d.subido}]:[])).flat();
     setPdfs(ps);
   })();},[]);
   const porDia={}; (items||[]).forEach(it=>{(porDia[it.e.fecha]=porDia[it.e.fecha]||[]).push(it);});
+  const etiqPdf=p=>(p.desde&&p.hasta)?('Semana del '+p.desde+' al '+p.hasta):(p.subido?('Subida el '+p.subido):'Horario');
+  const ultimo=pdfs[0], viejos=pdfs.slice(1);
   return (
     <div className="fade">
       <h2 style={{fontSize:20,marginBottom:4}}>📅 Mis horarios</h2>
       <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Tus próximos eventos asignados. Acordate de fichar a la hora de entrada.</p>
-      {pdfs.map((p,i)=>(
-        <a key={i} href={p.url} target="_blank" rel="noopener" style={{...S.card,marginBottom:10,display:'flex',alignItems:'center',gap:12,textDecoration:'none',color:C.tx,border:'1px solid '+C.oro}}>
+      {ultimo && (
+        <a href={ultimo.url} target="_blank" rel="noopener" style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:12,textDecoration:'none',color:C.tx,border:'1px solid '+C.oro}}>
           <span style={{fontSize:28}}>📄</span>
-          <div style={{flex:1}}><div style={{fontWeight:700}}>Ver la planilla completa (PDF)</div><div style={{fontSize:11,color:C.tx2}}>{p.subido?('Subida el '+p.subido):'Horario semanal'}</div></div>
+          <div style={{flex:1}}><div style={{fontWeight:700}}>Ver la planilla completa (PDF)</div><div style={{fontSize:11,color:C.oro}}>{etiqPdf(ultimo)} · último</div></div>
           <span style={{color:C.oro,fontSize:18}}>›</span>
         </a>
-      ))}
+      )}
+      {viejos.length>0 && (
+        <div style={{marginBottom:8}}>
+          <button onClick={()=>setVerHist(!verHist)} style={{...S.btn,background:C.surf2,color:C.tx2,width:'100%',fontSize:13,padding:'10px',display:'flex',justifyContent:'space-between'}}><span>🗂️ Semanas anteriores ({viejos.length})</span><span>{verHist?'▲':'▼'}</span></button>
+          {verHist && viejos.map((p,i)=>(
+            <a key={i} href={p.url} target="_blank" rel="noopener" style={{display:'flex',alignItems:'center',gap:10,textDecoration:'none',color:C.tx,background:C.surf,border:'1px solid '+C.bd,borderRadius:10,padding:'9px 11px',marginTop:6,fontSize:13}}>
+              <span style={{fontSize:18}}>📄</span><span style={{flex:1}}>{etiqPdf(p)}</span><span style={{color:C.tx2}}>›</span>
+            </a>
+          ))}
+        </div>
+      )}
       {items===null ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
         Object.keys(porDia).length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>No tenés horarios cargados por ahora.</div> :
         Object.keys(porDia).sort().map(f=>(
