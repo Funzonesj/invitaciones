@@ -1281,19 +1281,29 @@ function MiPlanilla({sesion,sucursales}){
   const cutoff15=(()=>{const d=new Date();d.setDate(d.getDate()-15);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);})();
   const diaEditable=f=>f>=cutoff15&&f<=hoyISO;
   function tipoLabel(t){ if(esFig(t)){const f=(cfg.figuras_hora||[]).find(x=>('fig:'+x.nombre)===t);return f?f.nombre:'Figura';} return t==='simple'?'Simple':t==='doble'?'Doble':t==='2simples'?'2 simples':t==='triple'?'Triple':(t||'-'); }
+  const DOWF=['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const fechaLarga=iso=>{const p=iso.split('-');const dt=new Date(+p[0],+p[1]-1,+p[2]);return DOWF[dt.getDay()]+' '+(+p[2])+' de '+MESES[+p[1]-1].toLowerCase();};
+  const fechaCorta=iso=>{const p=iso.split('-');return (+p[2])+' de '+MESES[+p[1]-1].toLowerCase();};
   function exportarPlanilla(){
     if(!exD||!exH){alert('Elegí desde y hasta.');return;}
     const dias=Object.keys(data).filter(f=>f>=exD&&f<=exH&&f>=cutoff15&&data[f]&&data[f].tipo).sort();
     if(!dias.length){alert('No tenés días cargados en ese rango.');return;}
     if(!window.jspdf){alert('No se pudo generar el PDF.');return;}
-    const {jsPDF}=window.jspdf; const doc=new jsPDF(); let y=16;
-    doc.setFontSize(14); doc.text('Mi registro — '+(sesion.nombre||''),14,y); y+=7;
-    doc.setFontSize(10); doc.text('Del '+exD+' al '+exH,14,y); y+=8;
+    const fmt=n=>'$'+Math.round(n).toLocaleString('es-AR'); const bonus=+cfg.bonus_excelente||0;
+    const {jsPDF}=window.jspdf; const doc=new jsPDF(); let y=18;
+    doc.setFontSize(15); doc.text('Mi registro — '+(sesion.nombre||''),14,y); y+=7;
+    doc.setFontSize(10); doc.text('Del '+fechaCorta(exD)+' al '+fechaCorta(exH),14,y); y+=10;
+    const X={f:14,t:78,tr:108,e:138,to:172};
+    doc.setFontSize(9); doc.setFont(undefined,'bold');
+    doc.text('Fecha',X.f,y); doc.text('Tipo',X.t,y); doc.text('Trabajo',X.tr,y); doc.text('Encuesta',X.e,y); doc.text('Total',X.to,y);
+    y+=2; doc.setDrawColor(180); doc.line(14,y,200,y); y+=5; doc.setFont(undefined,'normal');
     let tot=0;
-    dias.forEach(f=>{ const d=data[f]; const mn=montoDia(d); tot+=mn; if(y>282){doc.addPage();y=16;}
-      doc.setFontSize(10);
-      doc.text(f+'   '+tipoLabel(d.tipo)+(d.deluxe?(' +'+d.deluxe+' Deluxe'):'')+'   '+horasDia(d)+'hs'+(d.enc?('   '+d.enc+' enc'):'')+'   = $'+Math.round(mn).toLocaleString('es-AR'),14,y); y+=5.5; });
-    y+=4; if(y>282){doc.addPage();y=16;} doc.setFontSize(12); doc.text('TOTAL estimado: $'+Math.round(tot).toLocaleString('es-AR'),14,y);
+    dias.forEach(f=>{ const d=data[f]; const trab=horasDia(d)*valorHora; const encM=(d.enc||0)*bonus; const tt=trab+encM; tot+=tt;
+      if(y>285){doc.addPage();y=18;}
+      doc.setFontSize(9);
+      doc.text(fechaLarga(f),X.f,y); doc.text(tipoLabel(d.tipo)+(d.deluxe?(' +'+d.deluxe+'Dx'):''),X.t,y); doc.text(fmt(trab),X.tr,y); doc.text(d.enc?((d.enc)+'  '+fmt(encM)):'-',X.e,y); doc.text(fmt(tt),X.to,y); y+=6.5;
+    });
+    y+=2; doc.line(14,y,200,y); y+=8; doc.setFontSize(13); doc.setFont(undefined,'bold'); doc.text('TOTAL: '+fmt(tot),X.to-30,y);
     doc.save('mi_registro_'+exD+'_'+exH+'.pdf');
   }
   const ymStr=y+'-'+('0'+(m+1)).slice(-2);
