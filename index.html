@@ -5823,6 +5823,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   React.useEffect(()=>{ if(_portCalc) setPortadaSticky(_portCalc); },[_portCalc]);
   const [vidMuted,setVidMuted]=useState(true); // el video de portada arranca mudo (los celus no dejan audio automático)
   const [vidPlay,setVidPlay]=useState(false); // arranca mostrando la IMAGEN; el video se enciende al tocar (evita la pantalla negra mientras carga)
+  const [vidPausado,setVidPausado]=useState(false); // el invitado pausó el video manualmente
   // Música de fondo: la del personaje, o una genérica que rota. En video suena bajita; en foto, normal.
   const _musGenF=(((suc&&suc.musicaGen&&suc.musicaGen.length)?suc.musicaGen:((iaConfig&&iaConfig.musicaGen)||[]))).filter(Boolean);
   const musTrack=(ev&&ev.albumMusica)||(tem&&tem.musica)||(_musGenF.length?_musGenF[(parseInt(String((ev&&ev.id)||'0').replace(/[^0-9]/g,''))||0)%_musGenF.length]:'');
@@ -5947,8 +5948,9 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         {ev&&ev.videoUrl&&(ev.usarVideo!==false)?(
           vidPlay?(
             <React.Fragment>
-              <video ref={vidRef} src={ev.videoUrl} poster={portada||(tem&&tem.img)||''} autoPlay playsInline onEnded={()=>{setVideoFin(true);const el=musRef.current;if(el&&musTrack){el.volume=0.4;var pr=el.play();if(pr&&pr.catch)pr.catch(function(){});setMusOn(true);}}} onClick={(e)=>{e.stopPropagation();e.preventDefault();const v=e.currentTarget;v.muted=false;try{v.currentTime=0;}catch(_){}const p=v.play();if(p&&p.catch)p.catch(function(){});const m=musRef.current;if(m&&!m.paused)m.volume=0.12;}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:50)+'%',display:'block',cursor:'pointer'}}></video>
-              <div style={{position:'absolute',bottom:76,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.5)',color:'white',borderRadius:99,padding:'6px 14px',fontSize:12,fontWeight:700,zIndex:3,pointerEvents:'none'}}>🔁 Tocá el video para repetir</div>
+              <video ref={vidRef} src={ev.videoUrl} poster={portada||(tem&&tem.img)||''} autoPlay playsInline onEnded={()=>{setVideoFin(true);const el=musRef.current;if(el&&musTrack){el.volume=0.4;var pr=el.play();if(pr&&pr.catch)pr.catch(function(){});setMusOn(true);}}} onClick={(e)=>{e.stopPropagation();e.preventDefault();const v=e.currentTarget;v.muted=false;try{v.currentTime=0;}catch(_){}const p=v.play();if(p&&p.catch)p.catch(function(){});setVidPausado(false);const m=musRef.current;if(m&&!m.paused)m.volume=0.12;}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:50)+'%',display:'block',cursor:'pointer'}}></video>
+              <button onClick={(e)=>{e.stopPropagation();const v=vidRef.current;if(!v)return;if(v.paused){var p=v.play();if(p&&p.catch)p.catch(function(){});setVidPausado(false);}else{v.pause();setVidPausado(true);}}} title={vidPausado?'Reanudar':'Pausar'} style={{position:'absolute',bottom:10,right:12,background:'rgba(0,0,0,.62)',color:'white',border:'none',borderRadius:99,width:42,height:42,fontSize:18,cursor:'pointer',zIndex:4,boxShadow:'0 3px 10px rgba(0,0,0,.4)',display:'flex',alignItems:'center',justifyContent:'center'}}>{vidPausado?'▶️':'⏸️'}</button>
+              <div style={{position:'absolute',bottom:12,left:12,background:'rgba(0,0,0,.5)',color:'white',borderRadius:99,padding:'5px 12px',fontSize:11,fontWeight:700,zIndex:3,pointerEvents:'none'}}>🔁 Tocá para repetir</div>
             </React.Fragment>
           ):(
             <React.Fragment>
