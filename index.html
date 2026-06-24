@@ -3982,7 +3982,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [videoDiag,setVideoDiag]=useState(''); // nota de diagnóstico (si la voz de EL no se aplicó)
   const [videoUrl,setVideoUrl]=useState('');
   const [videoPaga,setVideoPaga]=useState(false);
-  const _VIDEO_GRATIS=true; // ⚠️ TEMP: el video es GRATIS e incluido (sin pago ni marca de agua). Volver a false para reactivar el cobro.
+  const _VIDEO_GRATIS=false; // Normal: el video es gratis SOLO si el papá pagó las imágenes (papaSesion.videoFreeDisponible). Si no, se cobra/desbloquea.
   const [videoPagoMP,setVideoPagoMP]=useState(false); // false | 'unlock' | 'genpay'
   const [videoPendImg,setVideoPendImg]=useState(null);
   const genVideoPagadoRef=useRef(false);
