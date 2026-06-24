@@ -551,7 +551,7 @@ function App() {
       <main style={{flex:1}}>
         {vista==='admin-login'       && <AdminLogin     onLogin={loginAdmin}/>}
         {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} sucursales={sucursales} tematicas={tematicas} esSA={esSA} iaConfig={iaConfig} setIaConfig={setIaConfig} pedidos={pedidos} setPedidos={setPedidos} refrescarPedidos={refrescarPedidos}/>}
-        {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig} setIaConfig={setIaConfig} setPapaSesion={setPapaSesion}/>}
+        {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig} setIaConfig={setIaConfig} setPapaSesion={setPapaSesion} esSA={esSA}/>}
         {vista==='admin-tematicas'   && <AdminTematicas setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-excel'       && <AdminExcel     setVista={setVista} sucActId={sucActId} eventos={eventos} setEventos={setEventos}/>}
         {vista==='admin-asistencias' && <AdminAsistencias setVista={setVista} evsLocal={evsLocal} confs={confs}/>}
@@ -1063,7 +1063,7 @@ function AdminDashboard({setVista,sucAct,evsLocal,eventos=[],sucursales=[],temat
 }
 
 /* ── ADMIN EVENTOS ───────────────────────────────────────── */
-function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,setInvEvId,confs,iaConfig,setIaConfig,setPapaSesion}){
+function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,setInvEvId,confs,iaConfig,setIaConfig,setPapaSesion,esSA}){
   function enviarCredsWA(ev){
     const salon=sucAct.nombre;
     const base=window.location.href.split('?')[0];
@@ -1182,13 +1182,13 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
           <button onClick={()=>enviarCredsWA(ev)} title="Enviar acceso al papá" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>🔑</button>
           <button onClick={()=>copiarLink(ev.id)} title="Copiar link invitado" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>🔗</button>
           <button onClick={()=>{setInvEvId(ev.id);setVista('admin-asistencias');}} title="Ver asistentes" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18,position:'relative'}}>👥<span style={{position:'absolute',top:0,right:0,background:'#7c3aed',color:'white',fontSize:7,borderRadius:99,width:12,height:12,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:900}}>{cnt}</span></button>
-          <button onClick={()=>{setForm({...ev});setEditId(ev.id);setOpen(true);setTemOpen(false);window.scrollTo(0,0);}} title="Editar" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>✏️</button>
-          <button onClick={()=>setPlazoEv(ev)} title="Plazo de encuesta y recuerdos" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>📅</button>
-          <button onClick={()=>setBorrarEv(ev)} title="Borrar tarjeta" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>🗑</button>
+          {esSA&&<button onClick={()=>{setForm({...ev});setEditId(ev.id);setOpen(true);setTemOpen(false);window.scrollTo(0,0);}} title="Editar" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>✏️</button>}
+          {esSA&&<button onClick={()=>setPlazoEv(ev)} title="Plazo de encuesta y recuerdos" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>📅</button>}
+          {esSA&&<button onClick={()=>setBorrarEv(ev)} title="Borrar tarjeta" style={{padding:5,borderRadius:8,background:'none',border:'none',cursor:'pointer',fontSize:small?15:18}}>🗑</button>}
         </div>
         {!small&&<button onClick={()=>enviarCredsWA(ev)} style={{background:'#16a34a',color:'white',border:'none',padding:'7px',fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #15803d'}}>🔑 Enviar acceso a papá</button>}
         {!small&&<button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>🎁 Ver Invitación</button>}
-        {!small&&setPapaSesion&&<button onClick={()=>{setPapaSesion({...ev,optinWA:true});setVista('papa-creador');}} style={{background:'#0f172a',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>👨‍👦 Entrar como papá (sin contraseña)</button>}
+        {!small&&esSA&&setPapaSesion&&<button onClick={()=>{setPapaSesion({...ev,optinWA:true});setVista('papa-creador');}} style={{background:'#0f172a',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>👨‍👦 Entrar como papá (sin contraseña)</button>}
         {!small&&<button onClick={()=>compartirLinkInv(ev)} style={{background:'#25d366',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #1ebe57'}}>🔗 Compartir link (abre solo la tarjeta)</button>}
         {!small&&<button onClick={()=>generarTarjetaImagen(ev,sucAct,tematicas,iaConfig,'compartir')} style={{background:'#0ea5e9',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #0284c7'}}>📷 Compartir tarjeta (imagen, sin link)</button>}
         {small&&<button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:7,fontWeight:700,fontSize:10,cursor:'pointer'}}>🎁 Ver invitación</button>}

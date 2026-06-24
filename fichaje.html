@@ -67,6 +67,10 @@ function App(){
   const [sucursales,setSucursales]=useState([]);
   const [empleados,setEmpleados]=useState([]);
   const [sucActiva,setSucActiva]=useState(''); // para la dueña: '' = todas
+  const [chatNL,setChatNL]=useState({});       // grupoId -> no leídos
+  const [chatAviso,setChatAviso]=useState(null);
+  const misGruposRef=useRef(new Set());
+  const gruposNombreRef=useRef({});
 
   async function recargar(){
     const [su,em]=await Promise.all([dbAll('fichaje_sucursales'),dbAll('fichaje_empleados')]);
@@ -75,7 +79,39 @@ function App(){
   useEffect(()=>{ (async()=>{ await recargar(); setBoot(false); })(); },[]);
   useEffect(()=>{ if(sesion) localStorage.setItem('fichaje_sesion',JSON.stringify(sesion)); else localStorage.removeItem('fichaje_sesion'); },[sesion]);
 
+  async function marcarLeido(grupoId){
+    setChatNL(p=>({...p,[grupoId]:0}));
+    if(sesion) await SB.from('fichaje_chat_miembros').update({ultimo_leido_at:new Date().toISOString()}).eq('grupo_id',grupoId).eq('empleado_id',sesion.id);
+  }
+
+  // Chat: no leídos + aviso en tiempo real (vive aunque no estés en la pantalla de chat)
+  useEffect(()=>{
+    if(!sesion||!SB){ setChatNL({}); return; }
+    let cancel=false;
+    (async()=>{
+      const {data}=await SB.from('fichaje_chat_miembros').select('grupo_id,ultimo_leido_at, g:fichaje_chat_grupos(nombre)').eq('empleado_id',sesion.id);
+      const mios=data||[];
+      misGruposRef.current=new Set(mios.map(m=>m.grupo_id));
+      const nombres={}; mios.forEach(m=>{ if(m.g) nombres[m.grupo_id]=m.g.nombre; }); gruposNombreRef.current=nombres;
+      const conteo={};
+      await Promise.all(mios.map(async m=>{ const {count}=await SB.from('fichaje_chat_mensajes').select('id',{count:'exact',head:true}).eq('grupo_id',m.grupo_id).gt('created_at',m.ultimo_leido_at).neq('empleado_id',sesion.id); conteo[m.grupo_id]=count||0; }));
+      if(!cancel) setChatNL(conteo);
+    })();
+    const canal=SB.channel('fznotif-'+sesion.id).on('postgres_changes',{event:'INSERT',schema:'public',table:'fichaje_chat_mensajes'},(payload)=>{
+      const m=payload.new;
+      if(m.empleado_id===sesion.id) return;
+      if(!misGruposRef.current.has(m.grupo_id)) return;
+      if(fzChatActivo.id===m.grupo_id){ marcarLeido(m.grupo_id); return; }
+      setChatNL(p=>({...p,[m.grupo_id]:(p[m.grupo_id]||0)+1}));
+      const autor=fzNombreEmp(empleados,m.empleado_id), texto=fzPreview(m);
+      setChatAviso({grupo_id:m.grupo_id,grupo:gruposNombreRef.current[m.grupo_id]||'Grupo',autor,texto});
+      if(window.Notification && Notification.permission==='granted'){ try{ new Notification(autor,{body:texto}); }catch(e){} }
+    }).subscribe();
+    return ()=>{ cancel=true; SB.removeChannel(canal); };
+  },[sesion]);
+
   function salir(){ setSesion(null); setVista('dashboard'); }
+  const chatTotal=Object.values(chatNL).reduce((a,b)=>a+b,0);
 
   if(boot) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><span className="spin"></span></div>;
   if(!SB) return <div style={{padding:24}}>No se pudo conectar a la base de datos.</div>;
@@ -88,9 +124,11 @@ function App(){
 
   return (
     <div style={{minHeight:'100vh',paddingBottom:78}}>
-      <Header sesion={sesion} esDuena={esDuena} sucursales={sucursales} sucActiva={sucActiva} setSucActiva={setSucActiva} onSalir={salir}/>
+      <AvisoChat aviso={chatAviso} onAbrir={()=>{ setVista('chat'); setChatAviso(null); }} onClose={()=>setChatAviso(null)}/>
+      <Header sesion={sesion} esDuena={esDuena} sucursales={sucursales} sucActiva={sucActiva} setSucActiva={setSucActiva} onSalir={salir} onChat={()=>setVista('chat')} chatTotal={chatTotal} chatActivo={vista==='chat'}/>
       <div className="fade" style={{maxWidth:560,margin:'0 auto',padding:'14px 14px 0'}}>
         {vista==='dashboard'   && <Dashboard sesion={sesion} rol={rol} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx} setVista={setVista}/>}
+        {vista==='chat'        && <ChatVista sesion={sesion} esDuena={esDuena} empleados={empleados} noLeidos={chatNL} marcarLeido={marcarLeido}/>}
         {vista==='fichar'      && <Fichar sesion={sesion} sucursales={sucursales}/>}
         {vista==='mishorarios' && <MisHorarios sesion={sesion}/>}
         {vista==='miplanilla'  && <MiPlanilla sesion={sesion} sucursales={sucursales}/>}
@@ -109,15 +147,19 @@ function App(){
 }
 
 /* ── Header ── */
-function Header({sesion,esDuena,sucursales,sucActiva,setSucActiva,onSalir}){
+function Header({sesion,esDuena,sucursales,sucActiva,setSucActiva,onSalir,onChat,chatTotal,chatActivo}){
   return (
-    <div style={{position:'sticky',top:0,zIndex:50,background:C.bg,borderBottom:'1px solid '+C.bd}}>
+    <div style={{position:'sticky',top:0,zIndex:50,background:C.bg,borderBottom:'1px solid '+C.bd,paddingTop:'env(safe-area-inset-top)'}}>
       <div style={{maxWidth:560,margin:'0 auto',padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
         <div style={{width:34,height:34,borderRadius:9,background:C.oro,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🕒</div>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:700,fontSize:14,lineHeight:1.1}}>{sesion.nombre}</div>
           <div style={{fontSize:11,color:C.tx2}}>{sesion.rol_sistema==='dueno'?'Dueña':sesion.rol_sistema==='encargada'?'Encargada':'Empleado'}</div>
         </div>
+        <button onClick={onChat} title="Chat" style={{position:'relative',background:chatActivo?C.oro:C.surf2,border:'1px solid '+C.bd,borderRadius:10,minHeight:0,padding:'7px 10px',cursor:'pointer',fontSize:17}}>
+          💬
+          {chatTotal>0 && <span style={{position:'absolute',top:-6,right:-6,minWidth:17,height:17,padding:'0 4px',borderRadius:9,background:C.rojo,color:'#fff',fontSize:10,fontWeight:800,display:'flex',alignItems:'center',justifyContent:'center'}}>{chatTotal}</span>}
+        </button>
         {esDuena && (
           <select value={sucActiva} onChange={e=>setSucActiva(e.target.value)} style={{...S.input,width:'auto',padding:'8px 10px',fontSize:13}}>
             <option value="">Todas</option>
@@ -138,7 +180,7 @@ function BottomNav({rol,vista,setVista}){
     ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
     : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
   return (
-    <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50}}>
+    <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50,paddingBottom:'env(safe-area-inset-bottom)'}}>
       <div style={{maxWidth:560,margin:'0 auto',display:'flex'}}>
         {items.map(([v,e,l])=>(
           <button key={v} onClick={()=>setVista(v)} style={{flex:1,background:'none',border:'none',padding:'9px 2px 7px',cursor:'pointer',color:vista===v?C.oro:C.tx2}}>
@@ -1708,6 +1750,286 @@ function Configuracion({sucursales,empleados,recargar}){
             <span style={{fontSize:11,color:vhOk===em.id?C.verde:C.tx2,width:42}}>{vhOk===em.id?'✓ ok':'/h'}</span>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════ CHAT (tipo WhatsApp) ════════════════════════ */
+const fzChatActivo = { id:null }; // grupo abierto (compartido App <-> conversación)
+const CH = { bg:'#ECE5DD', mio:'#FFE7AE', otro:'#FFFFFF', txt:'#1A1A1A', gris:'#8a8a8a', comp:'#F0EDE7', bd:'#d9d2c8' };
+const modalBg = { position:'fixed', inset:0, background:'rgba(0,0,0,.6)', zIndex:160, display:'flex', alignItems:'flex-end', justifyContent:'center' };
+const modalBox = { background:C.surf, borderRadius:'16px 16px 0 0', padding:16, width:'100%', maxWidth:560, maxHeight:'85vh', overflowY:'auto' };
+const chatIcon = { width:40, height:40, borderRadius:'50%', border:'1px solid '+CH.bd, background:'#fff', color:'#1A1A1A', fontSize:17, cursor:'pointer', flexShrink:0 };
+
+function fzNombreEmp(empleados,id){ const e=(empleados||[]).find(x=>x.id===id); return e?e.nombre:'Alguien'; }
+function fzHora(iso){ try{ return new Date(iso).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } }
+function fzPreview(m){ return m.tipo==='texto'?(m.texto||''):m.tipo==='foto'?'📷 Foto':'🎤 Audio'; }
+function fileADataURL(file){ return new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file); }); }
+async function fzSubirAudio(blob,ext){
+  try{
+    const r=await fetch('/api/subir-init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:blob.type||'audio/webm',ext:ext||'webm'})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok||!d.upload_url||!d.file_url) return null;
+    const up=await fetch(d.upload_url,{method:'PUT',headers:{'Content-Type':blob.type||'audio/webm'},body:blob});
+    if(!up.ok) return null;
+    return d.file_url;
+  }catch(e){ return null; }
+}
+
+function AvisoChat({aviso,onAbrir,onClose}){
+  useEffect(()=>{ if(!aviso) return; const t=setTimeout(onClose,5000); return ()=>clearTimeout(t); },[aviso]);
+  if(!aviso) return null;
+  return (
+    <div onClick={onAbrir} style={{position:'fixed',top:'calc(8px + env(safe-area-inset-top))',left:10,right:10,zIndex:200,background:C.surf2,border:'1px solid '+C.oro,borderRadius:14,padding:'10px 14px',boxShadow:'0 8px 24px rgba(0,0,0,.35)',cursor:'pointer',display:'flex',gap:10,alignItems:'center'}}>
+      <span style={{fontSize:20}}>💬</span>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontWeight:700,fontSize:14}}>{aviso.autor} <span style={{color:C.tx2,fontWeight:500}}>en {aviso.grupo}</span></div>
+        <div style={{color:C.tx2,fontSize:13,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{aviso.texto}</div>
+      </div>
+    </div>
+  );
+}
+
+function ChatVista({sesion,esDuena,empleados,noLeidos,marcarLeido}){
+  const [grupos,setGrupos]=useState([]);
+  const [abierto,setAbierto]=useState(null);
+  const [crear,setCrear]=useState(false);
+  const [nombre,setNombre]=useState('');
+  const [sel,setSel]=useState({});
+  const [ultimos,setUltimos]=useState({});
+
+  async function cargar(){
+    const {data}=await SB.from('fichaje_chat_miembros').select('grupo_id, g:fichaje_chat_grupos(id,nombre,foto_url,created_at)').eq('empleado_id',sesion.id);
+    const gs=(data||[]).filter(r=>r.g).map(r=>r.g);
+    setGrupos(gs);
+    const u={};
+    await Promise.all(gs.map(async g=>{ const {data:m}=await SB.from('fichaje_chat_mensajes').select('texto,tipo,created_at').eq('grupo_id',g.id).order('created_at',{ascending:false}).limit(1); if(m&&m[0]) u[g.id]=m[0]; }));
+    setUltimos(u);
+  }
+  useEffect(()=>{ cargar(); },[]);
+
+  async function crearGrupo(){
+    if(!nombre.trim()){ alert('Poné un nombre al grupo.'); return; }
+    const g=await dbInsert('fichaje_chat_grupos',{nombre:nombre.trim(),creado_por:sesion.id});
+    if(!g) return;
+    const filas=[{grupo_id:g.id,empleado_id:sesion.id,puede_escribir:true}];
+    empleados.forEach(e=>{ if(e.id!==sesion.id && sel[e.id] && sel[e.id].in) filas.push({grupo_id:g.id,empleado_id:e.id,puede_escribir:sel[e.id].habla!==false}); });
+    await SB.from('fichaje_chat_miembros').insert(filas);
+    setCrear(false); setNombre(''); setSel({});
+    await cargar();
+    setAbierto(g);
+  }
+
+  if(abierto) return <ChatConversacion grupo={abierto} sesion={sesion} esDuena={esDuena} empleados={empleados} onVolver={()=>{ setAbierto(null); cargar(); }} marcarLeido={marcarLeido}/>;
+
+  return (
+    <div className="fade">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+        <h2 style={{fontSize:20}}>Chats</h2>
+        {esDuena && <button onClick={()=>{ setSel({}); setNombre(''); setCrear(true); }} style={{...S.btn,...S.btnOro,padding:'9px 14px',minHeight:0}}>+ Grupo</button>}
+      </div>
+      {grupos.length===0 ? <div style={{...S.card,color:C.tx2}}>{esDuena?'Creá tu primer grupo con "+ Grupo".':'Todavía no estás en ningún grupo.'}</div> :
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {grupos.map(g=>{ const n=noLeidos[g.id]||0; const u=ultimos[g.id];
+            return (
+            <div key={g.id} onClick={()=>setAbierto(g)} style={{...S.card,cursor:'pointer',display:'flex',alignItems:'center',gap:12}}>
+              <div style={{width:46,height:46,borderRadius:'50%',background:C.oro,color:'#1A1A1A',fontWeight:800,display:'flex',alignItems:'center',justifyContent:'center',fontSize:19,flexShrink:0}}>{(g.nombre||'·').slice(0,1).toUpperCase()}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:700}}>{g.nombre}</div>
+                <div style={{color:C.tx2,fontSize:13,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{u?fzPreview(u):'Sin mensajes todavía'}</div>
+              </div>
+              {n>0 && <span style={{minWidth:22,height:22,padding:'0 6px',borderRadius:11,background:C.oro,color:'#1A1A1A',fontWeight:800,fontSize:12,display:'flex',alignItems:'center',justifyContent:'center'}}>{n}</span>}
+            </div>);
+          })}
+        </div>}
+
+      {crear && (
+        <div style={modalBg} onClick={()=>setCrear(false)}>
+          <div style={modalBox} onClick={e=>e.stopPropagation()}>
+            <h3 style={{fontSize:17,marginBottom:10}}>Nuevo grupo</h3>
+            <label style={S.label}>Nombre del grupo</label>
+            <input style={{...S.input,marginBottom:12}} value={nombre} onChange={e=>setNombre(e.target.value)} placeholder="Equipo Fun Zone"/>
+            <div style={{fontSize:12,color:C.tx2,marginBottom:6}}>¿Quiénes participan? (destildá "habla" = solo lectura)</div>
+            <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:230,overflowY:'auto'}}>
+              {empleados.filter(e=>e.id!==sesion.id && e.activo!==false).map(e=>{ const s=sel[e.id]||{};
+                return (
+                <div key={e.id} style={{display:'flex',alignItems:'center',gap:8,background:C.surf2,border:'1px solid '+C.bd,borderRadius:10,padding:'9px 11px'}}>
+                  <label style={{display:'flex',alignItems:'center',gap:9,flex:1,cursor:'pointer'}}>
+                    <input type="checkbox" checked={!!s.in} onChange={ev=>setSel({...sel,[e.id]:{...s,in:ev.target.checked}})} style={{width:18,height:18}}/>
+                    <span>{e.nombre}</span>
+                  </label>
+                  {s.in && <label style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer',fontSize:12,color:C.tx2}}><input type="checkbox" checked={s.habla!==false} onChange={ev=>setSel({...sel,[e.id]:{...s,habla:ev.target.checked}})} style={{width:16,height:16}}/>habla</label>}
+                </div>);
+              })}
+            </div>
+            <div style={{display:'flex',gap:8,marginTop:14}}>
+              <button onClick={()=>setCrear(false)} style={{...S.btn,...S.btnGhost,flex:1}}>Cancelar</button>
+              <button onClick={crearGrupo} style={{...S.btn,...S.btnOro,flex:1}}>Crear grupo</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChatConversacion({grupo,sesion,esDuena,empleados,onVolver,marcarLeido}){
+  const [msgs,setMsgs]=useState([]);
+  const [texto,setTexto]=useState('');
+  const [puedeEscribir,setPuede]=useState(true);
+  const [admin,setAdmin]=useState(false);
+  const [fotoPrev,setFotoPrev]=useState(null);
+  const [grabando,setGrabando]=useState(false);
+  const [subiendo,setSubiendo]=useState(false);
+  const listaRef=useRef(null), fileRef=useRef(null), recRef=useRef(null), chunksRef=useRef([]);
+
+  function abajo(){ const el=listaRef.current; if(el) el.scrollTop=el.scrollHeight; }
+  function agregar(m){ setMsgs(p=>p.some(x=>x.id===m.id)?p:[...p,m]); }
+  useEffect(()=>{ abajo(); },[msgs]);
+
+  useEffect(()=>{
+    fzChatActivo.id=grupo.id;
+    let vivo=true;
+    (async()=>{
+      const {data:ms}=await SB.from('fichaje_chat_mensajes').select('*').eq('grupo_id',grupo.id).order('created_at',{ascending:true}).limit(300);
+      const {data:mi}=await SB.from('fichaje_chat_miembros').select('puede_escribir').eq('grupo_id',grupo.id).eq('empleado_id',sesion.id).maybeSingle();
+      if(!vivo) return;
+      setMsgs(ms||[]);
+      setPuede(esDuena || !mi || mi.puede_escribir!==false);
+      marcarLeido(grupo.id);
+    })();
+    const canal=SB.channel('fzgrupo-'+grupo.id).on('postgres_changes',{event:'INSERT',schema:'public',table:'fichaje_chat_mensajes',filter:'grupo_id=eq.'+grupo.id},(payload)=>{
+      agregar(payload.new);
+      if(payload.new.empleado_id!==sesion.id) marcarLeido(grupo.id);
+    }).subscribe();
+    return ()=>{ vivo=false; fzChatActivo.id=null; SB.removeChannel(canal); };
+  },[grupo.id]);
+
+  async function mandar(obj){
+    const row={grupo_id:grupo.id,empleado_id:sesion.id,texto:obj.texto||null,tipo:obj.tipo||'texto',adjunto_url:obj.adjunto_url||null};
+    const {data,error}=await SB.from('fichaje_chat_mensajes').insert(row).select();
+    if(error){ alert('No se pudo enviar: '+(error.message||'')); return; }
+    if(data&&data[0]) agregar(data[0]);
+  }
+  async function enviarTexto(e){ e&&e.preventDefault(); const t=texto.trim(); if(!t) return; setTexto(''); await mandar({texto:t,tipo:'texto'}); }
+  function elegirFoto(e){ const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f) return; setFotoPrev({file:f,url:URL.createObjectURL(f)}); }
+  async function enviarFoto(){
+    if(!fotoPrev) return; setSubiendo(true);
+    try{ const dataUri=await fileADataURL(fotoPrev.file); const url=await subirFoto(dataUri); await mandar({tipo:'foto',adjunto_url:url}); URL.revokeObjectURL(fotoPrev.url); setFotoPrev(null); }
+    catch(e){ alert('No se pudo enviar la foto'); }
+    setSubiendo(false);
+  }
+  async function toggleGrabar(){
+    if(grabando){ recRef.current&&recRef.current.stop(); return; }
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      const tipos=['audio/mp4','audio/webm','audio/ogg'];
+      const mime=tipos.find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported&&MediaRecorder.isTypeSupported(t))||'';
+      const rec=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
+      chunksRef.current=[];
+      rec.ondataavailable=ev=>{ if(ev.data.size) chunksRef.current.push(ev.data); };
+      rec.onstop=async()=>{
+        stream.getTracks().forEach(t=>t.stop()); setGrabando(false);
+        const tipoReal=rec.mimeType||mime||'audio/webm';
+        const ext=tipoReal.indexOf('mp4')>=0?'m4a':tipoReal.indexOf('ogg')>=0?'ogg':'webm';
+        const blob=new Blob(chunksRef.current,{type:tipoReal});
+        if(!blob.size) return;
+        setSubiendo(true);
+        const url=await fzSubirAudio(blob,ext);
+        if(url) await mandar({tipo:'audio',adjunto_url:url}); else alert('No se pudo enviar el audio');
+        setSubiendo(false);
+      };
+      recRef.current=rec; rec.start(); setGrabando(true);
+    }catch(e){ alert('No se pudo acceder al micrófono.'); }
+  }
+
+  return (
+    <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:120,background:CH.bg,display:'flex',flexDirection:'column'}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',paddingTop:'calc(10px + env(safe-area-inset-top))',background:C.oro,color:'#1A1A1A',flexShrink:0}}>
+        <button onClick={onVolver} style={{background:'none',border:'none',fontSize:26,color:'#1A1A1A',cursor:'pointer',lineHeight:1,width:28}}>‹</button>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'#1A1A1A',color:C.oro,fontWeight:800,display:'flex',alignItems:'center',justifyContent:'center'}}>{(grupo.nombre||'·').slice(0,1).toUpperCase()}</div>
+        <strong style={{flex:1}}>{grupo.nombre}</strong>
+        {esDuena && <button onClick={()=>setAdmin(true)} style={{background:'none',border:'none',fontSize:20,color:'#1A1A1A',cursor:'pointer'}}>⚙</button>}
+      </div>
+      <div ref={listaRef} style={{flex:1,overflowY:'auto',display:'flex',flexDirection:'column',gap:6,padding:'12px 14px'}}>
+        {msgs.length===0 ? <div style={{textAlign:'center',color:'#777',marginTop:20}}>Escribí el primer mensaje 👋</div> :
+          msgs.map(m=>{ const mio=m.empleado_id===sesion.id;
+            return (
+            <div key={m.id} style={{alignSelf:mio?'flex-end':'flex-start',maxWidth:'80%'}}>
+              <div style={{padding:'8px 11px',borderRadius:14,fontSize:15,lineHeight:1.35,boxShadow:'0 1px 1px rgba(0,0,0,.12)',background:mio?CH.mio:CH.otro,color:CH.txt,borderBottomRightRadius:mio?4:14,borderBottomLeftRadius:mio?14:4}}>
+                {!mio && <div style={{fontSize:11,fontWeight:700,color:'#C77E1A',marginBottom:2}}>{fzNombreEmp(empleados,m.empleado_id)}</div>}
+                {m.tipo==='foto'&&m.adjunto_url ? <a href={m.adjunto_url} target="_blank" rel="noreferrer"><img src={m.adjunto_url} alt="foto" style={{maxWidth:'100%',borderRadius:10,display:'block'}}/></a>
+                  : m.tipo==='audio'&&m.adjunto_url ? <audio controls src={m.adjunto_url} style={{maxWidth:210}}/>
+                  : <span style={{whiteSpace:'pre-wrap',wordBreak:'break-word'}}>{m.texto}</span>}
+                <span style={{fontSize:10,color:mio?'rgba(26,26,26,.55)':CH.gris,marginLeft:8,float:'right',marginTop:4}}>{fzHora(m.created_at)}</span>
+              </div>
+            </div>);
+          })}
+      </div>
+      {!puedeEscribir ?
+        <div style={{textAlign:'center',color:'#666',fontSize:13,padding:12,background:CH.comp,borderTop:'1px solid '+CH.bd,paddingBottom:'calc(12px + env(safe-area-inset-bottom))'}}>🔒 Solo lectura</div> :
+        <form onSubmit={enviarTexto} style={{display:'flex',gap:6,alignItems:'center',padding:'8px 10px',background:CH.comp,borderTop:'1px solid '+CH.bd,flexShrink:0,paddingBottom:'calc(8px + env(safe-area-inset-bottom))'}}>
+          <input ref={fileRef} type="file" accept="image/*" onChange={elegirFoto} style={{display:'none'}}/>
+          <button type="button" onClick={()=>fileRef.current&&fileRef.current.click()} disabled={subiendo||grabando} style={chatIcon}>📷</button>
+          <button type="button" onClick={toggleGrabar} disabled={subiendo} style={{...chatIcon,background:grabando?C.rojo:'#fff',color:grabando?'#fff':'#1A1A1A'}}>{grabando?'⏹':'🎤'}</button>
+          <input value={texto} onChange={e=>setTexto(e.target.value)} placeholder={grabando?'Grabando… tocá ⏹':subiendo?'Subiendo…':'Mensaje…'} disabled={grabando} style={{flex:1,minHeight:44,background:'#fff',border:'1px solid '+CH.bd,borderRadius:22,color:'#1A1A1A',padding:'0 14px',fontSize:15,outline:'none'}}/>
+          <button type="submit" disabled={!texto.trim()} style={{width:44,height:44,borderRadius:'50%',border:'none',background:C.oro,color:'#1A1A1A',fontSize:17,cursor:'pointer',flexShrink:0}}>➤</button>
+        </form>}
+
+      {fotoPrev && (
+        <div style={modalBg} onClick={()=>{ URL.revokeObjectURL(fotoPrev.url); setFotoPrev(null); }}>
+          <div style={modalBox} onClick={e=>e.stopPropagation()}>
+            <h3 style={{fontSize:17,marginBottom:10}}>Enviar foto</h3>
+            <img src={fotoPrev.url} alt="previa" style={{maxWidth:'100%',maxHeight:'50vh',borderRadius:12,display:'block',margin:'0 auto'}}/>
+            <div style={{display:'flex',gap:8,marginTop:14}}>
+              <button onClick={()=>{ URL.revokeObjectURL(fotoPrev.url); setFotoPrev(null); }} style={{...S.btn,...S.btnGhost,flex:1}}>Cancelar</button>
+              <button onClick={enviarFoto} disabled={subiendo} style={{...S.btn,...S.btnOro,flex:1}}>{subiendo?'Enviando…':'Enviar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {admin && <AdminMiembros grupo={grupo} sesion={sesion} empleados={empleados} onCerrar={()=>setAdmin(false)}/>}
+    </div>
+  );
+}
+
+function AdminMiembros({grupo,sesion,empleados,onCerrar}){
+  const [filas,setFilas]=useState([]);
+  useEffect(()=>{ (async()=>{
+    const {data}=await SB.from('fichaje_chat_miembros').select('empleado_id,puede_escribir').eq('grupo_id',grupo.id);
+    const mapa={}; (data||[]).forEach(m=>mapa[m.empleado_id]=m.puede_escribir);
+    setFilas((empleados||[]).filter(e=>e.activo!==false).map(e=>({id:e.id,nombre:e.nombre,inc:e.id in mapa,habla:mapa[e.id]!==false})));
+  })(); },[]);
+  function set(id,k,v){ setFilas(p=>p.map(f=>f.id===id?{...f,[k]:v}:f)); }
+  async function guardar(){
+    const fijos=[grupo.creado_por,sesion.id];
+    const incluidos=filas.filter(f=>f.inc||fijos.indexOf(f.id)>=0);
+    for(const f of incluidos){ await SB.from('fichaje_chat_miembros').upsert({grupo_id:grupo.id,empleado_id:f.id,puede_escribir:fijos.indexOf(f.id)>=0?true:f.habla},{onConflict:'grupo_id,empleado_id'}); }
+    const quitar=filas.filter(f=>!f.inc&&fijos.indexOf(f.id)<0).map(f=>f.id);
+    if(quitar.length) await SB.from('fichaje_chat_miembros').delete().eq('grupo_id',grupo.id).in('empleado_id',quitar);
+    onCerrar();
+  }
+  return (
+    <div style={modalBg} onClick={onCerrar}>
+      <div style={modalBox} onClick={e=>e.stopPropagation()}>
+        <h3 style={{fontSize:17,marginBottom:10}}>Miembros del grupo</h3>
+        <div style={{fontSize:12,color:C.tx2,marginBottom:8}}>Tildá quién está y si puede hablar.</div>
+        <div style={{display:'flex',flexDirection:'column',gap:6,maxHeight:'55vh',overflowY:'auto'}}>
+          {filas.map(f=>(
+            <div key={f.id} style={{display:'flex',alignItems:'center',gap:8,background:C.surf2,border:'1px solid '+C.bd,borderRadius:10,padding:'9px 11px'}}>
+              <label style={{display:'flex',alignItems:'center',gap:9,flex:1,cursor:'pointer'}}>
+                <input type="checkbox" checked={f.inc||f.id===sesion.id} disabled={f.id===sesion.id} onChange={e=>set(f.id,'inc',e.target.checked)} style={{width:18,height:18}}/>
+                <span>{f.nombre}{f.id===sesion.id?' (vos)':''}</span>
+              </label>
+              {(f.inc||f.id===sesion.id)&&f.id!==sesion.id && <label style={{display:'flex',alignItems:'center',gap:5,cursor:'pointer',fontSize:12,color:C.tx2}}><input type="checkbox" checked={f.habla} onChange={e=>set(f.id,'habla',e.target.checked)} style={{width:16,height:16}}/>habla</label>}
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex',gap:8,marginTop:14}}>
+          <button onClick={onCerrar} style={{...S.btn,...S.btnGhost,flex:1}}>Cancelar</button>
+          <button onClick={guardar} style={{...S.btn,...S.btnOro,flex:1}}>Guardar</button>
+        </div>
       </div>
     </div>
   );
