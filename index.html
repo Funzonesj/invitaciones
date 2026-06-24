@@ -1971,8 +1971,6 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
   const [saldoCargando,setSaldoCargando]=useState(true);
   function cargarSaldo(){setSaldoCargando(true);setSaldoErr('');fetch('/api/saldo').then(r=>r.json()).then(d=>{if(d&&typeof d.balance==='number'){setSaldo(d);}else{setSaldoErr((d&&d.error)||'No disponible');}}).catch(()=>setSaldoErr('No se pudo consultar')).finally(()=>setSaldoCargando(false));}
   React.useEffect(()=>{cargarSaldo();},[]);
-  const [vozMsg,setVozMsg]=useState('');
-  function probarVoz(g){setVozMsg('Probando la voz…');fetch('/api/voz',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:'Hola, soy una prueba de voz para Fun Zone. ¡Va a ser una fiesta increíble!',genero:g})}).then(async r=>{const d=await r.json().catch(()=>({}));if(r.ok&&d&&d.audio){try{const a=new Audio(d.audio);a.play();}catch(e){}setVozMsg('✅ Voz '+(g==='f'?'femenina':'masculina')+' OK — deberías escucharla. ¡ElevenLabs anda!');}else if(d&&d.configured===false){setVozMsg('⚠️ Falta cargar ELEVENLABS_API_KEY en Vercel y hacer Redeploy.');}else{setVozMsg('⚠️ '+((d&&d.error)||'No funcionó. Fijate que la clave tenga permiso de "Texto a voz".'));}}).catch(()=>setVozMsg('⚠️ No se pudo consultar el servicio de voz.'));}
   function set(k,v){setCfg(c=>({...c,[k]:v}));}
   function guardar(){setIaConfig(cfg);setEditando(false);setMsg('✓ Cambios guardados');flashOk('✓ ¡Cambios guardados!');setTimeout(()=>setMsg(''),2500);}
   const lockStyle=editando?{}:{background:'#f1f5f9',color:'#475569',cursor:'not-allowed'};
@@ -1987,7 +1985,8 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
         <input value={cfg[kApi]||''} onChange={e=>set(kApi,e.target.value)} style={S.input} placeholder="Pegá aquí la API key del servicio" autoComplete="off"/>
       </label>
       <label style={{display:'block',maxWidth:220}}><span style={S.label}>💲 Precio al papá ($)</span>
-        <input type="number" value={cfg[kPrecio]==null?'':cfg[kPrecio]} onChange={e=>set(kPrecio,e.target.value===''?'':+e.target.value)} style={S.input}/>
+        <input type="number" value={cfg[kPrecio]==null?'':cfg[kPrecio]} onChange={e=>{const v=e.target.value===''?'':+e.target.value;set(kPrecio,v);setIaConfig(c=>({...c,[kPrecio]:v}));}} style={S.input}/>
+        <span style={{fontSize:10,color:'#16a34a',fontWeight:700}}>💾 El precio se guarda solo al cambiarlo (sin botón).</span>
       </label>
     </div>
   );
@@ -2054,14 +2053,6 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
           <span style={{fontSize:10,color:'#94a3b8'}}>Variables: {'{personaje}'}, {'{nombre}'}, {'{salon}'}. Dejá las llaves y se completan solas.</span>
         </label>
         <button onClick={()=>{if(!editando)return;set('promptVideo',PROMPT_VIDEO_DEF);set('fraseVideo',FRASE_VIDEO_DEF);setMsg('✓ Prompt y frase restaurados (acordate de Guardar)');setTimeout(()=>setMsg(''),3000);}} disabled={!editando} style={{...S.btn,background:editando?'#0ea5e9':'#e2e8f0',color:editando?'white':'#94a3b8',padding:'9px 12px',fontSize:12,fontWeight:800,cursor:editando?'pointer':'not-allowed'}}>↺ Restaurar prompt y frase recomendados</button>
-        <div style={{marginTop:14,borderTop:'1px solid #f1f5f9',paddingTop:12}}>
-          <div style={{fontSize:12,fontWeight:800,color:'#334155',marginBottom:6}}>🔊 Probar la voz de ElevenLabs</div>
-          <div style={{display:'flex',gap:8}}>
-            <button onClick={()=>probarVoz('f')} style={{...S.btn,flex:1,background:'#fce7f3',color:'#be185d',padding:'10px',fontSize:12,fontWeight:800}}>♀ Probar voz femenina</button>
-            <button onClick={()=>probarVoz('m')} style={{...S.btn,flex:1,background:'#dbeafe',color:'#1d4ed8',padding:'10px',fontSize:12,fontWeight:800}}>♂ Probar voz masculina</button>
-          </div>
-          {vozMsg&&<div style={{marginTop:8,fontSize:12,fontWeight:700,color:vozMsg.startsWith('✅')?'#16a34a':(vozMsg.startsWith('⚠️')?'#dc2626':'#64748b')}}>{vozMsg}</div>}
-        </div>
       </div>
 
       <div style={{...S.card,marginBottom:14}}>
@@ -3685,42 +3676,22 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
 }
 
 /* ── PAGO MERCADOPAGO (simulado) ─────────────────────────── */
-function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
-  const [paso,setPaso]=useState('resumen'); // resumen | abriendo | pagando | aprobado | error
+function PagoMP({tipo, precio, nombre, tematica, modo, eventId, onPagado, onCancelar}){
+  const [paso,setPaso]=useState('resumen'); // resumen | abriendo | error
   const [err,setErr]=useState('');
-  const [refPago,setRefPago]=useState('');
-  const [initPoint,setInitPoint]=useState('');
-  const [verificando,setVerificando]=useState(false);
-  const pollRef=React.useRef(null);
   async function iniciarPago(){
     setErr('');setPaso('abriendo');
     try{
-      const ref='fz-'+tipo+'-'+Date.now()+'-'+Math.floor(Math.random()*1e6);
+      const ref='fz-'+(modo||tipo)+'-'+Date.now()+'-'+Math.floor(Math.random()*1e6);
       const backUrl=window.location.href.split('?')[0];
       const r=await fetch('/api/mp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:tipo,precio:precio,titulo:('Generar '+(tipo==='imagen'?'imagen':'video')+' IA — '+(nombre||'Fun Zone')),ref:ref,backUrl:backUrl})});
       const d=await r.json().catch(()=>({}));
       if(!r.ok||!d.init_point){ setErr((d&&d.error)||'No se pudo iniciar el pago. Verificá que Mercado Pago esté configurado.'); setPaso('error'); return; }
-      setRefPago(ref);setInitPoint(d.init_point);
-      window.open(d.init_point,'_blank');
-      setPaso('pagando');
+      // Guardo el pendiente; al volver de MP la app verifica sola y genera
+      try{localStorage.setItem('fz_mp_pend',JSON.stringify({modo:(modo||tipo),eventId:eventId,ref:ref,t:Date.now()}));}catch(e){}
+      window.location.href=d.init_point; // mismo navegador (evita que la app de MP quede en el inicio)
     }catch(e){ setErr('No se pudo conectar con el pago. Probá de nuevo.'); setPaso('error'); }
   }
-  async function verificar(silencioso){
-    if(!refPago)return;
-    if(!silencioso)setVerificando(true);
-    try{
-      const r=await fetch('/api/mp?ref='+encodeURIComponent(refPago));
-      const d=await r.json().catch(()=>({}));
-      if(d&&d.approved){ if(pollRef.current){clearInterval(pollRef.current);pollRef.current=null;} setPaso('aprobado'); }
-    }catch(e){}
-    if(!silencioso)setVerificando(false);
-  }
-  useEffect(()=>{
-    if(paso==='pagando'&&refPago){
-      pollRef.current=setInterval(()=>verificar(true),4000);
-      return()=>{ if(pollRef.current){clearInterval(pollRef.current);pollRef.current=null;} };
-    }
-  },[paso,refPago]);
   if(paso==='abriendo') return(
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
       <div className="fade-in" style={{...S.card,maxWidth:340,width:'100%',padding:30,textAlign:'center'}}>
@@ -3743,18 +3714,6 @@ function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
       </div>
     </div>
   );
-  if(paso==='pagando') return(
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
-      <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:28,textAlign:'center'}}>
-        <div style={{width:60,height:60,borderRadius:'50%',background:'linear-gradient(135deg,#009ee3,#0070ba)',margin:'0 auto 14px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>💳</div>
-        <h3 style={{fontWeight:900,fontSize:17,marginBottom:8}}>Te abrimos Mercado Pago</h3>
-        <p style={{fontSize:12.5,color:'#64748b',lineHeight:1.5,marginBottom:8}}>Completá el pago en la otra pestaña. Cuando termines, <b>volvé acá</b> y tocá <b>"Ya pagué"</b> (o esperá unos segundos, se detecta solo).</p>
-        <button onClick={()=>window.open(initPoint,'_blank')} style={{fontSize:12,color:'#0070ba',background:'none',border:'none',cursor:'pointer',textDecoration:'underline',marginBottom:14}}>Volver a abrir Mercado Pago</button>
-        <button onClick={()=>verificar(false)} disabled={verificando} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'14px',fontSize:15,fontWeight:900,marginBottom:8,opacity:verificando?.6:1}}>{verificando?'Verificando…':'✅ Ya pagué, verificar'}</button>
-        <button onClick={onCancelar} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#64748b',padding:'11px',fontSize:13}}>Cancelar</button>
-      </div>
-    </div>
-  );
   if(paso==='resumen') return(
     <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
       <div className="fade-in" style={{...S.card,maxWidth:400,width:'100%',padding:28}}>
@@ -3772,7 +3731,7 @@ function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
           {tipo==='video'&&<p style={{fontSize:11,color:'#94a3b8'}}>• Video animado 5 segundos<br/>• Personaje del entorno elegido<br/>• Descargable en MP4</p>}
         </div>
         <div style={{background:'#fffbeb',border:'1px solid #fde68a',borderRadius:12,padding:12,marginBottom:16,fontSize:11,color:'#92400e'}}>
-          <b>⚠️ Aviso:</b> Se abre Mercado Pago en otra pestaña para pagar de forma segura. Cuando termines, volvés acá y, apenas se confirme el pago, se genera tu {tipo==='imagen'?'imagen':'video'}.
+          <b>⚠️ Aviso:</b> Te llevamos a Mercado Pago para pagar de forma segura. Apenas termines, <b>volvés solo</b> a la app y se genera tu {tipo==='imagen'?'imagen':'video'} automáticamente (no tenés que hacer nada más).
         </div>
         <div style={{display:'flex',gap:10}}>
           <button onClick={onCancelar} style={{...S.btn,flex:1,background:'#f1f5f9',color:'#64748b',padding:'12px'}}>Cancelar</button>
@@ -3780,18 +3739,6 @@ function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
             💳 Pagar con MercadoPago
           </button>
         </div>
-      </div>
-    </div>
-  );
-  if(paso==='aprobado') return(
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:999,padding:16}}>
-      <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:28,textAlign:'center'}}>
-        <div style={{width:64,height:64,borderRadius:'50%',background:'#dcfce7',margin:'0 auto 14px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>✅</div>
-        <h3 style={{fontWeight:900,fontSize:18,color:'#16a34a',marginBottom:6}}>¡Pago Aprobado!</h3>
-        <p style={{fontSize:12,color:'#64748b',marginBottom:20}}>Tu pago fue procesado correctamente. Ahora vamos a generar tu {tipo==='imagen'?'imagen':'video'} con IA.</p>
-        <button onClick={onPagado} style={{...S.btn,background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',width:'100%',padding:'13px',fontSize:14}}>
-          🤖 Generar {tipo==='imagen'?'Imagen':'Video'} ahora
-        </button>
       </div>
     </div>
   );
@@ -4056,8 +4003,41 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const restantesIA=Math.max(0,pagadasIA-genUsados); // imágenes que ya pagó y le quedan
   function pedirGenerar(tipo){
     if(restantesIA>0) setGenActivo(tipo);      // ya pagó este pack → genera
-    else setPagoActivo(tipo);                  // necesita pagar otro pack de 6
+    else { persistirFormPago(); setPagoActivo(tipo); }  // necesita pagar → guardo elecciones por si se recarga al volver de MP
   }
+  // Guarda en papaSesion lo que eligió el papá, para que sobreviva la recarga al volver de Mercado Pago
+  function persistirFormPago(){
+    setPapaSesion(ps=>{const n={...ps,personajeIA:form.personajeIA,fotoNinoIA:form.fotoNinoIA,iaImagenes:form.iaImagenes,iaImagenSel:form.iaImagenSel,portadaSrc:form.portadaSrc,nombre:form.nombre,edad:form.edad};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,personajeIA:n.personajeIA,fotoNinoIA:n.fotoNinoIA,iaImagenes:n.iaImagenes,iaImagenSel:n.iaImagenSel}:e));return n;});
+  }
+  // Aplica el efecto del pago ya APROBADO (mismo resultado que el onPagado, pero sirve también al volver de MP)
+  function aplicarPagoOk(modo){
+    if(modo==='imagen'){
+      setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA,videoFreeDisponible:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas,videoFreeDisponible:true}:e));return n;});
+      setGenActivo('imagen');
+    }else if(modo==='video-genpay'){
+      genVideoPagadoRef.current=true;setVideoUrl('');setVideoPaga(false);setVideoDiag('');
+      setVideoStartImg((form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc);
+      setGenActivo('video');
+    }else if(modo==='video-unlock'){
+      const vu=(papaSesion&&papaSesion.videoUrl)||'';
+      setVideoPaga(true);if(vu)setVideoUrl(vu);
+      setPapaSesion(ps=>{const n={...ps,videoPagado:true,iaVideoFreeUsado:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoPagado:true,iaVideoFreeUsado:true}:e));return n;});
+    }
+  }
+  // Al volver de Mercado Pago: verifica SOLO (sin botón) si el pago quedó aprobado y, si sí, genera
+  React.useEffect(()=>{
+    let pend=null; try{pend=JSON.parse(localStorage.getItem('fz_mp_pend')||'null');}catch(e){}
+    const sp=new URLSearchParams(window.location.search);
+    const tieneRet=sp.get('payment_id')||sp.get('collection_id')||sp.get('status');
+    if(pend&&pend.eventId===papaSesion.id&&pend.ref&&(Date.now()-(pend.t||0)<2*3600*1000)){
+      fetch('/api/mp?ref='+encodeURIComponent(pend.ref)).then(r=>r.json()).then(d=>{
+        try{localStorage.removeItem('fz_mp_pend');}catch(e){}
+        if(d&&d.approved){ flashOk('✅ ¡Pago aprobado! Generando…'); aplicarPagoOk(pend.modo); }
+        else { flashOk('⚠️ No detectamos un pago aprobado. Si pagaste, esperá un momento y reintentá.'); }
+      }).catch(()=>{});
+    }
+    if(tieneRet){ try{history.replaceState({},'',window.location.pathname);}catch(e){} }
+  },[]);
   const [seccion,setSeccion]=useState(_PAPA_NAV.seccion||'home');
   // Marca: solo después de entrar a "Editar Tarjeta" aparece el selector "¿qué va en tu tarjeta?" en el inicio.
   const [editoTarjeta,setEditoTarjeta]=useState(false);
@@ -5407,7 +5387,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       )}
 
       {/* Modales */}
-      {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA,videoFreeDisponible:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas,videoFreeDisponible:true}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
+      {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} modo={pagoActivo==='imagen'?'imagen':'video-genpay'} eventId={papaSesion.id} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA,videoFreeDisponible:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas,videoFreeDisponible:true}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
       {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.vozNombre||suc.nombre} startImage={genActivo==='video'?videoStartImg:null} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});/* Las imágenes ya están listas: cerramos el generador y volvemos a la galería (el video se ofrece como cartel debajo, al elegir la imagen) */setGenActivo(null);}else{const vu=imgs[0]||'';genVideoPagadoRef.current=false;setVideoStartImg(null);setVideoDiag(diag||'');setPapaSesion(ps=>{const prevV=((ps&&ps.iaVideos&&ps.iaVideos.length)?ps.iaVideos:((ps&&ps.videoUrl)?[ps.videoUrl]:[]));const vids=[vu,...prevV.filter(x=>x&&x!==vu)].filter(Boolean);const n={...ps,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true}:e));return n;});setGenActivo(null);}}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
 
       {/* Cartel "¡Te regalamos un video!" — aparece RECIÉN cuando ya se generaron las imágenes */}
@@ -5517,7 +5497,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <button onClick={()=>setVideoUrl('')} style={{marginTop:12,background:'none',border:'none',color:'rgba(255,255,255,.8)',fontSize:14,fontWeight:700,cursor:'pointer',textDecoration:'underline'}}>Cerrar</button>
         </div>
       )}
-      {videoPagoMP&&<PagoMP tipo="video" precio={iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} onPagado={()=>{
+      {videoPagoMP&&<PagoMP tipo="video" precio={iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} modo={videoPagoMP==='genpay'?'video-genpay':'video-unlock'} eventId={papaSesion.id} onPagado={()=>{
         if(videoPagoMP==='genpay'){
           // Pagó para generar OTRO video → genera (queda desbloqueado)
           const img=videoPendImg;setVideoPagoMP(false);setVideoPendImg(null);genVideoPagadoRef.current=true;setVideoUrl('');setVideoPaga(false);setVideoDiag('');setVideoStartImg(img);setGenActivo('video');
