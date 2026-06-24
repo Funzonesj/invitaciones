@@ -2078,13 +2078,12 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
 
       <div style={{...S.card,marginBottom:14}}>
         <h3 style={{fontWeight:900,fontSize:15,marginBottom:4}}>💳 Cobros (Mercado Pago)</h3>
-        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>Datos para cobrar los servicios de IA a los papás.</p>
-        <label style={{display:'block',marginBottom:10}}><span style={S.label}>Link de pago</span>
-          <input value={cfg.mpLink||''} onChange={e=>set('mpLink',e.target.value)} style={S.input} placeholder="https://mpago.la/..." autoComplete="off"/>
-        </label>
-        <label style={{display:'block'}}><span style={S.label}>Public Key</span>
-          <input value={cfg.mpPublicKey||''} onChange={e=>set('mpPublicKey',e.target.value)} style={S.input} placeholder="APP_USR-..." autoComplete="off"/>
-        </label>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:10}}>El cobro real ya está integrado y verificado. ✅</p>
+        <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:12,padding:'12px 14px',fontSize:12,color:'#991b1b',lineHeight:1.55}}>
+          <b>🔒 NO pegues el Access Token acá.</b><br/>
+          La clave secreta (Access Token) es <b>privada</b> y va cargada en <b>Vercel</b> (variable <b>MP_ACCESS_TOKEN</b>), no en la app. Esta pantalla es pública: si pegaras el token acá, quedaría expuesto y podrían usar tu cuenta.
+        </div>
+        <p style={{fontSize:10.5,color:'#94a3b8',marginTop:8,lineHeight:1.5}}>Para activar/cambiar el cobro: Vercel → proyecto de invitaciones → Settings → Environment Variables → <b>MP_ACCESS_TOKEN</b> → Redeploy.</p>
       </div>
 
       <div style={{...S.card,marginBottom:14}}>
