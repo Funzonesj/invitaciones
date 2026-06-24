@@ -4407,7 +4407,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const tituloSeccion=(SECCIONES.find(s=>s[0]===seccion)||['','','',''])[2];
   const _hayReglas=!!(suc&&suc.reglas&&String(suc.reglas).trim());
   const reglasOk=!!(papaSesion&&papaSesion.reglasOk);
-  function aceptarReglas(){setPapaSesion(ps=>{const n={...ps,reglasOk:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,reglasOk:true}:e));return n;});flashOk('✓ ¡Condiciones aceptadas!');}
+  function aceptarReglas(){setPapaSesion(ps=>{const n={...ps,reglasOk:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,reglasOk:true}:e));return n;});flashOk('✓ ¡Condiciones aceptadas! Ya podés enviar tu invitación.');setSeccion('home');}
   const encuestaHecha=!!(papaSesion&&papaSesion.encuesta);
   const _diasLim=(iaConfig&&+iaConfig.encuestaDiasLimite)||5;
   const _evFin=(function(){try{return new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,(+(String(papaSesion.hFin||'23').split(':')[0]))||23,59);}catch(e){return null;}})();
