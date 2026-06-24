@@ -3697,7 +3697,7 @@ function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
     try{
       const ref='fz-'+tipo+'-'+Date.now()+'-'+Math.floor(Math.random()*1e6);
       const backUrl=window.location.href.split('?')[0];
-      const r=await fetch('/api/mp-crear',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:tipo,precio:precio,titulo:('Generar '+(tipo==='imagen'?'imagen':'video')+' IA — '+(nombre||'Fun Zone')),ref:ref,backUrl:backUrl})});
+      const r=await fetch('/api/mp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:tipo,precio:precio,titulo:('Generar '+(tipo==='imagen'?'imagen':'video')+' IA — '+(nombre||'Fun Zone')),ref:ref,backUrl:backUrl})});
       const d=await r.json().catch(()=>({}));
       if(!r.ok||!d.init_point){ setErr((d&&d.error)||'No se pudo iniciar el pago. Verificá que Mercado Pago esté configurado.'); setPaso('error'); return; }
       setRefPago(ref);setInitPoint(d.init_point);
@@ -3709,7 +3709,7 @@ function PagoMP({tipo, precio, nombre, tematica, onPagado, onCancelar}){
     if(!refPago)return;
     if(!silencioso)setVerificando(true);
     try{
-      const r=await fetch('/api/mp-estado?ref='+encodeURIComponent(refPago));
+      const r=await fetch('/api/mp?ref='+encodeURIComponent(refPago));
       const d=await r.json().catch(()=>({}));
       if(d&&d.approved){ if(pollRef.current){clearInterval(pollRef.current);pollRef.current=null;} setPaso('aprobado'); }
     }catch(e){}
