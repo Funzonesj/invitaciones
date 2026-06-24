@@ -3490,11 +3490,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
       {/* Personaje / Character — selector de DB o upload propio */}
       <div style={{marginBottom:14,background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:16,padding:14}}>
         <label style={{...S.label,color:colorIA,fontSize:12}}>🎭 PERSONAJE / TEMÁTICA <span style={{color:'#e11d48'}}>*</span></label>
-        {/* Toggle */}
-        <div style={{display:'flex',gap:6,marginBottom:8}}>
-          <button type="button" onClick={()=>setModoPersonaje('db')} style={{...S.btn,flex:1,padding:'6px 8px',fontSize:11,background:modoPersonaje==='db'?colorIA:'#f1f5f9',color:modoPersonaje==='db'?'white':'#64748b'}}>🗂 Elegir de la base</button>
-          <button type="button" onClick={()=>setModoPersonaje('upload')} style={{...S.btn,flex:1,padding:'6px 8px',fontSize:11,background:modoPersonaje==='upload'?colorIA:'#f1f5f9',color:modoPersonaje==='upload'?'white':'#64748b'}}>📤 Subir imagen propia</button>
-        </div>
+        {/* Solo catálogo: el papá elige de los personajes cargados o lo pide (sin subir imagen propia) */}
         <input ref={persRef} type="file" accept="image/*" style={{display:'none'}} onChange={onPickPers}/>
         {/* Personaje ya seleccionado */}
         {personaje&&(
