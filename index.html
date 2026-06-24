@@ -3751,7 +3751,7 @@ function PagoMP({tipo, precio, nombre, tematica, modo, eventId, onPagado, onCanc
           : <React.Fragment>
               <div id="mp-wallet-cont"></div>
               <p style={{fontSize:11,color:'#94a3b8',textAlign:'center',margin:'8px 0 10px'}}>Apenas pagues, volvés solo y se genera tu {tipo==='imagen'?'imagen':'video'} automáticamente.</p>
-              <button onClick={pagarFallback} style={{...S.btn,width:'100%',background:'#eff6ff',color:'#0070ba',padding:'10px',fontSize:12,fontWeight:800,marginBottom:8}}>¿No aparece el botón azul? Tocá acá para pagar</button>
+              <button onClick={pagarFallback} style={{...S.btn,width:'100%',background:'#eff6ff',color:'#0070ba',padding:'10px',fontSize:12,fontWeight:800,marginBottom:8}}>¿No aparece el botón amarillo de Mercado Pago? Tocá acá</button>
             </React.Fragment>}
         <button onClick={onCancelar} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#64748b',padding:'11px',fontSize:13}}>Cancelar</button>
       </div>
