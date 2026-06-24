@@ -4409,11 +4409,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const reglasOk=!!(papaSesion&&papaSesion.reglasOk);
   function aceptarReglas(){setPapaSesion(ps=>{const n={...ps,reglasOk:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,reglasOk:true}:e));return n;});flashOk('✓ ¡Condiciones aceptadas! Ya podés enviar tu invitación.');setSeccion('home');}
   const encuestaHecha=!!(papaSesion&&papaSesion.encuesta);
+  const _TEST_ENCUESTA=true; // ⚠️ TEMP: deja la encuesta SIEMPRE abierta para probar/mostrar. Volver a false para reactivar el bloqueo normal.
   const _diasLim=(iaConfig&&+iaConfig.encuestaDiasLimite)||5;
   const _evFin=(function(){try{return new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,(+(String(papaSesion.hFin||'23').split(':')[0]))||23,59);}catch(e){return null;}})();
-  const eventoPaso=_evFin?(new Date()>_evFin):false; // disponible después del evento
+  const eventoPaso=_TEST_ENCUESTA||(_evFin?(new Date()>_evFin):false); // disponible después del evento
   const _venceDate=(function(){try{ if(papaSesion.encuestaHasta){return new Date(papaSesion.encuestaHasta+'T23:59:59');} const d=new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,23,59); d.setDate(d.getDate()+_diasLim); return d; }catch(e){return null;}})();
-  const encuestaVencida=_venceDate?(new Date()>_venceDate):false; // cerrada pasada la fecha límite
+  const encuestaVencida=_TEST_ENCUESTA?false:(_venceDate?(new Date()>_venceDate):false); // cerrada pasada la fecha límite
   const _venceTxt=_venceDate?(('0'+_venceDate.getDate()).slice(-2)+'/'+('0'+(_venceDate.getMonth()+1)).slice(-2)):'';
   function enviarEncuesta(){
     if(!enc.encargada||!enc.personal){alert('Marcá al menos la calificación de la Encargada y del Personal.');return;}
@@ -4975,24 +4976,11 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       {seccion==='descargables'&&(
         <div className="fade-in" style={S.card}>
           <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>📦 Recursos Descargables</h2>
-          <p style={{fontSize:12,color:'#64748b',marginBottom:16}}>Materiales y recursos para tu evento</p>
-          {(iaConfig.descargablesLinks||[]).length===0?(
-            <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}>
-              <div style={{fontSize:40,marginBottom:8}}>📂</div>
-              <p style={{fontWeight:700}}>El salón aún no cargó recursos</p>
-              <p style={{fontSize:11}}>Los archivos aparecerán acá cuando el salón los configure desde el panel admin.</p>
-            </div>
-          ):(
-            <div style={{display:'flex',flexDirection:'column',gap:10}}>
-              {(iaConfig.descargablesLinks||[]).map((dl,i)=>(
-                <div key={dl.id||i} style={{...S.card,display:'flex',alignItems:'center',gap:14,padding:'14px 16px',border:'1px solid #e2e8f0'}}>
-                  <div style={{width:44,height:44,borderRadius:12,background:'#f0fdf4',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>{dl.emoji||'📄'}</div>
-                  <div style={{flex:1}}><div style={{fontWeight:800,fontSize:13}}>{dl.nombre}</div><div style={{fontSize:10,color:'#94a3b8'}}>{(dl.tipo||'ARCHIVO').toUpperCase()} · Google Drive</div></div>
-                  {dl.url?<a href={dl.url} target="_blank" style={{...S.btn,background:'#16a34a',color:'white',padding:'8px 14px',fontSize:11,textDecoration:'none',flexShrink:0}}>⬇️ Descargar</a>:<span style={{fontSize:11,color:'#94a3b8',fontStyle:'italic'}}>Próximamente</span>}
-                </div>
-              ))}
-            </div>
-          )}
+          <div style={{textAlign:'center',padding:'40px 16px',color:'#94a3b8'}}>
+            <div style={{fontSize:46,marginBottom:10}}>🚧</div>
+            <p style={{fontWeight:800,fontSize:15,color:'#9a3412'}}>Sitio en construcción</p>
+            <p style={{fontSize:12,marginTop:6,lineHeight:1.5}}>Esta sección todavía no está disponible. ¡Muy pronto vas a tener recursos para descargar acá! 🙂</p>
+          </div>
         </div>
       )}
 
