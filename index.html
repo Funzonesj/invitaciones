@@ -4409,7 +4409,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const reglasOk=!!(papaSesion&&papaSesion.reglasOk);
   function aceptarReglas(){setPapaSesion(ps=>{const n={...ps,reglasOk:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,reglasOk:true}:e));return n;});flashOk('✓ ¡Condiciones aceptadas! Ya podés enviar tu invitación.');setSeccion('home');}
   const encuestaHecha=!!(papaSesion&&papaSesion.encuesta);
-  const _TEST_ENCUESTA=true; // ⚠️ TEMP: deja la encuesta SIEMPRE abierta para probar/mostrar. Volver a false para reactivar el bloqueo normal.
+  const _TEST_ENCUESTA=false; // Bloqueo normal: la encuesta aparece solo después del evento y hasta la fecha límite.
   const _diasLim=(iaConfig&&+iaConfig.encuestaDiasLimite)||5;
   const _evFin=(function(){try{return new Date(+papaSesion.anio,+papaSesion.mes-1,+papaSesion.dia,(+(String(papaSesion.hFin||'23').split(':')[0]))||23,59);}catch(e){return null;}})();
   const eventoPaso=_TEST_ENCUESTA||(_evFin?(new Date()>_evFin):false); // disponible después del evento
