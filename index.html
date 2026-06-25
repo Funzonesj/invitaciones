@@ -514,11 +514,22 @@ function App() {
         if(error && /confirm/i.test(error.message||'')) return 'Tu usuario no está confirmado en Supabase.';
       }catch(e){}
     }
-    // 2) Encargadas: login simple (usuario + clave de la lista). Solo rol encargada (sin puerta trasera de dueña).
+    // 2) Encargada: validar por el PORTERO (server-side). Funciona en CUALQUIER equipo,
+    //    no depende de que la lista de usuarios esté cargada en ese dispositivo.
+    try{
+      const gd=await gwCall('loginEncargada',{usuario:(u||'').trim(),clave:p});
+      if(gd&&gd.ok&&gd.token){
+        _GWAUTH.enc=gd.token; try{localStorage.setItem('fz_enc_token',gd.token);}catch(e){}
+        const usr={rol:'encargada',nombre:gd.nombre||(u||'').trim(),usuario:(u||'').trim(),sucursalId:gd.sucursalId};
+        setAdminSesion(usr);
+        if(usr.sucursalId) setSucActId(usr.sucursalId);
+        setVista('admin-dashboard');
+        return null;
+      }
+    }catch(e){}
+    // 3) Plan B: lista local (si el portero no estuviera disponible)
     const usr=usuarios.find(x=>x.rol==='encargada' && x.usuario && x.usuario.toLowerCase()===(u||'').trim().toLowerCase() && x.clave===p);
     if(usr){
-      // Token del portero para la encargada (para que pueda guardar con el candado puesto)
-      try{ const gd=await gwCall('loginEncargada',{usuario:u,clave:p}); if(gd&&gd.token){ _GWAUTH.enc=gd.token; try{localStorage.setItem('fz_enc_token',gd.token);}catch(e){} } }catch(e){}
       setAdminSesion(usr);
       if(usr.sucursalId) setSucActId(usr.sucursalId);
       setVista('admin-dashboard');
@@ -685,7 +696,7 @@ function AdminLogin({onLogin}){
         </div>
         {err&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#dc2626',padding:'10px 14px',borderRadius:12,fontSize:12,marginBottom:14}}>{err}</div>}
         <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
-          <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Email (dueña) o usuario (encargada)" autoComplete="username" required/>
+          <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Email (dueña) o usuario (encargada)" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required/>
           <div style={{position:'relative'}}>
             <input style={{...S.input,paddingRight:44}} type={showP?'text':'password'} value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="Contraseña" autoComplete="current-password" required/>
             <button type="button" onClick={()=>setShowP(!showP)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:18,color:'#94a3b8'}}>
