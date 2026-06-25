@@ -128,7 +128,7 @@ function App(){
   },[sesion]);
 
   function hacerLogin(ses){ if(ses&&ses._token){ _FTOK=ses._token; } setSesion(ses); recargar(); } // guarda token del portero y recarga con permisos
-  function salir(){ _FTOK=null; setSesion(null); setVista('dashboard'); }
+  function salir(){ _FTOK=null; try{ if(SB&&SB.auth) SB.auth.signOut(); }catch(e){} setSesion(null); setVista('dashboard'); }
   const chatTotal=Object.values(chatNL).reduce((a,b)=>a+b,0);
 
   if(boot) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><span className="spin"></span></div>;
@@ -213,16 +213,37 @@ function BottomNav({rol,vista,setVista}){
 
 /* ── Login ── */
 function Login({empleados,onLogin}){
-  const [u,setU]=useState(''); const [p,setP]=useState(''); const [err,setErr]=useState(''); const [showP,setShowP]=useState(false);
-  async function entrar(e){ e.preventDefault(); setErr('');
-    // 1) por el PORTERO (valida server-side, no expone claves)
-    if(await gwPingF()){
-      try{ const d=await gwF('login',{usuario:u.trim(),clave:p}); if(d&&d.ok&&d.user){ onLogin(Object.assign({},d.user,{_token:d.token})); return; } if(d&&d.ok===false){ setErr('Usuario o contraseña incorrectos.'); return; } }catch(ex){}
+  const [u,setU]=useState(''); const [p,setP]=useState(''); const [err,setErr]=useState(''); const [showP,setShowP]=useState(false); const [recuMsg,setRecuMsg]=useState('');
+  async function entrar(e){ e.preventDefault(); setErr(''); setRecuMsg('');
+    const id=u.trim();
+    // 1) Si es un EMAIL → DUEÑA por Supabase Auth (mismas credenciales del salón)
+    if(id.indexOf('@')>=0 && SB){
+      try{
+        const {data,error}=await SB.auth.signInWithPassword({email:id,password:p});
+        if(!error && data && data.session){
+          const r=await fetch('/api/fichaje',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.session.access_token},body:JSON.stringify({action:'loginDuena'})});
+          const d=await r.json().catch(()=>({}));
+          if(d && d.ok && d.user){ onLogin(Object.assign({},d.user,{_token:d.token})); return; }
+          setErr('Esa cuenta no es la dueña.'); return;
+        }
+        setErr('Email o contraseña incorrectos.'); return;
+      }catch(ex){ setErr('No se pudo ingresar. Probá de nuevo.'); return; }
     }
-    // 2) plan B: chequeo local (mientras el portero no esté activo)
-    const found=(empleados||[]).find(x=>x.activo!==false && ((x.usuario||'').toLowerCase()===u.trim().toLowerCase()) && String(x.clave||'')===p);
+    // 2) Empleado/encargada por el PORTERO (usuario/clave)
+    if(await gwPingF()){
+      try{ const d=await gwF('login',{usuario:id,clave:p}); if(d&&d.ok&&d.user){ onLogin(Object.assign({},d.user,{_token:d.token})); return; } if(d&&d.ok===false){ setErr('Usuario o contraseña incorrectos.'); return; } }catch(ex){}
+    }
+    // 3) plan B: chequeo local (mientras el portero no esté activo)
+    const found=(empleados||[]).find(x=>x.activo!==false && ((x.usuario||'').toLowerCase()===id.toLowerCase()) && String(x.clave||'')===p);
     if(!found){ setErr('Usuario o contraseña incorrectos.'); return; }
     onLogin(found);
+  }
+  async function recuperar(){
+    const id=u.trim(); setErr('');
+    if(id.indexOf('@')<0){ setRecuMsg('Para recuperar tu clave escribí tu EMAIL de dueña arriba (en Usuario). Si sos empleado, pedile a la dueña que te la cambie en Empleados.'); return; }
+    if(!SB){ setRecuMsg('No se pudo conectar. Probá más tarde.'); return; }
+    try{ await SB.auth.resetPasswordForEmail(id,{redirectTo:'https://funzonepro.com'}); setRecuMsg('📧 Te enviamos un email a '+id+'. Abrilo para poner tu nueva contraseña (te sirve para las dos apps).'); }
+    catch(ex){ setRecuMsg('No se pudo enviar el email. Probá de nuevo.'); }
   }
   return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
@@ -242,6 +263,8 @@ function Login({empleados,onLogin}){
           </div>
           {err && <div style={{color:C.rojo,fontSize:13,fontWeight:500}}>{err}</div>}
           <button style={{...S.btn,...S.btnOro}}>Ingresar</button>
+          <button type="button" onClick={recuperar} style={{background:'none',border:'none',color:C.oro,fontSize:13,cursor:'pointer',padding:4}}>¿Olvidaste tu contraseña?</button>
+          {recuMsg && <div style={{fontSize:12,color:C.tx2,background:C.surf2,borderRadius:8,padding:'8px 10px',lineHeight:1.4}}>{recuMsg}</div>}
         </div>
         <p style={{color:C.tx2,fontSize:11,textAlign:'center',marginTop:14}}>Solo la dueña crea los usuarios. Si no tenés acceso, pedíselo a ella.</p>
       </form>

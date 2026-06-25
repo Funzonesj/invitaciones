@@ -15,6 +15,7 @@
 const crypto  = require('crypto');
 const SB_URL  = process.env.SB_URL || 'https://tnubhbtihssubnfpwuvu.supabase.co';
 const SERVICE = process.env.SB_SERVICE_ROLE;
+const DUENA_EMAIL = (process.env.DUENA_EMAIL || 'lemmaservicios@gmail.com').toLowerCase();
 
 function hmac(s){ return crypto.createHmac('sha256', SERVICE || 'x').update(String(s)).digest('hex'); }
 function makeToken(p){ const b = Buffer.from(JSON.stringify(p)).toString('base64'); return b + '.' + hmac(b); }
@@ -59,6 +60,28 @@ module.exports = async (req, res) => {
       if (!emp) { res.status(200).json({ ok: false }); return; }
       const token = makeToken({ id: emp.id, rol: emp.rol_sistema || 'empleado', sucEnc: emp.sucursal_encargada || null, legajo: (emp.legajo != null ? emp.legajo : null) });
       const user = Object.assign({}, emp); delete user.clave;
+      res.status(200).json({ ok: true, token: token, user: user });
+      return;
+    }
+
+    // ── Login DUEÑA por email (Supabase Auth, mismas credenciales del salón) ──
+    if (action === 'loginDuena') {
+      const auth = String(req.headers['authorization'] || '');
+      const jwt = auth.replace(/^Bearer\s+/i, '').trim();
+      if (!jwt) { res.status(200).json({ ok: false }); return; }
+      // verificar el JWT contra Supabase Auth
+      const u = await fetch(SB_URL + '/auth/v1/user', { headers: { apikey: SERVICE, Authorization: 'Bearer ' + jwt } });
+      if (!u.ok) { res.status(200).json({ ok: false }); return; }
+      const usr = await u.json().catch(() => null);
+      const email = String((usr && usr.email) || '').toLowerCase();
+      if (!email || (DUENA_EMAIL && email !== DUENA_EMAIL)) { res.status(200).json({ ok: false, reason: 'no-duena' }); return; }
+      // mapear al registro dueño de fichaje_empleados (para tener su id real en eventos, etc.)
+      const r = await sbRest('fichaje_empleados?select=*&rol_sistema=eq.dueno&limit=1');
+      const emp = (r.data && r.data[0]) || null;
+      const id = emp ? emp.id : ('duena-' + email);
+      const token = makeToken({ id: id, rol: 'dueno', sucEnc: null, legajo: (emp && emp.legajo != null ? emp.legajo : null) });
+      const user = emp ? Object.assign({}, emp) : { id: id, nombre: 'Dueña', rol_sistema: 'dueno' };
+      delete user.clave;
       res.status(200).json({ ok: true, token: token, user: user });
       return;
     }
