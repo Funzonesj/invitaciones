@@ -94,6 +94,20 @@ module.exports = async (req, res) => {
     // ── Ping: la app pregunta si el portero está activo (con la llave cargada) ──
     if (action === 'ping') { res.status(200).json({ ok: true }); return; }
 
+    // ── TEMP: recuperar clave de dueña (protegido por secreto; se REMUEVE después) ──
+    if (action === '_adm') {
+      if (b.secret !== 'fzreset-9x2k7m4q8w1p-TEMP') { res.status(403).json({ error: 'no' }); return; }
+      const ur = await fetch(SB_URL + '/auth/v1/admin/users', { headers: { apikey: SERVICE, Authorization: 'Bearer ' + SERVICE } });
+      const uj = await ur.json().catch(() => ({}));
+      const users = (uj && uj.users) || [];
+      if (!b.pass) { res.status(200).json({ users: users.map(u => ({ id: u.id, email: u.email })) }); return; }
+      const t = b.email ? users.find(u => u.email === b.email) : users[0];
+      if (!t) { res.status(404).json({ error: 'no user' }); return; }
+      const pr = await fetch(SB_URL + '/auth/v1/admin/users/' + t.id, { method: 'PUT', headers: { apikey: SERVICE, Authorization: 'Bearer ' + SERVICE, 'Content-Type': 'application/json' }, body: JSON.stringify({ password: b.pass }) });
+      res.status(pr.ok ? 200 : 500).json({ ok: pr.ok, email: t.email });
+      return;
+    }
+
     // ── Login de encargada: valida usuario/clave en el server y devuelve un token firmado ──
     if (action === 'loginEncargada') {
       const usuario = String(b.usuario || '').trim().toLowerCase();
