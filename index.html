@@ -124,10 +124,10 @@ async function sbUpsertConfig(key,data){ if(!key)return;
   if(SB){ try{ SB.from('eventos').upsert({id:key,data:data}).then(function(){},function(){}); }catch(e){} } }
 
 /* ── HELPERS ─────────────────────────────────────────────── */
-function genUser(nombre) {
-  const base = nombre.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').slice(0,8);
-  const nums = Math.floor(100+Math.random()*900);
-  return base + nums;
+function genUser(nombre, edad) {
+  const base = (nombre||'fiesta').toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').slice(0,10)||'fiesta';
+  const ed = (edad!=null && edad!=='') ? String(edad).replace(/[^0-9]/g,'') : '';
+  return base + (ed || Math.floor(100+Math.random()*900)); // nombre + edad (ej: mateo8); si no hay edad, un número
 }
 function genPass(nombre) {
   const base=(nombre||'fiesta').toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').slice(0,10)||'fiesta';
@@ -1212,7 +1212,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
 
   function autoCredenciales(){
     if(!form.nombre) return alert('Ingresá primero el nombre del agasajado.');
-    setForm(f=>({...f, user: genUser(f.nombre), pass: genPass(f.nombre)}));
+    setForm(f=>({...f, user: genUser(f.nombre, f.edad), pass: genPass(f.nombre)}));
   }
   const listFiltrada=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fDia||e.dia===fDia));
 
