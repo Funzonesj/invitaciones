@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "has": [{ "type": "host", "value": "fichaje.funzonepro.com" }],
+      "has": [{ "type": "host", "value": "controlhorario.funzonepro.com" }],
       "destination": "/fichaje.html"
     }
   ]
