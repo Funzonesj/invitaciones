@@ -1244,8 +1244,10 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   }
   function guardarEvento(){
     const fmt=fmtTipo(form.tipo,iaConfig);
-    if(editId){setEventos(eventos.map(x=>x.id===editId?{...x,...form,...fmt}:x));setEditId(null);}
-    else{setEventos(prev=>[...prev,{...form,...fmt,id:'ev-'+Date.now().toString(16),sucId:sucAct.id,creado:Date.now()}]);}
+    // Asegurar credenciales (usuario = nombre+edad; clave = nombre+números) aunque no haya tocado el botón
+    const f2={...form, user: form.user || (form.nombre?genUser(form.nombre,form.edad):''), pass: form.pass || (form.nombre?genPass(form.nombre):'')};
+    if(editId){setEventos(eventos.map(x=>x.id===editId?{...x,...f2,...fmt}:x));setEditId(null);}
+    else{setEventos(prev=>[...prev,{...f2,...fmt,id:'ev-'+Date.now().toString(16),sucId:sucAct.id,creado:Date.now()}]);}
     setForm(ef);setOpen(false);setTemOpen(false);
     setMsgOk('✅ Se guardó correctamente');flashOk('✓ ¡Guardado!');setTimeout(()=>setMsgOk(''),3500);
     window.scrollTo(0,0);
@@ -1325,12 +1327,10 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>{editId?'✏️ Editar Evento':'+ Nuevo Evento'}</h3>
           <form onSubmit={sub}>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:14}}>
-              {[['Nombre','nombre','text','']].map(([l,k,t,ph])=>(
-                <label key={k}><span style={S.label}>{l}</span><input type={t} placeholder={ph} value={form[k]} autoComplete="off" onChange={e=>setForm({...form,[k]:e.target.value})} style={S.input} required/></label>
-              ))}
+              <label><span style={S.label}>Nombre</span><input type="text" value={form.nombre} autoComplete="off" onChange={e=>{const nv=e.target.value;setForm(f=>({...f,nombre:nv,user:nv?genUser(nv,f.edad):''}));}} style={S.input} required/></label>
               <label><span style={S.label}>Edad</span>
                 <div style={{display:'flex',gap:4}}>
-                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} onChange={e=>setForm({...form,edad:e.target.value})} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
+                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} onChange={e=>{const ev=e.target.value;setForm(f=>({...f,edad:ev,user:f.nombre?genUser(f.nombre,ev):f.user}));}} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
                   <select value={form.edadUnidad||'años'} onChange={e=>setForm({...form,edadUnidad:e.target.value,edad:e.target.value==='noaplica'?'':form.edad})} style={{...S.input,flex:1}}>
                     <option value="años">años</option>
                     <option value="meses">meses</option>
