@@ -3,12 +3,14 @@
 // La IA responde SOLO con la info que cargó el salón. Si la pregunta no está
 // en esa info, contesta que no la tiene. Usa OPENAI_API_KEY (Vercel).
 // ────────────────────────────────────────────────────────────────
+const origenOk = require('./_origen');
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Método no permitido' }); return; }
+  if (!origenOk(req)) { res.status(403).json({ error: 'Origen no permitido' }); return; }
 
   const key = process.env.OPENAI_API_KEY;
   if (!key) { res.status(500).json({ error: 'El asistente todavía no está configurado (falta la clave en Vercel).' }); return; }
