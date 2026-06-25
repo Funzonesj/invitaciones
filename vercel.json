@@ -1,9 +1,10 @@
 {
-  "rewrites": [
+  "redirects": [
     {
-      "source": "/(.*)",
+      "source": "/",
       "has": [{ "type": "host", "value": "controlhorario.funzonepro.com" }],
-      "destination": "/fichaje.html"
+      "destination": "/fichaje.html",
+      "permanent": false
     }
   ]
 }
