@@ -656,7 +656,31 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
     alert('✓ Horarios guardados');
   }
 
-  async function borrarEvento(id){ if(!window.confirm('¿Borrar este evento?'))return; await dbDelete('fichaje_evento_empleados','00000000-0000-0000-0000-000000000000'); /*noop*/ const lst=asign.filter(a=>a.evento_id===id); for(const a of lst) await dbDelete('fichaje_evento_empleados',a.id); await dbDelete('fichaje_eventos',id); cargar(); }
+  async function borrarEvento(id){
+    if(!window.confirm('¿Borrar este evento?'))return;
+    setCargando(true);
+    // borrar primero lo que cuelga del evento (fichajes y asignaciones), si no la base no deja borrarlo
+    const fich=(await dbAll('fichaje_fichajes')).filter(x=>x.evento_id===id);
+    for(const x of fich) await dbDelete('fichaje_fichajes',x.id);
+    for(const a of asign.filter(a=>a.evento_id===id)) await dbDelete('fichaje_evento_empleados',a.id);
+    const ok=await dbDelete('fichaje_eventos',id);
+    setCargando(false);
+    if(!ok) alert('No se pudo borrar el evento. Probá de nuevo.');
+    cargar();
+  }
+  async function borrarTodos(){
+    if(!eventos.length){ alert('No hay eventos para borrar.'); return; }
+    if(!window.confirm('⚠️ Vas a BORRAR TODOS los eventos de '+sucNom(sucSel)+' ('+eventos.length+' eventos). ¿Seguir?'))return;
+    if(!window.confirm('¿Estás segura? Esto borra TODOS los eventos de '+sucNom(sucSel)+' y NO se puede deshacer.'))return;
+    setCargando(true);
+    const ids=eventos.map(e=>e.id);
+    const fich=(await dbAll('fichaje_fichajes')).filter(x=>ids.indexOf(x.evento_id)>=0);
+    for(const x of fich) await dbDelete('fichaje_fichajes',x.id);
+    for(const a of asign.filter(a=>ids.indexOf(a.evento_id)>=0)) await dbDelete('fichaje_evento_empleados',a.id);
+    for(const id of ids) await dbDelete('fichaje_eventos',id);
+    setCargando(false); cargar();
+    alert('✓ Listo, se borraron todos los eventos de '+sucNom(sucSel)+'.');
+  }
   async function hacerReemplazo(asgId, nuevoEmpId){ const emp=empleados.find(e=>e.id===nuevoEmpId); if(!emp)return; await dbUpdate('fichaje_evento_empleados',asgId,{empleado_id:emp.id,legajo:emp.legajo,fue_reemplazo:true}); setReempl(null); cargar(); }
 
   const tabBtn=(id,t)=>(<button onClick={()=>setTab(id)} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:13,...(tab===id?S.btnOro:S.btnGhost)}}>{t}</button>);
@@ -702,6 +726,9 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
             );})}
           </div>
         ))
+      )}
+      {tab==='ver' && eventos.length>0 && (
+        <button onClick={borrarTodos} style={{...S.btn,background:'#3a2020',color:C.rojo,border:'1px solid '+C.rojo,width:'100%',marginTop:6}}>🗑 Borrar TODOS los eventos de {sucNom(sucSel)}</button>
       )}
 
       {tab==='pdf' && (
