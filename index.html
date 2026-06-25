@@ -1407,32 +1407,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
               </div>
               {form.user&&form.pass&&<p style={{fontSize:10,color:'#15803d',marginTop:6,fontWeight:600}}>✓ Credenciales listas — vencen a los 7 días del cumpleaños</p>}
             </div>
-            {/* ── Cumpleaños Doble ── */}
-            <label style={{display:'flex',alignItems:'center',gap:10,background:'#fefce8',border:'1px solid #fde68a',borderRadius:12,padding:'10px 14px',marginBottom:12,cursor:'pointer'}}>
-              <input type="checkbox" checked={form.doble} onChange={e=>setForm({...form,doble:e.target.checked})} style={{width:18,height:18,accentColor:'#f97316',cursor:'pointer'}}/>
-              <div>
-                <span style={{fontWeight:800,fontSize:13,color:'#92400e'}}>🎂🎂 Cumpleaños Doble</span>
-                <div style={{fontSize:10,color:'#a16207'}}>Dos homenajeados en el mismo evento — se generarán dos tarjetas y listas de asistencia independientes</div>
-              </div>
-            </label>
-            {form.doble&&(
-              <div className="fade-in" style={{background:'#fff7ed',border:'2px solid #fb923c',borderRadius:14,padding:14,marginBottom:12}}>
-                <div style={{fontWeight:900,fontSize:13,color:'#c2410c',marginBottom:12}}>🎉 Segundo Cumpleañero/a</div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:10}}>
-                  {[['Nombre','nombre2','text',''],['Edad','edad2','number',''],['Nombre padre/madre','nomPapa2','text',''],['Celular papá','celPapa2','text','']].map(([l,k,t,ph])=>(
-                    <label key={k}><span style={S.label}>{l}</span><input type={t} placeholder={ph} value={form[k]} onChange={e=>setForm({...form,[k]:e.target.value})} style={S.input}/></label>
-                  ))}
-                  <label><span style={S.label}>Temática</span>
-                    <select value={form.temId2} onChange={e=>setForm({...form,temId2:e.target.value})} style={{...S.input}}>
-                      {tematicas.map(t=><option key={t.id} value={t.id}>{t.emoji} {t.nombre}</option>)}
-                    </select>
-                  </label>
-                </div>
-                <div style={{background:'#fff',borderRadius:10,padding:10,border:'1px solid #fed7aa',fontSize:11,color:'#92400e'}}>
-                  <span style={{fontSize:13}}>🔐</span> <b>Acceso compartido:</b> El papá/mamá del segundo cumpleañero ingresa con las <b>mismas credenciales</b> del primer evento. En su panel podrá alternar entre las dos tarjetas con un botón.
-                </div>
-              </div>
-            )}
+            {/* (Cumpleaños Doble eliminado: si hay 2 cumples el mismo día/horario, se crea una tarjeta nueva aparte y el aviso de superposición deja "Registrar igual".) */}
             <button type="submit" style={{...S.btn,background:'#06b6d4',color:'#0f172a'}}>{editId?'✓ Guardar Cambios':'✓ Registrar'}</button>
           </form>
         </div>
