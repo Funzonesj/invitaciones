@@ -78,6 +78,10 @@ async function dbDelete(tabla,id){
   if(await gwPingF()){ try{ const d=await gwF('delete',{tabla:tabla,id:id}); if(d&&d.ok) return true; }catch(e){} }
   try{const{error}=await SB.from(tabla).delete().eq('id',id);if(error)throw error;return true;}catch(e){alert('Error al borrar: '+(e.message||e));return false;}
 }
+async function dbUpsert(tabla,row){
+  if(await gwPingF()){ try{ const d=await gwF('upsert',{tabla:tabla,row:row}); if(d&&d.ok) return true; }catch(e){} }
+  try{const{error}=await SB.from(tabla).upsert(row);if(error)throw error;return true;}catch(e){return false;}
+}
 async function subirFoto(dataUri){ try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:dataUri})});const d=await r.json().catch(()=>({}));return (r.ok&&d.url)?d.url:dataUri;}catch(e){return dataUri;} }
 async function subirPDF(file){ try{ const r=await fetch('/api/subir-init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:'application/pdf',ext:'pdf'})}); const d=await r.json().catch(()=>({})); if(!r.ok||!d.upload_url||!d.file_url)return null; const up=await fetch(d.upload_url,{method:'PUT',headers:{'Content-Type':'application/pdf'},body:file}); if(!up.ok)return null; return d.file_url; }catch(e){return null;} }
 function distancia(la1,lo1,la2,lo2){const R=6371000,t=x=>x*Math.PI/180;const d1=t(la2-la1),d2=t(lo2-lo1);const a=Math.sin(d1/2)**2+Math.cos(t(la1))*Math.cos(t(la2))*Math.sin(d2/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
@@ -500,7 +504,7 @@ function restarMin(hhmm,min){ return fmtMin(toMin(hhmm)-min); }
 const DOW=['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'];
 function fechaLinda(iso){ try{const[a,m,d]=iso.split('-');const dt=new Date(+a,+m-1,+d);return DOW[dt.getDay()]+' '+d+'/'+m;}catch(e){return iso;} }
 
-// Lee el texto del PDF (pdf.js), reconstruyendo líneas por posición vertical
+// Lee el PDF (pdf.js) → líneas con su posición vertical (Y) y página, para poder separar eventos
 async function leerLineasPdf(file){
   const buf=await file.arrayBuffer();
   const pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
@@ -509,60 +513,61 @@ async function leerLineasPdf(file){
     const page=await pdf.getPage(p);
     const tc=await page.getTextContent();
     const byY={};
-    tc.items.forEach(it=>{ const y=Math.round(it.transform[5]); let key=y; for(const k in byY){ if(Math.abs(k-y)<=3){key=+k;break;} } (byY[key]=byY[key]||[]).push(it); });
+    tc.items.forEach(it=>{ if(!it.transform)return; const y=Math.round(it.transform[5]); let key=y; for(const k in byY){ if(Math.abs(k-y)<=3){key=+k;break;} } (byY[key]=byY[key]||[]).push(it); });
     Object.keys(byY).map(Number).sort((a,b)=>b-a).forEach(y=>{
-      const ln=byY[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
-      if(ln) lineas.push(ln);
+      const t=byY[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
+      if(t) lineas.push({t:t,y:y,p:p});
     });
   }
   return lineas;
 }
 
-// Interpreta las líneas → eventos
+// Interpreta las líneas → eventos. El PDF es una TABLA: cada línea trae "legajo + rol", y una
+// línea (la del medio) trae paquete + horario (rango) + cliente. Los eventos se separan por el
+// salto vertical: dentro de un evento las líneas están juntas (~9-20), entre eventos hay un salto grande (~37).
 function parseHorarios(lineas,naLegajo){
-  const eventos=[]; let dia=null; let buf=[];
   const reDia=/^(LUN|MAR|MI[EÉ]|JUE|VIE|S[AÁ]B|DOM)\.?\s/i;
   const reFecha=/(\d{2})\/(\d{2})\/(\d{4})/;
-  const reTime=/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/;
-  const reRolG=/(Cocinero|Mozo|Auxiliar)(\s*\d+\s*hs)?\s*-\s*\d{1,2}:\d{2}/gi;
-  const reSoloNum=/^\d{1,3}$/;
-  const reNoAsig=/No Asignado/i;
+  const reRange=/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/;            // horario del paquete (rango)
+  const reRol=/(Cocinero|Mozo|Auxiliar)(\s*\d+\s*hs)?\s*-\s*\d{1,2}:\d{2}/i; // un rol + su hora de ingreso
+  const reSkip=/Listado de horarios|Generado:|Indentif|Identif|Personal a/i;
+  const GAP=26; // salto en Y que separa un evento del siguiente
   function parseCliente(txt,ev){
     if(!txt) return;
     const mm=txt.match(/^(.*?)\s*\((Madre|Padre|Tutor[a]?)\)\s*(.*)$/i);
-    if(mm){ let pre=mm[1].trim().replace(/^No registra adicionales\s*/i,''); ev.cliente=pre; ev.festejado=mm[3].replace(/,\s*$/,'').trim(); }
-    else if(!/^No registra adicionales/i.test(txt)) ev.adicionales=txt.trim();
+    if(mm){ ev.cliente=mm[1].trim().replace(/^No registra adicionales\s*/i,''); ev.festejado=mm[3].replace(/,\s*$/,'').trim(); }
+    else if(!/^No registra adicionales/i.test(txt) && !ev.cliente) ev.adicionales=txt.trim();
   }
-  for(let i=0;i<lineas.length;i++){
-    const ln=lineas[i];
-    if(reDia.test(ln)){ const m=ln.match(reFecha); if(m) dia=m[3]+'-'+m[2]+'-'+m[1]; buf=[]; continue; }
-    if(/Listado de horarios|Generado:|Indentif|Identif|Personal a/i.test(ln)) continue;
-    if(reSoloNum.test(ln)){ buf.push(+ln); continue; }
-    if(reNoAsig.test(ln)){ buf.push('NA'); continue; }
-    const mt=ln.match(reTime);
-    if(mt && dia){
-      const before=ln.slice(0,mt.index).trim();
-      let leadNums=[], pkg=before;
-      const lead=before.match(/^([\d\s]+?)\s+([A-Za-zÁÉÍÓÚáéíóúñ].*)$/);
-      if(lead){ leadNums=lead[1].trim().split(/\s+/).map(Number); pkg=lead[2].trim(); }
-      const legajos=[...buf,...leadNums]; buf=[];
-      const ev={ dia, paquete:pkg, hora_inicio:mt[1], hora_fin:mt[2], roles:[], cliente:'', festejado:'', adicionales:'' };
-      let rest=ln.slice(mt.index+mt[0].length).trim();
-      const rolesTxt=[];
-      if(rest){
-        let m2, last=0; reRolG.lastIndex=0;
-        while((m2=reRolG.exec(rest))){ rolesTxt.push((m2[1]+(m2[2]||'')).replace(/\s+/g,' ').trim()); last=m2.index+m2[0].length; }
-        parseCliente(rest.slice(last).trim(),ev);
-      } else {
-        while(i+1<lineas.length && /^(Cocinero|Mozo|Auxiliar)(\s*\d+\s*hs)?\s*-\s*\d{1,2}:\d{2}/i.test(lineas[i+1])){
-          rolesTxt.push(lineas[++i].replace(/\s*-\s*\d{1,2}:\d{2}.*$/,'').replace(/\s+/g,' ').trim());
-        }
-        if(i+1<lineas.length){ const nx=lineas[i+1]; if(!reDia.test(nx)&&!reSoloNum.test(nx)&&!reNoAsig.test(nx)&&!reTime.test(nx)){ parseCliente(lineas[++i],ev); } }
-      }
-      rolesTxt.forEach((rt,idx)=>{ let leg=legajos[idx]; if(leg==='NA'){ if(naLegajo!=null) ev.roles.push({rol:rt,legajo:+naLegajo}); return; } if(leg!=null && !isNaN(leg)) ev.roles.push({rol:rt,legajo:leg}); });
-      if(ev.roles.length) eventos.push(ev);
+  const eventos=[]; let dia=null, cur=null, prevY=null, forzar=false;
+  function cerrar(){ if(cur && cur.hora_inicio && cur.roles.length) eventos.push(cur); cur=null; }
+  for(const L of lineas){
+    const ln=(L&&L.t)||'';
+    if(reDia.test(ln)){ cerrar(); const m=ln.match(reFecha); if(m) dia=m[3]+'-'+m[2]+'-'+m[1]; prevY=null; forzar=true; continue; }
+    if(reSkip.test(ln)){ forzar=true; prevY=null; continue; }   // título / cabecera repetida (cambio de página) → próximo evento nuevo
+    if(!dia) continue;
+    const nuevo = forzar || cur==null || (prevY!=null && (prevY-L.y)>GAP);
+    forzar=false;
+    if(nuevo){ cerrar(); cur={dia:dia,paquete:'',hora_inicio:'',hora_fin:'',cliente:'',festejado:'',adicionales:'',roles:[]}; }
+    prevY=L.y;
+    let resto=ln, leg=null;
+    const mLeg=resto.match(/^(\d{1,3})\s+/);
+    if(mLeg){ leg=+mLeg[1]; resto=resto.slice(mLeg[0].length); }
+    else if(/^No Asignado/i.test(resto)){ leg=(naLegajo!=null?+naLegajo:null); resto=resto.replace(/^No Asignado\s*/i,''); }
+    const mr=resto.match(reRange);
+    if(mr){ // línea ancla: paquete + horario (a veces también un rol + el cliente)
+      const pre=resto.slice(0,mr.index).trim(); if(pre) cur.paquete=pre;
+      cur.hora_inicio=mr[1]; cur.hora_fin=mr[2];
+      const tail=resto.slice(mr.index+mr[0].length).trim();
+      const mRolA=tail.match(reRol);
+      if(mRolA){ const rol=(mRolA[1]+(mRolA[2]||'')).replace(/\s+/g,' ').trim(); if(leg!=null) cur.roles.push({rol:rol,legajo:leg}); parseCliente(tail.slice(mRolA.index+mRolA[0].length).trim(),cur); }
+      else parseCliente(tail,cur);
+    } else { // línea de rol (legajo + rol) o suelta
+      const mRol=resto.match(reRol);
+      if(mRol){ const rol=(mRol[1]+(mRol[2]||'')).replace(/\s+/g,' ').trim(); if(leg!=null) cur.roles.push({rol:rol,legajo:leg}); }
+      else parseCliente(resto,cur);
     }
   }
+  cerrar();
   return eventos;
 }
 
@@ -624,6 +629,15 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
   async function guardarPrevia(){
     if(!previa||!previa.sucursal_id){ alert('Elegí la sucursal.'); return; }
     setCargando(true);
+    // Antiduplicados: borrar los eventos de PDF ya cargados para esas mismas fechas y sucursal
+    const fechasImp=[...new Set(previa.eventos.map(e=>e.dia).filter(Boolean))];
+    if(fechasImp.length){
+      const evPrev=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===previa.sucursal_id && e.origen==='pdf' && fechasImp.indexOf(e.fecha)>=0);
+      if(evPrev.length){
+        const eePrev=await dbAll('fichaje_evento_empleados');
+        for(const e of evPrev){ for(const a of eePrev.filter(x=>x.evento_id===e.id)) await dbDelete('fichaje_evento_empleados',a.id); await dbDelete('fichaje_eventos',e.id); }
+      }
+    }
     for(const ev of previa.eventos){
       const row=await dbInsert('fichaje_eventos',{ sucursal_id:previa.sucursal_id, fecha:ev.dia, paquete:ev.paquete, hora_inicio:ev.hora_inicio, hora_fin:ev.hora_fin, orden_dia:ev.orden_dia||1, cliente:ev.cliente||null, festejado:ev.festejado||null, adicionales:ev.adicionales||null, origen:'pdf', creado_por:sesion.id });
       if(row){ for(const r of ev.roles){ const emp=empByLegajo(r.legajo); await dbInsert('fichaje_evento_empleados',{ evento_id:row.id, empleado_id:emp?emp.id:null, legajo:r.legajo, rol_en_evento:r.rol, hora_ingreso_esperada:r.ingreso||null }); } }
@@ -636,7 +650,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
       const cfgs=await dbAll('fichaje_config'); const ex=cfgs.find(c=>c.id==='pdf_'+previa.sucursal_id);
       let lista=(ex&&ex.data&&ex.data.lista)?ex.data.lista:((ex&&ex.data&&ex.data.url)?[{url:ex.data.url,subido:ex.data.subido}]:[]);
       lista=[entry,...lista].slice(0,8);
-      await SB.from('fichaje_config').upsert({id:'pdf_'+previa.sucursal_id,data:{lista}});
+      await dbUpsert('fichaje_config',{id:'pdf_'+previa.sucursal_id,data:{lista}});
     } }catch(e){} pdfFileRef.current=null; }
     setCargando(false); setPrevia(null); setTab('ver');
     alert('✓ Horarios guardados');
@@ -1590,7 +1604,7 @@ function MiPlanilla({sesion,sucursales}){
     const cands=encs.filter(e=>{ const d=(e.anio||'')+'-'+_pad2(e.mes)+'-'+_pad2(e.dia); if(d!==f)return false; if(misSucNombres.length && (e._sucNombre||'') && misSucNombres.indexOf((e._sucNombre||'').toLowerCase())<0)return false; return true; });
     return cands.find(e=>horas.indexOf(e.hIni)>=0)||cands[0]||null;
   };
-  async function guardar(n){ setData(n); try{await SB.from('fichaje_config').upsert({id:cfgId,data:n});}catch(e){} }
+  async function guardar(n){ setData(n); await dbUpsert('fichaje_config',{id:cfgId,data:n}); }
   function setTipo(f,tipo){ const n={...data}; const cur=n[f]||{}; n[f]={...cur,tipo,enc:cur.enc||0}; guardar(n); }
   function setEnc(f,enc){ const n={...data}; if(!n[f])return; n[f]={...n[f],enc}; guardar(n); }
   function setDeluxe(f,v){ const n={...data}; if(!n[f])return; n[f]={...n[f],deluxe:v}; guardar(n); }
@@ -1726,7 +1740,7 @@ function Configuracion({sucursales,empleados,recargar}){
   const [vh,setVh]=useState({}); const [msg,setMsg]=useState(''); const [guardando,setGuardando]=useState(false); const [vhOk,setVhOk]=useState(null);
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data,figuras_hora:g.data.figuras_hora||[]}));})();},[]);
   useEffect(()=>{const o={};(empleados||[]).forEach(e=>{o[e.id]=e.valor_hora??'';});setVh(o);},[empleados]);
-  async function guardarCfg(){ setGuardando(true); try{ await SB.from('fichaje_config').upsert({id:'general',data:cfg}); setMsg('✓ Configuración guardada'); setTimeout(()=>setMsg(''),2200);}catch(e){alert('Error: '+(e.message||e));} setGuardando(false); }
+  async function guardarCfg(){ setGuardando(true); const ok=await dbUpsert('fichaje_config',{id:'general',data:cfg}); if(ok){ setMsg('✓ Configuración guardada'); setTimeout(()=>setMsg(''),2200);}else{alert('No se pudo guardar la configuración.');} setGuardando(false); }
   async function guardarValor(em){ const v=vh[em.id]; const ok=await dbUpdate('fichaje_empleados',em.id,{valor_hora:v===''?0:+v}); if(ok){setVhOk(em.id);setTimeout(()=>setVhOk(p=>p===em.id?null:p),1800);} if(recargar)recargar(); }
   function setFig(i,k,val){ setCfg(c=>({...c,figuras_hora:c.figuras_hora.map((f,j)=>j===i?{...f,[k]:val}:f)})); }
   function addFig(){ setCfg(c=>({...c,figuras_hora:[...(c.figuras_hora||[]),{nombre:'Auxiliar 3 hs',horas:3,bonus:false}]})); }
