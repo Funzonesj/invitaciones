@@ -73,10 +73,42 @@ async function sbLoadAll(){
     return { eventos, confs:(cf.data||[]).map(r=>r.data), cfgIa, cfgSuc, cfgUsr, cfgTem, cfgPed };
   }catch(e){ return null; }
 }
-function sbUpsertEvento(ev){ if(SB&&ev&&ev.id){ try{ SB.from('eventos').upsert({id:ev.id,data:ev}).then(function(){},function(){}); }catch(e){} } }
-function sbDeleteEvento(id){ if(SB&&id){ try{ SB.from('eventos').delete().eq('id',id).then(function(){},function(){}); }catch(e){} } }
-function sbUpsertConf(c){ if(SB&&c&&c.id){ try{ SB.from('confs').upsert({id:c.id,data:c}).then(function(){},function(){}); }catch(e){} } }
-function sbUpsertConfig(key,data){ if(SB){ try{ SB.from('eventos').upsert({id:key,data:data}).then(function(){},function(){}); }catch(e){} } }
+/* ── PORTERO SEGURO (gateway /api/db) ──────────────────────────
+   Las ESCRITURAS pasan por el portero (con la llave secreta del server).
+   Plan B: si el portero falla o no está, se usa el acceso directo de siempre
+   (mientras la base no tenga el candado RLS puesto, el plan B funciona igual). */
+let _GW = null;        // null=desconocido, true=activo, false=no configurado
+let _GWAUTH = {};      // { jwt (dueña), enc (encargada), evId, evPass (papá) }
+async function gwPing(){
+  if(_GW!==null) return _GW;
+  try{ const r=await fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'ping'})}); _GW=(r.status!==503); }
+  catch(e){ _GW=false; }
+  return _GW;
+}
+function _gwHeaders(){
+  const h={'Content-Type':'application/json'};
+  if(_GWAUTH.jwt) h['Authorization']='Bearer '+_GWAUTH.jwt;
+  if(_GWAUTH.enc) h['x-encargada-token']=_GWAUTH.enc;
+  if(_GWAUTH.evId){ h['x-evento-id']=_GWAUTH.evId; h['x-evento-pass']=_GWAUTH.evPass||''; }
+  return h;
+}
+async function gwCall(action,payload){
+  const r=await fetch('/api/db',{method:'POST',headers:_gwHeaders(),body:JSON.stringify(Object.assign({action:action},payload||{}))});
+  if(!r.ok) throw new Error('gw '+r.status);
+  return r.json();
+}
+async function sbUpsertEvento(ev){ if(!(ev&&ev.id))return;
+  if(await gwPing()){ try{ await gwCall('upsertEvento',{ev:ev}); return; }catch(e){} }
+  if(SB){ try{ SB.from('eventos').upsert({id:ev.id,data:ev}).then(function(){},function(){}); }catch(e){} } }
+async function sbDeleteEvento(id){ if(!id)return;
+  if(await gwPing()){ try{ await gwCall('deleteEvento',{id:id}); return; }catch(e){} }
+  if(SB){ try{ SB.from('eventos').delete().eq('id',id).then(function(){},function(){}); }catch(e){} } }
+async function sbUpsertConf(c){ if(!(c&&c.id))return;
+  if(await gwPing()){ try{ await gwCall('upsertConf',{c:c}); return; }catch(e){} }
+  if(SB){ try{ SB.from('confs').upsert({id:c.id,data:c}).then(function(){},function(){}); }catch(e){} } }
+async function sbUpsertConfig(key,data){ if(!key)return;
+  if(await gwPing()){ try{ await gwCall('upsertConfig',{id:key,data:data}); return; }catch(e){} }
+  if(SB){ try{ SB.from('eventos').upsert({id:key,data:data}).then(function(){},function(){}); }catch(e){} } }
 
 /* ── HELPERS ─────────────────────────────────────────────── */
 function genUser(nombre) {
@@ -360,6 +392,13 @@ function App() {
     if(rec){setInvEvId(rec);setVista('recuerdos');}
     else if(inv){setInvEvId(inv);setVista('invitado-portada');}
   },[]);
+  // Restaurar credenciales del PORTERO al recargar (dueña por sesión de Supabase, encargada por token guardado)
+  React.useEffect(()=>{
+    try{ const t=localStorage.getItem('fz_enc_token'); if(t) _GWAUTH.enc=t; }catch(e){}
+    try{ if(SB&&SB.auth&&SB.auth.getSession){ SB.auth.getSession().then(function(res){ var s=res&&res.data&&res.data.session; if(s&&s.access_token) _GWAUTH.jwt=s.access_token; }).catch(function(){}); } }catch(e){}
+  },[]);
+  // El papá puede escribir SOLO su evento: el portero lo valida con la clave de su tarjeta
+  React.useEffect(()=>{ if(papaSesion){ _GWAUTH.evId=papaSesion.id; _GWAUTH.evPass=papaSesion.pass||''; } },[papaSesion]);
   // Cargar eventos y confirmaciones desde la base de datos central (Supabase)
   React.useEffect(()=>{
     if(!SB){return;}
@@ -444,6 +483,7 @@ function App() {
       try{
         const {data,error}=await SB.auth.signInWithPassword({email:(u||'').trim(),password:p});
         if(!error && data && data.user){
+          if(data.session&&data.session.access_token){ _GWAUTH.jwt=data.session.access_token; } // para el portero
           setAdminSesion({rol:'superadmin',nombre:'Administrador',usuario:u});
           setVista('admin-dashboard');
           return null;
@@ -454,6 +494,8 @@ function App() {
     // 2) Encargadas: login simple (usuario + clave de la lista). Solo rol encargada (sin puerta trasera de dueña).
     const usr=usuarios.find(x=>x.rol==='encargada' && x.usuario && x.usuario.toLowerCase()===(u||'').trim().toLowerCase() && x.clave===p);
     if(usr){
+      // Token del portero para la encargada (para que pueda guardar con el candado puesto)
+      try{ const gd=await gwCall('loginEncargada',{usuario:u,clave:p}); if(gd&&gd.token){ _GWAUTH.enc=gd.token; try{localStorage.setItem('fz_enc_token',gd.token);}catch(e){} } }catch(e){}
       setAdminSesion(usr);
       if(usr.sucursalId) setSucActId(usr.sucursalId);
       setVista('admin-dashboard');
@@ -461,7 +503,7 @@ function App() {
     }
     return 'Email o contraseña incorrectos.';
   }
-  function logoutAdmin(){setAdminSesion(null);setVista('admin-login');}
+  function logoutAdmin(){ _GWAUTH.jwt=null;_GWAUTH.enc=null;try{localStorage.removeItem('fz_enc_token');}catch(e){} try{if(SB&&SB.auth&&SB.auth.signOut)SB.auth.signOut();}catch(e){} setAdminSesion(null);setVista('admin-login');}
 
   const isAdmin = ['admin-dashboard','admin-eventos','admin-tematicas','admin-excel','admin-asistencias','admin-remarketing','admin-usuarios','admin-menu','admin-menu2','admin-salon','admin-encuestas','admin-formatos','admin-descargables','admin-ia','admin-catalogo','admin-catalogo-ia','admin-mejorador','admin-diseno','admin-config'].includes(vista);
   const isPapa  = ['papa-login','papa-creador'].includes(vista);

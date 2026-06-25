@@ -91,6 +91,9 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // ── Ping: la app pregunta si el portero está activo (con la llave cargada) ──
+    if (action === 'ping') { res.status(200).json({ ok: true }); return; }
+
     // ── Login de encargada: valida usuario/clave en el server y devuelve un token firmado ──
     if (action === 'loginEncargada') {
       const usuario = String(b.usuario || '').trim().toLowerCase();
