@@ -456,8 +456,9 @@ function App() {
         setConfs(d.confs);
         // sucursales e iaConfig ya se cargaron FRESCOS arriba (sin caché). Acá solo lo pesado/admin:
         if(d.cfgTem && d.cfgTem.length) setTematicas(d.cfgTem);
-        if(d.cfgUsr) setUsuarios(d.cfgUsr);
-        if(d.cfgPed) setPedidos(d.cfgPed);
+        if(d.cfgUsr && d.cfgUsr.length) setUsuarios(d.cfgUsr); // no pisar con vacío (evita borrar encargadas)
+        else { const _cu=loadLS('fz_usuarios',[]); if(_cu&&_cu.length&&adminSesion){ setUsuarios(_cu); sbUpsertConfig('__config_usuarios__',_cu); } } // recuperar encargadas desde la cache si la base vino vacía
+        if(d.cfgPed && d.cfgPed.length) setPedidos(d.cfgPed);
         if(_PAPA_PARAM && !_PAPA_DATA){
           const ev=d.eventos.find(e=>e.id===_PAPA_PARAM);
           if(ev && !estaVencido(ev)){setPapaSesion(ev);setInvEvId(ev.id);}
@@ -478,7 +479,7 @@ function App() {
   React.useEffect(()=>{try{localStorage.setItem('fz_tematicas',JSON.stringify(tematicas));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_tematicas__',tematicas);}},[tematicas]);
   React.useEffect(()=>{try{localStorage.setItem('fz_sucursales',JSON.stringify(sucursales));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_suc__',sucursales);}},[sucursales]);
   React.useEffect(()=>{try{localStorage.setItem('fz_iaconfig',JSON.stringify(iaConfig));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_ia__',iaConfig);}},[iaConfig]);
-  React.useEffect(()=>{try{localStorage.setItem('fz_usuarios',JSON.stringify(usuarios));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_usuarios__',usuarios);}},[usuarios]);
+  React.useEffect(()=>{try{localStorage.setItem('fz_usuarios',JSON.stringify(usuarios));}catch(e){}; if(fullLoaded&&_puedeConfig&&usuarios&&usuarios.length){sbUpsertConfig('__config_usuarios__',usuarios);}},[usuarios]);
   React.useEffect(()=>{try{localStorage.setItem('fz_pedidos',JSON.stringify(pedidos));}catch(e){}; if(fullLoaded&&_puedeConfig){sbUpsertConfig('__config_pedidos__',pedidos);}},[pedidos]);
   async function refrescarPedidos(){ if(!SB)return; try{ const r=await SB.from('eventos').select('data').eq('id','__config_pedidos__').maybeSingle(); if(r&&r.data&&r.data.data) setPedidos(r.data.data); }catch(e){} }
   // Recordar sesión del admin/encargada en este dispositivo (no pedir contraseña cada vez)
