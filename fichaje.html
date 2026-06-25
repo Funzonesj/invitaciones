@@ -420,19 +420,19 @@ function Empleados({empleados,sucursales,recargar}){
           <div style={{flex:1}}><label style={S.label}>Nombre completo</label><input style={S.input} value={form.nombre} onChange={e=>setForm({...form,nombre:e.target.value})} placeholder="Lorena Pérez"/></div>
         </div>
         <div>
-          <label style={S.label}>Roles que puede hacer (elegí uno o varios)</label>
+          <label style={S.label}>Roles que puede hacer (tocá para sumar o quitar)</label>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             {['Cocinero','Mozo','Auxiliar','Encargada'].map(r=>(
-              <button key={r} onClick={()=>toggleRol(r)} style={{...S.btn,minHeight:0,padding:'8px 14px',fontSize:13,...((form.rol_habitual||[]).includes(r)?{background:C.oro,color:'#1A1A1A'}:S.btnGhost)}}>{r}</button>
+              <button type="button" key={r} onClick={()=>toggleRol(r)} style={{...S.btn,minHeight:0,padding:'8px 14px',fontSize:13,...((form.rol_habitual||[]).includes(r)?{background:C.oro,color:'#1A1A1A'}:S.btnGhost)}}>{r}{(form.rol_habitual||[]).includes(r)?'  ✕':''}</button>
             ))}
           </div>
         </div>
         <div><label style={S.label}>Valor hora ($)</label><input style={S.input} type="number" value={form.valor_hora} onChange={e=>setForm({...form,valor_hora:e.target.value})} placeholder="0"/></div>
         <div>
-          <label style={S.label}>Sucursales donde trabaja</label>
+          <label style={S.label}>Sucursales donde trabaja (tocá para sumar o quitar)</label>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
             {sucursales.map(s=>(
-              <button key={s.id} onClick={()=>toggleSuc(s.id)} style={{...S.btn,minHeight:0,padding:'8px 12px',fontSize:13,...((form.sucursales||[]).includes(s.id)?{background:C.oro,color:'#1A1A1A'}:S.btnGhost)}}>{s.nombre}</button>
+              <button type="button" key={s.id} onClick={()=>toggleSuc(s.id)} style={{...S.btn,minHeight:0,padding:'8px 12px',fontSize:13,...((form.sucursales||[]).includes(s.id)?{background:C.oro,color:'#1A1A1A'}:S.btnGhost)}}>{s.nombre}{(form.sucursales||[]).includes(s.id)?'  ✕':''}</button>
             ))}
           </div>
         </div>
