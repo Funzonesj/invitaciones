@@ -684,7 +684,7 @@ function AdminLogin({onLogin}){
 /* ── Recibe el link del email de "olvidé mi contraseña" y deja poner una nueva ── */
 function RecoveryModal(){
   const [activo,setActivo]=useState(false);
-  const [pass,setPass]=useState(''); const [msg,setMsg]=useState(''); const [ok,setOk]=useState(false);
+  const [pass,setPass]=useState(''); const [msg,setMsg]=useState(''); const [ok,setOk]=useState(false); const [showP,setShowP]=useState(false);
   React.useEffect(()=>{
     try{ if((window.location.hash||'').indexOf('type=recovery')>=0) setActivo(true); }catch(e){}
     let sub=null;
@@ -702,7 +702,10 @@ function RecoveryModal(){
       <div className="fade-in" style={{...S.card,maxWidth:380,width:'100%',padding:28,textAlign:'center'}}>
         <div style={{fontSize:40,marginBottom:8}}>🔑</div>
         <h3 style={{fontWeight:900,fontSize:18,marginBottom:10}}>Poné tu nueva contraseña</h3>
-        {!ok&&<input type="password" value={pass} onChange={e=>{setPass(e.target.value);setMsg('');}} placeholder="Nueva contraseña (mín. 6)" style={{...S.input,marginBottom:10}}/>}
+        {!ok&&<div style={{position:'relative',marginBottom:10}}>
+          <input type={showP?'text':'password'} value={pass} onChange={e=>{setPass(e.target.value);setMsg('');}} placeholder="Nueva contraseña (mín. 6)" style={{...S.input,paddingRight:44}}/>
+          <button type="button" onClick={()=>setShowP(!showP)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:18,color:'#94a3b8'}}>{showP?'🙈':'👁️'}</button>
+        </div>}
         {msg&&<div style={{fontSize:12.5,color:ok?'#166534':'#dc2626',marginBottom:10,fontWeight:700,lineHeight:1.5}}>{msg}</div>}
         {!ok
           ? <button onClick={guardar} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#06b6d4,#7c3aed)',color:'white',padding:'13px',fontWeight:900}}>Guardar contraseña</button>
