@@ -13,9 +13,22 @@
 //  ⚠️ PENDIENTE antes de activar RLS: dar login real (Supabase Auth) a las ENCARGADAS,
 //     o el gateway no las va a autorizar para "load".
 // ────────────────────────────────────────────────────────────────
+const crypto  = require('crypto');
 const SB_URL  = process.env.SB_URL || 'https://tnubhbtihssubnfpwuvu.supabase.co';
 const SERVICE = process.env.SB_SERVICE_ROLE; // SECRETA (Vercel)
 const ANON    = process.env.SB_ANON || 'sb_publishable_ZLLncEbfaSqZz15N6-MrXQ_g4K_ndB-';
+
+// Token firmado para encargadas (no usan Supabase Auth). Se firma con la clave secreta del server.
+function hmac(s){ return crypto.createHmac('sha256', SERVICE || 'x').update(String(s)).digest('hex'); }
+function tokenEncargada(id){ return id + '.' + hmac('enc:' + id); }
+function verifyEncargada(tok){
+  if (!tok) return null;
+  const t = String(tok); const i = t.lastIndexOf('.');
+  if (i < 1) return null;
+  const id = t.slice(0, i), sig = t.slice(i + 1), good = hmac('enc:' + id);
+  try { if (sig.length === good.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good))) return id; } catch (e) {}
+  return null;
+}
 
 // Campos que NUNCA salen al invitado (link público de la tarjeta)
 const CAMPOS_PRIVADOS = ['pass','user','clave','celPapa','dni','tel','telefono','encuesta'];
@@ -78,8 +91,22 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // ── Login de encargada: valida usuario/clave en el server y devuelve un token firmado ──
+    if (action === 'loginEncargada') {
+      const usuario = String(b.usuario || '').trim().toLowerCase();
+      const clave = String(b.clave || '');
+      if (!usuario) { res.status(400).json({ error: 'falta usuario' }); return; }
+      const r = await sbRest('eventos?id=eq.__config_usuarios__&select=data');
+      const arr = (r.data && r.data[0] && r.data[0].data) || [];
+      const enc = Array.isArray(arr) ? arr.find(x => x && x.rol === 'encargada' && String(x.usuario || '').trim().toLowerCase() === usuario && String(x.clave || '') === clave) : null;
+      if (!enc) { res.status(200).json({ ok: false }); return; }
+      res.status(200).json({ ok: true, token: tokenEncargada(enc.id), id: enc.id, nombre: enc.nombre, sucursalId: enc.sucursalId });
+      return;
+    }
+
     // ── ¿Quién es? ──
     const duena = await verificarDuena(jwt); // dueña logueada (Supabase Auth)
+    const encargadaId = verifyEncargada(req.headers['x-encargada-token']); // encargada (token firmado)
     let papaOk = false;
     if (!duena && evIdHdr) {
       const r = await sbRest('eventos?id=eq.' + encodeURIComponent(evIdHdr) + '&select=data');
@@ -87,30 +114,30 @@ module.exports = async (req, res) => {
       papaOk = !!(ev && ev.pass && String(ev.pass) === String(evPassHdr));
     }
 
-    // ── Cargar TODO (solo dueña/admin) ──
+    // ── Cargar TODO (dueña o encargada) ──
     if (action === 'load') {
-      if (!duena) { res.status(401).json({ error: 'no autorizado' }); return; }
+      if (!duena && !encargadaId) { res.status(401).json({ error: 'no autorizado' }); return; }
       const ev = await sbRest('eventos?select=id,data');
       const cf = await sbRest('confs?select=id,data');
       res.status(200).json({ eventos: ev.data || [], confs: cf.data || [] });
       return;
     }
 
-    // ── Leer UN evento (dueña o papá dueño de ese evento) ──
+    // ── Leer UN evento (dueña, encargada o papá dueño de ese evento) ──
     if (action === 'evento') {
       const id = String(b.id || evIdHdr || '');
-      if (!duena && !(papaOk && id === String(evIdHdr))) { res.status(401).json({ error: 'no autorizado' }); return; }
+      if (!duena && !encargadaId && !(papaOk && id === String(evIdHdr))) { res.status(401).json({ error: 'no autorizado' }); return; }
       const r = await sbRest('eventos?id=eq.' + encodeURIComponent(id) + '&select=id,data');
       res.status(200).json({ row: (r.data && r.data[0]) || null });
       return;
     }
 
-    // ── Guardar evento (dueña, o papá SOLO su propio evento) ──
+    // ── Guardar evento (dueña, encargada, o papá SOLO su propio evento) ──
     if (action === 'upsertEvento') {
       const ev = b.ev || {};
       if (!ev.id) { res.status(400).json({ error: 'falta id' }); return; }
       const esPapaDeEste = papaOk && String(ev.id) === String(evIdHdr);
-      if (!duena && !esPapaDeEste) { res.status(401).json({ error: 'no autorizado' }); return; }
+      if (!duena && !encargadaId && !esPapaDeEste) { res.status(401).json({ error: 'no autorizado' }); return; }
       const r = await sbRest('eventos', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ id: ev.id, data: ev }) });
       res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
       return;
