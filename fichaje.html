@@ -213,7 +213,7 @@ function BottomNav({rol,vista,setVista}){
 
 /* ── Login ── */
 function Login({empleados,onLogin}){
-  const [u,setU]=useState(''); const [p,setP]=useState(''); const [err,setErr]=useState('');
+  const [u,setU]=useState(''); const [p,setP]=useState(''); const [err,setErr]=useState(''); const [showP,setShowP]=useState(false);
   async function entrar(e){ e.preventDefault(); setErr('');
     // 1) por el PORTERO (valida server-side, no expone claves)
     if(await gwPingF()){
@@ -234,7 +234,12 @@ function Login({empleados,onLogin}){
         </div>
         <div style={{...S.card,display:'flex',flexDirection:'column',gap:12}}>
           <div><label style={S.label}>Usuario</label><input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} autoCapitalize="none" placeholder="usuario" required/></div>
-          <div><label style={S.label}>Contraseña</label><input style={S.input} type="password" value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="••••••" required/></div>
+          <div><label style={S.label}>Contraseña</label>
+            <div style={{position:'relative'}}>
+              <input style={{...S.input,paddingRight:44}} type={showP?'text':'password'} value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="••••••" required/>
+              <button type="button" onClick={()=>setShowP(!showP)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:18,color:C.tx2}}>{showP?'🙈':'👁️'}</button>
+            </div>
+          </div>
           {err && <div style={{color:C.rojo,fontSize:13,fontWeight:500}}>{err}</div>}
           <button style={{...S.btn,...S.btnOro}}>Ingresar</button>
         </div>
