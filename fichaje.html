@@ -50,11 +50,28 @@ const S = {
   chip:{display:'inline-block',padding:'3px 10px',borderRadius:20,fontSize:11,fontWeight:700},
 };
 
-/* ── Helpers DB ── */
-async function dbAll(tabla){ if(!SB)return[]; try{const{data}=await SB.from(tabla).select('*');return data||[];}catch(e){return[];} }
-async function dbInsert(tabla,row){ try{const{data,error}=await SB.from(tabla).insert(row).select();if(error)throw error;return data&&data[0];}catch(e){alert('Error al guardar: '+(e.message||e));return null;} }
-async function dbUpdate(tabla,id,row){ try{const{error}=await SB.from(tabla).update(row).eq('id',id);if(error)throw error;return true;}catch(e){alert('Error al actualizar: '+(e.message||e));return false;} }
-async function dbDelete(tabla,id){ try{const{error}=await SB.from(tabla).delete().eq('id',id);if(error)throw error;return true;}catch(e){alert('Error al borrar: '+(e.message||e));return false;} }
+/* ── Helpers DB (pasan por el PORTERO seguro /api/fichaje; plan B: acceso directo) ── */
+let _FTOK = null;
+try{ const _s=JSON.parse(localStorage.getItem('fichaje_sesion')||'null'); if(_s&&_s._token) _FTOK=_s._token; }catch(e){}
+let _FGW = null;
+async function gwPingF(){ if(_FGW!==null) return _FGW; try{ const r=await fetch('/api/fichaje',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'ping'})}); _FGW=(r.status!==503); }catch(e){ _FGW=false; } return _FGW; }
+async function gwF(action,payload){ const h={'Content-Type':'application/json'}; if(_FTOK) h['x-fichaje-token']=_FTOK; const r=await fetch('/api/fichaje',{method:'POST',headers:h,body:JSON.stringify(Object.assign({action:action},payload||{}))}); if(!r.ok) throw new Error('gwF '+r.status); return r.json(); }
+async function dbAll(tabla){
+  if(await gwPingF()){ try{ const d=await gwF('all',{tabla:tabla}); if(d&&Array.isArray(d.rows)) return d.rows; }catch(e){} }
+  if(!SB)return[]; try{const{data}=await SB.from(tabla).select('*');return data||[];}catch(e){return[];}
+}
+async function dbInsert(tabla,row){
+  if(await gwPingF()){ try{ const d=await gwF('insert',{tabla:tabla,row:row}); if(d&&d.ok) return d.row; }catch(e){} }
+  try{const{data,error}=await SB.from(tabla).insert(row).select();if(error)throw error;return data&&data[0];}catch(e){alert('Error al guardar: '+(e.message||e));return null;}
+}
+async function dbUpdate(tabla,id,row){
+  if(await gwPingF()){ try{ const d=await gwF('update',{tabla:tabla,id:id,row:row}); if(d&&d.ok) return true; }catch(e){} }
+  try{const{error}=await SB.from(tabla).update(row).eq('id',id);if(error)throw error;return true;}catch(e){alert('Error al actualizar: '+(e.message||e));return false;}
+}
+async function dbDelete(tabla,id){
+  if(await gwPingF()){ try{ const d=await gwF('delete',{tabla:tabla,id:id}); if(d&&d.ok) return true; }catch(e){} }
+  try{const{error}=await SB.from(tabla).delete().eq('id',id);if(error)throw error;return true;}catch(e){alert('Error al borrar: '+(e.message||e));return false;}
+}
 async function subirFoto(dataUri){ try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:dataUri})});const d=await r.json().catch(()=>({}));return (r.ok&&d.url)?d.url:dataUri;}catch(e){return dataUri;} }
 async function subirPDF(file){ try{ const r=await fetch('/api/subir-init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:'application/pdf',ext:'pdf'})}); const d=await r.json().catch(()=>({})); if(!r.ok||!d.upload_url||!d.file_url)return null; const up=await fetch(d.upload_url,{method:'PUT',headers:{'Content-Type':'application/pdf'},body:file}); if(!up.ok)return null; return d.file_url; }catch(e){return null;} }
 function distancia(la1,lo1,la2,lo2){const R=6371000,t=x=>x*Math.PI/180;const d1=t(la2-la1),d2=t(lo2-lo1);const a=Math.sin(d1/2)**2+Math.cos(t(la1))*Math.cos(t(la2))*Math.sin(d2/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
@@ -110,12 +127,13 @@ function App(){
     return ()=>{ cancel=true; SB.removeChannel(canal); };
   },[sesion]);
 
-  function salir(){ setSesion(null); setVista('dashboard'); }
+  function hacerLogin(ses){ if(ses&&ses._token){ _FTOK=ses._token; } setSesion(ses); recargar(); } // guarda token del portero y recarga con permisos
+  function salir(){ _FTOK=null; setSesion(null); setVista('dashboard'); }
   const chatTotal=Object.values(chatNL).reduce((a,b)=>a+b,0);
 
   if(boot) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}><span className="spin"></span></div>;
   if(!SB) return <div style={{padding:24}}>No se pudo conectar a la base de datos.</div>;
-  if(!sesion) return <Login empleados={empleados} onLogin={setSesion}/>;
+  if(!sesion) return <Login empleados={empleados} onLogin={hacerLogin}/>;
 
   const rol = sesion.rol_sistema || 'empleado';
   const esDuena = rol==='dueno';
@@ -196,7 +214,12 @@ function BottomNav({rol,vista,setVista}){
 /* ── Login ── */
 function Login({empleados,onLogin}){
   const [u,setU]=useState(''); const [p,setP]=useState(''); const [err,setErr]=useState('');
-  function entrar(e){ e.preventDefault();
+  async function entrar(e){ e.preventDefault(); setErr('');
+    // 1) por el PORTERO (valida server-side, no expone claves)
+    if(await gwPingF()){
+      try{ const d=await gwF('login',{usuario:u.trim(),clave:p}); if(d&&d.ok&&d.user){ onLogin(Object.assign({},d.user,{_token:d.token})); return; } if(d&&d.ok===false){ setErr('Usuario o contraseña incorrectos.'); return; } }catch(ex){}
+    }
+    // 2) plan B: chequeo local (mientras el portero no esté activo)
     const found=(empleados||[]).find(x=>x.activo!==false && ((x.usuario||'').toLowerCase()===u.trim().toLowerCase()) && String(x.clave||'')===p);
     if(!found){ setErr('Usuario o contraseña incorrectos.'); return; }
     onLogin(found);
