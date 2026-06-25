@@ -107,6 +107,21 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // ── Login de papá: valida usuario+clave server-side y devuelve SU evento completo ──
+    if (action === 'loginPapa') {
+      const usuario = String(b.usuario || '').trim().toLowerCase();
+      const clave = String(b.clave || '').trim().toLowerCase();
+      if (!usuario || !clave) { res.status(400).json({ error: 'faltan datos' }); return; }
+      const r = await sbRest('eventos?select=id,data');
+      const rows = (r.data || []);
+      const hit = rows.find(x => x.data && typeof x.data === 'object' && !String(x.id).startsWith('__')
+        && String(x.data.user || '').trim().toLowerCase() === usuario
+        && String(x.data.pass || '').trim().toLowerCase() === clave);
+      if (!hit) { res.status(200).json({ ok: false }); return; }
+      res.status(200).json({ ok: true, ev: hit.data });
+      return;
+    }
+
     // ── ¿Quién es? ──
     const duena = await verificarDuena(jwt); // dueña logueada (Supabase Auth)
     const encargadaId = verifyEncargada(req.headers['x-encargada-token']); // encargada (token firmado)

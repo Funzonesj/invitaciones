@@ -59,6 +59,19 @@ const SB = (window.supabase && SB_URL && SB_KEY) ? window.supabase.createClient(
 /* ── MERCADO PAGO (Public Key — es pública, va en el front; el Access Token va en Vercel) ── */
 const MP_PUBLIC_KEY = 'APP_USR-973144b4-dbe7-4938-8540-1b164daf8ff3';
 async function sbLoadAll(){
+  // Admin (dueña/encargada): leer por el PORTERO (con la base cerrada, el acceso directo no trae los eventos)
+  try{
+    if(_GWAUTH&&(_GWAUTH.jwt||_GWAUTH.enc)&&await gwPing()){
+      const d=await gwCall('load',{});
+      if(d&&d.eventos){
+        const rows=d.eventos||[];
+        const g=function(id){return (rows.find(r=>r.id===id)||{}).data||null;};
+        return { eventos:rows.filter(r=>!String(r.id).startsWith('__')).map(r=>r.data), confs:(d.confs||[]).map(r=>r.data),
+          cfgIa:g('__config_ia__'), cfgSuc:g('__config_suc__'), cfgUsr:g('__config_usuarios__'), cfgTem:g('__config_tematicas__'), cfgPed:g('__config_pedidos__') };
+      }
+    }
+  }catch(e){}
+  // Directo: dueña autenticada lee todo; invitado/papá solo ven la config no sensible (eventos van por el portero)
   if(!SB) return null;
   try{
     const ev = await SB.from('eventos').select('id,data');
@@ -403,6 +416,9 @@ function App() {
   React.useEffect(()=>{
     if(!SB){return;}
     (async()=>{
+      // Credenciales del portero listas ANTES de cargar (dueña por sesión, encargada por token)
+      try{ const ses=await SB.auth.getSession(); const s=ses&&ses.data&&ses.data.session; if(s&&s.access_token) _GWAUTH.jwt=s.access_token; }catch(e){}
+      try{ const t=localStorage.getItem('fz_enc_token'); if(t) _GWAUTH.enc=t; }catch(e){}
       // Config del salón SIEMPRE FRESCA (sin caché del navegador), antes que nada y para todos.
       // El navegador cacheaba la config vieja (sin reglas/FAQ) y por eso "no aparecían"; con no-store + cache-buster se evita.
       try{
@@ -416,18 +432,16 @@ function App() {
       }catch(e){}
       // 1) Links de invitación/papá: traer SOLO ese evento primero (rápido) y mostrar ya
       const quickId=_INV_PARAM||_PAPA_PARAM||_REC_PARAM;
-      if(quickId){
+      if(_PAPA_PARAM && !_PAPA_DATA){
+        // Papá por link: ahora entra con su contraseña (la base ya no es pública). Lo mandamos al login.
+        setVista('papa-login'); setDbReady(true);
+      } else if(quickId){
+        // Invitado / Recuerdos: leer SOLO lo público (sin datos personales) por el portero
         try{
-          const one=await SB.from('eventos').select('data').eq('id',quickId);
-          const ev=one.data&&one.data[0]&&one.data[0].data;
-          if(ev){
-            setEventos(prev=>prev.some(e=>e.id===ev.id)?prev:[ev,...prev]);
-            if(_PAPA_PARAM && !_PAPA_DATA){
-              if(estaVencido(ev)){setPapaAviso('El acceso para este evento ha vencido.');setVista('papa-login');}
-              else{setPapaSesion(ev);setInvEvId(ev.id);setVista('papa-creador');}
-            }
-            setDbReady(true); // la invitación ya puede renderizar sin esperar lo pesado
-          }
+          let ev=null;
+          if(await gwPing()){ const r=await gwCall('invitacion',{id:quickId}); ev=(r&&r.data)||null; }
+          if(!ev){ const one=await SB.from('eventos').select('id,data').eq('id',quickId); ev=one.data&&one.data[0]&&one.data[0].data; } // plan B (si el candado no está)
+          if(ev){ setEventos(prev=>prev.some(e=>e.id===ev.id)?prev:[ev,...prev]); setDbReady(true); }
         }catch(e){}
       }
       // 2) Cargar el resto (puede tardar por imágenes guardadas) sin bloquear la pantalla
@@ -3432,7 +3446,7 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
 
 function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso,adminSesion,sucAct}){
   const [u,setU]=useState('');const [p,setP]=useState('');const [err,setErr]=useState('');const [showP,setShowP]=useState(false);
-  function sub(e){
+  async function sub(e){
     e.preventDefault();
     const uu=u.trim().toLowerCase(), pp=p.trim().toLowerCase();
     // Buscar en la lista local (usuario y clave sin distinguir mayúsculas)
@@ -3444,8 +3458,13 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso,adminSesion,
         if(papaParam){const d=JSON.parse(atob(papaParam));if(d.user&&d.user.toLowerCase()===uu&&d.pass&&String(d.pass).toLowerCase()===pp)ev=d;}
       }catch(ex){}
     }
+    // Si la base está cerrada, validar usuario+clave por el PORTERO (server-side)
+    if(!ev){
+      try{ const r=await fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'loginPapa',usuario:u.trim(),clave:p.trim()})}); const d=await r.json().catch(()=>({})); if(d&&d.ok&&d.ev) ev=d.ev; }catch(ex){}
+    }
     if(!ev){setErr('Datos incorrectos. Verificá usuario y contraseña.');return;}
     if(estaVencido(ev)){setErr('El acceso para este evento ha vencido.');return;}
+    _GWAUTH.evId=ev.id; _GWAUTH.evPass=ev.pass||''; // para que el papá pueda guardar por el portero
     setPapaSesion(ev);setInvEvId(ev.id);setVista('papa-creador');
   }
   return(
