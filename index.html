@@ -698,7 +698,7 @@ function AdminLogin({onLogin}){
         <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
           <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Email (dueña) o usuario (encargada)" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required/>
           <div style={{position:'relative'}}>
-            <input style={{...S.input,paddingRight:44}} type={showP?'text':'password'} value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="Contraseña" autoComplete="current-password" required/>
+            <input style={{...S.input,paddingRight:44}} type={showP?'text':'password'} value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="Contraseña" autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} required/>
             <button type="button" onClick={()=>setShowP(!showP)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:18,color:'#94a3b8'}}>
               {showP?'🙈':'👁️'}
             </button>
@@ -3482,7 +3482,7 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,setConfs,aviso,adm
         <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
           <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Usuario" autoComplete="username" required/>
           <div style={{position:'relative'}}>
-            <input style={{...S.input,paddingRight:44}} type={showP?'text':'password'} value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="Contraseña" autoComplete="current-password" required/>
+            <input style={{...S.input,paddingRight:44}} type={showP?'text':'password'} value={p} onChange={e=>{setP(e.target.value);setErr('');}} placeholder="Contraseña" autoComplete="current-password" autoCapitalize="none" autoCorrect="off" spellCheck={false} required/>
             <button type="button" onClick={()=>setShowP(!showP)} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',fontSize:18,color:'#94a3b8'}}>
               {showP?'🙈':'👁️'}
             </button>
