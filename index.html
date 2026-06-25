@@ -2863,6 +2863,10 @@ function AdminSalon({setVista,sucursales,setSucursales,iaConfig,setIaConfig}){
         <h4 style={{fontWeight:900,fontSize:12,margin:'16px 0 4px'}}>🤖 Instrucción para la IA (cómo responde) — vale para todos los salones</h4>
         <textarea value={iaConfig.faqPrompt!=null?iaConfig.faqPrompt:FAQ_PROMPT_DEF} onChange={e=>setIaConfig(c=>({...c,faqPrompt:e.target.value}))} rows={4} style={{...ip,resize:'vertical',fontFamily:'inherit'}}/>
         <button onClick={()=>setIaConfig(c=>({...c,faqPrompt:FAQ_PROMPT_DEF}))} style={{...S.btn,background:'#f1f5f9',color:'#64748b',padding:'7px 12px',fontSize:11,fontWeight:700,marginTop:6}}>↺ Restaurar instrucción por defecto</button>
+        <div style={{marginTop:14,borderTop:'1px solid #f1f5f9',paddingTop:12}}>
+          <div style={{fontSize:11.5,color:'#64748b',marginBottom:6}}>💳 El asistente de preguntas funciona con <b>OpenAI</b>. Si se queda sin crédito, recargá acá:</div>
+          <button onClick={()=>window.open('https://platform.openai.com/settings/organization/billing/overview','_blank')} style={{...S.btn,background:'#16a34a',color:'white',padding:'8px 14px',fontSize:12,fontWeight:800}}>💳 Recargar crédito de OpenAI</button>
+        </div>
       </div>
 
       <div style={{...S.card,marginBottom:14}}>
