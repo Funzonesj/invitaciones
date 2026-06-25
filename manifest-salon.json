@@ -1,0 +1,13 @@
+{
+  "name": "Fun Zone & Play Point",
+  "short_name": "Fun Zone",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1A1A1A",
+  "theme_color": "#1A1A1A",
+  "icons": [
+    { "src": "/icon-salon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Control de Horarios",
+  "short_name": "Horarios",
+  "start_url": "/fichaje.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1A1A1A",
+  "theme_color": "#1A1A1A",
+  "icons": [
+    { "src": "/icon-horarios.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
