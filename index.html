@@ -2110,9 +2110,12 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
                 <div style={{fontSize:12,fontWeight:700,color:'#b45309'}}>No disponible {saldoErr?('· '+saldoErr):''}</div>
               )}
             </div>
-            <button onClick={cargarSaldo} style={{...S.btn,background:'#fff',color:'#334155',border:'1px solid #e2e8f0',padding:'7px 12px',fontSize:12}}>↻ Actualizar</button>
+            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+              <button onClick={cargarSaldo} style={{...S.btn,background:'#fff',color:'#334155',border:'1px solid #e2e8f0',padding:'7px 12px',fontSize:12}}>↻ Actualizar</button>
+              <button onClick={()=>window.open('https://fal.ai/dashboard/billing','_blank')} style={{...S.btn,background:'#16a34a',color:'white',padding:'7px 12px',fontSize:12,fontWeight:800}}>💳 Recargar</button>
+            </div>
           </div>
-          {bajo&&<div style={{marginTop:8,fontSize:12,color:'#dc2626',fontWeight:800}}>⚠️ Crédito bajo. Recargá en fal.ai para no quedarte sin generaciones.</div>}
+          {bajo&&<div style={{marginTop:8,fontSize:12,color:'#dc2626',fontWeight:800}}>⚠️ Crédito bajo. Tocá "Recargar" para cargar saldo en fal.ai.</div>}
           {typeof bal==='number'&&!bajo&&<div style={{marginTop:6,fontSize:10,color:'#94a3b8'}}>Aprox.: ~{Math.floor(bal/0.04)} imágenes o ~{Math.floor(bal/0.9)} videos con este saldo.</div>}
         </div>
         );})()}
