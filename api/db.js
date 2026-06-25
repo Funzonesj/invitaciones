@@ -118,7 +118,18 @@ module.exports = async (req, res) => {
         && String(x.data.user || '').trim().toLowerCase() === usuario
         && String(x.data.pass || '').trim().toLowerCase() === clave);
       if (!hit) { res.status(200).json({ ok: false }); return; }
-      res.status(200).json({ ok: true, ev: hit.data });
+      const cf = await sbRest('confs?select=data');
+      const confs = ((cf.data || []).map(x => x.data)).filter(c => c && c.evId === hit.data.id);
+      res.status(200).json({ ok: true, ev: hit.data, confs: confs });
+      return;
+    }
+
+    // ── Confirmar asistencia (RSVP) — PÚBLICO: el invitado guarda su confirmación ──
+    if (action === 'addConf') {
+      const c = b.c || {};
+      if (!c || !c.id) { res.status(400).json({ error: 'falta id' }); return; }
+      const r = await sbRest('confs', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ id: c.id, data: c }) });
+      res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
       return;
     }
 
@@ -172,7 +183,8 @@ module.exports = async (req, res) => {
 
     // ── Guardar configuración (solo dueña): confs o __config_*__ en eventos ──
     if (action === 'upsertConf' || action === 'upsertConfig') {
-      if (!duena) { res.status(401).json({ error: 'no autorizado' }); return; }
+      const soloDuena = (action === 'upsertConfig'); // la config es solo de la dueña; confs también la encargada
+      if (soloDuena ? !duena : (!duena && !encargadaId)) { res.status(401).json({ error: 'no autorizado' }); return; }
       const tabla = (action === 'upsertConf') ? 'confs' : 'eventos';
       const id = String(b.id || (b.c && b.c.id) || '');
       const data = (action === 'upsertConf') ? b.c : b.data;

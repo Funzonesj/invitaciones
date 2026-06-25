@@ -117,7 +117,8 @@ async function sbDeleteEvento(id){ if(!id)return;
   if(await gwPing()){ try{ await gwCall('deleteEvento',{id:id}); return; }catch(e){} }
   if(SB){ try{ SB.from('eventos').delete().eq('id',id).then(function(){},function(){}); }catch(e){} } }
 async function sbUpsertConf(c){ if(!(c&&c.id))return;
-  if(await gwPing()){ try{ await gwCall('upsertConf',{c:c}); return; }catch(e){} }
+  // admin → upsertConf; invitado/papá → addConf (público, para confirmar asistencia)
+  if(await gwPing()){ try{ await gwCall((_GWAUTH.jwt||_GWAUTH.enc)?'upsertConf':'addConf',{c:c}); return; }catch(e){} }
   if(SB){ try{ SB.from('confs').upsert({id:c.id,data:c}).then(function(){},function(){}); }catch(e){} } }
 async function sbUpsertConfig(key,data){ if(!key)return;
   if(await gwPing()){ try{ await gwCall('upsertConfig',{id:key,data:data}); return; }catch(e){} }
