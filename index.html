@@ -633,7 +633,7 @@ function App() {
         {vista==='admin-encuestas'   && esSA && <AdminEncuestas setVista={setVista} eventos={eventos} setEventos={setEventos} sucursales={sucursales} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-formatos'    && esSA && <AdminFormatos setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
-        {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} aviso={papaAviso} adminSesion={adminSesion} sucAct={sucAct}/>}
+        {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} setConfs={setConfs} aviso={papaAviso} adminSesion={adminSesion} sucAct={sucAct}/>}
         {vista==='papa-creador'      && papaSesion&&<PapaCreador key={papaSesion.id} setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs} pedidos={pedidos} setPedidos={setPedidos}/>}
         {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))} esInvPortada={true}/>}
         {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))}/>}
@@ -3420,7 +3420,7 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
   );
 }
 
-function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso,adminSesion,sucAct}){
+function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,setConfs,aviso,adminSesion,sucAct}){
   const [u,setU]=useState('');const [p,setP]=useState('');const [err,setErr]=useState('');const [showP,setShowP]=useState(false);
   async function sub(e){
     e.preventDefault();
@@ -3436,7 +3436,7 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,aviso,adminSesion,
     }
     // Si la base está cerrada, validar usuario+clave por el PORTERO (server-side)
     if(!ev){
-      try{ const r=await fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'loginPapa',usuario:u.trim(),clave:p.trim()})}); const d=await r.json().catch(()=>({})); if(d&&d.ok&&d.ev) ev=d.ev; }catch(ex){}
+      try{ const r=await fetch('/api/db',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'loginPapa',usuario:u.trim(),clave:p.trim()})}); const d=await r.json().catch(()=>({})); if(d&&d.ok&&d.ev){ ev=d.ev; if(setConfs&&Array.isArray(d.confs)) setConfs(prev=>{const otras=(prev||[]).filter(c=>c&&c.evId!==ev.id);return [...otras,...d.confs];}); } }catch(ex){}
     }
     if(!ev){setErr('Datos incorrectos. Verificá usuario y contraseña.');return;}
     if(estaVencido(ev)){setErr('El acceso para este evento ha vencido.');return;}
