@@ -2231,6 +2231,17 @@ function AdminConfig({setVista,iaConfig,setIaConfig}){
         <input readOnly value={window.location.origin+window.location.pathname} style={{...S.input,background:'#f1f5f9',color:'#64748b',cursor:'not-allowed'}}/>
       </div>
 
+      <div style={{...S.card,marginBottom:14}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4}}>⚡ Accesos rápidos (recargas y herramientas)</h3>
+        <p style={{fontSize:11,color:'#64748b',marginBottom:12}}>Atajos a los servicios que usás. Se abren en otra pestaña.</p>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}>
+          <button onClick={()=>window.open('https://fal.ai/dashboard/billing','_blank')} style={{...S.btn,background:'#16a34a',color:'white',padding:'13px',fontSize:13,fontWeight:800}}>💳 Recargar fal.ai (imágenes/videos)</button>
+          <button onClick={()=>window.open('https://platform.openai.com/settings/organization/billing/overview','_blank')} style={{...S.btn,background:'#16a34a',color:'white',padding:'13px',fontSize:13,fontWeight:800}}>💳 Recargar OpenAI (preguntas/FAQ)</button>
+          <button onClick={()=>window.open('https://supabase.com/dashboard/project/tnubhbtihssubnfpwuvu','_blank')} style={{...S.btn,background:'#0f766e',color:'white',padding:'13px',fontSize:13,fontWeight:800}}>🗄️ Base de datos (Supabase)</button>
+          <button onClick={()=>window.open('https://vercel.com/dashboard','_blank')} style={{...S.btn,background:'#1e293b',color:'white',padding:'13px',fontSize:13,fontWeight:800}}>▲ Servidor / publicar (Vercel)</button>
+        </div>
+      </div>
+
       <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#0ea5e9,#06b6d4)',color:'white',padding:'13px 28px',fontSize:14}}>✓ Guardar configuración</button>
     </div>
   );
