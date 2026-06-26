@@ -165,7 +165,7 @@ function App(){
         {vista==='registros'   && (esDuena||rol==='encargada') && <Registros esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='pagos'       && (esDuena||rol==='encargada') && <Pagos sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='alertas'     && (esDuena||rol==='encargada') && <Alertas esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
-        {vista==='tareas'      && (esDuena||rol==='encargada') && <Tareas sesion={sesion} esDuena={esDuena} sucursales={sucursales} sucCtx={sucCtx}/>}
+        {vista==='tareas'      && (esDuena||rol==='encargada'||rol==='mantenimiento') && <Tareas sesion={sesion} esDuena={esDuena} sucursales={sucursales} sucCtx={sucCtx}/>}
         {vista==='empleados'   && esDuena && <Empleados empleados={empleados} sucursales={sucursales} recargar={recargar}/>}
         {vista==='sucursales'  && esDuena && <Sucursales sucursales={sucursales} recargar={recargar}/>}
         {vista==='config'      && esDuena && <Configuracion sucursales={sucursales} empleados={empleados} recargar={recargar}/>}
@@ -203,14 +203,14 @@ function Header({sesion,esDuena,sucursales,sucActiva,setSucActiva,onSalir,onChat
 
 /* ── Bottom nav (según rol) ── */
 /* ── TAREAS (estilo To-Do) por sucursal: listas, fotos VISIBLES, tildar hecho, borrar ── */
-function TareaItem({t,subFoto,onToggle,onBorrar,onFoto,onVer}){
+function TareaItem({t,subFoto,onToggle,onBorrar,onFoto,onVer,puedeBorrar}){
   return (
    <div style={{...S.card,marginBottom:8,padding:12}}>
      <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
        <button onClick={()=>onToggle(t)} style={{width:24,height:24,borderRadius:'50%',border:'2px solid '+(t.hecha?C.verde:C.bd),background:t.hecha?C.verde:'transparent',color:'#fff',cursor:'pointer',flexShrink:0,fontSize:13,fontWeight:900,marginTop:1,lineHeight:1}}>{t.hecha?'✓':''}</button>
        <span style={{flex:1,minWidth:0,fontSize:14,wordBreak:'break-word',...(t.hecha?{textDecoration:'line-through',color:C.tx2}:{})}}>{t.texto}</span>
        <label style={{cursor:'pointer',fontSize:17,flexShrink:0,opacity:subFoto===t.id?.5:1}}>{subFoto===t.id?'⏳':'📷'}<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>onFoto(t,e)}/></label>
-       <button onClick={()=>onBorrar(t)} style={{background:'none',border:'none',cursor:'pointer',fontSize:15,color:C.rojo,flexShrink:0}}>🗑</button>
+       {puedeBorrar!==false && <button onClick={()=>onBorrar(t)} style={{background:'none',border:'none',cursor:'pointer',fontSize:15,color:C.rojo,flexShrink:0}}>🗑</button>}
      </div>
      {(t.fotos&&t.fotos.length>0)&&(
       <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:10,paddingLeft:34}}>
@@ -226,14 +226,15 @@ function Tareas({sesion,esDuena,sucursales,sucCtx}){
   const [sel,setSel]=useState(null); const [cargando,setCargando]=useState(false);
   const [nuevaLista,setNuevaLista]=useState(''); const [nuevaTarea,setNuevaTarea]=useState('');
   const [verComp,setVerComp]=useState(true); const [visor,setVisor]=useState(null); const [subFoto,setSubFoto]=useState(null);
+  const esMant=sesion.rol_sistema==='mantenimiento';
+  const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
   async function cargar(){
-    if(!sucSel){setListas([]);setTareas([]);return;}
     setCargando(true);
     const [ls,ts]=await Promise.all([dbAll('fichaje_tarea_listas'),dbAll('fichaje_tareas')]);
-    setListas((ls||[]).filter(l=>l.sucursal_id===sucSel).sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||''))));
+    setListas((ls||[]).sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||''))));
     setTareas(ts||[]); setCargando(false);
   }
-  useEffect(()=>{cargar();},[sucSel]);
+  useEffect(()=>{cargar();},[]);
   async function crearLista(){const n=nuevaLista.trim();if(!n)return;const row=await dbInsert('fichaje_tarea_listas',{sucursal_id:sucSel,nombre:n});if(row){setNuevaLista('');await cargar();}}
   async function borrarLista(l,e){if(e)e.stopPropagation();if(!window.confirm('¿Borrar la lista "'+l.nombre+'" y TODAS sus tareas?'))return;await dbDelete('fichaje_tarea_listas',l.id);if(sel&&sel.id===l.id)setSel(null);await cargar();}
   async function agregarTarea(){const t=nuevaTarea.trim();if(!t||!sel)return;const row=await dbInsert('fichaje_tareas',{lista_id:sel.id,texto:t,hecha:false,fotos:[]});if(row){setNuevaTarea('');await cargar();}}
@@ -247,33 +248,15 @@ function Tareas({sesion,esDuena,sucursales,sucCtx}){
   return (
    <div className="fade">
      <h2 style={{fontSize:20,marginBottom:12}}>✅ Tareas</h2>
-     {esDuena&&(<select value={sucSel} onChange={e=>{setSucSel(e.target.value);setSel(null);}} style={{...S.input,marginBottom:12}}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>)}
-     {!sucSel ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>Elegí una sucursal.</div> :
-      !sel ? (
-       <div>
-         {cargando ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
-          listas.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay listas todavía.<br/>Creá la primera abajo 👇</div> :
-          listas.map(l=>(
-           <div key={l.id} onClick={()=>setSel(l)} style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
-             <span style={{fontSize:20}}>📋</span>
-             <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700}}>{l.nombre}</div><div style={{fontSize:11,color:C.tx2}}>{cnt(l.id)} pendientes</div></div>
-             <button onClick={e=>borrarLista(l,e)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:13}}>🗑</button>
-           </div>
-          ))
-         }
-         <div style={{...S.card,display:'flex',gap:8,marginTop:6}}>
-           <input value={nuevaLista} onChange={e=>setNuevaLista(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')crearLista();}} placeholder="Nombre de la lista (ej: Mantenimiento Play)" style={{...S.input,flex:1}}/>
-           <button onClick={crearLista} style={{...S.btn,...S.btnOro,whiteSpace:'nowrap'}}>+ Lista</button>
-         </div>
-       </div>
-      ) : (
+     {esDuena&&!sel&&(<select value={sucSel} onChange={e=>{setSucSel(e.target.value);}} style={{...S.input,marginBottom:12}}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}<option value="general">⭐ General (para todos)</option></select>)}
+     {sel ? (
        <div>
          <button onClick={()=>setSel(null)} style={{...S.btn,...S.btnGhost,marginBottom:10}}>← Listas</button>
          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,gap:8}}>
-           <h3 style={{fontSize:18,fontWeight:800,minWidth:0,wordBreak:'break-word'}}>{sel.nombre}</h3>
-           <button onClick={()=>borrarLista(sel)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:12,flexShrink:0}}>🗑 Lista</button>
+           <h3 style={{fontSize:18,fontWeight:800,minWidth:0,wordBreak:'break-word'}}>{sel.nombre}<span style={{fontSize:12,color:C.tx2,fontWeight:600}}> · {sel.sucursal_id==='general'?'General':sucNom(sel.sucursal_id)}</span></h3>
+           {!esMant && <button onClick={()=>borrarLista(sel)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:12,flexShrink:0}}>🗑 Lista</button>}
          </div>
-         {pend.map(t=>(<TareaItem key={t.id} t={t} subFoto={subFoto} onToggle={toggle} onBorrar={borrarTarea} onFoto={agregarFoto} onVer={setVisor}/>))}
+         {pend.map(t=>(<TareaItem key={t.id} t={t} subFoto={subFoto} onToggle={toggle} onBorrar={borrarTarea} onFoto={agregarFoto} onVer={setVisor} puedeBorrar={!esMant}/>))}
          <div style={{...S.card,display:'flex',gap:8,margin:'6px 0 16px'}}>
            <input value={nuevaTarea} onChange={e=>setNuevaTarea(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')agregarTarea();}} placeholder="Agregar una tarea" style={{...S.input,flex:1}}/>
            <button onClick={agregarTarea} style={{...S.btn,...S.btnOro,whiteSpace:'nowrap'}}>+ Tarea</button>
@@ -281,12 +264,43 @@ function Tareas({sesion,esDuena,sucursales,sucCtx}){
          {done.length>0&&(
           <div>
             <button onClick={()=>setVerComp(v=>!v)} style={{...S.btn,...S.btnGhost,marginBottom:8,fontSize:13}}>{verComp?'▾':'▸'} Completado ({done.length})</button>
-            {verComp&&done.map(t=>(<TareaItem key={t.id} t={t} subFoto={subFoto} onToggle={toggle} onBorrar={borrarTarea} onFoto={agregarFoto} onVer={setVisor}/>))}
+            {verComp&&done.map(t=>(<TareaItem key={t.id} t={t} subFoto={subFoto} onToggle={toggle} onBorrar={borrarTarea} onFoto={agregarFoto} onVer={setVisor} puedeBorrar={!esMant}/>))}
           </div>
          )}
        </div>
-      )
-     }
+     ) : cargando ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div>
+     : esMant ? (
+       (()=>{ const grupos=[...sucursales.map(s=>({id:s.id,nombre:s.nombre})),{id:'general',nombre:'⭐ General'}]; const hay=grupos.some(g=>listas.some(l=>(l.sucursal_id||'')===g.id)); return !hay ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay listas de tareas todavía.</div> : (
+        <div>{grupos.map(g=>{ const ls=listas.filter(l=>(l.sucursal_id||'')===g.id); if(!ls.length)return null; return (
+          <div key={g.id} style={{marginBottom:16}}>
+            <div style={{fontWeight:800,color:C.oro,fontSize:14,marginBottom:6}}>{g.nombre}</div>
+            {ls.map(l=>(
+             <div key={l.id} onClick={()=>setSel(l)} style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
+               <span style={{fontSize:20}}>📋</span>
+               <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700}}>{l.nombre}</div><div style={{fontSize:11,color:C.tx2}}>{cnt(l.id)} pendientes</div></div>
+               <span style={{color:C.tx2}}>▸</span>
+             </div>
+            ))}
+          </div>
+        );})}</div>
+       ); })()
+     ) : !sucSel ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>Elegí una sucursal.</div>
+     : (
+       <div>
+         {(()=>{ const ls=listas.filter(l=>(l.sucursal_id||'')===sucSel); return ls.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay listas todavía.<br/>Creá la primera abajo 👇</div> :
+          ls.map(l=>(
+           <div key={l.id} onClick={()=>setSel(l)} style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
+             <span style={{fontSize:20}}>📋</span>
+             <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700}}>{l.nombre}</div><div style={{fontSize:11,color:C.tx2}}>{cnt(l.id)} pendientes</div></div>
+             <button onClick={e=>borrarLista(l,e)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:13}}>🗑</button>
+           </div>
+          )); })()}
+         <div style={{...S.card,display:'flex',gap:8,marginTop:6}}>
+           <input value={nuevaLista} onChange={e=>setNuevaLista(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')crearLista();}} placeholder={sucSel==='general'?'Nombre de la lista general':'Nombre de la lista (ej: Mantenimiento Play)'} style={{...S.input,flex:1}}/>
+           <button onClick={crearLista} style={{...S.btn,...S.btnOro,whiteSpace:'nowrap'}}>+ Lista</button>
+         </div>
+       </div>
+     )}
      {visor&&(
        <div onClick={()=>setVisor(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:100,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:16,gap:14}}>
          <img src={visor.url} alt="" style={{maxWidth:'100%',maxHeight:'76vh',borderRadius:12,objectFit:'contain'}}/>
@@ -305,7 +319,7 @@ function BottomNav({rol,vista,setVista}){
     : rol==='encargada'
     ? [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
     : rol==='mantenimiento'
-    ? [['dashboard','🏠','Inicio'],['fichar','📍','Marcar']]
+    ? [['dashboard','🏠','Inicio'],['fichar','📍','Marcar'],['tareas','✅','Tareas']]
     : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
   return (
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50,paddingBottom:'env(safe-area-inset-bottom)'}}>
@@ -1033,6 +1047,79 @@ function ManualEvento({sesion,sucSel,empleados,figuras,onGuardado}){
 }
 
 /* ════════ PAGOS ════════ */
+/* ════════ B3: PAGO MANTENIMIENTO (por horas fichadas × valor hora, por rango) ════════ */
+function PagoMantenimiento({esDuena,sucursales,empleados,sucCtx}){
+  const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState(''); const [empSel,setEmpSel]=useState('');
+  const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false); const [abierto,setAbierto]=useState({});
+  const money=n=>'$'+Math.round(n).toLocaleString('es-AR');
+  const fmtDia=d=>{try{const p=d.split('-');return p[2]+'/'+p[1];}catch(e){return d;}};
+  const mants=empleados.filter(e=>e.rol_sistema==='mantenimiento').sort((a,b)=>(a.legajo||999)-(b.legajo||999));
+  async function calcular(){
+    if(!desde||!hasta){alert('Elegí el rango de fechas.');return;}
+    setCargando(true); setRes(null);
+    const fich=await dbAll('fichaje_fichajes');
+    const filas=mants.map(emp=>{
+      const fs=fich.filter(x=>x.empleado_id===emp.id && String(x.ts||'').slice(0,10)>=desde && String(x.ts||'').slice(0,10)<=hasta).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+      const byDia={}; fs.forEach(f=>{const d=String(f.ts).slice(0,10);(byDia[d]=byDia[d]||[]).push(f);});
+      const dias=[]; let totalH=0;
+      Object.keys(byDia).sort().forEach(d=>{
+        const arr=byDia[d]; let h=0,inT=null,incompleto=false;
+        arr.forEach(f=>{ if(f.tipo==='entrada'){inT=new Date(f.ts).getTime();} else if(f.tipo==='salida'){ if(inT!=null){h+=(new Date(f.ts).getTime()-inT)/3600000;inT=null;} } });
+        if(inT!=null)incompleto=true;
+        h=Math.max(0,h); dias.push({dia:d,horas:h,incompleto}); totalH+=h;
+      });
+      const vh=+(emp.valor_hora||0);
+      return {emp,dias,totalH,vh,monto:totalH*vh,sinValor:vh===0};
+    }).filter(f=>f.dias.length);
+    setRes({filas,total:filas.reduce((s,f)=>s+f.monto,0)}); setAbierto({}); setCargando(false);
+  }
+  function exportarPDF(){
+    if(!res)return; const {jsPDF}=window.jspdf; const doc=new jsPDF();
+    const filas=empSel?res.filas.filter(f=>f.emp.id===empSel):res.filas; const total=filas.reduce((s,f)=>s+f.monto,0);
+    let y=16; doc.setFontSize(15); doc.text('Pago Mantenimiento',14,y); y+=7; doc.setFontSize(10); doc.text('Período: '+desde+' al '+hasta,14,y); y+=8;
+    filas.forEach(f=>{ if(y>270){doc.addPage();y=16;} doc.setFontSize(11); doc.text(f.emp.nombre+'  ('+money(f.vh)+'/h)',14,y); y+=5; doc.setFontSize(9);
+      f.dias.forEach(d=>{ if(y>285){doc.addPage();y=16;} doc.text('  '+d.dia+'  '+d.horas.toFixed(2)+' hs'+(d.incompleto?' (sin salida)':''),16,y); y+=4.5; });
+      doc.setFontSize(10); doc.text('  TOTAL: '+f.totalH.toFixed(2)+' hs = '+money(f.monto),16,y); y+=8; });
+    if(y>275){doc.addPage();y=16;} doc.setFontSize(13); doc.text('TOTAL A PAGAR: '+money(total),14,y);
+    doc.save('mantenimiento_'+desde+'_'+hasta+'.pdf');
+  }
+  return (
+    <div>
+      <div style={{...S.card,marginBottom:12,display:'flex',flexDirection:'column',gap:10}}>
+        <select value={empSel} onChange={e=>setEmpSel(e.target.value)} style={S.input}><option value="">Todos (mantenimiento)</option>{mants.map(e=><option key={e.id} value={e.id}>{(e.legajo!=null?('#'+e.legajo+' '):'')+e.nombre}</option>)}</select>
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Desde</label><input type="date" style={S.input} value={desde} onChange={e=>setDesde(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={S.label}>Hasta</label><input type="date" style={S.input} value={hasta} onChange={e=>setHasta(e.target.value)}/></div>
+        </div>
+        <button onClick={calcular} disabled={cargando} style={{...S.btn,...S.btnOro}}>{cargando?'Calculando…':'Calcular pago'}</button>
+        <div style={{fontSize:11,color:C.tx2}}>Suma las horas entre entrada y salida de cada día × valor hora. Sirve para pagar por semana.</div>
+      </div>
+      {mants.length===0 && <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay personal de mantenimiento cargado.</div>}
+      {res && (()=>{ const filas=empSel?res.filas.filter(f=>f.emp.id===empSel):res.filas; const total=filas.reduce((s,f)=>s+f.monto,0); const uno=filas.length===1; return filas.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay marcas en ese rango.</div> : (
+        <div>
+          <div style={{...S.card,marginBottom:12,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div><div style={{fontSize:12,color:C.tx2}}>Total a pagar</div><div className="num" style={{fontSize:26,color:C.verde}}>{money(total)}</div></div>
+            <button onClick={exportarPDF} style={{...S.btn,...S.btnGhost}}>⬇ PDF</button>
+          </div>
+          {filas.map(f=>{ const op=uno||abierto[f.emp.id]; return (
+            <div key={f.emp.id} style={{...S.card,marginBottom:10}}>
+              <button onClick={()=>setAbierto(p=>({...p,[f.emp.id]:!op}))} style={{width:'100%',background:'none',border:'none',cursor:'pointer',color:C.tx,textAlign:'left',padding:0}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8}}>
+                  <div style={{fontWeight:700}}>{f.emp.legajo!=null&&<span className="num" style={{color:C.oro}}>#{f.emp.legajo} </span>}{f.emp.nombre} <span style={{color:C.tx2,fontWeight:400,fontSize:13}}>{op?'▾':'▸'}</span></div>
+                  <div className="num" style={{fontSize:18,color:C.verde}}>{money(f.monto)}</div>
+                </div>
+                <div style={{fontSize:11,color:C.tx2,marginTop:2,textAlign:'left'}}>{f.sinValor?<span style={{color:C.amar}}>⚠️ Falta cargar el valor hora</span>:(money(f.vh)+'/h · '+f.totalH.toFixed(2)+' hs')}</div>
+              </button>
+              {op && <div style={{display:'flex',flexDirection:'column',gap:3,marginTop:8,paddingTop:8,borderTop:'1px solid '+C.bd}}>
+                {f.dias.map((d,i)=>(<div key={i} style={{fontSize:12,color:C.tx2,display:'flex',justifyContent:'space-between',gap:8}}><span>{fmtDia(d.dia)}{d.incompleto?' ⚠️ sin salida':''}</span><span style={{whiteSpace:'nowrap'}}>{d.horas.toFixed(2)} hs</span></div>))}
+              </div>}
+            </div>
+          );})}
+        </div>
+      );})()}
+    </div>
+  );
+}
 function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
   const [sucSel,setSucSel]=useState(esDuena?(sucCtx||(sucursales[0]||{}).id||''):(sucCtx||''));
   const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState('');
@@ -1113,10 +1200,12 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
     <div className="fade">
       <h2 style={{fontSize:20,marginBottom:12}}>💰 Pagos</h2>
       <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>
-        <button onClick={()=>setTab('liq')} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:12.5,...(tab==='liq'?S.btnOro:S.btnGhost)}}>💵 Liquidación</button>
-        <button onClick={()=>setTab('comp')} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:12.5,...(tab==='comp'?S.btnOro:S.btnGhost)}}>🔍 Comparar</button>
-        <button onClick={()=>setTab('stats')} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:12.5,...(tab==='stats'?S.btnOro:S.btnGhost)}}>📊 Encuestas</button>
+        <button onClick={()=>setTab('liq')} style={{...S.btn,flex:1,minHeight:0,padding:'10px 6px',fontSize:12,...(tab==='liq'?S.btnOro:S.btnGhost)}}>💵 Liquidación</button>
+        <button onClick={()=>setTab('mant')} style={{...S.btn,flex:1,minHeight:0,padding:'10px 6px',fontSize:12,...(tab==='mant'?S.btnOro:S.btnGhost)}}>🔧 Manten.</button>
+        <button onClick={()=>setTab('comp')} style={{...S.btn,flex:1,minHeight:0,padding:'10px 6px',fontSize:12,...(tab==='comp'?S.btnOro:S.btnGhost)}}>🔍 Comparar</button>
+        <button onClick={()=>setTab('stats')} style={{...S.btn,flex:1,minHeight:0,padding:'10px 6px',fontSize:12,...(tab==='stats'?S.btnOro:S.btnGhost)}}>📊 Encuestas</button>
       </div>
+      {tab==='mant' && <PagoMantenimiento esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
       {tab==='comp' && <Comparacion esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
       {tab==='stats' && <StatsEncuestas esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
       {tab==='liq' && (<React.Fragment>

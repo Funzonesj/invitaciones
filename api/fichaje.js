@@ -94,6 +94,8 @@ module.exports = async (req, res) => {
 
     const tabla = String(b.tabla || '');
     if (!/^fichaje_[a-z_]+$/.test(tabla)) { res.status(400).json({ error: 'tabla inválida' }); return; }
+    // Mantenimiento puede operar las tablas de tareas (ver, agregar, tildar)
+    const okTarea = (rol === 'mantenimiento' && (tabla === 'fichaje_tareas' || tabla === 'fichaje_tarea_listas'));
 
     // ── Leer una tabla (scopeado por rol) ──
     if (action === 'all') {
@@ -115,7 +117,7 @@ module.exports = async (req, res) => {
     // ── Insertar ──
     if (action === 'insert') {
       const row = b.row || {};
-      if (!esAdmin) {
+      if (!esAdmin && !okTarea) {
         // un empleado SOLO puede registrar su propio fichaje
         if (tabla !== 'fichaje_fichajes') { res.status(401).json({ error: 'no autorizado' }); return; }
         row.empleado_id = ses.id; // forzar que sea él mismo
@@ -137,7 +139,7 @@ module.exports = async (req, res) => {
     // ── Actualizar ──
     if (action === 'update') {
       const id = String(b.id || ''); const row = b.row || {};
-      if (!esAdmin) { res.status(401).json({ error: 'no autorizado' }); return; }
+      if (!esAdmin && !okTarea) { res.status(401).json({ error: 'no autorizado' }); return; }
       const r = await sbRest(tabla + '?id=eq.' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify(row) });
       res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
       return;
@@ -146,7 +148,7 @@ module.exports = async (req, res) => {
     // ── Borrar (solo dueño/encargada) ──
     if (action === 'delete') {
       const id = String(b.id || '');
-      if (!esAdmin) { res.status(401).json({ error: 'no autorizado' }); return; }
+      if (!esAdmin && !okTarea) { res.status(401).json({ error: 'no autorizado' }); return; }
       const r = await sbRest(tabla + '?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
       res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
       return;
