@@ -487,15 +487,18 @@ function Sucursales({sucursales,recargar}){
 
 /* ── Empleados (dueña) ── */
 function Empleados({empleados,sucursales,recargar}){
-  const vacio={legajo:'',nombre:'',rol_habitual:[],valor_hora:'',sucursales:[],foto_url:'',usuario:'',clave:'',rol_sistema:'empleado',sucursal_encargada:''};
+  const vacio={legajo:'',nombre:'',rol_habitual:[],valor_hora:'',sucursales:[],foto_url:'',usuario:'',clave:'',rol_sistema:'empleado',sucursal_encargada:'',horario_fijo:[]};
   const [form,setForm]=useState(vacio); const [editId,setEditId]=useState(null); const [subiendo,setSubiendo]=useState(false);
   const parseRoles=v=>Array.isArray(v)?v:(v?String(v).split(',').map(s=>s.trim()).filter(Boolean):[]);
   function proximoLegajo(){ const usados=new Set((empleados||[]).map(e=>e.legajo).filter(x=>x!=null)); let n=1; while(usados.has(n))n++; return n; }
   useEffect(()=>{ if(editId===null && (form.legajo===''||form.legajo==null)) setForm(f=>({...f,legajo:proximoLegajo()})); },[empleados]);
-  function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',rol_habitual:parseRoles(em.rol_habitual),valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||''}); window.scrollTo(0,0); }
+  function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',rol_habitual:parseRoles(em.rol_habitual),valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||'',horario_fijo:em.horario_fijo||[]}); window.scrollTo(0,0); }
   function limpiar(){ setEditId(null); setForm({...vacio,legajo:proximoLegajo()}); }
   function toggleSuc(id){ setForm(f=>({...f,sucursales:(f.sucursales||[]).includes(id)?f.sucursales.filter(x=>x!==id):[...(f.sucursales||[]),id]})); }
   function toggleRol(r){ setForm(f=>({...f,rol_habitual:(f.rol_habitual||[]).includes(r)?f.rol_habitual.filter(x=>x!==r):[...(f.rol_habitual||[]),r]})); }
+  function diaOn(dia){ return (form.horario_fijo||[]).some(x=>x.dia===dia); }
+  function toggleDia(dia){ setForm(f=>{const hf=f.horario_fijo||[];return {...f,horario_fijo:hf.some(x=>x.dia===dia)?hf.filter(x=>x.dia!==dia):[...hf,{dia:dia,entrada:'09:00',salida:'18:00'}]};}); }
+  function setHora(dia,campo,val){ setForm(f=>({...f,horario_fijo:(f.horario_fijo||[]).map(x=>x.dia===dia?{...x,[campo]:val}:x)})); }
   async function elegirFoto(e){ const file=e.target.files[0]; if(!file)return; setSubiendo(true);
     const reader=new FileReader();
     reader.onload=async ev=>{ const url=await subirFoto(ev.target.result); setForm(f=>({...f,foto_url:url})); setSubiendo(false); };
@@ -504,7 +507,7 @@ function Empleados({empleados,sucursales,recargar}){
   async function guardar(){
     if(!form.nombre.trim()){ alert('Poné el nombre.'); return; }
     if(!form.usuario.trim()||!form.clave){ alert('Poné usuario y contraseña para que pueda ingresar.'); return; }
-    const row={ legajo:form.legajo===''?null:+form.legajo, nombre:form.nombre.trim(), rol_habitual:(form.rol_habitual||[]).join(', '), valor_hora:form.valor_hora===''?0:+form.valor_hora, sucursales:form.sucursales, foto_url:form.foto_url||null, usuario:form.usuario.trim(), clave:String(form.clave), rol_sistema:form.rol_sistema, sucursal_encargada:form.rol_sistema==='encargada'?(form.sucursal_encargada||null):null, activo:true };
+    const row={ legajo:form.legajo===''?null:+form.legajo, nombre:form.nombre.trim(), rol_habitual:(form.rol_habitual||[]).join(', '), valor_hora:form.valor_hora===''?0:+form.valor_hora, sucursales:form.sucursales, foto_url:form.foto_url||null, usuario:form.usuario.trim(), clave:String(form.clave), rol_sistema:form.rol_sistema, sucursal_encargada:form.rol_sistema==='encargada'?(form.sucursal_encargada||null):null, horario_fijo:form.rol_sistema==='encargada'?(form.horario_fijo||[]):[], activo:true };
     let ok;
     if(editId) ok=await dbUpdate('fichaje_empleados',editId,row); else ok=!!(await dbInsert('fichaje_empleados',row));
     if(ok){ await recargar(); limpiar(); }
@@ -567,6 +570,25 @@ function Empleados({empleados,sucursales,recargar}){
               <option value="">Elegí…</option>
               {sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
             </select>
+          </div>
+        )}
+        {form.rol_sistema==='encargada' && (
+          <div>
+            <label style={S.label}>🗓️ Horario fijo (semanal)</label>
+            <div style={{fontSize:11,color:C.tx2,marginBottom:8}}>Tocá los días que trabaja y poné entrada y salida. Queda fijo todas las semanas.</div>
+            {[['Lunes',1],['Martes',2],['Miércoles',3],['Jueves',4],['Viernes',5],['Sábado',6],['Domingo',0]].map(([lbl,dia])=>{
+              const on=diaOn(dia); const h=(form.horario_fijo||[]).find(x=>x.dia===dia)||{};
+              return (
+                <div key={dia} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                  <button type="button" onClick={()=>toggleDia(dia)} style={{...S.btn,minHeight:0,padding:'8px 10px',fontSize:12,width:104,textAlign:'left',flexShrink:0,...(on?{background:C.oro,color:'#1A1A1A'}:S.btnGhost)}}>{on?'✓ ':''}{lbl}</button>
+                  {on ? (<>
+                    <input type="time" value={h.entrada||'09:00'} onChange={e=>setHora(dia,'entrada',e.target.value)} style={{...S.input,flex:1,minWidth:0,marginBottom:0,padding:'8px 8px'}}/>
+                    <span style={{color:C.tx2,fontSize:12,flexShrink:0}}>a</span>
+                    <input type="time" value={h.salida||'18:00'} onChange={e=>setHora(dia,'salida',e.target.value)} style={{...S.input,flex:1,minWidth:0,marginBottom:0,padding:'8px 8px'}}/>
+                  </>) : <span style={{fontSize:12,color:C.tx2}}>no trabaja</span>}
+                </div>
+              );
+            })}
           </div>
         )}
         <div style={{display:'flex',gap:8}}>

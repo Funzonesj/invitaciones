@@ -1810,7 +1810,8 @@ function Empleados({
     usuario: '',
     clave: '',
     rol_sistema: 'empleado',
-    sucursal_encargada: ''
+    sucursal_encargada: '',
+    horario_fijo: []
   };
   const [form, setForm] = useState(vacio);
   const [editId, setEditId] = useState(null);
@@ -1840,7 +1841,8 @@ function Empleados({
       usuario: em.usuario || '',
       clave: em.clave || '',
       rol_sistema: em.rol_sistema || 'empleado',
-      sucursal_encargada: em.sucursal_encargada || ''
+      sucursal_encargada: em.sucursal_encargada || '',
+      horario_fijo: em.horario_fijo || []
     });
     window.scrollTo(0, 0);
   }
@@ -1861,6 +1863,31 @@ function Empleados({
     setForm(f => ({
       ...f,
       rol_habitual: (f.rol_habitual || []).includes(r) ? f.rol_habitual.filter(x => x !== r) : [...(f.rol_habitual || []), r]
+    }));
+  }
+  function diaOn(dia) {
+    return (form.horario_fijo || []).some(x => x.dia === dia);
+  }
+  function toggleDia(dia) {
+    setForm(f => {
+      const hf = f.horario_fijo || [];
+      return {
+        ...f,
+        horario_fijo: hf.some(x => x.dia === dia) ? hf.filter(x => x.dia !== dia) : [...hf, {
+          dia: dia,
+          entrada: '09:00',
+          salida: '18:00'
+        }]
+      };
+    });
+  }
+  function setHora(dia, campo, val) {
+    setForm(f => ({
+      ...f,
+      horario_fijo: (f.horario_fijo || []).map(x => x.dia === dia ? {
+        ...x,
+        [campo]: val
+      } : x)
     }));
   }
   async function elegirFoto(e) {
@@ -1898,6 +1925,7 @@ function Empleados({
       clave: String(form.clave),
       rol_sistema: form.rol_sistema,
       sucursal_encargada: form.rol_sistema === 'encargada' ? form.sucursal_encargada || null : null,
+      horario_fijo: form.rol_sistema === 'encargada' ? form.horario_fijo || [] : [],
       activo: true
     };
     let ok;
@@ -2155,7 +2183,76 @@ function Empleados({
   }, "Eleg\xED\u2026"), sucursales.map(s => /*#__PURE__*/React.createElement("option", {
     key: s.id,
     value: s.id
-  }, s.nombre)))), /*#__PURE__*/React.createElement("div", {
+  }, s.nombre)))), form.rol_sistema === 'encargada' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    style: S.label
+  }, "\uD83D\uDDD3\uFE0F Horario fijo (semanal)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.tx2,
+      marginBottom: 8
+    }
+  }, "Toc\xE1 los d\xEDas que trabaja y pon\xE9 entrada y salida. Queda fijo todas las semanas."), [['Lunes', 1], ['Martes', 2], ['Miércoles', 3], ['Jueves', 4], ['Viernes', 5], ['Sábado', 6], ['Domingo', 0]].map(([lbl, dia]) => {
+    const on = diaOn(dia);
+    const h = (form.horario_fijo || []).find(x => x.dia === dia) || {};
+    return /*#__PURE__*/React.createElement("div", {
+      key: dia,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 6
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      type: "button",
+      onClick: () => toggleDia(dia),
+      style: {
+        ...S.btn,
+        minHeight: 0,
+        padding: '8px 10px',
+        fontSize: 12,
+        width: 104,
+        textAlign: 'left',
+        flexShrink: 0,
+        ...(on ? {
+          background: C.oro,
+          color: '#1A1A1A'
+        } : S.btnGhost)
+      }
+    }, on ? '✓ ' : '', lbl), on ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("input", {
+      type: "time",
+      value: h.entrada || '09:00',
+      onChange: e => setHora(dia, 'entrada', e.target.value),
+      style: {
+        ...S.input,
+        flex: 1,
+        minWidth: 0,
+        marginBottom: 0,
+        padding: '8px 8px'
+      }
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.tx2,
+        fontSize: 12,
+        flexShrink: 0
+      }
+    }, "a"), /*#__PURE__*/React.createElement("input", {
+      type: "time",
+      value: h.salida || '18:00',
+      onChange: e => setHora(dia, 'salida', e.target.value),
+      style: {
+        ...S.input,
+        flex: 1,
+        minWidth: 0,
+        marginBottom: 0,
+        padding: '8px 8px'
+      }
+    })) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: C.tx2
+      }
+    }, "no trabaja"));
+  })), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
