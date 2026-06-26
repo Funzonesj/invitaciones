@@ -165,7 +165,7 @@ function App(){
         {vista==='registros'   && (esDuena||rol==='encargada') && <Registros esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='pagos'       && (esDuena||rol==='encargada') && <Pagos sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='alertas'     && (esDuena||rol==='encargada') && <Alertas esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
-        {vista==='tareas'      && (esDuena||rol==='encargada'||rol==='mantenimiento') && <Tareas sesion={sesion} esDuena={esDuena} sucursales={sucursales} sucCtx={sucCtx}/>}
+        {vista==='tareas'      && <Tareas sesion={sesion} esDuena={esDuena} sucursales={sucursales} sucCtx={sucCtx} empleados={empleados}/>}
         {vista==='empleados'   && esDuena && <Empleados empleados={empleados} sucursales={sucursales} recargar={recargar}/>}
         {vista==='sucursales'  && esDuena && <Sucursales sucursales={sucursales} recargar={recargar}/>}
         {vista==='config'      && esDuena && <Configuracion sucursales={sucursales} empleados={empleados} recargar={recargar}/>}
@@ -220,13 +220,16 @@ function TareaItem({t,subFoto,onToggle,onBorrar,onFoto,onVer,puedeBorrar}){
    </div>
   );
 }
-function Tareas({sesion,esDuena,sucursales,sucCtx}){
+function Tareas({sesion,esDuena,sucursales,sucCtx,empleados}){
   const [sucSel,setSucSel]=useState(sucCtx||(sucursales[0]&&sucursales[0].id)||'');
   const [listas,setListas]=useState([]); const [tareas,setTareas]=useState([]);
   const [sel,setSel]=useState(null); const [cargando,setCargando]=useState(false);
   const [nuevaLista,setNuevaLista]=useState(''); const [nuevaTarea,setNuevaTarea]=useState('');
-  const [verComp,setVerComp]=useState(true); const [visor,setVisor]=useState(null); const [subFoto,setSubFoto]=useState(null);
-  const esMant=sesion.rol_sistema==='mantenimiento';
+  const [verComp,setVerComp]=useState(true); const [visor,setVisor]=useState(null); const [subFoto,setSubFoto]=useState(null); const [asignOpen,setAsignOpen]=useState(false);
+  const rol=sesion.rol_sistema||'empleado';
+  const esMant=rol==='mantenimiento';
+  const esManager=esDuena||rol==='encargada';
+  const emps=empleados||[];
   const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
   async function cargar(){
     setCargando(true);
@@ -242,21 +245,47 @@ function Tareas({sesion,esDuena,sucursales,sucCtx}){
   async function borrarTarea(t){if(!window.confirm('¿Borrar esta tarea?'))return;await dbDelete('fichaje_tareas',t.id);await cargar();}
   function agregarFoto(t,e){const file=e.target.files[0];if(!file)return;e.target.value='';setSubFoto(t.id);const r=new FileReader();r.onload=async ev=>{const url=await subirFoto(ev.target.result);const fotos=[...(t.fotos||[]),url];await dbUpdate('fichaje_tareas',t.id,{fotos:fotos});setSubFoto(null);await cargar();};r.readAsDataURL(file);}
   async function quitarFoto(){if(!visor)return;const t=tareas.find(x=>x.id===visor.id);if(!t){setVisor(null);return;}const fotos=(t.fotos||[]).filter((_,i)=>i!==visor.idx);await dbUpdate('fichaje_tareas',t.id,{fotos:fotos});setVisor(null);await cargar();}
+  async function setEmpsLista(ids){ await dbUpdate('fichaje_tarea_listas',sel.id,{empleados:ids}); setSel(s=>({...s,empleados:ids})); setListas(ls=>ls.map(l=>l.id===sel.id?{...l,empleados:ids}:l)); }
+  function toggleEmpLista(id){ const cur=(sel.empleados||[]); setEmpsLista(cur.includes(id)?cur.filter(x=>x!==id):[...cur,id]); }
+  function asignarGrupo(fn){ setEmpsLista([...new Set([...(sel.empleados||[]),...emps.filter(fn).map(e=>e.id)])]); }
   const cnt=lid=>tareas.filter(t=>t.lista_id===lid&&!t.hecha).length;
+  const nAsig=l=>(l&&l.empleados?l.empleados.length:0);
   const pend=sel?tareas.filter(t=>t.lista_id===sel.id&&!t.hecha):[];
   const done=sel?tareas.filter(t=>t.lista_id===sel.id&&t.hecha):[];
   return (
    <div className="fade">
      <h2 style={{fontSize:20,marginBottom:12}}>✅ Tareas</h2>
-     {esDuena&&!sel&&(<select value={sucSel} onChange={e=>{setSucSel(e.target.value);}} style={{...S.input,marginBottom:12}}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}<option value="general">⭐ General (para todos)</option></select>)}
+     {esDuena&&!sel&&(<select value={sucSel} onChange={e=>{setSucSel(e.target.value);}} style={{...S.input,marginBottom:12}}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}<option value="general">⭐ General</option></select>)}
      {sel ? (
        <div>
-         <button onClick={()=>setSel(null)} style={{...S.btn,...S.btnGhost,marginBottom:10}}>← Listas</button>
+         <button onClick={()=>{setSel(null);setAsignOpen(false);}} style={{...S.btn,...S.btnGhost,marginBottom:10}}>← Listas</button>
          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,gap:8}}>
            <h3 style={{fontSize:18,fontWeight:800,minWidth:0,wordBreak:'break-word'}}>{sel.nombre}<span style={{fontSize:12,color:C.tx2,fontWeight:600}}> · {sel.sucursal_id==='general'?'General':sucNom(sel.sucursal_id)}</span></h3>
-           {!esMant && <button onClick={()=>borrarLista(sel)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:12,flexShrink:0}}>🗑 Lista</button>}
+           {esManager && <button onClick={()=>borrarLista(sel)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:12,flexShrink:0}}>🗑 Lista</button>}
          </div>
-         {pend.map(t=>(<TareaItem key={t.id} t={t} subFoto={subFoto} onToggle={toggle} onBorrar={borrarTarea} onFoto={agregarFoto} onVer={setVisor} puedeBorrar={!esMant}/>))}
+         {esManager && (
+           <div style={{...S.card,marginBottom:12,padding:12}}>
+             <button onClick={()=>setAsignOpen(o=>!o)} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',background:'none',border:'none',color:C.tx,cursor:'pointer',padding:0,fontSize:14,fontWeight:700}}><span>👥 Quién la ve ({(sel.empleados||[]).length})</span><span style={{color:C.tx2}}>{asignOpen?'▾':'▸'}</span></button>
+             {asignOpen && <div style={{marginTop:10}}>
+               <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
+                 <button onClick={()=>asignarGrupo(e=>e.rol_sistema==='mantenimiento')} style={{...S.btn,...S.btnGhost,fontSize:11,padding:'6px 10px',minHeight:0}}>+ Mantenimiento</button>
+                 {sucursales.map(s=><button key={s.id} onClick={()=>asignarGrupo(e=>(e.sucursales||[]).includes(s.id))} style={{...S.btn,...S.btnGhost,fontSize:11,padding:'6px 10px',minHeight:0}}>+ {s.nombre}</button>)}
+                 <button onClick={()=>setEmpsLista([])} style={{...S.btn,background:'#3a2020',color:C.rojo,fontSize:11,padding:'6px 10px',minHeight:0}}>Limpiar</button>
+               </div>
+               <div style={{display:'flex',flexDirection:'column',gap:3,maxHeight:240,overflowY:'auto'}}>
+                 {emps.filter(e=>e.activo!==false&&e.rol_sistema!=='dueno').sort((a,b)=>(a.legajo||999)-(b.legajo||999)).map(e=>{ const on=(sel.empleados||[]).includes(e.id); return (
+                   <label key={e.id} style={{display:'flex',alignItems:'center',gap:8,fontSize:13,padding:'6px 8px',borderRadius:8,background:on?C.surf2:'transparent',cursor:'pointer'}}>
+                     <input type="checkbox" checked={on} onChange={()=>toggleEmpLista(e.id)}/>
+                     <span style={{flex:1,minWidth:0}}>{(e.legajo!=null?('#'+e.legajo+' '):'')+e.nombre}</span>
+                     <span style={{fontSize:10,color:C.tx2}}>{e.rol_sistema==='mantenimiento'?'mant.':e.rol_sistema==='encargada'?'enc.':''}</span>
+                   </label>
+                 );})}
+               </div>
+               <div style={{fontSize:11,color:C.tx2,marginTop:8}}>Solo los tildados van a ver esta lista.</div>
+             </div>}
+           </div>
+         )}
+         {pend.map(t=>(<TareaItem key={t.id} t={t} subFoto={subFoto} onToggle={toggle} onBorrar={borrarTarea} onFoto={agregarFoto} onVer={setVisor} puedeBorrar={esManager}/>))}
          <div style={{...S.card,display:'flex',gap:8,margin:'6px 0 16px'}}>
            <input value={nuevaTarea} onChange={e=>setNuevaTarea(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')agregarTarea();}} placeholder="Agregar una tarea" style={{...S.input,flex:1}}/>
            <button onClick={agregarTarea} style={{...S.btn,...S.btnOro,whiteSpace:'nowrap'}}>+ Tarea</button>
@@ -264,14 +293,14 @@ function Tareas({sesion,esDuena,sucursales,sucCtx}){
          {done.length>0&&(
           <div>
             <button onClick={()=>setVerComp(v=>!v)} style={{...S.btn,...S.btnGhost,marginBottom:8,fontSize:13}}>{verComp?'▾':'▸'} Completado ({done.length})</button>
-            {verComp&&done.map(t=>(<TareaItem key={t.id} t={t} subFoto={subFoto} onToggle={toggle} onBorrar={borrarTarea} onFoto={agregarFoto} onVer={setVisor} puedeBorrar={!esMant}/>))}
+            {verComp&&done.map(t=>(<TareaItem key={t.id} t={t} subFoto={subFoto} onToggle={toggle} onBorrar={borrarTarea} onFoto={agregarFoto} onVer={setVisor} puedeBorrar={esManager}/>))}
           </div>
          )}
        </div>
      ) : cargando ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div>
-     : esMant ? (
-       (()=>{ const grupos=[...sucursales.map(s=>({id:s.id,nombre:s.nombre})),{id:'general',nombre:'⭐ General'}]; const hay=grupos.some(g=>listas.some(l=>(l.sucursal_id||'')===g.id)); return !hay ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay listas de tareas todavía.</div> : (
-        <div>{grupos.map(g=>{ const ls=listas.filter(l=>(l.sucursal_id||'')===g.id); if(!ls.length)return null; return (
+     : !esManager ? (
+       (()=>{ const mias=listas.filter(l=>(l.empleados||[]).includes(sesion.id)); const grupos=[...sucursales.map(s=>({id:s.id,nombre:s.nombre})),{id:'general',nombre:'⭐ General'}]; return mias.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No tenés listas de tareas asignadas todavía.</div> : (
+        <div>{grupos.map(g=>{ const ls=mias.filter(l=>(l.sucursal_id||'')===g.id); if(!ls.length)return null; return (
           <div key={g.id} style={{marginBottom:16}}>
             <div style={{fontWeight:800,color:C.oro,fontSize:14,marginBottom:6}}>{g.nombre}</div>
             {ls.map(l=>(
@@ -291,12 +320,12 @@ function Tareas({sesion,esDuena,sucursales,sucCtx}){
           ls.map(l=>(
            <div key={l.id} onClick={()=>setSel(l)} style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
              <span style={{fontSize:20}}>📋</span>
-             <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700}}>{l.nombre}</div><div style={{fontSize:11,color:C.tx2}}>{cnt(l.id)} pendientes</div></div>
+             <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700}}>{l.nombre}</div><div style={{fontSize:11,color:C.tx2}}>{cnt(l.id)} pendientes · 👥 {nAsig(l)}</div></div>
              <button onClick={e=>borrarLista(l,e)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:13}}>🗑</button>
            </div>
           )); })()}
          <div style={{...S.card,display:'flex',gap:8,marginTop:6}}>
-           <input value={nuevaLista} onChange={e=>setNuevaLista(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')crearLista();}} placeholder={sucSel==='general'?'Nombre de la lista general':'Nombre de la lista (ej: Mantenimiento Play)'} style={{...S.input,flex:1}}/>
+           <input value={nuevaLista} onChange={e=>setNuevaLista(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')crearLista();}} placeholder={sucSel==='general'?'Nombre de la lista general':'Nombre de la lista'} style={{...S.input,flex:1}}/>
            <button onClick={crearLista} style={{...S.btn,...S.btnOro,whiteSpace:'nowrap'}}>+ Lista</button>
          </div>
        </div>
@@ -320,7 +349,7 @@ function BottomNav({rol,vista,setVista}){
     ? [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
     : rol==='mantenimiento'
     ? [['dashboard','🏠','Inicio'],['fichar','📍','Marcar'],['tareas','✅','Tareas']]
-    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
+    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['tareas','✅','Tareas'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
   return (
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50,paddingBottom:'env(safe-area-inset-bottom)'}}>
       <div style={{maxWidth:560,margin:'0 auto',display:'flex'}}>

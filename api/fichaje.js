@@ -94,8 +94,9 @@ module.exports = async (req, res) => {
 
     const tabla = String(b.tabla || '');
     if (!/^fichaje_[a-z_]+$/.test(tabla)) { res.status(400).json({ error: 'tabla inválida' }); return; }
-    // Mantenimiento puede operar las tablas de tareas (ver, agregar, tildar)
-    const okTarea = (rol === 'mantenimiento' && (tabla === 'fichaje_tareas' || tabla === 'fichaje_tarea_listas'));
+    // Tareas: empleado y mantenimiento pueden agregar/tildar tareas; las LISTAS solo mantenimiento (y admins)
+    const okTarea = (tabla === 'fichaje_tareas' && (rol === 'mantenimiento' || rol === 'empleado'))
+                 || (tabla === 'fichaje_tarea_listas' && rol === 'mantenimiento');
 
     // ── Leer una tabla (scopeado por rol) ──
     if (action === 'all') {

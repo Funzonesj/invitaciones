@@ -531,11 +531,12 @@ function App() {
     sucursales: sucursales,
     empleados: empleados,
     sucCtx: sucCtx
-  }), vista === 'tareas' && (esDuena || rol === 'encargada' || rol === 'mantenimiento') && /*#__PURE__*/React.createElement(Tareas, {
+  }), vista === 'tareas' && /*#__PURE__*/React.createElement(Tareas, {
     sesion: sesion,
     esDuena: esDuena,
     sucursales: sucursales,
-    sucCtx: sucCtx
+    sucCtx: sucCtx,
+    empleados: empleados
   }), vista === 'empleados' && esDuena && /*#__PURE__*/React.createElement(Empleados, {
     empleados: empleados,
     sucursales: sucursales,
@@ -772,7 +773,8 @@ function Tareas({
   sesion,
   esDuena,
   sucursales,
-  sucCtx
+  sucCtx,
+  empleados
 }) {
   const [sucSel, setSucSel] = useState(sucCtx || sucursales[0] && sucursales[0].id || '');
   const [listas, setListas] = useState([]);
@@ -784,7 +786,11 @@ function Tareas({
   const [verComp, setVerComp] = useState(true);
   const [visor, setVisor] = useState(null);
   const [subFoto, setSubFoto] = useState(null);
-  const esMant = sesion.rol_sistema === 'mantenimiento';
+  const [asignOpen, setAsignOpen] = useState(false);
+  const rol = sesion.rol_sistema || 'empleado';
+  const esMant = rol === 'mantenimiento';
+  const esManager = esDuena || rol === 'encargada';
+  const emps = empleados || [];
   const sucNom = id => {
     const s = sucursales.find(x => x.id === id);
     return s ? s.nombre : '';
@@ -874,7 +880,28 @@ function Tareas({
     setVisor(null);
     await cargar();
   }
+  async function setEmpsLista(ids) {
+    await dbUpdate('fichaje_tarea_listas', sel.id, {
+      empleados: ids
+    });
+    setSel(s => ({
+      ...s,
+      empleados: ids
+    }));
+    setListas(ls => ls.map(l => l.id === sel.id ? {
+      ...l,
+      empleados: ids
+    } : l));
+  }
+  function toggleEmpLista(id) {
+    const cur = sel.empleados || [];
+    setEmpsLista(cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id]);
+  }
+  function asignarGrupo(fn) {
+    setEmpsLista([...new Set([...(sel.empleados || []), ...emps.filter(fn).map(e => e.id)])]);
+  }
   const cnt = lid => tareas.filter(t => t.lista_id === lid && !t.hecha).length;
+  const nAsig = l => l && l.empleados ? l.empleados.length : 0;
   const pend = sel ? tareas.filter(t => t.lista_id === sel.id && !t.hecha) : [];
   const done = sel ? tareas.filter(t => t.lista_id === sel.id && t.hecha) : [];
   return /*#__PURE__*/React.createElement("div", {
@@ -898,8 +925,11 @@ function Tareas({
     value: s.id
   }, s.nombre)), /*#__PURE__*/React.createElement("option", {
     value: "general"
-  }, "\u2B50 General (para todos)")), sel ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
-    onClick: () => setSel(null),
+  }, "\u2B50 General")), sel ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setSel(null);
+      setAsignOpen(false);
+    },
     style: {
       ...S.btn,
       ...S.btnGhost,
@@ -926,7 +956,7 @@ function Tareas({
       color: C.tx2,
       fontWeight: 600
     }
-  }, " \xB7 ", sel.sucursal_id === 'general' ? 'General' : sucNom(sel.sucursal_id))), !esMant && /*#__PURE__*/React.createElement("button", {
+  }, " \xB7 ", sel.sucursal_id === 'general' ? 'General' : sucNom(sel.sucursal_id))), esManager && /*#__PURE__*/React.createElement("button", {
     onClick: () => borrarLista(sel),
     style: {
       ...S.btn,
@@ -937,7 +967,115 @@ function Tareas({
       fontSize: 12,
       flexShrink: 0
     }
-  }, "\uD83D\uDDD1 Lista")), pend.map(t => /*#__PURE__*/React.createElement(TareaItem, {
+  }, "\uD83D\uDDD1 Lista")), esManager && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 12,
+      padding: 12
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setAsignOpen(o => !o),
+    style: {
+      width: '100%',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      background: 'none',
+      border: 'none',
+      color: C.tx,
+      cursor: 'pointer',
+      padding: 0,
+      fontSize: 14,
+      fontWeight: 700
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDC65 Qui\xE9n la ve (", (sel.empleados || []).length, ")"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.tx2
+    }
+  }, asignOpen ? '▾' : '▸')), asignOpen && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      flexWrap: 'wrap',
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => asignarGrupo(e => e.rol_sistema === 'mantenimiento'),
+    style: {
+      ...S.btn,
+      ...S.btnGhost,
+      fontSize: 11,
+      padding: '6px 10px',
+      minHeight: 0
+    }
+  }, "+ Mantenimiento"), sucursales.map(s => /*#__PURE__*/React.createElement("button", {
+    key: s.id,
+    onClick: () => asignarGrupo(e => (e.sucursales || []).includes(s.id)),
+    style: {
+      ...S.btn,
+      ...S.btnGhost,
+      fontSize: 11,
+      padding: '6px 10px',
+      minHeight: 0
+    }
+  }, "+ ", s.nombre)), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEmpsLista([]),
+    style: {
+      ...S.btn,
+      background: '#3a2020',
+      color: C.rojo,
+      fontSize: 11,
+      padding: '6px 10px',
+      minHeight: 0
+    }
+  }, "Limpiar")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 3,
+      maxHeight: 240,
+      overflowY: 'auto'
+    }
+  }, emps.filter(e => e.activo !== false && e.rol_sistema !== 'dueno').sort((a, b) => (a.legajo || 999) - (b.legajo || 999)).map(e => {
+    const on = (sel.empleados || []).includes(e.id);
+    return /*#__PURE__*/React.createElement("label", {
+      key: e.id,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 13,
+        padding: '6px 8px',
+        borderRadius: 8,
+        background: on ? C.surf2 : 'transparent',
+        cursor: 'pointer'
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: on,
+      onChange: () => toggleEmpLista(e.id)
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: 1,
+        minWidth: 0
+      }
+    }, (e.legajo != null ? '#' + e.legajo + ' ' : '') + e.nombre), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: C.tx2
+      }
+    }, e.rol_sistema === 'mantenimiento' ? 'mant.' : e.rol_sistema === 'encargada' ? 'enc.' : ''));
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.tx2,
+      marginTop: 8
+    }
+  }, "Solo los tildados van a ver esta lista."))), pend.map(t => /*#__PURE__*/React.createElement(TareaItem, {
     key: t.id,
     t: t,
     subFoto: subFoto,
@@ -945,7 +1083,7 @@ function Tareas({
     onBorrar: borrarTarea,
     onFoto: agregarFoto,
     onVer: setVisor,
-    puedeBorrar: !esMant
+    puedeBorrar: esManager
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
@@ -987,7 +1125,7 @@ function Tareas({
     onBorrar: borrarTarea,
     onFoto: agregarFoto,
     onVer: setVisor,
-    puedeBorrar: !esMant
+    puedeBorrar: esManager
   })))) : cargando ? /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: 'center',
@@ -995,7 +1133,8 @@ function Tareas({
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "spin"
-  })) : esMant ? (() => {
+  })) : !esManager ? (() => {
+    const mias = listas.filter(l => (l.empleados || []).includes(sesion.id));
     const grupos = [...sucursales.map(s => ({
       id: s.id,
       nombre: s.nombre
@@ -1003,16 +1142,15 @@ function Tareas({
       id: 'general',
       nombre: '⭐ General'
     }];
-    const hay = grupos.some(g => listas.some(l => (l.sucursal_id || '') === g.id));
-    return !hay ? /*#__PURE__*/React.createElement("div", {
+    return mias.length === 0 ? /*#__PURE__*/React.createElement("div", {
       style: {
         ...S.card,
         textAlign: 'center',
         color: C.tx2,
         padding: 24
       }
-    }, "No hay listas de tareas todav\xEDa.") : /*#__PURE__*/React.createElement("div", null, grupos.map(g => {
-      const ls = listas.filter(l => (l.sucursal_id || '') === g.id);
+    }, "No ten\xE9s listas de tareas asignadas todav\xEDa.") : /*#__PURE__*/React.createElement("div", null, grupos.map(g => {
+      const ls = mias.filter(l => (l.sucursal_id || '') === g.id);
       if (!ls.length) return null;
       return /*#__PURE__*/React.createElement("div", {
         key: g.id,
@@ -1106,7 +1244,7 @@ function Tareas({
         fontSize: 11,
         color: C.tx2
       }
-    }, cnt(l.id), " pendientes")), /*#__PURE__*/React.createElement("button", {
+    }, cnt(l.id), " pendientes \xB7 \uD83D\uDC65 ", nAsig(l))), /*#__PURE__*/React.createElement("button", {
       onClick: e => borrarLista(l, e),
       style: {
         ...S.btn,
@@ -1130,7 +1268,7 @@ function Tareas({
     onKeyDown: e => {
       if (e.key === 'Enter') crearLista();
     },
-    placeholder: sucSel === 'general' ? 'Nombre de la lista general' : 'Nombre de la lista (ej: Mantenimiento Play)',
+    placeholder: sucSel === 'general' ? 'Nombre de la lista general' : 'Nombre de la lista',
     style: {
       ...S.input,
       flex: 1
@@ -1193,7 +1331,7 @@ function BottomNav({
   vista,
   setVista
 }) {
-  const items = rol === 'dueno' ? [['dashboard', '🏠', 'Inicio'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['pagos', '💰', 'Pagos'], ['empleados', '👥', 'Empleados'], ['sucursales', '🏢', 'Salones'], ['config', '⚙️', 'Config']] : rol === 'encargada' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['registros', '📋', 'Fichajes'], ['pagos', '💰', 'Pagos'], ['alertas', '🔔', 'Alertas']] : rol === 'mantenimiento' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Marcar'], ['tareas', '✅', 'Tareas']] : [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['mishorarios', '📅', 'Mis horarios'], ['miplanilla', '📝', 'Mi planilla'], ['misencuestas', '💬', 'Mis encuestas']];
+  const items = rol === 'dueno' ? [['dashboard', '🏠', 'Inicio'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['pagos', '💰', 'Pagos'], ['empleados', '👥', 'Empleados'], ['sucursales', '🏢', 'Salones'], ['config', '⚙️', 'Config']] : rol === 'encargada' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['registros', '📋', 'Fichajes'], ['pagos', '💰', 'Pagos'], ['alertas', '🔔', 'Alertas']] : rol === 'mantenimiento' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Marcar'], ['tareas', '✅', 'Tareas']] : [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['tareas', '✅', 'Tareas'], ['mishorarios', '📅', 'Mis horarios'], ['miplanilla', '📝', 'Mi planilla'], ['misencuestas', '💬', 'Mis encuestas']];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
