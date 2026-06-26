@@ -1415,7 +1415,76 @@ function EncuestasView({esDuena,sucCtx,sucursales}){
 }
 
 /* ════════ REGISTROS / CONSULTOR (encargada/dueña): fichajes por empleado y fecha ════════ */
+/* ════════ A3: CONTROL DE ENCARGADAS (horario fijo vs fichado: tarde + faltas) ════════ */
+function ControlEncargadas({esDuena,sucursales,empleados,sucCtx}){
+  const [sucSel,setSucSel]=useState(''); const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState('');
+  const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false); const [abierto,setAbierto]=useState({});
+  const miSuc=esDuena?sucSel:sucCtx;
+  const DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const fmtH=ts=>{try{const d=new Date(ts);return _pad2(d.getHours())+':'+_pad2(d.getMinutes());}catch(e){return '';}};
+  const encs=empleados.filter(e=>e.rol_sistema==='encargada' && (e.horario_fijo||[]).length && (!miSuc || e.sucursal_encargada===miSuc || (e.sucursales||[]).includes(miSuc)));
+  async function calcular(){
+    if(!desde||!hasta){alert('Elegí el rango de fechas.');return;}
+    setCargando(true); setRes(null);
+    const fich=await dbAll('fichaje_fichajes');
+    const filas=encs.map(enc=>{
+      const dias=[]; let d=new Date(desde+'T00:00:00'); const end=new Date(hasta+'T00:00:00');
+      while(d<=end){
+        const iso=d.getFullYear()+'-'+_pad2(d.getMonth()+1)+'-'+_pad2(d.getDate()); const dow=d.getDay();
+        const hf=(enc.horario_fijo||[]).find(h=>h.dia===dow);
+        if(hf){
+          const fe=fich.filter(x=>x.empleado_id===enc.id && x.tipo==='entrada' && String(x.ts||'').slice(0,10)===iso).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+          let estado='falta', hora='';
+          if(fe.length){ const f0=fe[0]; hora=fmtH(f0.ts); estado=(f0.estado==='tarde')?'tarde':'ok'; }
+          dias.push({fecha:iso,dow,hf,estado,hora});
+        }
+        d.setDate(d.getDate()+1);
+      }
+      return {enc,dias,faltas:dias.filter(x=>x.estado==='falta').length,tardes:dias.filter(x=>x.estado==='tarde').length};
+    }).filter(f=>f.dias.length);
+    setRes(filas); setAbierto({}); setCargando(false);
+  }
+  const estChip={ok:['En hora',C.verde],tarde:['Tarde',C.amar],falta:['Faltó',C.rojo]};
+  return (
+    <div>
+      <div style={{...S.card,marginBottom:12,display:'flex',flexDirection:'column',gap:10}}>
+        {esDuena && <select value={sucSel} onChange={e=>setSucSel(e.target.value)} style={S.input}><option value="">Todos los salones</option>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
+        <div style={{display:'flex',gap:8}}>
+          <div style={{flex:1}}><label style={S.label}>Desde</label><input type="date" style={S.input} value={desde} onChange={e=>setDesde(e.target.value)}/></div>
+          <div style={{flex:1}}><label style={S.label}>Hasta</label><input type="date" style={S.input} value={hasta} onChange={e=>setHasta(e.target.value)}/></div>
+        </div>
+        <button onClick={calcular} disabled={cargando} style={{...S.btn,...S.btnOro}}>{cargando?'Revisando…':'🔎 Revisar'}</button>
+        <div style={{fontSize:11,color:C.tx2}}>Compara el horario fijo de cada encargada con lo que fichó. Marca <b style={{color:C.amar}}>tarde</b> y <b style={{color:C.rojo}}>faltas</b> (días que tenía horario y no fichó).</div>
+      </div>
+      {encs.length===0 && <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay encargadas con horario fijo cargado. Cargáselo en 👥 Empleados.</div>}
+      {res && (res.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay días con horario en ese rango.</div> :
+        res.map(f=>{ const op=res.length===1||abierto[f.enc.id]; return (
+          <div key={f.enc.id} style={{...S.card,marginBottom:10}}>
+            <button onClick={()=>setAbierto(p=>({...p,[f.enc.id]:!op}))} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,background:'none',border:'none',cursor:'pointer',color:C.tx,textAlign:'left',padding:0}}>
+              <div style={{fontWeight:700}}>{f.enc.nombre} <span style={{color:C.tx2,fontWeight:400,fontSize:13}}>{op?'▾':'▸'}</span></div>
+              <div style={{display:'flex',gap:5,flexWrap:'wrap',justifyContent:'flex-end'}}>
+                {f.faltas>0&&<span style={{...S.chip,background:'#3a2020',color:C.rojo}}>{f.faltas} falta{f.faltas!==1?'s':''}</span>}
+                {f.tardes>0&&<span style={{...S.chip,background:'#3a3320',color:C.amar}}>{f.tardes} tarde</span>}
+                {f.faltas===0&&f.tardes===0&&<span style={{...S.chip,background:'#16331f',color:C.verde}}>✅ Todo OK</span>}
+              </div>
+            </button>
+            {op && <div style={{display:'flex',flexDirection:'column',gap:4,marginTop:8,paddingTop:8,borderTop:'1px solid '+C.bd}}>
+              {f.dias.map((x,i)=>{ const e=estChip[x.estado]; return (
+                <div key={i} style={{display:'flex',alignItems:'center',gap:8,fontSize:12,padding:'3px 0'}}>
+                  <span style={{width:78,flexShrink:0,color:C.tx2}}>{DOW[x.dow]} {x.fecha.slice(8,10)}/{x.fecha.slice(5,7)}</span>
+                  <span style={{flex:1,minWidth:0,color:C.tx2}}>Debe {x.hf.entrada}-{x.hf.salida}{x.hora?(' · fichó '+x.hora):''}</span>
+                  <span style={{...S.chip,background:'#242424',color:e[1],border:'1px solid '+C.bd,flexShrink:0}}>{e[0]}</span>
+                </div>
+              );})}
+            </div>}
+          </div>
+        );})
+      )}
+    </div>
+  );
+}
 function Registros({esDuena,sucursales,empleados,sucCtx}){
+  const [tab,setTab]=useState('fich');
   const [sucSel,setSucSel]=useState(''); const [empSel,setEmpSel]=useState(''); const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState('');
   const [data,setData]=useState(null); const [cargando,setCargando]=useState(false); const [abierto,setAbierto]=useState({});
   const empNom=id=>{const e=empleados.find(x=>x.id===id);return e?((e.legajo!=null?('#'+e.legajo+' '):'')+e.nombre):'(empleado)';};
@@ -1451,7 +1520,12 @@ function Registros({esDuena,sucursales,empleados,sucCtx}){
   }
   return (
     <div className="fade">
-      <h2 style={{fontSize:20,marginBottom:4}}>📋 Fichajes</h2>
+      <h2 style={{fontSize:20,marginBottom:10}}>📋 Fichajes</h2>
+      <div style={{display:'flex',gap:6,marginBottom:12}}>
+        <button onClick={()=>setTab('fich')} style={{...S.btn,flex:1,minHeight:0,padding:'9px',fontSize:12.5,...(tab==='fich'?S.btnOro:S.btnGhost)}}>📋 Fichajes</button>
+        <button onClick={()=>setTab('enc')} style={{...S.btn,flex:1,minHeight:0,padding:'9px',fontSize:12.5,...(tab==='enc'?S.btnOro:S.btnGhost)}}>👔 Encargadas</button>
+      </div>
+      {tab==='enc' ? <ControlEncargadas esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/> : (<React.Fragment>
       <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Consultá quién fichó, cuándo y su estado. Filtrá por empleado y fecha.</p>
       <div style={{...S.card,marginBottom:12,display:'flex',flexDirection:'column',gap:10}}>
         {esDuena && <select value={sucSel} onChange={e=>{setSucSel(e.target.value);setEmpSel('');}} style={S.input}><option value="">Todos los salones</option>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>}
@@ -1491,6 +1565,7 @@ function Registros({esDuena,sucursales,empleados,sucCtx}){
         </div>
         );})()
       )}
+      </React.Fragment>)}
     </div>
   );
 }

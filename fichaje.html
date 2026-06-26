@@ -5085,12 +5085,271 @@ function EncuestasView({
 }
 
 /* ════════ REGISTROS / CONSULTOR (encargada/dueña): fichajes por empleado y fecha ════════ */
+/* ════════ A3: CONTROL DE ENCARGADAS (horario fijo vs fichado: tarde + faltas) ════════ */
+function ControlEncargadas({
+  esDuena,
+  sucursales,
+  empleados,
+  sucCtx
+}) {
+  const [sucSel, setSucSel] = useState('');
+  const [desde, setDesde] = useState('');
+  const [hasta, setHasta] = useState('');
+  const [res, setRes] = useState(null);
+  const [cargando, setCargando] = useState(false);
+  const [abierto, setAbierto] = useState({});
+  const miSuc = esDuena ? sucSel : sucCtx;
+  const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const fmtH = ts => {
+    try {
+      const d = new Date(ts);
+      return _pad2(d.getHours()) + ':' + _pad2(d.getMinutes());
+    } catch (e) {
+      return '';
+    }
+  };
+  const encs = empleados.filter(e => e.rol_sistema === 'encargada' && (e.horario_fijo || []).length && (!miSuc || e.sucursal_encargada === miSuc || (e.sucursales || []).includes(miSuc)));
+  async function calcular() {
+    if (!desde || !hasta) {
+      alert('Elegí el rango de fechas.');
+      return;
+    }
+    setCargando(true);
+    setRes(null);
+    const fich = await dbAll('fichaje_fichajes');
+    const filas = encs.map(enc => {
+      const dias = [];
+      let d = new Date(desde + 'T00:00:00');
+      const end = new Date(hasta + 'T00:00:00');
+      while (d <= end) {
+        const iso = d.getFullYear() + '-' + _pad2(d.getMonth() + 1) + '-' + _pad2(d.getDate());
+        const dow = d.getDay();
+        const hf = (enc.horario_fijo || []).find(h => h.dia === dow);
+        if (hf) {
+          const fe = fich.filter(x => x.empleado_id === enc.id && x.tipo === 'entrada' && String(x.ts || '').slice(0, 10) === iso).sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+          let estado = 'falta',
+            hora = '';
+          if (fe.length) {
+            const f0 = fe[0];
+            hora = fmtH(f0.ts);
+            estado = f0.estado === 'tarde' ? 'tarde' : 'ok';
+          }
+          dias.push({
+            fecha: iso,
+            dow,
+            hf,
+            estado,
+            hora
+          });
+        }
+        d.setDate(d.getDate() + 1);
+      }
+      return {
+        enc,
+        dias,
+        faltas: dias.filter(x => x.estado === 'falta').length,
+        tardes: dias.filter(x => x.estado === 'tarde').length
+      };
+    }).filter(f => f.dias.length);
+    setRes(filas);
+    setAbierto({});
+    setCargando(false);
+  }
+  const estChip = {
+    ok: ['En hora', C.verde],
+    tarde: ['Tarde', C.amar],
+    falta: ['Faltó', C.rojo]
+  };
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 12,
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 10
+    }
+  }, esDuena && /*#__PURE__*/React.createElement("select", {
+    value: sucSel,
+    onChange: e => setSucSel(e.target.value),
+    style: S.input
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Todos los salones"), sucursales.map(s => /*#__PURE__*/React.createElement("option", {
+    key: s.id,
+    value: s.id
+  }, s.nombre))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: S.label
+  }, "Desde"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    style: S.input,
+    value: desde,
+    onChange: e => setDesde(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: S.label
+  }, "Hasta"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    style: S.input,
+    value: hasta,
+    onChange: e => setHasta(e.target.value)
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: calcular,
+    disabled: cargando,
+    style: {
+      ...S.btn,
+      ...S.btnOro
+    }
+  }, cargando ? 'Revisando…' : '🔎 Revisar'), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.tx2
+    }
+  }, "Compara el horario fijo de cada encargada con lo que fich\xF3. Marca ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: C.amar
+    }
+  }, "tarde"), " y ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: C.rojo
+    }
+  }, "faltas"), " (d\xEDas que ten\xEDa horario y no fich\xF3).")), encs.length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      textAlign: 'center',
+      color: C.tx2,
+      padding: 24
+    }
+  }, "No hay encargadas con horario fijo cargado. Carg\xE1selo en \uD83D\uDC65 Empleados."), res && (res.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      textAlign: 'center',
+      color: C.tx2,
+      padding: 24
+    }
+  }, "No hay d\xEDas con horario en ese rango.") : res.map(f => {
+    const op = res.length === 1 || abierto[f.enc.id];
+    return /*#__PURE__*/React.createElement("div", {
+      key: f.enc.id,
+      style: {
+        ...S.card,
+        marginBottom: 10
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setAbierto(p => ({
+        ...p,
+        [f.enc.id]: !op
+      })),
+      style: {
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 8,
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        color: C.tx,
+        textAlign: 'left',
+        padding: 0
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700
+      }
+    }, f.enc.nombre, " ", /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.tx2,
+        fontWeight: 400,
+        fontSize: 13
+      }
+    }, op ? '▾' : '▸')), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 5,
+        flexWrap: 'wrap',
+        justifyContent: 'flex-end'
+      }
+    }, f.faltas > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...S.chip,
+        background: '#3a2020',
+        color: C.rojo
+      }
+    }, f.faltas, " falta", f.faltas !== 1 ? 's' : ''), f.tardes > 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...S.chip,
+        background: '#3a3320',
+        color: C.amar
+      }
+    }, f.tardes, " tarde"), f.faltas === 0 && f.tardes === 0 && /*#__PURE__*/React.createElement("span", {
+      style: {
+        ...S.chip,
+        background: '#16331f',
+        color: C.verde
+      }
+    }, "\u2705 Todo OK"))), op && /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        marginTop: 8,
+        paddingTop: 8,
+        borderTop: '1px solid ' + C.bd
+      }
+    }, f.dias.map((x, i) => {
+      const e = estChip[x.estado];
+      return /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 12,
+          padding: '3px 0'
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          width: 78,
+          flexShrink: 0,
+          color: C.tx2
+        }
+      }, DOW[x.dow], " ", x.fecha.slice(8, 10), "/", x.fecha.slice(5, 7)), /*#__PURE__*/React.createElement("span", {
+        style: {
+          flex: 1,
+          minWidth: 0,
+          color: C.tx2
+        }
+      }, "Debe ", x.hf.entrada, "-", x.hf.salida, x.hora ? ' · fichó ' + x.hora : ''), /*#__PURE__*/React.createElement("span", {
+        style: {
+          ...S.chip,
+          background: '#242424',
+          color: e[1],
+          border: '1px solid ' + C.bd,
+          flexShrink: 0
+        }
+      }, e[0]));
+    })));
+  })));
+}
 function Registros({
   esDuena,
   sucursales,
   empleados,
   sucCtx
 }) {
+  const [tab, setTab] = useState('fich');
   const [sucSel, setSucSel] = useState('');
   const [empSel, setEmpSel] = useState('');
   const [desde, setDesde] = useState('');
@@ -5176,9 +5435,40 @@ function Registros({
   }, /*#__PURE__*/React.createElement("h2", {
     style: {
       fontSize: 20,
-      marginBottom: 4
+      marginBottom: 10
     }
-  }, "\uD83D\uDCCB Fichajes"), /*#__PURE__*/React.createElement("p", {
+  }, "\uD83D\uDCCB Fichajes"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setTab('fich'),
+    style: {
+      ...S.btn,
+      flex: 1,
+      minHeight: 0,
+      padding: '9px',
+      fontSize: 12.5,
+      ...(tab === 'fich' ? S.btnOro : S.btnGhost)
+    }
+  }, "\uD83D\uDCCB Fichajes"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setTab('enc'),
+    style: {
+      ...S.btn,
+      flex: 1,
+      minHeight: 0,
+      padding: '9px',
+      fontSize: 12.5,
+      ...(tab === 'enc' ? S.btnOro : S.btnGhost)
+    }
+  }, "\uD83D\uDC54 Encargadas")), tab === 'enc' ? /*#__PURE__*/React.createElement(ControlEncargadas, {
+    esDuena: esDuena,
+    sucursales: sucursales,
+    empleados: empleados,
+    sucCtx: sucCtx
+  }) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 12,
       color: C.tx2,
@@ -5370,7 +5660,7 @@ function Registros({
         }, est[0]));
       })));
     }));
-  })()));
+  })())));
 }
 
 /* ════════ ALERTAS (encargada/dueña) ════════ */
