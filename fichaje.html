@@ -824,6 +824,26 @@ function Tareas({
     if (sel && sel.id === l.id) setSel(null);
     await cargar();
   }
+  async function renombrarLista(l, e) {
+    if (e) e.stopPropagation();
+    const lst = l || sel;
+    if (!lst) return;
+    const n = window.prompt('Nuevo nombre de la lista:', lst.nombre || '');
+    if (n == null) return;
+    const nn = n.trim();
+    if (!nn) return;
+    await dbUpdate('fichaje_tarea_listas', lst.id, {
+      nombre: nn
+    });
+    setListas(ls => ls.map(x => x.id === lst.id ? {
+      ...x,
+      nombre: nn
+    } : x));
+    setSel(s => s && s.id === lst.id ? {
+      ...s,
+      nombre: nn
+    } : s);
+  }
   async function agregarTarea() {
     const t = nuevaTarea.trim();
     if (!t || !sel) return;
@@ -962,7 +982,22 @@ function Tareas({
       color: C.tx2,
       fontWeight: 600
     }
-  }, " \xB7 ", sel.sucursal_id === 'general' ? 'General' : sucNom(sel.sucursal_id))), esManager && /*#__PURE__*/React.createElement("button", {
+  }, " \xB7 ", sel.sucursal_id === 'general' ? 'General' : sucNom(sel.sucursal_id))), esManager && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => renombrarLista(sel),
+    style: {
+      ...S.btn,
+      ...S.btnGhost,
+      padding: '7px 10px',
+      minHeight: 0,
+      fontSize: 12
+    }
+  }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
     onClick: () => borrarLista(sel),
     style: {
       ...S.btn,
@@ -970,10 +1005,9 @@ function Tareas({
       color: C.rojo,
       padding: '7px 10px',
       minHeight: 0,
-      fontSize: 12,
-      flexShrink: 0
+      fontSize: 12
     }
-  }, "\uD83D\uDDD1 Lista")), esManager && /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDDD1"))), esManager && /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 12,

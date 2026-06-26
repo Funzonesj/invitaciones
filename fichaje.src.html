@@ -240,6 +240,7 @@ function Tareas({sesion,esDuena,sucursales,sucCtx,empleados}){
   useEffect(()=>{cargar();},[]);
   async function crearLista(){const n=nuevaLista.trim();if(!n)return;const row=await dbInsert('fichaje_tarea_listas',{sucursal_id:sucSel,nombre:n});if(row){setNuevaLista('');await cargar();}}
   async function borrarLista(l,e){if(e)e.stopPropagation();if(!window.confirm('¿Borrar la lista "'+l.nombre+'" y TODAS sus tareas?'))return;await dbDelete('fichaje_tarea_listas',l.id);if(sel&&sel.id===l.id)setSel(null);await cargar();}
+  async function renombrarLista(l,e){if(e)e.stopPropagation();const lst=l||sel;if(!lst)return;const n=window.prompt('Nuevo nombre de la lista:',lst.nombre||'');if(n==null)return;const nn=n.trim();if(!nn)return;await dbUpdate('fichaje_tarea_listas',lst.id,{nombre:nn});setListas(ls=>ls.map(x=>x.id===lst.id?{...x,nombre:nn}:x));setSel(s=>(s&&s.id===lst.id?{...s,nombre:nn}:s));}
   async function agregarTarea(){const t=nuevaTarea.trim();if(!t||!sel)return;const row=await dbInsert('fichaje_tareas',{lista_id:sel.id,texto:t,hecha:false,fotos:[]});if(row){setNuevaTarea('');await cargar();}}
   async function toggle(t){await dbUpdate('fichaje_tareas',t.id,{hecha:!t.hecha});await cargar();}
   async function borrarTarea(t){if(!window.confirm('¿Borrar esta tarea?'))return;await dbDelete('fichaje_tareas',t.id);await cargar();}
@@ -263,7 +264,10 @@ function Tareas({sesion,esDuena,sucursales,sucCtx,empleados}){
          <button onClick={()=>{setSel(null);setAsignOpen(false);}} style={{...S.btn,...S.btnGhost,marginBottom:10}}>← Listas</button>
          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,gap:8}}>
            <h3 style={{fontSize:18,fontWeight:800,minWidth:0,wordBreak:'break-word'}}>{sel.nombre}<span style={{fontSize:12,color:C.tx2,fontWeight:600}}> · {sel.sucursal_id==='general'?'General':sucNom(sel.sucursal_id)}</span></h3>
-           {esManager && <button onClick={()=>borrarLista(sel)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:12,flexShrink:0}}>🗑 Lista</button>}
+           {esManager && <div style={{display:'flex',gap:6,flexShrink:0}}>
+             <button onClick={()=>renombrarLista(sel)} style={{...S.btn,...S.btnGhost,padding:'7px 10px',minHeight:0,fontSize:12}}>✏️</button>
+             <button onClick={()=>borrarLista(sel)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:12}}>🗑</button>
+           </div>}
          </div>
          {esManager && (
            <div style={{...S.card,marginBottom:12,padding:12}}>
