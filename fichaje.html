@@ -3723,6 +3723,8 @@ function Pagos({
   const [res, setRes] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [tab, setTab] = useState('liq');
+  const [empSel, setEmpSel] = useState('');
+  const [abierto, setAbierto] = useState({});
   useEffect(() => {
     (async () => {
       const c = await dbAll('fichaje_config');
@@ -3905,6 +3907,8 @@ function Pagos({
       jsPDF
     } = window.jspdf;
     const doc = new jsPDF();
+    const filas = empSel ? res.filas.filter(f => f.key === empSel) : res.filas;
+    const total = filas.reduce((s, f) => s + f.monto, 0);
     let y = 16;
     doc.setFontSize(15);
     doc.text('Liquidación — ' + sucNom(sucSel), 14, y);
@@ -3912,7 +3916,7 @@ function Pagos({
     doc.setFontSize(10);
     doc.text('Período: ' + desde + ' al ' + hasta, 14, y);
     y += 8;
-    res.filas.forEach(f => {
+    filas.forEach(f => {
       if (y > 270) {
         doc.addPage();
         y = 16;
@@ -3946,7 +3950,7 @@ function Pagos({
       y = 16;
     }
     doc.setFontSize(13);
-    doc.text('TOTAL A PAGAR: ' + money(res.total), 14, y);
+    doc.text('TOTAL A PAGAR: ' + money(total), 14, y);
     doc.save('liquidacion_' + desde + '_' + hasta + '.pdf');
   }
   return /*#__PURE__*/React.createElement("div", {
@@ -4018,7 +4022,16 @@ function Pagos({
   }, sucursales.map(s => /*#__PURE__*/React.createElement("option", {
     key: s.id,
     value: s.id
-  }, s.nombre))), /*#__PURE__*/React.createElement("div", {
+  }, s.nombre))), /*#__PURE__*/React.createElement("select", {
+    value: empSel,
+    onChange: e => setEmpSel(e.target.value),
+    style: S.input
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Todos los empleados"), empleados.filter(e => !sucSel || (e.sucursales || []).includes(sucSel)).sort((a, b) => (a.legajo || 999) - (b.legajo || 999)).map(e => /*#__PURE__*/React.createElement("option", {
+    key: e.id,
+    value: e.id
+  }, (e.legajo != null ? '#' + e.legajo + ' ' : '') + e.nombre))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
@@ -4052,130 +4065,163 @@ function Pagos({
       ...S.btn,
       ...S.btnOro
     }
-  }, cargando ? 'Calculando…' : 'Calcular pagos')), res && (res.filas.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...S.card,
-      textAlign: 'center',
-      color: C.tx2,
-      padding: 24
-    }
-  }, "No hay horarios cargados en ese rango.") : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...S.card,
-      marginBottom: 12,
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: C.tx2
-    }
-  }, "Total a pagar"), /*#__PURE__*/React.createElement("div", {
-    className: "num",
-    style: {
-      fontSize: 26,
-      color: C.verde
-    }
-  }, money(res.total))), /*#__PURE__*/React.createElement("button", {
-    onClick: exportarPDF,
-    style: {
-      ...S.btn,
-      ...S.btnGhost
-    }
-  }, "\u2B07 PDF")), res.filas.map(f => /*#__PURE__*/React.createElement("div", {
-    key: f.key,
-    style: {
-      ...S.card,
-      marginBottom: 10
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'baseline'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 700
-    }
-  }, f.legajo != null && /*#__PURE__*/React.createElement("span", {
-    className: "num",
-    style: {
-      color: C.oro
-    }
-  }, "#", f.legajo, " "), f.nombre), /*#__PURE__*/React.createElement("div", {
-    className: "num",
-    style: {
-      fontSize: 18,
-      color: C.verde
-    }
-  }, money(f.monto))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: C.tx2,
-      marginBottom: 6
-    }
-  }, f.sinValor ? /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: C.amar
-    }
-  }, "\u26A0\uFE0F Falta cargar el valor hora") : money(f.valorHora) + '/h · ' + f.horasTot + 'hs' + (f.bonusTot ? ' + bonus' : '')), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 3
-    }
-  }, f.detalle.map((d, i) => /*#__PURE__*/React.createElement("div", {
-    key: i,
-    style: {
-      fontSize: 12,
-      color: C.tx2,
-      display: 'flex',
-      justifyContent: 'space-between',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("span", null, fechaLinda(d.dia), " \xB7 ", d.desc), /*#__PURE__*/React.createElement("span", {
-    style: {
-      whiteSpace: 'nowrap'
-    }
-  }, d.horas, "hs"))), f.bonusTot > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: C.oro,
-      fontWeight: 700,
-      display: 'flex',
-      justifyContent: 'space-between',
-      gap: 8
-    }
-  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDC9C Bonus encuesta Excelente \xD7", f.bonusCount), /*#__PURE__*/React.createElement("span", {
-    style: {
-      whiteSpace: 'nowrap'
-    }
-  }, "+", money(f.bonusTot))), f.bonusPerdido > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: C.rojo,
-      fontWeight: 700
-    }
-  }, "\u23F0 Perdi\xF3 ", f.bonusPerdido, " bonus por llegadas tarde")))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...S.card,
-      background: '#2a2418',
-      border: '1px solid #4a3d1c',
-      fontSize: 12,
-      color: C.tx2
-    }
-  }, "\uD83D\uDC9C ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: C.oro
-    }
-  }, "Bonus \"Excelente\""), ": $", (+cfg.bonus_excelente).toLocaleString('es-AR'), " por cada evento que el pap\xE1 calific\xF3 Excelente. Total bonus del per\xEDodo: ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: C.oro
-    }
-  }, money(res.totalBonus || 0)), ". ", res.totalBonus === 0 && '(Si no aparece, revisá que la encuesta esté Excelente y que la fecha/hora del evento coincida con la cargada en el salón.)')))));
+  }, cargando ? 'Calculando…' : 'Calcular pagos')), res && (() => {
+    const filas = empSel ? res.filas.filter(f => f.key === empSel) : res.filas;
+    const total = filas.reduce((s, f) => s + f.monto, 0);
+    const uno = filas.length === 1;
+    return filas.length === 0 ? /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...S.card,
+        textAlign: 'center',
+        color: C.tx2,
+        padding: 24
+      }
+    }, "No hay horarios cargados en ese rango.") : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...S.card,
+        marginBottom: 12,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.tx2
+      }
+    }, "Total a pagar", empSel ? ' (1 empleado)' : ''), /*#__PURE__*/React.createElement("div", {
+      className: "num",
+      style: {
+        fontSize: 26,
+        color: C.verde
+      }
+    }, money(total))), /*#__PURE__*/React.createElement("button", {
+      onClick: exportarPDF,
+      style: {
+        ...S.btn,
+        ...S.btnGhost
+      }
+    }, "\u2B07 PDF")), filas.map(f => {
+      const op = uno || abierto[f.key];
+      return /*#__PURE__*/React.createElement("div", {
+        key: f.key,
+        style: {
+          ...S.card,
+          marginBottom: 10
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: () => setAbierto(p => ({
+          ...p,
+          [f.key]: !op
+        })),
+        style: {
+          width: '100%',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          color: C.tx,
+          textAlign: 'left',
+          padding: 0
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'baseline',
+          gap: 8
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontWeight: 700
+        }
+      }, f.legajo != null && /*#__PURE__*/React.createElement("span", {
+        className: "num",
+        style: {
+          color: C.oro
+        }
+      }, "#", f.legajo, " "), f.nombre, " ", /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.tx2,
+          fontWeight: 400,
+          fontSize: 13
+        }
+      }, op ? '▾' : '▸')), /*#__PURE__*/React.createElement("div", {
+        className: "num",
+        style: {
+          fontSize: 18,
+          color: C.verde
+        }
+      }, money(f.monto))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          color: C.tx2,
+          marginTop: 2,
+          textAlign: 'left'
+        }
+      }, f.sinValor ? /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.amar
+        }
+      }, "\u26A0\uFE0F Falta cargar el valor hora") : money(f.valorHora) + '/h · ' + f.horasTot + 'hs' + (f.bonusTot ? ' + bonus' : ''))), op && /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 3,
+          marginTop: 8,
+          paddingTop: 8,
+          borderTop: '1px solid ' + C.bd
+        }
+      }, f.detalle.map((d, i) => /*#__PURE__*/React.createElement("div", {
+        key: i,
+        style: {
+          fontSize: 12,
+          color: C.tx2,
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 8
+        }
+      }, /*#__PURE__*/React.createElement("span", null, fechaLinda(d.dia), " \xB7 ", d.desc), /*#__PURE__*/React.createElement("span", {
+        style: {
+          whiteSpace: 'nowrap'
+        }
+      }, d.horas, "hs"))), f.bonusTot > 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: C.oro,
+          fontWeight: 700,
+          display: 'flex',
+          justifyContent: 'space-between',
+          gap: 8
+        }
+      }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDC9C Bonus encuesta Excelente \xD7", f.bonusCount), /*#__PURE__*/React.createElement("span", {
+        style: {
+          whiteSpace: 'nowrap'
+        }
+      }, "+", money(f.bonusTot))), f.bonusPerdido > 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 11,
+          color: C.rojo,
+          fontWeight: 700
+        }
+      }, "\u23F0 Perdi\xF3 ", f.bonusPerdido, " bonus por llegadas tarde")));
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        ...S.card,
+        background: '#2a2418',
+        border: '1px solid #4a3d1c',
+        fontSize: 12,
+        color: C.tx2
+      }
+    }, "\uD83D\uDC9C ", /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: C.oro
+      }
+    }, "Bonus \"Excelente\""), ": $", (+cfg.bonus_excelente).toLocaleString('es-AR'), " por cada evento que el pap\xE1 calific\xF3 Excelente. Total bonus del per\xEDodo: ", /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: C.oro
+      }
+    }, money(res.totalBonus || 0)), ". ", res.totalBonus === 0 && '(Si no aparece, revisá que la encuesta esté Excelente y que la fecha/hora del evento coincida con la cargada en el salón.)'));
+  })()));
 }
 
 /* ════════ ESTADÍSTICA DE ENCUESTAS POR EMPLEADO ════════ */
