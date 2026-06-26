@@ -304,6 +304,8 @@ function BottomNav({rol,vista,setVista}){
     ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones'],['config','⚙️','Config']]
     : rol==='encargada'
     ? [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
+    : rol==='mantenimiento'
+    ? [['dashboard','🏠','Inicio'],['fichar','📍','Marcar']]
     : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
   return (
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50,paddingBottom:'env(safe-area-inset-bottom)'}}>
@@ -393,12 +395,12 @@ function Dashboard({sesion,rol,sucursales,empleados,sucCtx,setVista}){
     <div className="fade">
       <h2 style={{fontSize:20,marginBottom:4}}>Hola, {String(sesion.nombre||'').split(' ')[0]} 👋</h2>
       <p style={{color:C.tx2,fontSize:13,marginBottom:14}}>{rol==='dueno'?'Vista general':rol==='encargada'?'Tu sucursal':'Tu actividad'}</p>
-      {rol==='empleado' ? (
+      {(rol==='empleado'||rol==='mantenimiento') ? (
         <div style={{...S.card,textAlign:'center',padding:'26px 16px'}}>
           <div style={{fontSize:40}}>📍</div>
-          <p style={{fontWeight:700,marginTop:8}}>¿Listo para fichar?</p>
+          <p style={{fontWeight:700,marginTop:8}}>{rol==='mantenimiento'?'¿Listo para marcar?':'¿Listo para fichar?'}</p>
           <p style={{color:C.tx2,fontSize:13,margin:'6px 0 14px'}}>Tocá el botón y seguí los pasos (ubicación + foto).</p>
-          <button onClick={()=>setVista('fichar')} style={{...S.btn,...S.btnOro,width:'100%'}}>📍 Fichar ahora</button>
+          <button onClick={()=>setVista('fichar')} style={{...S.btn,...S.btnOro,width:'100%'}}>📍 {rol==='mantenimiento'?'Marcar ahora':'Fichar ahora'}</button>
         </div>
       ) : (
         <>
@@ -577,11 +579,13 @@ function Empleados({empleados,sucursales,recargar}){
           <select style={S.input} value={form.rol_sistema} onChange={e=>setForm({...form,rol_sistema:e.target.value})}>
             <option value="empleado">Empleado — solo fichar</option>
             <option value="encargada">Encargada — gestiona su salón</option>
+            <option value="mantenimiento">Mantenimiento — marca y ve tareas</option>
             <option value="dueno">Dueña — acceso total</option>
           </select>
           <div style={{fontSize:11,color:C.tx2,marginTop:6,lineHeight:1.6}}>
             <b style={{color:C.tx}}>Empleado</b>: solo marca entrada y salida.<br/>
             <b style={{color:C.tx}}>Encargada</b>: ve y maneja los horarios, fichajes y pagos de su salón.<br/>
+            <b style={{color:C.tx}}>Mantenimiento</b>: marca presencia (sin horario fijo) y ve las tareas de los dos salones.<br/>
             <b style={{color:C.tx}}>Dueña</b>: ve y maneja todo, los dos salones.
           </div>
         </div>
@@ -1489,7 +1493,7 @@ function Registros({esDuena,sucursales,empleados,sucCtx}){
   const [data,setData]=useState(null); const [cargando,setCargando]=useState(false); const [abierto,setAbierto]=useState({});
   const empNom=id=>{const e=empleados.find(x=>x.id===id);return e?((e.legajo!=null?('#'+e.legajo+' '):'')+e.nombre):'(empleado)';};
   const fmtTs=ts=>{try{const d=new Date(ts);return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}catch(e){return '';}};
-  const estChip={en_hora:['En hora',C.verde],tarde:['Tarde',C.amar],sin_horario:['Sin horario',C.rojo],salida:['Salida',C.tx2]};
+  const estChip={en_hora:['En hora',C.verde],tarde:['Tarde',C.amar],sin_horario:['Sin horario',C.rojo],salida:['Salida',C.tx2],presente:['Presente',C.verde]};
   const miSuc=esDuena?sucSel:sucCtx;
   const empsFiltro=empleados.filter(e=>!miSuc||((e.sucursales||[]).includes(miSuc))).sort((a,b)=>(a.legajo||999)-(b.legajo||999));
   async function buscar(){ setCargando(true); setData(null);
@@ -1637,7 +1641,7 @@ function Fichar({sesion,sucursales}){
   const [cfg,setCfg]=useState({tarde_tolerancia_min:5,tarde_max_mes:5,tarde_suspension_dias:30});
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));})();},[]);
   const sucOkRef=useRef(null); const geoRef=useRef(null); const videoRef=useRef(); const canvasRef=useRef(); const streamRef=useRef();
-  const misSucs=[...new Set([...((sesion.sucursales)||[]),sesion.sucursal_encargada].filter(Boolean))].map(id=>sucursales.find(s=>s.id===id)).filter(Boolean);
+  const misSucs=(sesion.rol_sistema==='mantenimiento')?(sucursales||[]):[...new Set([...((sesion.sucursales)||[]),sesion.sucursal_encargada].filter(Boolean))].map(id=>sucursales.find(s=>s.id===id)).filter(Boolean);
   function pararCamara(){try{streamRef.current&&streamRef.current.getTracks().forEach(t=>t.stop());}catch(e){}}
   useEffect(()=>()=>pararCamara(),[]);
   function comenzar(t){ setTipo(t); setRes(null); setMsg('Obteniendo tu ubicación…'); setPaso('cargando');
@@ -1686,6 +1690,8 @@ function Fichar({sesion,sucursales}){
         else { estado='salida'; }
       }
     }
+    // Mantenimiento: marca presencia, sin horario fijo (no cuenta tarde ni sin_horario)
+    if(sesion.rol_sistema==='mantenimiento'){ coincide=true; eventoDesc='Mantenimiento'; estado=(tipo==='entrada')?'presente':'salida'; }
     await dbInsert('fichaje_fichajes',{empleado_id:sesion.id,sucursal_id:sucOk.id,evento_id:eventoId,tipo,lat:geoRef.current.la,lng:geoRef.current.lo,foto_url:fotoUrl,facial_ok:facialOk,estado});
     // penalización por tardanza
     let tardeInfo=null;

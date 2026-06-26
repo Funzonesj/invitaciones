@@ -1114,7 +1114,7 @@ function BottomNav({
   vista,
   setVista
 }) {
-  const items = rol === 'dueno' ? [['dashboard', '🏠', 'Inicio'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['pagos', '💰', 'Pagos'], ['empleados', '👥', 'Empleados'], ['sucursales', '🏢', 'Salones'], ['config', '⚙️', 'Config']] : rol === 'encargada' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['registros', '📋', 'Fichajes'], ['pagos', '💰', 'Pagos'], ['alertas', '🔔', 'Alertas']] : [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['mishorarios', '📅', 'Mis horarios'], ['miplanilla', '📝', 'Mi planilla'], ['misencuestas', '💬', 'Mis encuestas']];
+  const items = rol === 'dueno' ? [['dashboard', '🏠', 'Inicio'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['pagos', '💰', 'Pagos'], ['empleados', '👥', 'Empleados'], ['sucursales', '🏢', 'Salones'], ['config', '⚙️', 'Config']] : rol === 'encargada' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['registros', '📋', 'Fichajes'], ['pagos', '💰', 'Pagos'], ['alertas', '🔔', 'Alertas']] : rol === 'mantenimiento' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Marcar']] : [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['mishorarios', '📅', 'Mis horarios'], ['miplanilla', '📝', 'Mi planilla'], ['misencuestas', '💬', 'Mis encuestas']];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
@@ -1434,7 +1434,7 @@ function Dashboard({
       fontSize: 13,
       marginBottom: 14
     }
-  }, rol === 'dueno' ? 'Vista general' : rol === 'encargada' ? 'Tu sucursal' : 'Tu actividad'), rol === 'empleado' ? /*#__PURE__*/React.createElement("div", {
+  }, rol === 'dueno' ? 'Vista general' : rol === 'encargada' ? 'Tu sucursal' : 'Tu actividad'), rol === 'empleado' || rol === 'mantenimiento' ? /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       textAlign: 'center',
@@ -1449,7 +1449,7 @@ function Dashboard({
       fontWeight: 700,
       marginTop: 8
     }
-  }, "\xBFListo para fichar?"), /*#__PURE__*/React.createElement("p", {
+  }, rol === 'mantenimiento' ? '¿Listo para marcar?' : '¿Listo para fichar?'), /*#__PURE__*/React.createElement("p", {
     style: {
       color: C.tx2,
       fontSize: 13,
@@ -1462,7 +1462,7 @@ function Dashboard({
       ...S.btnOro,
       width: '100%'
     }
-  }, "\uD83D\uDCCD Fichar ahora")) : /*#__PURE__*/React.createElement(React.Fragment, null, rol === 'encargada' && /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDCCD ", rol === 'mantenimiento' ? 'Marcar ahora' : 'Fichar ahora')) : /*#__PURE__*/React.createElement(React.Fragment, null, rol === 'encargada' && /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       textAlign: 'center',
@@ -2201,6 +2201,8 @@ function Empleados({
   }, "Empleado \u2014 solo fichar"), /*#__PURE__*/React.createElement("option", {
     value: "encargada"
   }, "Encargada \u2014 gestiona su sal\xF3n"), /*#__PURE__*/React.createElement("option", {
+    value: "mantenimiento"
+  }, "Mantenimiento \u2014 marca y ve tareas"), /*#__PURE__*/React.createElement("option", {
     value: "dueno"
   }, "Due\xF1a \u2014 acceso total")), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -2218,6 +2220,10 @@ function Empleados({
       color: C.tx
     }
   }, "Encargada"), ": ve y maneja los horarios, fichajes y pagos de su sal\xF3n.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: C.tx
+    }
+  }, "Mantenimiento"), ": marca presencia (sin horario fijo) y ve las tareas de los dos salones.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.tx
     }
@@ -5373,7 +5379,8 @@ function Registros({
     en_hora: ['En hora', C.verde],
     tarde: ['Tarde', C.amar],
     sin_horario: ['Sin horario', C.rojo],
-    salida: ['Salida', C.tx2]
+    salida: ['Salida', C.tx2],
+    presente: ['Presente', C.verde]
   };
   const miSuc = esDuena ? sucSel : sucCtx;
   const empsFiltro = empleados.filter(e => !miSuc || (e.sucursales || []).includes(miSuc)).sort((a, b) => (a.legajo || 999) - (b.legajo || 999));
@@ -5924,7 +5931,7 @@ function Fichar({
   const videoRef = useRef();
   const canvasRef = useRef();
   const streamRef = useRef();
-  const misSucs = [...new Set([...(sesion.sucursales || []), sesion.sucursal_encargada].filter(Boolean))].map(id => sucursales.find(s => s.id === id)).filter(Boolean);
+  const misSucs = sesion.rol_sistema === 'mantenimiento' ? sucursales || [] : [...new Set([...(sesion.sucursales || []), sesion.sucursal_encargada].filter(Boolean))].map(id => sucursales.find(s => s.id === id)).filter(Boolean);
   function pararCamara() {
     try {
       streamRef.current && streamRef.current.getTracks().forEach(t => t.stop());
@@ -6083,6 +6090,12 @@ function Fichar({
           estado = 'salida';
         }
       }
+    }
+    // Mantenimiento: marca presencia, sin horario fijo (no cuenta tarde ni sin_horario)
+    if (sesion.rol_sistema === 'mantenimiento') {
+      coincide = true;
+      eventoDesc = 'Mantenimiento';
+      estado = tipo === 'entrada' ? 'presente' : 'salida';
     }
     await dbInsert('fichaje_fichajes', {
       empleado_id: sesion.id,
