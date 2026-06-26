@@ -509,6 +509,7 @@ function Empleados({empleados,sucursales,recargar}){
   function diaOn(dia){ return (form.horario_fijo||[]).some(x=>x.dia===dia); }
   function toggleDia(dia){ setForm(f=>{const hf=f.horario_fijo||[];return {...f,horario_fijo:hf.some(x=>x.dia===dia)?hf.filter(x=>x.dia!==dia):[...hf,{dia:dia,entrada:'09:00',salida:'18:00'}]};}); }
   function setHora(dia,campo,val){ setForm(f=>({...f,horario_fijo:(f.horario_fijo||[]).map(x=>x.dia===dia?{...x,[campo]:val}:x)})); }
+  function repetirHoras(){ setForm(f=>{ const hf=f.horario_fijo||[]; if(hf.length<2)return f; const ord=[1,2,3,4,5,6,0]; const base=[...hf].sort((a,b)=>ord.indexOf(a.dia)-ord.indexOf(b.dia))[0]; return {...f,horario_fijo:hf.map(x=>({...x,entrada:base.entrada,salida:base.salida}))}; }); }
   async function elegirFoto(e){ const file=e.target.files[0]; if(!file)return; setSubiendo(true);
     const reader=new FileReader();
     reader.onload=async ev=>{ const url=await subirFoto(ev.target.result); setForm(f=>({...f,foto_url:url})); setSubiendo(false); };
@@ -609,6 +610,9 @@ function Empleados({empleados,sucursales,recargar}){
                 </div>
               );
             })}
+            {(form.horario_fijo||[]).length>1 && (
+              <button type="button" onClick={repetirHoras} style={{...S.btn,...S.btnGhost,width:'100%',marginTop:6,fontSize:13}}>📋 Repetir el horario del 1° día en todos los marcados</button>
+            )}
           </div>
         )}
         <div style={{display:'flex',gap:8}}>

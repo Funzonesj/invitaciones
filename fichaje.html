@@ -1919,6 +1919,22 @@ function Empleados({
       } : x)
     }));
   }
+  function repetirHoras() {
+    setForm(f => {
+      const hf = f.horario_fijo || [];
+      if (hf.length < 2) return f;
+      const ord = [1, 2, 3, 4, 5, 6, 0];
+      const base = [...hf].sort((a, b) => ord.indexOf(a.dia) - ord.indexOf(b.dia))[0];
+      return {
+        ...f,
+        horario_fijo: hf.map(x => ({
+          ...x,
+          entrada: base.entrada,
+          salida: base.salida
+        }))
+      };
+    });
+  }
   async function elegirFoto(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -2288,7 +2304,17 @@ function Empleados({
         color: C.tx2
       }
     }, "no trabaja"));
-  })), /*#__PURE__*/React.createElement("div", {
+  }), (form.horario_fijo || []).length > 1 && /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: repetirHoras,
+    style: {
+      ...S.btn,
+      ...S.btnGhost,
+      width: '100%',
+      marginTop: 6,
+      fontSize: 13
+    }
+  }, "\uD83D\uDCCB Repetir el horario del 1\xB0 d\xEDa en todos los marcados")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
