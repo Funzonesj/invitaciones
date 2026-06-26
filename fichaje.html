@@ -1958,7 +1958,7 @@ function Empleados({
     setEditId(null);
     setForm({
       ...vacio,
-      legajo: proximoLegajo()
+      legajo: ''
     });
   }
   function toggleSuc(id) {
@@ -2055,8 +2055,8 @@ function Empleados({
     let ok;
     if (editId) ok = await dbUpdate('fichaje_empleados', editId, row);else ok = !!(await dbInsert('fichaje_empleados', row));
     if (ok) {
-      await recargar();
       limpiar();
+      await recargar();
     }
   }
   async function borrar(em) {

@@ -519,7 +519,7 @@ function Empleados({empleados,sucursales,recargar}){
   function proximoLegajo(){ const usados=new Set((empleados||[]).map(e=>e.legajo).filter(x=>x!=null)); let n=1; while(usados.has(n))n++; return n; }
   useEffect(()=>{ if(editId===null && (form.legajo===''||form.legajo==null)) setForm(f=>({...f,legajo:proximoLegajo()})); },[empleados]);
   function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',rol_habitual:parseRoles(em.rol_habitual),valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||'',horario_fijo:em.horario_fijo||[]}); window.scrollTo(0,0); }
-  function limpiar(){ setEditId(null); setForm({...vacio,legajo:proximoLegajo()}); }
+  function limpiar(){ setEditId(null); setForm({...vacio,legajo:''}); }
   function toggleSuc(id){ setForm(f=>({...f,sucursales:(f.sucursales||[]).includes(id)?f.sucursales.filter(x=>x!==id):[...(f.sucursales||[]),id]})); }
   function toggleRol(r){ setForm(f=>({...f,rol_habitual:(f.rol_habitual||[]).includes(r)?f.rol_habitual.filter(x=>x!==r):[...(f.rol_habitual||[]),r]})); }
   function diaOn(dia){ return (form.horario_fijo||[]).some(x=>x.dia===dia); }
@@ -537,7 +537,7 @@ function Empleados({empleados,sucursales,recargar}){
     const row={ legajo:form.legajo===''?null:+form.legajo, nombre:form.nombre.trim(), rol_habitual:(form.rol_habitual||[]).join(', '), valor_hora:form.valor_hora===''?0:+form.valor_hora, sucursales:form.sucursales, foto_url:form.foto_url||null, usuario:form.usuario.trim(), clave:String(form.clave), rol_sistema:form.rol_sistema, sucursal_encargada:form.rol_sistema==='encargada'?(form.sucursal_encargada||null):null, horario_fijo:form.rol_sistema==='encargada'?(form.horario_fijo||[]):[], activo:true };
     let ok;
     if(editId) ok=await dbUpdate('fichaje_empleados',editId,row); else ok=!!(await dbInsert('fichaje_empleados',row));
-    if(ok){ await recargar(); limpiar(); }
+    if(ok){ limpiar(); await recargar(); }
   }
   async function borrar(em){
     if(!window.confirm('¿Borrar a '+em.nombre+'? No se puede deshacer.'))return;
