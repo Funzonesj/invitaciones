@@ -570,7 +570,7 @@ function Empleados({empleados,sucursales,recargar}){
         <div>
           <label style={S.label}>Roles que puede hacer (tocá para sumar o quitar)</label>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-            {['Cocinero','Mozo','Auxiliar','Encargada'].map(r=>(
+            {['Cocinero','Mozo','Auxiliar','Encargada','Mantenimiento'].map(r=>(
               <button type="button" key={r} onClick={()=>toggleRol(r)} style={{...S.btn,minHeight:0,padding:'8px 14px',fontSize:13,...((form.rol_habitual||[]).includes(r)?{background:C.oro,color:'#1A1A1A'}:S.btnGhost)}}>{r}{(form.rol_habitual||[]).includes(r)?'  ✕':''}</button>
             ))}
           </div>
