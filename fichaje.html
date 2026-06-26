@@ -1462,7 +1462,36 @@ function Dashboard({
       ...S.btnOro,
       width: '100%'
     }
-  }, "\uD83D\uDCCD Fichar ahora")) : /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDCCD Fichar ahora")) : /*#__PURE__*/React.createElement(React.Fragment, null, rol === 'encargada' && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      textAlign: 'center',
+      padding: '18px 16px',
+      marginBottom: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 34
+    }
+  }, "\uD83D\uDCCD"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontWeight: 700,
+      marginTop: 4
+    }
+  }, "Tu fichaje"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      color: C.tx2,
+      fontSize: 12,
+      margin: '4px 0 12px'
+    }
+  }, "Fich\xE1 tu entrada y salida (ubicaci\xF3n + foto), igual que los empleados."), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setVista('fichar'),
+    style: {
+      ...S.btn,
+      ...S.btnOro,
+      width: '100%'
+    }
+  }, "\uD83D\uDCCD Fichar entrada / salida")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 10,
@@ -1483,7 +1512,7 @@ function Dashboard({
     n: "0",
     l: "Alertas",
     col: C.rojo
-  })));
+  }))));
 }
 
 /* ── Placeholder ── */
@@ -5380,7 +5409,7 @@ function Fichar({
   const videoRef = useRef();
   const canvasRef = useRef();
   const streamRef = useRef();
-  const misSucs = (sesion.sucursales || []).map(id => sucursales.find(s => s.id === id)).filter(Boolean);
+  const misSucs = [...new Set([...(sesion.sucursales || []), sesion.sucursal_encargada].filter(Boolean))].map(id => sucursales.find(s => s.id === id)).filter(Boolean);
   function pararCamara() {
     try {
       streamRef.current && streamRef.current.getTracks().forEach(t => t.stop());
@@ -5523,6 +5552,23 @@ function Fichar({
         }
       }
     } catch (e) {}
+    // Encargada (o quien tenga horario fijo): si no coincide con un evento, comparar con su HORARIO FIJO del día
+    if (!coincide && (sesion.horario_fijo || []).length) {
+      const dow = new Date().getDay();
+      const hf = (sesion.horario_fijo || []).find(h => h.dia === dow);
+      if (hf) {
+        coincide = true;
+        eventoDesc = 'Horario fijo ' + (hf.entrada || '') + '-' + (hf.salida || '');
+        ingreso = hf.entrada || '';
+        if (tipo === 'entrada') {
+          const esp = toMin(hf.entrada);
+          minTarde = Math.max(0, ahoraMin() - esp);
+          estado = minTarde <= tol ? 'en_hora' : 'tarde';
+        } else {
+          estado = 'salida';
+        }
+      }
+    }
     await dbInsert('fichaje_fichajes', {
       empleado_id: sesion.id,
       sucursal_id: sucOk.id,
