@@ -1965,8 +1965,15 @@ function Empleados({
     }
   }
   async function borrar(em) {
-    if (!window.confirm('¿Borrar a ' + em.nombre + '?')) return;
-    if (await dbDelete('fichaje_empleados', em.id)) await recargar();
+    if (!window.confirm('¿Borrar a ' + em.nombre + '? No se puede deshacer.')) return;
+    // borrar primero lo que cuelga (fichajes y asignaciones) para que la base lo deje
+    const fich = (await dbAll('fichaje_fichajes')).filter(x => x.empleado_id === em.id);
+    for (const x of fich) await dbDelete('fichaje_fichajes', x.id);
+    const asg = (await dbAll('fichaje_evento_empleados')).filter(x => x.empleado_id === em.id);
+    for (const x of asg) await dbDelete('fichaje_evento_empleados', x.id);
+    const ok = await dbDelete('fichaje_empleados', em.id);
+    if (!ok) alert('No se pudo borrar. Probá de nuevo.');
+    await recargar();
   }
   const sucNom = id => {
     const s = sucursales.find(x => x.id === id);

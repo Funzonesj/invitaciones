@@ -522,7 +522,17 @@ function Empleados({empleados,sucursales,recargar}){
     if(editId) ok=await dbUpdate('fichaje_empleados',editId,row); else ok=!!(await dbInsert('fichaje_empleados',row));
     if(ok){ await recargar(); limpiar(); }
   }
-  async function borrar(em){ if(!window.confirm('¿Borrar a '+em.nombre+'?'))return; if(await dbDelete('fichaje_empleados',em.id)) await recargar(); }
+  async function borrar(em){
+    if(!window.confirm('¿Borrar a '+em.nombre+'? No se puede deshacer.'))return;
+    // borrar primero lo que cuelga (fichajes y asignaciones) para que la base lo deje
+    const fich=(await dbAll('fichaje_fichajes')).filter(x=>x.empleado_id===em.id);
+    for(const x of fich) await dbDelete('fichaje_fichajes',x.id);
+    const asg=(await dbAll('fichaje_evento_empleados')).filter(x=>x.empleado_id===em.id);
+    for(const x of asg) await dbDelete('fichaje_evento_empleados',x.id);
+    const ok=await dbDelete('fichaje_empleados',em.id);
+    if(!ok) alert('No se pudo borrar. Probá de nuevo.');
+    await recargar();
+  }
   const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
   const orden=[...empleados].sort((a,b)=>(a.legajo||999)-(b.legajo||999));
   return (
