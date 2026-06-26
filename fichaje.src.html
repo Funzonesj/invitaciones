@@ -248,6 +248,8 @@ function Tareas({sesion,esDuena,sucursales,sucCtx,empleados}){
   async function setEmpsLista(ids){ await dbUpdate('fichaje_tarea_listas',sel.id,{empleados:ids}); setSel(s=>({...s,empleados:ids})); setListas(ls=>ls.map(l=>l.id===sel.id?{...l,empleados:ids}:l)); }
   function toggleEmpLista(id){ const cur=(sel.empleados||[]); setEmpsLista(cur.includes(id)?cur.filter(x=>x!==id):[...cur,id]); }
   function asignarGrupo(fn){ setEmpsLista([...new Set([...(sel.empleados||[]),...emps.filter(fn).map(e=>e.id)])]); }
+  // Empleados que se pueden asignar a una lista: los del salón de la lista + su encargada + mantenimiento (van a los 2). En General: solo mantenimiento.
+  function dispoEmps(){ if(!sel)return []; const sid=sel.sucursal_id; return emps.filter(e=>e.activo!==false && e.rol_sistema!=='dueno' && (sid==='general' ? e.rol_sistema==='mantenimiento' : ((e.sucursales||[]).includes(sid) || e.sucursal_encargada===sid || e.rol_sistema==='mantenimiento'))).sort((a,b)=>(a.legajo||999)-(b.legajo||999)); }
   const cnt=lid=>tareas.filter(t=>t.lista_id===lid&&!t.hecha).length;
   const nAsig=l=>(l&&l.empleados?l.empleados.length:0);
   const pend=sel?tareas.filter(t=>t.lista_id===sel.id&&!t.hecha):[];
@@ -268,12 +270,12 @@ function Tareas({sesion,esDuena,sucursales,sucCtx,empleados}){
              <button onClick={()=>setAsignOpen(o=>!o)} style={{width:'100%',display:'flex',justifyContent:'space-between',alignItems:'center',background:'none',border:'none',color:C.tx,cursor:'pointer',padding:0,fontSize:14,fontWeight:700}}><span>👥 Quién la ve ({(sel.empleados||[]).length})</span><span style={{color:C.tx2}}>{asignOpen?'▾':'▸'}</span></button>
              {asignOpen && <div style={{marginTop:10}}>
                <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
+                 <button onClick={()=>setEmpsLista([...new Set([...(sel.empleados||[]),...dispoEmps().map(e=>e.id)])])} style={{...S.btn,...S.btnGhost,fontSize:11,padding:'6px 10px',minHeight:0}}>+ Todos</button>
                  <button onClick={()=>asignarGrupo(e=>e.rol_sistema==='mantenimiento')} style={{...S.btn,...S.btnGhost,fontSize:11,padding:'6px 10px',minHeight:0}}>+ Mantenimiento</button>
-                 {sucursales.map(s=><button key={s.id} onClick={()=>asignarGrupo(e=>(e.sucursales||[]).includes(s.id))} style={{...S.btn,...S.btnGhost,fontSize:11,padding:'6px 10px',minHeight:0}}>+ {s.nombre}</button>)}
                  <button onClick={()=>setEmpsLista([])} style={{...S.btn,background:'#3a2020',color:C.rojo,fontSize:11,padding:'6px 10px',minHeight:0}}>Limpiar</button>
                </div>
                <div style={{display:'flex',flexDirection:'column',gap:3,maxHeight:240,overflowY:'auto'}}>
-                 {emps.filter(e=>e.activo!==false&&e.rol_sistema!=='dueno').sort((a,b)=>(a.legajo||999)-(b.legajo||999)).map(e=>{ const on=(sel.empleados||[]).includes(e.id); return (
+                 {dispoEmps().map(e=>{ const on=(sel.empleados||[]).includes(e.id); return (
                    <label key={e.id} style={{display:'flex',alignItems:'center',gap:8,fontSize:13,padding:'6px 8px',borderRadius:8,background:on?C.surf2:'transparent',cursor:'pointer'}}>
                      <input type="checkbox" checked={on} onChange={()=>toggleEmpLista(e.id)}/>
                      <span style={{flex:1,minWidth:0}}>{(e.legajo!=null?('#'+e.legajo+' '):'')+e.nombre}</span>

@@ -900,6 +900,12 @@ function Tareas({
   function asignarGrupo(fn) {
     setEmpsLista([...new Set([...(sel.empleados || []), ...emps.filter(fn).map(e => e.id)])]);
   }
+  // Empleados que se pueden asignar a una lista: los del salón de la lista + su encargada + mantenimiento (van a los 2). En General: solo mantenimiento.
+  function dispoEmps() {
+    if (!sel) return [];
+    const sid = sel.sucursal_id;
+    return emps.filter(e => e.activo !== false && e.rol_sistema !== 'dueno' && (sid === 'general' ? e.rol_sistema === 'mantenimiento' : (e.sucursales || []).includes(sid) || e.sucursal_encargada === sid || e.rol_sistema === 'mantenimiento')).sort((a, b) => (a.legajo || 999) - (b.legajo || 999));
+  }
   const cnt = lid => tareas.filter(t => t.lista_id === lid && !t.hecha).length;
   const nAsig = l => l && l.empleados ? l.empleados.length : 0;
   const pend = sel ? tareas.filter(t => t.lista_id === sel.id && !t.hecha) : [];
@@ -1004,6 +1010,15 @@ function Tareas({
       marginBottom: 10
     }
   }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setEmpsLista([...new Set([...(sel.empleados || []), ...dispoEmps().map(e => e.id)])]),
+    style: {
+      ...S.btn,
+      ...S.btnGhost,
+      fontSize: 11,
+      padding: '6px 10px',
+      minHeight: 0
+    }
+  }, "+ Todos"), /*#__PURE__*/React.createElement("button", {
     onClick: () => asignarGrupo(e => e.rol_sistema === 'mantenimiento'),
     style: {
       ...S.btn,
@@ -1012,17 +1027,7 @@ function Tareas({
       padding: '6px 10px',
       minHeight: 0
     }
-  }, "+ Mantenimiento"), sucursales.map(s => /*#__PURE__*/React.createElement("button", {
-    key: s.id,
-    onClick: () => asignarGrupo(e => (e.sucursales || []).includes(s.id)),
-    style: {
-      ...S.btn,
-      ...S.btnGhost,
-      fontSize: 11,
-      padding: '6px 10px',
-      minHeight: 0
-    }
-  }, "+ ", s.nombre)), /*#__PURE__*/React.createElement("button", {
+  }, "+ Mantenimiento"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setEmpsLista([]),
     style: {
       ...S.btn,
@@ -1040,7 +1045,7 @@ function Tareas({
       maxHeight: 240,
       overflowY: 'auto'
     }
-  }, emps.filter(e => e.activo !== false && e.rol_sistema !== 'dueno').sort((a, b) => (a.legajo || 999) - (b.legajo || 999)).map(e => {
+  }, dispoEmps().map(e => {
     const on = (sel.empleados || []).includes(e.id);
     return /*#__PURE__*/React.createElement("label", {
       key: e.id,
