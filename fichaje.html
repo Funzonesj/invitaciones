@@ -6796,6 +6796,17 @@ function Configuracion({
     }
     if (recargar) recargar();
   }
+  async function borrarEmpleado(em) {
+    if (!window.confirm('¿Borrar a ' + em.nombre + '? Se elimina el empleado y ya no podrá ingresar. Esto no se puede deshacer.')) return;
+    // borrar primero lo que cuelga del empleado (fichajes y asignaciones) para que la base lo deje borrar
+    const fich = (await dbAll('fichaje_fichajes')).filter(x => x.empleado_id === em.id);
+    for (const x of fich) await dbDelete('fichaje_fichajes', x.id);
+    const asg = (await dbAll('fichaje_evento_empleados')).filter(x => x.empleado_id === em.id);
+    for (const x of asg) await dbDelete('fichaje_evento_empleados', x.id);
+    const ok = await dbDelete('fichaje_empleados', em.id);
+    if (!ok) alert('No se pudo borrar. Probá de nuevo.');
+    if (recargar) recargar();
+  }
   function setFig(i, k, val) {
     setCfg(c => ({
       ...c,
@@ -7154,7 +7165,7 @@ function Configuracion({
   }, "$"), /*#__PURE__*/React.createElement("input", {
     style: {
       ...S.input,
-      width: 96,
+      width: 84,
       marginBottom: 0
     },
     type: "number",
@@ -7169,9 +7180,21 @@ function Configuracion({
     style: {
       fontSize: 11,
       color: vhOk === em.id ? C.verde : C.tx2,
-      width: 42
+      width: 30
     }
-  }, vhOk === em.id ? '✓ ok' : '/h')))));
+  }, vhOk === em.id ? '✓' : '/h'), /*#__PURE__*/React.createElement("button", {
+    onClick: () => borrarEmpleado(em),
+    title: "Borrar empleado",
+    style: {
+      ...S.btn,
+      background: '#3a2020',
+      color: C.rojo,
+      padding: '7px 9px',
+      minHeight: 0,
+      fontSize: 13,
+      flexShrink: 0
+    }
+  }, "\uD83D\uDDD1")))));
 }
 
 /* ════════════════════════ CHAT (tipo WhatsApp) ════════════════════════ */

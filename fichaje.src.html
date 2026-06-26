@@ -1867,6 +1867,17 @@ function Configuracion({sucursales,empleados,recargar}){
   useEffect(()=>{const o={};(empleados||[]).forEach(e=>{o[e.id]=e.valor_hora??'';});setVh(o);},[empleados]);
   async function guardarCfg(){ setGuardando(true); const ok=await dbUpsert('fichaje_config',{id:'general',data:cfg}); if(ok){ setMsg('✓ Configuración guardada'); setTimeout(()=>setMsg(''),2200);}else{alert('No se pudo guardar la configuración.');} setGuardando(false); }
   async function guardarValor(em){ const v=vh[em.id]; const ok=await dbUpdate('fichaje_empleados',em.id,{valor_hora:v===''?0:+v}); if(ok){setVhOk(em.id);setTimeout(()=>setVhOk(p=>p===em.id?null:p),1800);} if(recargar)recargar(); }
+  async function borrarEmpleado(em){
+    if(!window.confirm('¿Borrar a '+em.nombre+'? Se elimina el empleado y ya no podrá ingresar. Esto no se puede deshacer.'))return;
+    // borrar primero lo que cuelga del empleado (fichajes y asignaciones) para que la base lo deje borrar
+    const fich=(await dbAll('fichaje_fichajes')).filter(x=>x.empleado_id===em.id);
+    for(const x of fich) await dbDelete('fichaje_fichajes',x.id);
+    const asg=(await dbAll('fichaje_evento_empleados')).filter(x=>x.empleado_id===em.id);
+    for(const x of asg) await dbDelete('fichaje_evento_empleados',x.id);
+    const ok=await dbDelete('fichaje_empleados',em.id);
+    if(!ok) alert('No se pudo borrar. Probá de nuevo.');
+    if(recargar)recargar();
+  }
   function setFig(i,k,val){ setCfg(c=>({...c,figuras_hora:c.figuras_hora.map((f,j)=>j===i?{...f,[k]:val}:f)})); }
   function addFig(){ setCfg(c=>({...c,figuras_hora:[...(c.figuras_hora||[]),{nombre:'Auxiliar 3 hs',horas:3,bonus:false}]})); }
   function delFig(i){ setCfg(c=>({...c,figuras_hora:c.figuras_hora.filter((_,j)=>j!==i)})); }
@@ -1938,8 +1949,9 @@ function Configuracion({sucursales,empleados,recargar}){
           <div key={em.id} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 0',borderBottom:'1px solid '+C.bd}}>
             <div style={{flex:1,minWidth:0,fontSize:14}}>{em.legajo!=null&&<span className="num" style={{color:C.oro}}>#{em.legajo} </span>}{em.nombre}</div>
             <span style={{color:C.tx2}}>$</span>
-            <input style={{...S.input,width:96,marginBottom:0}} type="number" value={vh[em.id]===undefined?'':vh[em.id]} onChange={e=>setVh({...vh,[em.id]:e.target.value})} onBlur={()=>guardarValor(em)} placeholder="0"/>
-            <span style={{fontSize:11,color:vhOk===em.id?C.verde:C.tx2,width:42}}>{vhOk===em.id?'✓ ok':'/h'}</span>
+            <input style={{...S.input,width:84,marginBottom:0}} type="number" value={vh[em.id]===undefined?'':vh[em.id]} onChange={e=>setVh({...vh,[em.id]:e.target.value})} onBlur={()=>guardarValor(em)} placeholder="0"/>
+            <span style={{fontSize:11,color:vhOk===em.id?C.verde:C.tx2,width:30}}>{vhOk===em.id?'✓':'/h'}</span>
+            <button onClick={()=>borrarEmpleado(em)} title="Borrar empleado" style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 9px',minHeight:0,fontSize:13,flexShrink:0}}>🗑</button>
           </div>
         ))}
       </div>
