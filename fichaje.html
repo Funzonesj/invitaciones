@@ -677,19 +677,23 @@ function TareaItem({
   onBorrar,
   onFoto,
   onVer,
+  onPrioridad,
   puedeBorrar
 }) {
+  const p = t.prioridad || 0;
+  const pcol = p === 2 ? '#ef4444' : p === 1 ? '#f59e0b' : C.tx2;
   return /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 8,
-      padding: 12
+      padding: 12,
+      borderLeft: p ? '4px solid ' + pcol : '1px solid ' + C.bd
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'flex-start',
-      gap: 10
+      gap: 9
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => onToggle(t),
@@ -718,7 +722,19 @@ function TareaItem({
         color: C.tx2
       } : {})
     }
-  }, t.texto), /*#__PURE__*/React.createElement("label", {
+  }, t.texto), onPrioridad && /*#__PURE__*/React.createElement("button", {
+    onClick: () => onPrioridad(t),
+    title: p === 2 ? 'Urgente' : p === 1 ? 'Importante' : 'Marcar importancia',
+    style: {
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: 19,
+      flexShrink: 0,
+      lineHeight: 1,
+      color: pcol
+    }
+  }, p ? '★' : '☆'), /*#__PURE__*/React.createElement("label", {
     style: {
       cursor: 'pointer',
       fontSize: 17,
@@ -864,6 +880,13 @@ function Tareas({
     });
     await cargar();
   }
+  async function cambiarPrioridad(t) {
+    const p = ((t.prioridad || 0) + 1) % 3;
+    await dbUpdate('fichaje_tareas', t.id, {
+      prioridad: p
+    });
+    await cargar();
+  }
   async function borrarTarea(t) {
     if (!window.confirm('¿Borrar esta tarea?')) return;
     await dbDelete('fichaje_tareas', t.id);
@@ -928,7 +951,7 @@ function Tareas({
   }
   const cnt = lid => tareas.filter(t => t.lista_id === lid && !t.hecha).length;
   const nAsig = l => l && l.empleados ? l.empleados.length : 0;
-  const pend = sel ? tareas.filter(t => t.lista_id === sel.id && !t.hecha) : [];
+  const pend = sel ? tareas.filter(t => t.lista_id === sel.id && !t.hecha).sort((a, b) => (b.prioridad || 0) - (a.prioridad || 0)) : [];
   const done = sel ? tareas.filter(t => t.lista_id === sel.id && t.hecha) : [];
   return /*#__PURE__*/React.createElement("div", {
     className: "fade"
@@ -1122,6 +1145,7 @@ function Tareas({
     onBorrar: borrarTarea,
     onFoto: agregarFoto,
     onVer: setVisor,
+    onPrioridad: cambiarPrioridad,
     puedeBorrar: esManager
   })), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1164,6 +1188,7 @@ function Tareas({
     onBorrar: borrarTarea,
     onFoto: agregarFoto,
     onVer: setVisor,
+    onPrioridad: cambiarPrioridad,
     puedeBorrar: esManager
   })))) : cargando ? /*#__PURE__*/React.createElement("div", {
     style: {
