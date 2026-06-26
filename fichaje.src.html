@@ -165,6 +165,7 @@ function App(){
         {vista==='registros'   && (esDuena||rol==='encargada') && <Registros esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='pagos'       && (esDuena||rol==='encargada') && <Pagos sesion={sesion} esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
         {vista==='alertas'     && (esDuena||rol==='encargada') && <Alertas esDuena={esDuena} sucursales={sucursales} empleados={empleados} sucCtx={sucCtx}/>}
+        {vista==='tareas'      && (esDuena||rol==='encargada') && <Tareas sesion={sesion} esDuena={esDuena} sucursales={sucursales} sucCtx={sucCtx}/>}
         {vista==='empleados'   && esDuena && <Empleados empleados={empleados} sucursales={sucursales} recargar={recargar}/>}
         {vista==='sucursales'  && esDuena && <Sucursales sucursales={sucursales} recargar={recargar}/>}
         {vista==='config'      && esDuena && <Configuracion sucursales={sucursales} empleados={empleados} recargar={recargar}/>}
@@ -201,11 +202,108 @@ function Header({sesion,esDuena,sucursales,sucActiva,setSucActiva,onSalir,onChat
 }
 
 /* ── Bottom nav (según rol) ── */
+/* ── TAREAS (estilo To-Do) por sucursal: listas, fotos VISIBLES, tildar hecho, borrar ── */
+function TareaItem({t,subFoto,onToggle,onBorrar,onFoto,onVer}){
+  return (
+   <div style={{...S.card,marginBottom:8,padding:12}}>
+     <div style={{display:'flex',alignItems:'flex-start',gap:10}}>
+       <button onClick={()=>onToggle(t)} style={{width:24,height:24,borderRadius:'50%',border:'2px solid '+(t.hecha?C.verde:C.bd),background:t.hecha?C.verde:'transparent',color:'#fff',cursor:'pointer',flexShrink:0,fontSize:13,fontWeight:900,marginTop:1,lineHeight:1}}>{t.hecha?'✓':''}</button>
+       <span style={{flex:1,minWidth:0,fontSize:14,wordBreak:'break-word',...(t.hecha?{textDecoration:'line-through',color:C.tx2}:{})}}>{t.texto}</span>
+       <label style={{cursor:'pointer',fontSize:17,flexShrink:0,opacity:subFoto===t.id?.5:1}}>{subFoto===t.id?'⏳':'📷'}<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>onFoto(t,e)}/></label>
+       <button onClick={()=>onBorrar(t)} style={{background:'none',border:'none',cursor:'pointer',fontSize:15,color:C.rojo,flexShrink:0}}>🗑</button>
+     </div>
+     {(t.fotos&&t.fotos.length>0)&&(
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:10,paddingLeft:34}}>
+        {t.fotos.map((u,idx)=>(<img key={idx} src={u} alt="" onClick={()=>onVer({url:u,id:t.id,idx:idx})} style={{width:66,height:66,objectFit:'cover',borderRadius:8,cursor:'pointer',border:'1px solid '+C.bd}}/>))}
+      </div>
+     )}
+   </div>
+  );
+}
+function Tareas({sesion,esDuena,sucursales,sucCtx}){
+  const [sucSel,setSucSel]=useState(sucCtx||(sucursales[0]&&sucursales[0].id)||'');
+  const [listas,setListas]=useState([]); const [tareas,setTareas]=useState([]);
+  const [sel,setSel]=useState(null); const [cargando,setCargando]=useState(false);
+  const [nuevaLista,setNuevaLista]=useState(''); const [nuevaTarea,setNuevaTarea]=useState('');
+  const [verComp,setVerComp]=useState(true); const [visor,setVisor]=useState(null); const [subFoto,setSubFoto]=useState(null);
+  async function cargar(){
+    if(!sucSel){setListas([]);setTareas([]);return;}
+    setCargando(true);
+    const [ls,ts]=await Promise.all([dbAll('fichaje_tarea_listas'),dbAll('fichaje_tareas')]);
+    setListas((ls||[]).filter(l=>l.sucursal_id===sucSel).sort((a,b)=>String(a.created_at||'').localeCompare(String(b.created_at||''))));
+    setTareas(ts||[]); setCargando(false);
+  }
+  useEffect(()=>{cargar();},[sucSel]);
+  async function crearLista(){const n=nuevaLista.trim();if(!n)return;const row=await dbInsert('fichaje_tarea_listas',{sucursal_id:sucSel,nombre:n});if(row){setNuevaLista('');await cargar();}}
+  async function borrarLista(l,e){if(e)e.stopPropagation();if(!window.confirm('¿Borrar la lista "'+l.nombre+'" y TODAS sus tareas?'))return;await dbDelete('fichaje_tarea_listas',l.id);if(sel&&sel.id===l.id)setSel(null);await cargar();}
+  async function agregarTarea(){const t=nuevaTarea.trim();if(!t||!sel)return;const row=await dbInsert('fichaje_tareas',{lista_id:sel.id,texto:t,hecha:false,fotos:[]});if(row){setNuevaTarea('');await cargar();}}
+  async function toggle(t){await dbUpdate('fichaje_tareas',t.id,{hecha:!t.hecha});await cargar();}
+  async function borrarTarea(t){if(!window.confirm('¿Borrar esta tarea?'))return;await dbDelete('fichaje_tareas',t.id);await cargar();}
+  function agregarFoto(t,e){const file=e.target.files[0];if(!file)return;e.target.value='';setSubFoto(t.id);const r=new FileReader();r.onload=async ev=>{const url=await subirFoto(ev.target.result);const fotos=[...(t.fotos||[]),url];await dbUpdate('fichaje_tareas',t.id,{fotos:fotos});setSubFoto(null);await cargar();};r.readAsDataURL(file);}
+  async function quitarFoto(){if(!visor)return;const t=tareas.find(x=>x.id===visor.id);if(!t){setVisor(null);return;}const fotos=(t.fotos||[]).filter((_,i)=>i!==visor.idx);await dbUpdate('fichaje_tareas',t.id,{fotos:fotos});setVisor(null);await cargar();}
+  const cnt=lid=>tareas.filter(t=>t.lista_id===lid&&!t.hecha).length;
+  const pend=sel?tareas.filter(t=>t.lista_id===sel.id&&!t.hecha):[];
+  const done=sel?tareas.filter(t=>t.lista_id===sel.id&&t.hecha):[];
+  return (
+   <div className="fade">
+     <h2 style={{fontSize:20,marginBottom:12}}>✅ Tareas</h2>
+     {esDuena&&(<select value={sucSel} onChange={e=>{setSucSel(e.target.value);setSel(null);}} style={{...S.input,marginBottom:12}}>{sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}</select>)}
+     {!sucSel ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>Elegí una sucursal.</div> :
+      !sel ? (
+       <div>
+         {cargando ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
+          listas.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:24}}>No hay listas todavía.<br/>Creá la primera abajo 👇</div> :
+          listas.map(l=>(
+           <div key={l.id} onClick={()=>setSel(l)} style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
+             <span style={{fontSize:20}}>📋</span>
+             <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700}}>{l.nombre}</div><div style={{fontSize:11,color:C.tx2}}>{cnt(l.id)} pendientes</div></div>
+             <button onClick={e=>borrarLista(l,e)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:13}}>🗑</button>
+           </div>
+          ))
+         }
+         <div style={{...S.card,display:'flex',gap:8,marginTop:6}}>
+           <input value={nuevaLista} onChange={e=>setNuevaLista(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')crearLista();}} placeholder="Nombre de la lista (ej: Mantenimiento Play)" style={{...S.input,flex:1}}/>
+           <button onClick={crearLista} style={{...S.btn,...S.btnOro,whiteSpace:'nowrap'}}>+ Lista</button>
+         </div>
+       </div>
+      ) : (
+       <div>
+         <button onClick={()=>setSel(null)} style={{...S.btn,...S.btnGhost,marginBottom:10}}>← Listas</button>
+         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,gap:8}}>
+           <h3 style={{fontSize:18,fontWeight:800,minWidth:0,wordBreak:'break-word'}}>{sel.nombre}</h3>
+           <button onClick={()=>borrarLista(sel)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'7px 10px',minHeight:0,fontSize:12,flexShrink:0}}>🗑 Lista</button>
+         </div>
+         {pend.map(t=>(<TareaItem key={t.id} t={t} subFoto={subFoto} onToggle={toggle} onBorrar={borrarTarea} onFoto={agregarFoto} onVer={setVisor}/>))}
+         <div style={{...S.card,display:'flex',gap:8,margin:'6px 0 16px'}}>
+           <input value={nuevaTarea} onChange={e=>setNuevaTarea(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')agregarTarea();}} placeholder="Agregar una tarea" style={{...S.input,flex:1}}/>
+           <button onClick={agregarTarea} style={{...S.btn,...S.btnOro,whiteSpace:'nowrap'}}>+ Tarea</button>
+         </div>
+         {done.length>0&&(
+          <div>
+            <button onClick={()=>setVerComp(v=>!v)} style={{...S.btn,...S.btnGhost,marginBottom:8,fontSize:13}}>{verComp?'▾':'▸'} Completado ({done.length})</button>
+            {verComp&&done.map(t=>(<TareaItem key={t.id} t={t} subFoto={subFoto} onToggle={toggle} onBorrar={borrarTarea} onFoto={agregarFoto} onVer={setVisor}/>))}
+          </div>
+         )}
+       </div>
+      )
+     }
+     {visor&&(
+       <div onClick={()=>setVisor(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:100,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:16,gap:14}}>
+         <img src={visor.url} alt="" style={{maxWidth:'100%',maxHeight:'76vh',borderRadius:12,objectFit:'contain'}}/>
+         <div style={{display:'flex',gap:10}}>
+           <button onClick={e=>{e.stopPropagation();quitarFoto();}} style={{...S.btn,background:'#3a2020',color:C.rojo}}>🗑 Quitar foto</button>
+           <button onClick={()=>setVisor(null)} style={{...S.btn,...S.btnOro}}>Cerrar</button>
+         </div>
+       </div>
+     )}
+   </div>
+  );
+}
 function BottomNav({rol,vista,setVista}){
   const items = rol==='dueno'
-    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones'],['config','⚙️','Config']]
+    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones'],['config','⚙️','Config']]
     : rol==='encargada'
-    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
+    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
     : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
   return (
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50,paddingBottom:'env(safe-area-inset-bottom)'}}>
