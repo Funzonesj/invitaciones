@@ -303,7 +303,7 @@ function BottomNav({rol,vista,setVista}){
   const items = rol==='dueno'
     ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones'],['config','⚙️','Config']]
     : rol==='encargada'
-    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
+    ? [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
     : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
   return (
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50,paddingBottom:'env(safe-area-inset-bottom)'}}>
