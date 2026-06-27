@@ -881,7 +881,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
   const [tab,setTab]=useState('ver');
   const [sucSel,setSucSel]=useState(esDuena ? (sucCtx||(sucursales[0]||{}).id||'') : (sucCtx||''));
   const [eventos,setEventos]=useState([]); const [asign,setAsign]=useState([]); const [cargando,setCargando]=useState(false);
-  const [previa,setPrevia]=useState(null); const [leyendo,setLeyendo]=useState(false); const [reempl,setReempl]=useState(null); const pdfFileRef=useRef(null); const [editEv,setEditEv]=useState(null);
+  const [previa,setPrevia]=useState(null); const [leyendo,setLeyendo]=useState(false); const [reempl,setReempl]=useState(null); const pdfFileRef=useRef(null); const [editEv,setEditEv]=useState(null); const [abEv,setAbEv]=useState(null);
   async function recomputarDia(fecha){
     const evsAll=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===sucSel&&e.fecha===fecha).sort((a,b)=>toMin(a.hora_inicio)-toMin(b.hora_inicio));
     const eeAll=await dbAll('fichaje_evento_empleados');
@@ -1003,26 +1003,35 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
             {sem.dias.map(f=>(
           <div key={f} style={{marginBottom:12,opacity:f<_hoyISO?.6:1}}>
             <div style={{fontWeight:700,fontSize:14,marginBottom:6,fontFamily:'Arial, Helvetica, sans-serif',color:f<_hoyISO?C.tx2:(f===_hoyISO?C.verde:C.oro)}}>{fechaLinda(f)} <span style={{color:C.tx2,fontWeight:600}}>({(porDia[f]||[]).length} evento{(porDia[f]||[]).length!==1?'s':''})</span>{f===_hoyISO?'  · HOY':(f<_hoyISO?'  · pasó':'')}</div>
-            {porDia[f].map(ev=>{ const rs=asign.filter(a=>a.evento_id===ev.id); return (
-              <div key={ev.id} style={{...S.card,marginBottom:8}}>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
-                  <div><div style={{fontWeight:700}}>{ev.paquete}</div><div style={{fontSize:12,color:C.tx2}}>{ev.hora_inicio} - {ev.hora_fin}{ev.orden_dia>1?' · 2º evento':''}</div></div>
-                  <div style={{display:'flex',gap:6,flexShrink:0}}>
+            {porDia[f].map(ev=>{ const rs=asign.filter(a=>a.evento_id===ev.id); const op=abEv===ev.id; const dc=detAdicCli(ev); return (
+              <div key={ev.id} style={{...S.card,marginBottom:8,padding:0,overflow:'hidden'}}>
+                <button onClick={()=>setAbEv(op?null:ev.id)} style={{width:'100%',background:'none',border:'none',color:C.tx,cursor:'pointer',display:'flex',alignItems:'center',gap:8,padding:'12px 14px',textAlign:'left'}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700}}>{ev.paquete}{dc.adic&&<span style={{color:C.rojo,fontWeight:800}}> · {dc.adic}</span>}</div>
+                    <div style={{fontSize:12,color:C.tx2}}>{ev.hora_inicio} - {ev.hora_fin}{ev.orden_dia>1?' · 2º evento':''} · {rs.length} pers.</div>
+                  </div>
+                  <span style={{color:C.tx2,fontSize:13,flexShrink:0}}>{op?'▲':'ver ▼'}</span>
+                </button>
+                {op && (
+                <div style={{padding:'0 14px 13px'}}>
+                  <div style={{display:'flex',gap:6,marginBottom:8}}>
                     <button onClick={()=>setEditEv({ev,rs})} style={{...S.btn,...S.btnGhost,padding:'6px 10px',minHeight:0,fontSize:12}}>✏️ Editar</button>
                     <button onClick={()=>borrarEvento(ev.id)} style={{...S.btn,background:'#3a2020',color:C.rojo,padding:'6px 10px',minHeight:0,fontSize:12}}>🗑</button>
                   </div>
+                  <div style={{display:'flex',flexDirection:'column',gap:5}}>
+                    {rs.map(a=>(
+                      <div key={a.id} style={{display:'flex',alignItems:'center',gap:8,fontSize:13,background:C.surf2,borderRadius:8,padding:'7px 9px'}}>
+                        <span style={{...S.chip,background:'#2a2418',color:C.oro,flexShrink:0}}>{a.rol_en_evento}</span>
+                        <span style={{flex:1,minWidth:0}}>{a.empleado_id?nomLegajo(a.legajo):('#'+a.legajo+' (sin cargar)')}{a.fue_reemplazo&&<span style={{color:C.amar,fontSize:10}}> ↺</span>}</span>
+                        {a.hora_ingreso_esperada && <span style={{fontSize:11,color:C.verde,flexShrink:0}}>entra {a.hora_ingreso_esperada}</span>}
+                        <button onClick={()=>setReempl(a)} style={{...S.btn,...S.btnGhost,padding:'4px 8px',minHeight:0,fontSize:11}}>cambiar</button>
+                      </div>
+                    ))}
+                  </div>
+                  {dc.cli && <div style={{fontSize:11,color:C.tx2,marginTop:6}}>👤 {dc.cli}{ev.festejado?(' · 🎂 '+ev.festejado):''}</div>}
+                  {!dc.cli && ev.festejado && <div style={{fontSize:11,color:C.tx2,marginTop:6}}>🎂 {ev.festejado}</div>}
                 </div>
-                <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:5}}>
-                  {rs.map(a=>(
-                    <div key={a.id} style={{display:'flex',alignItems:'center',gap:8,fontSize:13,background:C.surf2,borderRadius:8,padding:'7px 9px'}}>
-                      <span style={{...S.chip,background:'#2a2418',color:C.oro,flexShrink:0}}>{a.rol_en_evento}</span>
-                      <span style={{flex:1,minWidth:0}}>{a.empleado_id?nomLegajo(a.legajo):('#'+a.legajo+' (sin cargar)')}{a.fue_reemplazo&&<span style={{color:C.amar,fontSize:10}}> ↺</span>}</span>
-                      {a.hora_ingreso_esperada && <span style={{fontSize:11,color:C.verde,flexShrink:0}}>entra {a.hora_ingreso_esperada}</span>}
-                      <button onClick={()=>setReempl(a)} style={{...S.btn,...S.btnGhost,padding:'4px 8px',minHeight:0,fontSize:11}}>cambiar</button>
-                    </div>
-                  ))}
-                </div>
-                {ev.cliente && <div style={{fontSize:11,color:C.tx2,marginTop:6}}>👤 {ev.cliente}{ev.festejado?(' · 🎂 '+ev.festejado):''}</div>}
+                )}
               </div>
             );})}
           </div>
