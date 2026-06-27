@@ -1674,7 +1674,7 @@ function BottomNav({
   vista,
   setVista
 }) {
-  const items = rol === 'dueno' ? [['dashboard', '🏠', 'Inicio'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['pagos', '💰', 'Pagos'], ['empleados', '👥', 'Empleados'], ['sucursales', '🏢', 'Salones'], ['config', '⚙️', 'Config']] : rol === 'encargada' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['registros', '📋', 'Fichajes'], ['pagos', '💰', 'Pagos'], ['alertas', '🔔', 'Alertas']] : rol === 'mantenimiento' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Marcar'], ['tareas', '✅', 'Tareas'], ['verhorarios', '🗓️', 'Salones']] : [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['tareas', '✅', 'Tareas'], ['mishorarios', '📅', 'Mis horarios'], ['miplanilla', '📝', 'Mi planilla'], ['misencuestas', '💬', 'Mis encuestas']];
+  const items = rol === 'dueno' ? [['dashboard', '🏠', 'Inicio'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['pagos', '💰', 'Pagos'], ['empleados', '👥', 'Empleados'], ['sucursales', '🏢', 'Salones'], ['config', '⚙️', 'Config']] : rol === 'encargada' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['registros', '📋', 'Fichajes'], ['pagos', '💰', 'Pagos'], ['alertas', '🔔', 'Alertas']] : rol === 'mantenimiento' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Marcar'], ['tareas', '✅', 'Tareas'], ['verhorarios', '🗓️', 'Salones']] : [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['tareas', '✅', 'Tareas'], ['mishorarios', '📅', 'Horarios'], ['miplanilla', '📝', 'Mi planilla'], ['misencuestas', '💬', 'Mis encuestas']];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
@@ -7613,15 +7613,7 @@ function MisHorarios({
       color: C.tx2,
       fontWeight: 600
     }
-  }, "(", cntDiaMH(f), " evento", cntDiaMH(f) !== 1 ? 's' : '', (porDia[f] || []).length < cntDiaMH(f) ? ' · tenés ' + (porDia[f] || []).length : '', ")"), f === _hoyMH ? '  · HOY' : f < _hoyMH ? '  · pasó' : ''), (porDia[f] || []).length === 0 ? /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...S.card,
-      color: C.tx2,
-      fontSize: 13,
-      padding: '12px 14px',
-      fontStyle: 'italic'
-    }
-  }, "\uD83D\uDEAB No trabaj\xE1s este d\xEDa") : porDia[f].map((it, i) => {
+  }, "(", cntDiaMH(f), " evento", cntDiaMH(f) !== 1 ? 's' : '', (porDia[f] || []).length < cntDiaMH(f) ? ' · tenés ' + (porDia[f] || []).length : '', ")"), f === _hoyMH ? '  · HOY' : f < _hoyMH ? '  · pasó' : ''), (porDia[f] || []).length > 0 && porDia[f].map((it, i) => {
     const key = f + '|' + i;
     const op = abierto === key;
     const ing = it.a.hora_ingreso_esperada || it.e.hora_inicio;
@@ -7727,19 +7719,9 @@ function MisHorarios({
   }, /*#__PURE__*/React.createElement("h2", {
     style: {
       fontSize: 20,
-      marginBottom: 4
-    }
-  }, "\uD83D\uDCC5 Mis horarios"), /*#__PURE__*/React.createElement("p", {
-    style: {
-      fontSize: 12,
-      color: C.tx2,
       marginBottom: 12
     }
-  }, "Ac\xE1 ves ", /*#__PURE__*/React.createElement("b", {
-    style: {
-      color: C.tx
-    }
-  }, "solo los d\xEDas en los que te toca trabajar"), ". Si un d\xEDa no aparece, ese d\xEDa no ten\xE9s turno. Acordate de fichar a la hora de entrada."), ultimo && /*#__PURE__*/React.createElement("a", {
+  }, "\uD83D\uDCC5 Horarios"), ultimo && /*#__PURE__*/React.createElement("a", {
     href: ultimo.url,
     target: "_blank",
     rel: "noopener",

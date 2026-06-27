@@ -430,7 +430,7 @@ function BottomNav({rol,vista,setVista}){
     ? [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
     : rol==='mantenimiento'
     ? [['dashboard','🏠','Inicio'],['fichar','📍','Marcar'],['tareas','✅','Tareas'],['verhorarios','🗓️','Salones']]
-    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['tareas','✅','Tareas'],['mishorarios','📅','Mis horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
+    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['tareas','✅','Tareas'],['mishorarios','📅','Horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
   return (
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50,paddingBottom:'env(safe-area-inset-bottom)'}}>
       <div style={{maxWidth:560,margin:'0 auto',display:'flex'}}>
@@ -2043,7 +2043,7 @@ function MisHorarios({sesion}){
   const _diaMH=f=>(
           <div key={f} style={{marginBottom:12,opacity:f<_hoyMH?.6:1}}>
             <div style={{fontWeight:700,fontSize:14,marginBottom:6,fontFamily:'Arial, Helvetica, sans-serif',color:f<_hoyMH?C.tx2:(f===_hoyMH?C.verde:C.oro)}}>{fechaLinda(f)} <span style={{color:C.tx2,fontWeight:600}}>({cntDiaMH(f)} evento{cntDiaMH(f)!==1?'s':''}{(porDia[f]||[]).length<cntDiaMH(f)?(' · tenés '+(porDia[f]||[]).length):''})</span>{f===_hoyMH?'  · HOY':(f<_hoyMH?'  · pasó':'')}</div>
-            {(porDia[f]||[]).length===0 ? <div style={{...S.card,color:C.tx2,fontSize:13,padding:'12px 14px',fontStyle:'italic'}}>🚫 No trabajás este día</div> : porDia[f].map((it,i)=>{ const key=f+'|'+i; const op=abierto===key; const ing=it.a.hora_ingreso_esperada||it.e.hora_inicio; return (
+            {(porDia[f]||[]).length>0 && porDia[f].map((it,i)=>{ const key=f+'|'+i; const op=abierto===key; const ing=it.a.hora_ingreso_esperada||it.e.hora_inicio; return (
               <div key={i} style={{...S.card,marginBottom:8,padding:0,overflow:'hidden'}}>
                 <button onClick={()=>setAbierto(op?null:key)} style={{width:'100%',background:'none',border:'none',color:C.tx,cursor:'pointer',display:'flex',alignItems:'center',gap:8,padding:'13px 14px',textAlign:'left',fontSize:15}}>
                   <span style={{color:C.tx2,fontSize:13}}>Ingreso</span>
@@ -2070,8 +2070,7 @@ function MisHorarios({sesion}){
   );
   return (
     <div className="fade">
-      <h2 style={{fontSize:20,marginBottom:4}}>📅 Mis horarios</h2>
-      <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Acá ves <b style={{color:C.tx}}>solo los días en los que te toca trabajar</b>. Si un día no aparece, ese día no tenés turno. Acordate de fichar a la hora de entrada.</p>
+      <h2 style={{fontSize:20,marginBottom:12}}>📅 Horarios</h2>
       {ultimo && (
         <a href={ultimo.url} target="_blank" rel="noopener" style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:12,textDecoration:'none',color:C.tx,border:'1px solid '+C.oro}}>
           <span style={{fontSize:28}}>📄</span>
