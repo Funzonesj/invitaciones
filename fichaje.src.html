@@ -375,7 +375,7 @@ function HorariosSalones({sucursales,empleados,detalle,sucDefault}){
       </div>
     );
     const rs=asign.filter(a=>a.evento_id===ev.id); const op=abierto===ev.id;
-    const ad=ev.adicionales&&!/no registra/i.test(ev.adicionales)?ev.adicionales:'';
+    const dc=detAdicCli(ev); const ad=dc.adic;
     return (
       <div key={ev.id} style={{background:C.surf2,borderRadius:8,overflow:'hidden'}}>
         <button onClick={()=>setAbierto(op?null:ev.id)} style={{width:'100%',display:'flex',alignItems:'center',gap:8,fontSize:14,background:'none',border:'none',color:C.tx,cursor:'pointer',padding:'8px 10px',textAlign:'left'}}>
@@ -386,6 +386,7 @@ function HorariosSalones({sucursales,empleados,detalle,sucDefault}){
         {op && <div style={{padding:'0 10px 10px',display:'flex',flexDirection:'column',gap:4,fontSize:13}}>
           {ad && <div style={{color:C.rojo,fontWeight:800}}>⚠️ {ad}</div>}
           {rs.length?rs.map(a=>(<div key={a.id} style={{color:C.tx2}}><b style={{color:C.tx}}>{nomLeg(a)}</b> — {a.rol_en_evento}{a.hora_ingreso_esperada?(' · entra '+a.hora_ingreso_esperada):''}</div>)):<div style={{color:C.tx2}}>Sin personal asignado.</div>}
+          {dc.cli && <div style={{color:C.tx2}}>👩 Mamá: {dc.cli}</div>}
           {ev.festejado && <div style={{color:C.tx2}}>🎂 {ev.festejado}</div>}
         </div>}
       </div>
@@ -1855,6 +1856,8 @@ function fmtTsAR(ts){ if(!ts)return ''; const p=_argP(new Date(ts)); return p?(p
 function fmtHoraAR(ts){ if(!ts)return ''; const p=_argP(new Date(ts)); return p?(p.hour+':'+p.minute):''; }
 // Lunes de la semana (lun-dom) de una fecha ISO, 'atras' semanas hacia atrás (0=esta semana, 1=anterior)
 function lunesDeSemana(iso,atras){ const d=new Date((iso||fechaHoyISO())+'T12:00:00'); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow-7*(atras||0)); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+// Separa el adicional del nombre de la mamá (sirve para eventos viejos donde quedó pegado, ej "Vr al 50% Dante")
+function detAdicCli(ev){ const a0=(ev.adicionales&&!/no registra/i.test(ev.adicionales))?ev.adicionales:''; if(a0) return {adic:a0,cli:ev.cliente||''}; const m=(ev.cliente||'').match(/^(.+?(?:\d+\s*%|x\s*\d+|\d+\s*hs|\d+))\s+(.+)$/i); if(m) return {adic:m[1].trim(),cli:m[2].trim()}; return {adic:'',cli:ev.cliente||''}; }
 function cargarImg(url){ return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('img')); i.src=url; }); }
 let _faceReady=false, _faceFail=false;
 async function ensureFace(){ if(_faceReady)return true; if(_faceFail||!window.faceapi)return false;
@@ -2060,15 +2063,15 @@ function MisHorarios({sesion}){
                   <span style={{flex:1}}></span>
                   <span style={{color:C.tx2,fontSize:13}}>{op?'▲':'ver detalle ▼'}</span>
                 </button>
-                {op && (
+                {op && (()=>{ const dc=detAdicCli(it.e); return (
                   <div style={{padding:'0 14px 13px',fontSize:14,display:'flex',flexDirection:'column',gap:4}}>
                     <div style={{fontWeight:700}}>{it.e.paquete}, de {String(it.e.hora_inicio||'').replace(/:00$/,'')} a {String(it.e.hora_fin||'').replace(/:00$/,'')} hs</div>
                     <div style={{fontWeight:700}}>{it.a.rol_en_evento}</div>
-                    {it.e.cliente&&<div style={{color:C.tx2}}>Mamá: {it.e.cliente}</div>}
+                    {dc.cli&&<div style={{color:C.tx2}}>Mamá: {dc.cli}</div>}
                     {it.e.festejado&&<div style={{color:C.tx2}}>Niño: {it.e.festejado}</div>}
-                    {it.e.adicionales&&!/no registra/i.test(it.e.adicionales)&&<div style={{color:C.oro}}>{it.e.adicionales}</div>}
+                    {dc.adic&&<div style={{color:C.rojo,fontWeight:700}}>⚠️ Adicional: {dc.adic}</div>}
                   </div>
-                )}
+                  ); })()}
               </div>
             );})}
           </div>

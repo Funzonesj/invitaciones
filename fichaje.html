@@ -1480,7 +1480,8 @@ function HorariosSalones({
     }, ev.paquete));
     const rs = asign.filter(a => a.evento_id === ev.id);
     const op = abierto === ev.id;
-    const ad = ev.adicionales && !/no registra/i.test(ev.adicionales) ? ev.adicionales : '';
+    const dc = detAdicCli(ev);
+    const ad = dc.adic;
     return /*#__PURE__*/React.createElement("div", {
       key: ev.id,
       style: {
@@ -1552,7 +1553,11 @@ function HorariosSalones({
       style: {
         color: C.tx2
       }
-    }, "Sin personal asignado."), ev.festejado && /*#__PURE__*/React.createElement("div", {
+    }, "Sin personal asignado."), dc.cli && /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: C.tx2
+      }
+    }, "\uD83D\uDC69 Mam\xE1: ", dc.cli), ev.festejado && /*#__PURE__*/React.createElement("div", {
       style: {
         color: C.tx2
       }
@@ -6897,6 +6902,23 @@ function lunesDeSemana(iso, atras) {
   d.setDate(d.getDate() - dow - 7 * (atras || 0));
   return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
 }
+// Separa el adicional del nombre de la mamá (sirve para eventos viejos donde quedó pegado, ej "Vr al 50% Dante")
+function detAdicCli(ev) {
+  const a0 = ev.adicionales && !/no registra/i.test(ev.adicionales) ? ev.adicionales : '';
+  if (a0) return {
+    adic: a0,
+    cli: ev.cliente || ''
+  };
+  const m = (ev.cliente || '').match(/^(.+?(?:\d+\s*%|x\s*\d+|\d+\s*hs|\d+))\s+(.+)$/i);
+  if (m) return {
+    adic: m[1].trim(),
+    cli: m[2].trim()
+  };
+  return {
+    adic: '',
+    cli: ev.cliente || ''
+  };
+}
 function cargarImg(url) {
   return new Promise((res, rej) => {
     const i = new Image();
@@ -7737,35 +7759,39 @@ function MisHorarios({
         color: C.tx2,
         fontSize: 13
       }
-    }, op ? '▲' : 'ver detalle ▼')), op && /*#__PURE__*/React.createElement("div", {
-      style: {
-        padding: '0 14px 13px',
-        fontSize: 14,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontWeight: 700
-      }
-    }, it.e.paquete, ", de ", String(it.e.hora_inicio || '').replace(/:00$/, ''), " a ", String(it.e.hora_fin || '').replace(/:00$/, ''), " hs"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontWeight: 700
-      }
-    }, it.a.rol_en_evento), it.e.cliente && /*#__PURE__*/React.createElement("div", {
-      style: {
-        color: C.tx2
-      }
-    }, "Mam\xE1: ", it.e.cliente), it.e.festejado && /*#__PURE__*/React.createElement("div", {
-      style: {
-        color: C.tx2
-      }
-    }, "Ni\xF1o: ", it.e.festejado), it.e.adicionales && !/no registra/i.test(it.e.adicionales) && /*#__PURE__*/React.createElement("div", {
-      style: {
-        color: C.oro
-      }
-    }, it.e.adicionales)));
+    }, op ? '▲' : 'ver detalle ▼')), op && (() => {
+      const dc = detAdicCli(it.e);
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: '0 14px 13px',
+          fontSize: 14,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 4
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontWeight: 700
+        }
+      }, it.e.paquete, ", de ", String(it.e.hora_inicio || '').replace(/:00$/, ''), " a ", String(it.e.hora_fin || '').replace(/:00$/, ''), " hs"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontWeight: 700
+        }
+      }, it.a.rol_en_evento), dc.cli && /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C.tx2
+        }
+      }, "Mam\xE1: ", dc.cli), it.e.festejado && /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C.tx2
+        }
+      }, "Ni\xF1o: ", it.e.festejado), dc.adic && /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C.rojo,
+          fontWeight: 700
+        }
+      }, "\u26A0\uFE0F Adicional: ", dc.adic));
+    })());
   })))))));
 }
 
