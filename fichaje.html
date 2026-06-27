@@ -1702,6 +1702,37 @@ function Dashboard({
   setVista
 }) {
   const empSuc = sucCtx ? empleados.filter(e => (e.sucursales || []).includes(sucCtx)) : empleados;
+  const [evSet, setEvSet] = useState(null);
+  useEffect(() => {
+    if (rol === 'empleado' || rol === 'mantenimiento') return;
+    (async () => {
+      const ev = await dbAll('fichaje_eventos');
+      const s = {};
+      (ev || []).forEach(e => {
+        s[e.sucursal_id + '|' + e.fecha] = true;
+      });
+      setEvSet(s);
+    })();
+  }, []);
+  const _DOW3 = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  const _lblD = f => {
+    const d = new Date(f + 'T12:00:00');
+    return _DOW3[d.getDay()] + ' ' + f.slice(8, 10) + '/' + f.slice(5, 7);
+  };
+  const _prox14 = (() => {
+    const a = [];
+    const d = new Date(fechaHoyISO() + 'T12:00:00');
+    for (let i = 1; i <= 14; i++) {
+      d.setDate(d.getDate() + 1);
+      a.push(d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2));
+    }
+    return a;
+  })();
+  const _sucsB = sucCtx ? sucursales.filter(s => s.id === sucCtx) : sucursales;
+  const _libres = evSet ? _sucsB.map(s => ({
+    suc: s,
+    dias: _prox14.filter(f => !evSet[s.id + '|' + f])
+  })).filter(x => x.dias.length) : [];
   return /*#__PURE__*/React.createElement("div", {
     className: "fade"
   }, /*#__PURE__*/React.createElement("h2", {
@@ -1793,7 +1824,56 @@ function Dashboard({
     n: "0",
     l: "Alertas",
     col: C.rojo
-  }))));
+  })), evSet && _libres.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginTop: 12,
+      background: '#2a2418',
+      border: '1px solid #4a3d1c'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      color: C.oro,
+      fontSize: 14,
+      marginBottom: 2
+    }
+  }, "\uD83D\uDCE3 D\xEDas sin eventos (pr\xF3ximas 2 semanas)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.tx2,
+      marginBottom: 10
+    }
+  }, "Buena oportunidad para hacer una promoci\xF3n \uD83D\uDE09"), _libres.map(x => /*#__PURE__*/React.createElement("div", {
+    key: x.suc.id,
+    style: {
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 13,
+      marginBottom: 5
+    }
+  }, x.suc.nombre, " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.tx2,
+      fontWeight: 400
+    }
+  }, "(", x.dias.length, " libre", x.dias.length !== 1 ? 's' : '', ")")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6,
+      flexWrap: 'wrap'
+    }
+  }, x.dias.map(f => /*#__PURE__*/React.createElement("span", {
+    key: f,
+    style: {
+      ...S.chip,
+      background: C.surf2,
+      color: C.tx
+    }
+  }, _lblD(f)))))))));
 }
 
 /* ── Placeholder ── */
