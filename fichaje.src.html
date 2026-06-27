@@ -2039,16 +2039,6 @@ function MisHorarios({sesion}){
           <span style={{color:C.oro,fontSize:18}}>›</span>
         </a>
       )}
-      {viejos.length>0 && (
-        <div style={{marginBottom:8}}>
-          <button onClick={()=>setVerHist(!verHist)} style={{...S.btn,background:C.surf2,color:C.tx2,width:'100%',fontSize:13,padding:'10px',display:'flex',justifyContent:'space-between'}}><span>🗂️ Semanas anteriores ({viejos.length})</span><span>{verHist?'▲':'▼'}</span></button>
-          {verHist && viejos.map((p,i)=>(
-            <a key={i} href={p.url} target="_blank" rel="noopener" style={{display:'flex',alignItems:'center',gap:10,textDecoration:'none',color:C.tx,background:C.surf,border:'1px solid '+C.bd,borderRadius:10,padding:'9px 11px',marginTop:6,fontSize:13}}>
-              <span style={{fontSize:18}}>📄</span><span style={{flex:1}}>{etiqPdf(p)}</span><span style={{color:C.tx2}}>›</span>
-            </a>
-          ))}
-        </div>
-      )}
       {items===null ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
         _diasMH.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>{(_nAntMH>0&&!verAntMH)?<span>No tenés horarios de esta semana en adelante.<br/><button onClick={()=>setVerAntMH(true)} style={{...S.btn,...S.btnGhost,marginTop:10,fontSize:13}}>📋 Ver semana anterior ({_nAntMH})</button></span>:<span>No tenés horarios cargados por ahora.</span>}</div> :
         <React.Fragment>
