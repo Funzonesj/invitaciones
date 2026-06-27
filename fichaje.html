@@ -537,6 +537,8 @@ function App() {
     sucursales: sucursales,
     sucCtx: sucCtx,
     empleados: empleados
+  }), vista === 'verhorarios' && /*#__PURE__*/React.createElement(HorariosSalones, {
+    sucursales: sucursales
   }), vista === 'empleados' && esDuena && /*#__PURE__*/React.createElement(Empleados, {
     empleados: empleados,
     sucursales: sucursales,
@@ -1390,12 +1392,179 @@ function Tareas({
     }
   }, "Cerrar"))));
 }
+/* ── HORARIO DE SALONES (mantenimiento): solo lectura, horario + paquete, sin detalle ── */
+function HorariosSalones({
+  sucursales
+}) {
+  const [sucSel, setSucSel] = useState(sucursales[0] && sucursales[0].id || '');
+  const [eventos, setEventos] = useState(null);
+  const [verPasados, setVerPasados] = useState(false);
+  useEffect(() => {
+    (async () => {
+      const ev = await dbAll('fichaje_eventos');
+      setEventos(ev || []);
+    })();
+  }, []);
+  const sh = h => String(h || '').replace(/:00$/, '');
+  const evs = (eventos || []).filter(e => e.sucursal_id === sucSel);
+  const porDia = {};
+  evs.forEach(e => {
+    (porDia[e.fecha] = porDia[e.fecha] || []).push(e);
+  });
+  Object.values(porDia).forEach(a => a.sort((x, y) => toMin(x.hora_inicio) - toMin(y.hora_inicio)));
+  const _hoy = fechaHoyISO();
+  const _lunE = lunesDeSemana(_hoy, 0);
+  const _lunA = lunesDeSemana(_hoy, 1);
+  const _todos = Object.keys(porDia).sort();
+  const _diasV = _todos.filter(f => verPasados ? f >= _lunA : f >= _lunE);
+  const _nPas = _todos.filter(f => f >= _lunA && f < _lunE).length;
+  const _fdm = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  function _sem(dias) {
+    const g = {};
+    dias.forEach(f => {
+      const l = lunesDeSemana(f, 0);
+      (g[l] = g[l] || []).push(f);
+    });
+    return Object.keys(g).sort().map(l => {
+      const d2 = new Date(l + 'T12:00:00');
+      d2.setDate(d2.getDate() + 6);
+      const dom = d2.getFullYear() + '-' + ('0' + (d2.getMonth() + 1)).slice(-2) + '-' + ('0' + d2.getDate()).slice(-2);
+      const dd = g[l].slice().sort();
+      return {
+        lunes: l,
+        domingo: dom,
+        dias: dd,
+        total: dd.reduce((s, f) => s + (porDia[f] ? porDia[f].length : 0), 0)
+      };
+    });
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fade"
+  }, /*#__PURE__*/React.createElement("h2", {
+    style: {
+      fontSize: 20,
+      marginBottom: 4
+    }
+  }, "\uD83D\uDDD3\uFE0F Horario de salones"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 12,
+      color: C.tx2,
+      marginBottom: 12
+    }
+  }, "Eleg\xED un sal\xF3n para ver los horarios de cada d\xEDa."), /*#__PURE__*/React.createElement("select", {
+    value: sucSel,
+    onChange: e => setSucSel(e.target.value),
+    style: {
+      ...S.input,
+      marginBottom: 12
+    }
+  }, sucursales.map(s => /*#__PURE__*/React.createElement("option", {
+    key: s.id,
+    value: s.id
+  }, s.nombre))), eventos === null ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'center',
+      padding: 30
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "spin"
+  })) : _diasV.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      textAlign: 'center',
+      color: C.tx2,
+      padding: 26
+    }
+  }, _nPas > 0 && !verPasados ? /*#__PURE__*/React.createElement("span", null, "No hay horarios de esta semana en adelante.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setVerPasados(true),
+    style: {
+      ...S.btn,
+      ...S.btnGhost,
+      marginTop: 10,
+      fontSize: 13
+    }
+  }, "\uD83D\uDCCB Ver semana anterior (", _nPas, ")")) : /*#__PURE__*/React.createElement("span", null, "No hay horarios cargados para este sal\xF3n.")) : /*#__PURE__*/React.createElement(React.Fragment, null, _nPas > 0 && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setVerPasados(v => !v),
+    style: {
+      ...S.btn,
+      ...S.btnGhost,
+      marginBottom: 12,
+      fontSize: 12,
+      padding: '7px 12px',
+      minHeight: 0
+    }
+  }, verPasados ? 'Ocultar semana anterior' : '📋 Ver semana anterior (' + _nPas + ')'), _sem(_diasV).map(sem => /*#__PURE__*/React.createElement("div", {
+    key: sem.lunes,
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.tx,
+      background: C.surf2,
+      borderRadius: 8,
+      padding: '7px 11px',
+      marginBottom: 8
+    }
+  }, "\uD83D\uDCC5 Semana del ", _fdm(sem.lunes), " al ", _fdm(sem.domingo), " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.oro
+    }
+  }, "(", sem.total, " evento", sem.total !== 1 ? 's' : '', ")")), sem.dias.map(f => /*#__PURE__*/React.createElement("div", {
+    key: f,
+    style: {
+      ...S.card,
+      marginBottom: 8,
+      opacity: f < _hoy ? .6 : 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14,
+      marginBottom: 6,
+      fontFamily: 'Arial, Helvetica, sans-serif',
+      color: f < _hoy ? C.tx2 : f === _hoy ? C.verde : C.oro
+    }
+  }, fechaLinda(f), f === _hoy ? '  · HOY' : ''), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 5
+    }
+  }, porDia[f].map(ev => /*#__PURE__*/React.createElement("div", {
+    key: ev.id,
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      fontSize: 14,
+      background: C.surf2,
+      borderRadius: 8,
+      padding: '8px 10px'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.verde,
+      fontWeight: 700,
+      fontFamily: 'Arial, Helvetica, sans-serif',
+      whiteSpace: 'nowrap'
+    }
+  }, sh(ev.hora_inicio), " a ", sh(ev.hora_fin)), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      minWidth: 0,
+      fontWeight: 700
+    }
+  }, ev.paquete))))))))));
+}
 function BottomNav({
   rol,
   vista,
   setVista
 }) {
-  const items = rol === 'dueno' ? [['dashboard', '🏠', 'Inicio'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['pagos', '💰', 'Pagos'], ['empleados', '👥', 'Empleados'], ['sucursales', '🏢', 'Salones'], ['config', '⚙️', 'Config']] : rol === 'encargada' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['registros', '📋', 'Fichajes'], ['pagos', '💰', 'Pagos'], ['alertas', '🔔', 'Alertas']] : rol === 'mantenimiento' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Marcar'], ['tareas', '✅', 'Tareas']] : [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['tareas', '✅', 'Tareas'], ['mishorarios', '📅', 'Mis horarios'], ['miplanilla', '📝', 'Mi planilla'], ['misencuestas', '💬', 'Mis encuestas']];
+  const items = rol === 'dueno' ? [['dashboard', '🏠', 'Inicio'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['pagos', '💰', 'Pagos'], ['empleados', '👥', 'Empleados'], ['sucursales', '🏢', 'Salones'], ['config', '⚙️', 'Config']] : rol === 'encargada' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['registros', '📋', 'Fichajes'], ['pagos', '💰', 'Pagos'], ['alertas', '🔔', 'Alertas']] : rol === 'mantenimiento' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Marcar'], ['tareas', '✅', 'Tareas'], ['verhorarios', '🗓️', 'Salones']] : [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['tareas', '✅', 'Tareas'], ['mishorarios', '📅', 'Mis horarios'], ['miplanilla', '📝', 'Mi planilla'], ['misencuestas', '💬', 'Mis encuestas']];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
