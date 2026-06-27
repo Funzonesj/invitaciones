@@ -1394,17 +1394,31 @@ function Tareas({
 }
 /* ── HORARIO DE SALONES (mantenimiento): solo lectura, horario + paquete, sin detalle ── */
 function HorariosSalones({
-  sucursales
+  sucursales,
+  empleados,
+  detalle,
+  sucDefault
 }) {
-  const [sucSel, setSucSel] = useState(sucursales[0] && sucursales[0].id || '');
+  const [sucSel, setSucSel] = useState(sucDefault || sucursales[0] && sucursales[0].id || '');
   const [eventos, setEventos] = useState(null);
+  const [asign, setAsign] = useState([]);
   const [verPasados, setVerPasados] = useState(false);
+  const [abierto, setAbierto] = useState(null);
   useEffect(() => {
     (async () => {
       const ev = await dbAll('fichaje_eventos');
       setEventos(ev || []);
+      if (detalle) {
+        const ee = await dbAll('fichaje_evento_empleados');
+        setAsign(ee || []);
+      }
     })();
   }, []);
+  const emps = empleados || [];
+  const nomLeg = a => {
+    const e = emps.find(x => x.id === a.empleado_id) || emps.find(x => x.legajo === a.legajo);
+    return e ? (e.legajo != null ? '#' + e.legajo + ' ' : '') + e.nombre : '#' + (a.legajo != null ? a.legajo : '?') + ' (sin cargar)';
+  };
   const sh = h => String(h || '').replace(/:00$/, '');
   const evs = (eventos || []).filter(e => e.sucursal_id === sucSel);
   const porDia = {};
@@ -1438,6 +1452,112 @@ function HorariosSalones({
       };
     });
   }
+  function evLine(ev) {
+    if (!detalle) return /*#__PURE__*/React.createElement("div", {
+      key: ev.id,
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 14,
+        background: C.surf2,
+        borderRadius: 8,
+        padding: '8px 10px'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.verde,
+        fontWeight: 700,
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        whiteSpace: 'nowrap'
+      }
+    }, sh(ev.hora_inicio), " a ", sh(ev.hora_fin)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: 1,
+        minWidth: 0,
+        fontWeight: 700
+      }
+    }, ev.paquete));
+    const rs = asign.filter(a => a.evento_id === ev.id);
+    const op = abierto === ev.id;
+    const ad = ev.adicionales && !/no registra/i.test(ev.adicionales) ? ev.adicionales : '';
+    return /*#__PURE__*/React.createElement("div", {
+      key: ev.id,
+      style: {
+        background: C.surf2,
+        borderRadius: 8,
+        overflow: 'hidden'
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setAbierto(op ? null : ev.id),
+      style: {
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        fontSize: 14,
+        background: 'none',
+        border: 'none',
+        color: C.tx,
+        cursor: 'pointer',
+        padding: '8px 10px',
+        textAlign: 'left'
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.verde,
+        fontWeight: 700,
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        whiteSpace: 'nowrap'
+      }
+    }, sh(ev.hora_inicio), " a ", sh(ev.hora_fin)), /*#__PURE__*/React.createElement("span", {
+      style: {
+        flex: 1,
+        minWidth: 0,
+        fontWeight: 700
+      }
+    }, ev.paquete, ad ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.rojo,
+        fontWeight: 800
+      }
+    }, " \xB7 ", ad) : ''), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.tx2,
+        fontSize: 12
+      }
+    }, op ? '▲' : '▼')), op && /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '0 10px 10px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+        fontSize: 13
+      }
+    }, ad && /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: C.rojo,
+        fontWeight: 800
+      }
+    }, "\u26A0\uFE0F ", ad), rs.length ? rs.map(a => /*#__PURE__*/React.createElement("div", {
+      key: a.id,
+      style: {
+        color: C.tx2
+      }
+    }, /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: C.tx
+      }
+    }, nomLeg(a)), " \u2014 ", a.rol_en_evento, a.hora_ingreso_esperada ? ' · entra ' + a.hora_ingreso_esperada : '')) : /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: C.tx2
+      }
+    }, "Sin personal asignado."), ev.festejado && /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: C.tx2
+      }
+    }, "\uD83C\uDF82 ", ev.festejado)));
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "fade"
   }, /*#__PURE__*/React.createElement("h2", {
@@ -1445,15 +1565,18 @@ function HorariosSalones({
       fontSize: 20,
       marginBottom: 4
     }
-  }, "\uD83D\uDDD3\uFE0F Horario de salones"), /*#__PURE__*/React.createElement("p", {
+  }, "\uD83D\uDDD3\uFE0F ", detalle ? 'Resumen de horarios' : 'Horario de salones'), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 12,
       color: C.tx2,
       marginBottom: 12
     }
-  }, "Eleg\xED un sal\xF3n para ver los horarios de cada d\xEDa."), /*#__PURE__*/React.createElement("select", {
+  }, "Eleg\xED un sal\xF3n para ver los horarios de cada d\xEDa.", detalle ? ' Tocá un evento para ver el personal y los adicionales.' : ''), /*#__PURE__*/React.createElement("select", {
     value: sucSel,
-    onChange: e => setSucSel(e.target.value),
+    onChange: e => {
+      setSucSel(e.target.value);
+      setAbierto(null);
+    },
     style: {
       ...S.input,
       marginBottom: 12
@@ -1533,31 +1656,7 @@ function HorariosSalones({
       flexDirection: 'column',
       gap: 5
     }
-  }, porDia[f].map(ev => /*#__PURE__*/React.createElement("div", {
-    key: ev.id,
-    style: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      fontSize: 14,
-      background: C.surf2,
-      borderRadius: 8,
-      padding: '8px 10px'
-    }
-  }, /*#__PURE__*/React.createElement("span", {
-    style: {
-      color: C.verde,
-      fontWeight: 700,
-      fontFamily: 'Arial, Helvetica, sans-serif',
-      whiteSpace: 'nowrap'
-    }
-  }, sh(ev.hora_inicio), " a ", sh(ev.hora_fin)), /*#__PURE__*/React.createElement("span", {
-    style: {
-      flex: 1,
-      minWidth: 0,
-      fontWeight: 700
-    }
-  }, ev.paquete))))))))));
+  }, porDia[f].map(evLine))))))));
 }
 function BottomNav({
   rol,
@@ -3029,7 +3128,17 @@ function parseHorarios(lineas, naLegajo) {
     if (!txt) return;
     const mm = txt.match(/^(.*?)\s*\((Madre|Padre|Tutor[a]?)\)\s*(.*)$/i);
     if (mm) {
-      ev.cliente = mm[1].trim().replace(/^No registra adicionales\s*/i, '');
+      let pre = mm[1].trim();
+      if (/^No registra adicionales/i.test(pre)) {
+        pre = pre.replace(/^No registra adicionales\s*/i, '').trim();
+      } else {
+        const ad = pre.match(/^(.+?(?:\d+\s*%|x\s*\d+|\d+\s*hs|\d+))\s+(.+)$/i);
+        if (ad) {
+          ev.adicionales = ad[1].trim();
+          pre = ad[2].trim();
+        }
+      }
+      ev.cliente = pre;
       ev.festejado = mm[3].replace(/,\s*$/, '').trim();
     } else if (!/^No registra adicionales/i.test(txt) && !ev.cliente) ev.adicionales = txt.trim();
   }
@@ -3435,7 +3544,12 @@ function Horarios({
       marginBottom: 14,
       flexWrap: 'wrap'
     }
-  }, tabBtn('ver', '📅 Ver'), tabBtn('pdf', '📄 PDF'), tabBtn('manual', '✏️ Manual'), tabBtn('encuestas', '📝 Encuestas')), tab === 'encuestas' && /*#__PURE__*/React.createElement(EncuestasView, {
+  }, tabBtn('ver', '📅 Ver'), tabBtn('resumen', '📋 Resumen'), tabBtn('pdf', '📄 PDF'), tabBtn('manual', '✏️ Manual'), tabBtn('encuestas', '📝 Encuestas')), tab === 'resumen' && /*#__PURE__*/React.createElement(HorariosSalones, {
+    sucursales: sucursales,
+    empleados: empleados,
+    detalle: true,
+    sucDefault: esDuena ? '' : sucCtx
+  }), tab === 'encuestas' && /*#__PURE__*/React.createElement(EncuestasView, {
     esDuena: esDuena,
     sucCtx: sucCtx,
     sucursales: sucursales
