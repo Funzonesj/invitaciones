@@ -3137,14 +3137,11 @@ function Horarios({
     (porDia[e.fecha] = porDia[e.fecha] || []).push(e);
   });
   const _hoyISO = fechaHoyISO();
-  const _hace7 = (() => {
-    const d = new Date(_hoyISO + 'T12:00:00');
-    d.setDate(d.getDate() - 7);
-    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
-  })();
+  const _lunesEsta = lunesDeSemana(_hoyISO, 0);
+  const _lunesAnt = lunesDeSemana(_hoyISO, 1);
   const _diasTodos = Object.keys(porDia).sort();
-  const _diasV = _diasTodos.filter(f => verPasados ? f >= _hace7 : f >= _hoyISO);
-  const _nPasados = _diasTodos.filter(f => f >= _hace7 && f < _hoyISO).length;
+  const _diasV = _diasTodos.filter(f => verPasados ? f >= _lunesAnt : f >= _lunesEsta);
+  const _nPasados = _diasTodos.filter(f => f >= _lunesAnt && f < _lunesEsta).length;
   return /*#__PURE__*/React.createElement("div", {
     className: "fade"
   }, /*#__PURE__*/React.createElement("h2", {
@@ -3187,7 +3184,7 @@ function Horarios({
       color: C.tx2,
       padding: '26px'
     }
-  }, _nPasados > 0 && !verPasados ? /*#__PURE__*/React.createElement("span", null, "No hay horarios de hoy en adelante.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("button", {
+  }, _nPasados > 0 && !verPasados ? /*#__PURE__*/React.createElement("span", null, "No hay horarios de esta semana en adelante.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("button", {
     onClick: () => setVerPasados(true),
     style: {
       ...S.btn,
@@ -3208,17 +3205,18 @@ function Horarios({
   }, verPasados ? 'Ocultar semana anterior' : '📋 Ver semana anterior (' + _nPasados + ')'), _diasV.map(f => /*#__PURE__*/React.createElement("div", {
     key: f,
     style: {
-      marginBottom: 16
+      marginBottom: 16,
+      opacity: f < _hoyISO ? .6 : 1
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 700,
-      color: C.oro,
       fontSize: 14,
       marginBottom: 6,
-      fontFamily: 'Arial, Helvetica, sans-serif'
+      fontFamily: 'Arial, Helvetica, sans-serif',
+      color: f < _hoyISO ? C.tx2 : f === _hoyISO ? C.verde : C.oro
     }
-  }, fechaLinda(f)), porDia[f].map(ev => {
+  }, fechaLinda(f), f === _hoyISO ? '  · HOY' : f < _hoyISO ? '  · pasó' : ''), porDia[f].map(ev => {
     const rs = asign.filter(a => a.evento_id === ev.id);
     return /*#__PURE__*/React.createElement("div", {
       key: ev.id,
@@ -6485,6 +6483,13 @@ function fmtHoraAR(ts) {
   const p = _argP(new Date(ts));
   return p ? p.hour + ':' + p.minute : '';
 }
+// Lunes de la semana (lun-dom) de una fecha ISO, 'atras' semanas hacia atrás (0=esta semana, 1=anterior)
+function lunesDeSemana(iso, atras) {
+  const d = new Date((iso || fechaHoyISO()) + 'T12:00:00');
+  const dow = (d.getDay() + 6) % 7;
+  d.setDate(d.getDate() - dow - 7 * (atras || 0));
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
 function cargarImg(url) {
   return new Promise((res, rej) => {
     const i = new Image();
@@ -7104,13 +7109,10 @@ function MisHorarios({
     (porDia[it.e.fecha] = porDia[it.e.fecha] || []).push(it);
   });
   const _hoyMH = fechaHoyISO();
-  const _hace7MH = (() => {
-    const d = new Date(_hoyMH + 'T12:00:00');
-    d.setDate(d.getDate() - 7);
-    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
-  })();
-  const _diasMH = Object.keys(porDia).filter(f => verAntMH ? f >= _hace7MH : f >= _hoyMH).sort();
-  const _nAntMH = Object.keys(porDia).filter(f => f >= _hace7MH && f < _hoyMH).length;
+  const _lunesMH = lunesDeSemana(_hoyMH, 0);
+  const _lunesAntMH = lunesDeSemana(_hoyMH, 1);
+  const _diasMH = Object.keys(porDia).filter(f => verAntMH ? f >= _lunesAntMH : f >= _lunesMH).sort();
+  const _nAntMH = Object.keys(porDia).filter(f => f >= _lunesAntMH && f < _lunesMH).length;
   const etiqPdf = p => p.desde && p.hasta ? 'Semana del ' + p.desde + ' al ' + p.hasta : p.subido ? 'Subida el ' + p.subido : 'Horario';
   const ultimo = pdfs[0],
     viejos = pdfs.slice(1);
@@ -7223,7 +7225,7 @@ function MisHorarios({
       color: C.tx2,
       padding: 26
     }
-  }, _nAntMH > 0 && !verAntMH ? /*#__PURE__*/React.createElement("span", null, "No ten\xE9s horarios de hoy en adelante.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("button", {
+  }, _nAntMH > 0 && !verAntMH ? /*#__PURE__*/React.createElement("span", null, "No ten\xE9s horarios de esta semana en adelante.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("button", {
     onClick: () => setVerAntMH(true),
     style: {
       ...S.btn,
@@ -7244,17 +7246,18 @@ function MisHorarios({
   }, verAntMH ? 'Ocultar semana anterior' : '📋 Ver semana anterior (' + _nAntMH + ')'), _diasMH.map(f => /*#__PURE__*/React.createElement("div", {
     key: f,
     style: {
-      marginBottom: 12
+      marginBottom: 12,
+      opacity: f < _hoyMH ? .6 : 1
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 700,
-      color: C.oro,
       fontSize: 14,
       marginBottom: 6,
-      fontFamily: 'Arial, Helvetica, sans-serif'
+      fontFamily: 'Arial, Helvetica, sans-serif',
+      color: f < _hoyMH ? C.tx2 : f === _hoyMH ? C.verde : C.oro
     }
-  }, fechaLinda(f)), porDia[f].map((it, i) => {
+  }, fechaLinda(f), f === _hoyMH ? '  · HOY' : f < _hoyMH ? '  · pasó' : ''), porDia[f].map((it, i) => {
     const key = f + '|' + i;
     const op = abierto === key;
     const ing = it.a.hora_ingreso_esperada || it.e.hora_inicio;

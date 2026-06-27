@@ -886,8 +886,8 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
 
   const tabBtn=(id,t)=>(<button onClick={()=>setTab(id)} style={{...S.btn,flex:1,minHeight:0,padding:'10px',fontSize:13,...(tab===id?S.btnOro:S.btnGhost)}}>{t}</button>);
   const porDia={}; eventos.forEach(e=>{(porDia[e.fecha]=porDia[e.fecha]||[]).push(e);});
-  const _hoyISO=fechaHoyISO(); const _hace7=(()=>{const d=new Date(_hoyISO+'T12:00:00');d.setDate(d.getDate()-7);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);})();
-  const _diasTodos=Object.keys(porDia).sort(); const _diasV=_diasTodos.filter(f=>verPasados?(f>=_hace7):(f>=_hoyISO)); const _nPasados=_diasTodos.filter(f=>f>=_hace7&&f<_hoyISO).length;
+  const _hoyISO=fechaHoyISO(); const _lunesEsta=lunesDeSemana(_hoyISO,0); const _lunesAnt=lunesDeSemana(_hoyISO,1);
+  const _diasTodos=Object.keys(porDia).sort(); const _diasV=_diasTodos.filter(f=>verPasados?(f>=_lunesAnt):(f>=_lunesEsta)); const _nPasados=_diasTodos.filter(f=>f>=_lunesAnt&&f<_lunesEsta).length;
 
   return (
     <div className="fade">
@@ -901,12 +901,12 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
       {tab==='encuestas' && <EncuestasView esDuena={esDuena} sucCtx={sucCtx} sucursales={sucursales}/>}
 
       {tab==='ver' && (cargando ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
-        _diasV.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:'26px'}}>{(_nPasados>0&&!verPasados)?<span>No hay horarios de hoy en adelante.<br/><button onClick={()=>setVerPasados(true)} style={{...S.btn,...S.btnGhost,marginTop:10,fontSize:13}}>📋 Ver semana anterior ({_nPasados})</button></span>:<span>No hay horarios cargados para {sucNom(sucSel)}.<br/>Subí un PDF o cargá manual.</span>}</div> :
+        _diasV.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:'26px'}}>{(_nPasados>0&&!verPasados)?<span>No hay horarios de esta semana en adelante.<br/><button onClick={()=>setVerPasados(true)} style={{...S.btn,...S.btnGhost,marginTop:10,fontSize:13}}>📋 Ver semana anterior ({_nPasados})</button></span>:<span>No hay horarios cargados para {sucNom(sucSel)}.<br/>Subí un PDF o cargá manual.</span>}</div> :
         <React.Fragment>
         {_nPasados>0 && <button onClick={()=>setVerPasados(v=>!v)} style={{...S.btn,...S.btnGhost,marginBottom:12,fontSize:12,padding:'7px 12px',minHeight:0}}>{verPasados?'Ocultar semana anterior':'📋 Ver semana anterior ('+_nPasados+')'}</button>}
         {_diasV.map(f=>(
-          <div key={f} style={{marginBottom:16}}>
-            <div style={{fontWeight:700,color:C.oro,fontSize:14,marginBottom:6,fontFamily:'Arial, Helvetica, sans-serif'}}>{fechaLinda(f)}</div>
+          <div key={f} style={{marginBottom:16,opacity:f<_hoyISO?.6:1}}>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:6,fontFamily:'Arial, Helvetica, sans-serif',color:f<_hoyISO?C.tx2:(f===_hoyISO?C.verde:C.oro)}}>{fechaLinda(f)}{f===_hoyISO?'  · HOY':(f<_hoyISO?'  · pasó':'')}</div>
             {porDia[f].map(ev=>{ const rs=asign.filter(a=>a.evento_id===ev.id); return (
               <div key={ev.id} style={{...S.card,marginBottom:8}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
@@ -1754,6 +1754,8 @@ function ahoraMin(){ const p=_argP(new Date()); return p?(+p.hour*60+ +p.minute)
 function fechaDeTs(ts){ if(!ts)return ''; const p=_argP(new Date(ts)); return p?(p.year+'-'+p.month+'-'+p.day):String(ts).slice(0,10); }
 function fmtTsAR(ts){ if(!ts)return ''; const p=_argP(new Date(ts)); return p?(p.day+'/'+p.month+' '+p.hour+':'+p.minute):''; }
 function fmtHoraAR(ts){ if(!ts)return ''; const p=_argP(new Date(ts)); return p?(p.hour+':'+p.minute):''; }
+// Lunes de la semana (lun-dom) de una fecha ISO, 'atras' semanas hacia atrás (0=esta semana, 1=anterior)
+function lunesDeSemana(iso,atras){ const d=new Date((iso||fechaHoyISO())+'T12:00:00'); const dow=(d.getDay()+6)%7; d.setDate(d.getDate()-dow-7*(atras||0)); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
 function cargarImg(url){ return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('img')); i.src=url; }); }
 let _faceReady=false, _faceFail=false;
 async function ensureFace(){ if(_faceReady)return true; if(_faceFail||!window.faceapi)return false;
@@ -1921,8 +1923,8 @@ function MisHorarios({sesion}){
     setPdfs(ps);
   })();},[]);
   const porDia={}; (items||[]).forEach(it=>{(porDia[it.e.fecha]=porDia[it.e.fecha]||[]).push(it);});
-  const _hoyMH=fechaHoyISO(); const _hace7MH=(()=>{const d=new Date(_hoyMH+'T12:00:00');d.setDate(d.getDate()-7);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);})();
-  const _diasMH=Object.keys(porDia).filter(f=>verAntMH?(f>=_hace7MH):(f>=_hoyMH)).sort(); const _nAntMH=Object.keys(porDia).filter(f=>f>=_hace7MH&&f<_hoyMH).length;
+  const _hoyMH=fechaHoyISO(); const _lunesMH=lunesDeSemana(_hoyMH,0); const _lunesAntMH=lunesDeSemana(_hoyMH,1);
+  const _diasMH=Object.keys(porDia).filter(f=>verAntMH?(f>=_lunesAntMH):(f>=_lunesMH)).sort(); const _nAntMH=Object.keys(porDia).filter(f=>f>=_lunesAntMH&&f<_lunesMH).length;
   const etiqPdf=p=>(p.desde&&p.hasta)?('Semana del '+p.desde+' al '+p.hasta):(p.subido?('Subida el '+p.subido):'Horario');
   const ultimo=pdfs[0], viejos=pdfs.slice(1);
   return (
@@ -1947,12 +1949,12 @@ function MisHorarios({sesion}){
         </div>
       )}
       {items===null ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
-        _diasMH.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>{(_nAntMH>0&&!verAntMH)?<span>No tenés horarios de hoy en adelante.<br/><button onClick={()=>setVerAntMH(true)} style={{...S.btn,...S.btnGhost,marginTop:10,fontSize:13}}>📋 Ver semana anterior ({_nAntMH})</button></span>:<span>No tenés horarios cargados por ahora.</span>}</div> :
+        _diasMH.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>{(_nAntMH>0&&!verAntMH)?<span>No tenés horarios de esta semana en adelante.<br/><button onClick={()=>setVerAntMH(true)} style={{...S.btn,...S.btnGhost,marginTop:10,fontSize:13}}>📋 Ver semana anterior ({_nAntMH})</button></span>:<span>No tenés horarios cargados por ahora.</span>}</div> :
         <React.Fragment>
         {_nAntMH>0 && <button onClick={()=>setVerAntMH(v=>!v)} style={{...S.btn,...S.btnGhost,marginBottom:12,fontSize:12,padding:'7px 12px',minHeight:0}}>{verAntMH?'Ocultar semana anterior':'📋 Ver semana anterior ('+_nAntMH+')'}</button>}
         {_diasMH.map(f=>(
-          <div key={f} style={{marginBottom:12}}>
-            <div style={{fontWeight:700,color:C.oro,fontSize:14,marginBottom:6,fontFamily:'Arial, Helvetica, sans-serif'}}>{fechaLinda(f)}</div>
+          <div key={f} style={{marginBottom:12,opacity:f<_hoyMH?.6:1}}>
+            <div style={{fontWeight:700,fontSize:14,marginBottom:6,fontFamily:'Arial, Helvetica, sans-serif',color:f<_hoyMH?C.tx2:(f===_hoyMH?C.verde:C.oro)}}>{fechaLinda(f)}{f===_hoyMH?'  · HOY':(f<_hoyMH?'  · pasó':'')}</div>
             {porDia[f].map((it,i)=>{ const key=f+'|'+i; const op=abierto===key; const ing=it.a.hora_ingreso_esperada||it.e.hora_inicio; return (
               <div key={i} style={{...S.card,marginBottom:8,padding:0,overflow:'hidden'}}>
                 <button onClick={()=>setAbierto(op?null:key)} style={{width:'100%',background:'none',border:'none',color:C.tx,cursor:'pointer',display:'flex',alignItems:'center',gap:8,padding:'13px 14px',textAlign:'left',fontSize:15}}>
