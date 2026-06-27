@@ -4022,10 +4022,10 @@ function PagoMantenimiento({
     setRes(null);
     const fich = await dbAll('fichaje_fichajes');
     const filas = mants.map(emp => {
-      const fs = fich.filter(x => x.empleado_id === emp.id && String(x.ts || '').slice(0, 10) >= desde && String(x.ts || '').slice(0, 10) <= hasta).sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+      const fs = fich.filter(x => x.empleado_id === emp.id && fechaDeTs(x.ts) >= desde && fechaDeTs(x.ts) <= hasta).sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
       const byDia = {};
       fs.forEach(f => {
-        const d = String(f.ts).slice(0, 10);
+        const d = fechaDeTs(f.ts);
         (byDia[d] = byDia[d] || []).push(f);
       });
       const dias = [];
@@ -4385,7 +4385,7 @@ function Pagos({
     const lateByEmp = {};
     fichajes.forEach(f => {
       if (f.tipo === 'entrada' && f.estado === 'tarde') {
-        const d = f.evento_id ? evDate[f.evento_id] : String(f.ts || '').slice(0, 10);
+        const d = f.evento_id ? evDate[f.evento_id] : fechaDeTs(f.ts);
         if (d) (lateByEmp[f.empleado_id] = lateByEmp[f.empleado_id] || []).push(d);
       }
     });
@@ -5713,14 +5713,7 @@ function ControlEncargadas({
   const [abierto, setAbierto] = useState({});
   const miSuc = esDuena ? sucSel : sucCtx;
   const DOW = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  const fmtH = ts => {
-    try {
-      const d = new Date(ts);
-      return _pad2(d.getHours()) + ':' + _pad2(d.getMinutes());
-    } catch (e) {
-      return '';
-    }
-  };
+  const fmtH = fmtHoraAR;
   const encs = empleados.filter(e => e.rol_sistema === 'encargada' && (e.horario_fijo || []).length && (!miSuc || e.sucursal_encargada === miSuc || (e.sucursales || []).includes(miSuc)));
   async function calcular() {
     if (!desde || !hasta) {
@@ -5739,7 +5732,7 @@ function ControlEncargadas({
         const dow = d.getDay();
         const hf = (enc.horario_fijo || []).find(h => h.dia === dow);
         if (hf) {
-          const fe = fich.filter(x => x.empleado_id === enc.id && x.tipo === 'entrada' && String(x.ts || '').slice(0, 10) === iso).sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+          const fe = fich.filter(x => x.empleado_id === enc.id && x.tipo === 'entrada' && fechaDeTs(x.ts) === iso).sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
           let estado = 'falta',
             hora = '';
           if (fe.length) {
@@ -5974,14 +5967,7 @@ function Registros({
     const e = empleados.find(x => x.id === id);
     return e ? (e.legajo != null ? '#' + e.legajo + ' ' : '') + e.nombre : '(empleado)';
   };
-  const fmtTs = ts => {
-    try {
-      const d = new Date(ts);
-      return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-    } catch (e) {
-      return '';
-    }
-  };
+  const fmtTs = fmtTsAR;
   const estChip = {
     en_hora: ['En hora', C.verde],
     tarde: ['Tarde', C.amar],
@@ -6001,8 +5987,8 @@ function Registros({
     let list = f.slice();
     if (miSuc) list = list.filter(x => x.sucursal_id === miSuc);
     if (empSel) list = list.filter(x => x.empleado_id === empSel);
-    if (desde) list = list.filter(x => String(x.ts || '').slice(0, 10) >= desde);
-    if (hasta) list = list.filter(x => String(x.ts || '').slice(0, 10) <= hasta);
+    if (desde) list = list.filter(x => fechaDeTs(x.ts) >= desde);
+    if (hasta) list = list.filter(x => fechaDeTs(x.ts) <= hasta);
     list.sort((a, b) => String(b.ts || '').localeCompare(String(a.ts || '')));
     setData({
       list,
@@ -6313,14 +6299,7 @@ function Alertas({
     sin_horario: ['❓', C.rojo],
     ausente: ['❌', C.rojo]
   };
-  const fmtTs = ts => {
-    try {
-      const d = new Date(ts);
-      return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-    } catch (e) {
-      return '';
-    }
-  };
+  const fmtTs = fmtTsAR;
   let list = alertas || [];
   const miSuc = esDuena ? sucSel : sucCtx;
   if (miSuc) list = list.filter(a => a.sucursal_id === miSuc);
@@ -6435,13 +6414,48 @@ function Alertas({
 }
 
 /* ════════ FICHAJE (empleado: GPS + cámara + reconocimiento facial) ════════ */
+// ── Hora de Argentina (San Juan, UTC-3) — todo el fichaje usa esta zona, no la del dispositivo ──
+function _argP(d) {
+  try {
+    const p = {};
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(d).forEach(x => {
+      p[x.type] = x.value;
+    });
+    return p;
+  } catch (e) {
+    return null;
+  }
+}
 function fechaHoyISO() {
-  const d = new Date();
-  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  const p = _argP(new Date());
+  return p ? p.year + '-' + p.month + '-' + p.day : '';
 }
 function ahoraMin() {
-  const d = new Date();
-  return d.getHours() * 60 + d.getMinutes();
+  const p = _argP(new Date());
+  return p ? +p.hour * 60 + +p.minute : 0;
+}
+function fechaDeTs(ts) {
+  if (!ts) return '';
+  const p = _argP(new Date(ts));
+  return p ? p.year + '-' + p.month + '-' + p.day : String(ts).slice(0, 10);
+}
+function fmtTsAR(ts) {
+  if (!ts) return '';
+  const p = _argP(new Date(ts));
+  return p ? p.day + '/' + p.month + ' ' + p.hour + ':' + p.minute : '';
+}
+function fmtHoraAR(ts) {
+  if (!ts) return '';
+  const p = _argP(new Date(ts));
+  return p ? p.hour + ':' + p.minute : '';
 }
 function cargarImg(url) {
   return new Promise((res, rej) => {
@@ -6683,7 +6697,7 @@ function Fichar({
     } catch (e) {}
     // Encargada (o quien tenga horario fijo): si no coincide con un evento, comparar con su HORARIO FIJO del día
     if (!coincide && (sesion.horario_fijo || []).length) {
-      const dow = new Date().getDay();
+      const dow = new Date(fechaHoyISO() + 'T12:00:00').getDay();
       const hf = (sesion.horario_fijo || []).find(h => h.dia === dow);
       if (hf) {
         coincide = true;
@@ -6720,7 +6734,7 @@ function Fichar({
     if (estado === 'tarde') {
       try {
         const ym = hoy.slice(0, 7);
-        const fs = (await dbAll('fichaje_fichajes')).filter(x => x.empleado_id === sesion.id && x.tipo === 'entrada' && x.estado === 'tarde' && String(x.ts || '').slice(0, 7) === ym);
+        const fs = (await dbAll('fichaje_fichajes')).filter(x => x.empleado_id === sesion.id && x.tipo === 'entrada' && x.estado === 'tarde' && fechaDeTs(x.ts).slice(0, 7) === ym);
         const cnt = fs.length,
           max = +cfg.tarde_max_mes || 5,
           susp = +cfg.tarde_suspension_dias || 30;

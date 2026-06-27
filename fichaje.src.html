@@ -1097,8 +1097,8 @@ function PagoMantenimiento({esDuena,sucursales,empleados,sucCtx}){
     setCargando(true); setRes(null);
     const fich=await dbAll('fichaje_fichajes');
     const filas=mants.map(emp=>{
-      const fs=fich.filter(x=>x.empleado_id===emp.id && String(x.ts||'').slice(0,10)>=desde && String(x.ts||'').slice(0,10)<=hasta).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
-      const byDia={}; fs.forEach(f=>{const d=String(f.ts).slice(0,10);(byDia[d]=byDia[d]||[]).push(f);});
+      const fs=fich.filter(x=>x.empleado_id===emp.id && fechaDeTs(x.ts)>=desde && fechaDeTs(x.ts)<=hasta).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+      const byDia={}; fs.forEach(f=>{const d=fechaDeTs(f.ts);(byDia[d]=byDia[d]||[]).push(f);});
       const dias=[]; let totalH=0;
       Object.keys(byDia).sort().forEach(d=>{
         const arr=byDia[d]; let h=0,inT=null,incompleto=false;
@@ -1185,7 +1185,7 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
     const maxT=+cfg.tarde_max_mes||5, suspD=+cfg.tarde_suspension_dias||30;
     const allEv=await dbAll('fichaje_eventos'); const evDate={}; allEv.forEach(e=>evDate[e.id]=e.fecha);
     const fichajes=await dbAll('fichaje_fichajes');
-    const lateByEmp={}; fichajes.forEach(f=>{ if(f.tipo==='entrada'&&f.estado==='tarde'){ const d=f.evento_id?evDate[f.evento_id]:String(f.ts||'').slice(0,10); if(d)(lateByEmp[f.empleado_id]=lateByEmp[f.empleado_id]||[]).push(d); } });
+    const lateByEmp={}; fichajes.forEach(f=>{ if(f.tipo==='entrada'&&f.estado==='tarde'){ const d=f.evento_id?evDate[f.evento_id]:fechaDeTs(f.ts); if(d)(lateByEmp[f.empleado_id]=lateByEmp[f.empleado_id]||[]).push(d); } });
     const _sumarDias=(iso,n)=>{const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);};
     function bonusBloqueado(empId,fecha){ const ds=lateByEmp[empId]||[]; if(ds.indexOf(fecha)>=0)return true; const byM={}; ds.forEach(d=>(byM[d.slice(0,7)]=byM[d.slice(0,7)]||[]).push(d)); return Object.values(byM).some(arr=>{ arr.sort(); if(arr.length<maxT)return false; const ini=arr[maxT-1]; return fecha>=ini && fecha<=_sumarDias(ini,suspD); }); }
     const filas=[];
@@ -1552,7 +1552,7 @@ function ControlEncargadas({esDuena,sucursales,empleados,sucCtx}){
   const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false); const [abierto,setAbierto]=useState({});
   const miSuc=esDuena?sucSel:sucCtx;
   const DOW=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
-  const fmtH=ts=>{try{const d=new Date(ts);return _pad2(d.getHours())+':'+_pad2(d.getMinutes());}catch(e){return '';}};
+  const fmtH=fmtHoraAR;
   const encs=empleados.filter(e=>e.rol_sistema==='encargada' && (e.horario_fijo||[]).length && (!miSuc || e.sucursal_encargada===miSuc || (e.sucursales||[]).includes(miSuc)));
   async function calcular(){
     if(!desde||!hasta){alert('Elegí el rango de fechas.');return;}
@@ -1564,7 +1564,7 @@ function ControlEncargadas({esDuena,sucursales,empleados,sucCtx}){
         const iso=d.getFullYear()+'-'+_pad2(d.getMonth()+1)+'-'+_pad2(d.getDate()); const dow=d.getDay();
         const hf=(enc.horario_fijo||[]).find(h=>h.dia===dow);
         if(hf){
-          const fe=fich.filter(x=>x.empleado_id===enc.id && x.tipo==='entrada' && String(x.ts||'').slice(0,10)===iso).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
+          const fe=fich.filter(x=>x.empleado_id===enc.id && x.tipo==='entrada' && fechaDeTs(x.ts)===iso).sort((a,b)=>String(a.ts).localeCompare(String(b.ts)));
           let estado='falta', hora='';
           if(fe.length){ const f0=fe[0]; hora=fmtH(f0.ts); estado=(f0.estado==='tarde')?'tarde':'ok'; }
           dias.push({fecha:iso,dow,hf,estado,hora});
@@ -1619,7 +1619,7 @@ function Registros({esDuena,sucursales,empleados,sucCtx}){
   const [sucSel,setSucSel]=useState(''); const [empSel,setEmpSel]=useState(''); const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState('');
   const [data,setData]=useState(null); const [cargando,setCargando]=useState(false); const [abierto,setAbierto]=useState({});
   const empNom=id=>{const e=empleados.find(x=>x.id===id);return e?((e.legajo!=null?('#'+e.legajo+' '):'')+e.nombre):'(empleado)';};
-  const fmtTs=ts=>{try{const d=new Date(ts);return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}catch(e){return '';}};
+  const fmtTs=fmtTsAR;
   const estChip={en_hora:['En hora',C.verde],tarde:['Tarde',C.amar],sin_horario:['Sin horario',C.rojo],salida:['Salida',C.tx2],presente:['Presente',C.verde]};
   const miSuc=esDuena?sucSel:sucCtx;
   const empsFiltro=empleados.filter(e=>!miSuc||((e.sucursales||[]).includes(miSuc))).sort((a,b)=>(a.legajo||999)-(b.legajo||999));
@@ -1628,8 +1628,8 @@ function Registros({esDuena,sucursales,empleados,sucCtx}){
     let list=f.slice();
     if(miSuc) list=list.filter(x=>x.sucursal_id===miSuc);
     if(empSel) list=list.filter(x=>x.empleado_id===empSel);
-    if(desde) list=list.filter(x=>String(x.ts||'').slice(0,10)>=desde);
-    if(hasta) list=list.filter(x=>String(x.ts||'').slice(0,10)<=hasta);
+    if(desde) list=list.filter(x=>fechaDeTs(x.ts)>=desde);
+    if(hasta) list=list.filter(x=>fechaDeTs(x.ts)<=hasta);
     list.sort((a,b)=>String(b.ts||'').localeCompare(String(a.ts||'')));
     setData({list,evById}); setAbierto({}); setCargando(false);
   }
@@ -1710,7 +1710,7 @@ function Alertas({esDuena,sucursales,empleados,sucCtx}){
   async function marcarLeida(id){ await dbUpdate('fichaje_alertas',id,{leida:true}); cargar(); }
   async function borrar(id){ if(!window.confirm('¿Borrar esta alerta?'))return; await dbDelete('fichaje_alertas',id); cargar(); }
   const ic={tarde:['⏰',C.amar],sin_horario:['❓',C.rojo],ausente:['❌',C.rojo]};
-  const fmtTs=ts=>{try{const d=new Date(ts);return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2)+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}catch(e){return '';}};
+  const fmtTs=fmtTsAR;
   let list=alertas||[];
   const miSuc = esDuena? sucSel : sucCtx;
   if(miSuc) list=list.filter(a=>a.sucursal_id===miSuc);
@@ -1741,8 +1741,13 @@ function Alertas({esDuena,sucursales,empleados,sucCtx}){
 }
 
 /* ════════ FICHAJE (empleado: GPS + cámara + reconocimiento facial) ════════ */
-function fechaHoyISO(){ const d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
-function ahoraMin(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
+// ── Hora de Argentina (San Juan, UTC-3) — todo el fichaje usa esta zona, no la del dispositivo ──
+function _argP(d){ try{ const p={}; new Intl.DateTimeFormat('en-GB',{timeZone:'America/Argentina/Buenos_Aires',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(d).forEach(x=>{p[x.type]=x.value;}); return p; }catch(e){ return null; } }
+function fechaHoyISO(){ const p=_argP(new Date()); return p?(p.year+'-'+p.month+'-'+p.day):''; }
+function ahoraMin(){ const p=_argP(new Date()); return p?(+p.hour*60+ +p.minute):0; }
+function fechaDeTs(ts){ if(!ts)return ''; const p=_argP(new Date(ts)); return p?(p.year+'-'+p.month+'-'+p.day):String(ts).slice(0,10); }
+function fmtTsAR(ts){ if(!ts)return ''; const p=_argP(new Date(ts)); return p?(p.day+'/'+p.month+' '+p.hour+':'+p.minute):''; }
+function fmtHoraAR(ts){ if(!ts)return ''; const p=_argP(new Date(ts)); return p?(p.hour+':'+p.minute):''; }
 function cargarImg(url){ return new Promise((res,rej)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>res(i); i.onerror=()=>rej(new Error('img')); i.src=url; }); }
 let _faceReady=false, _faceFail=false;
 async function ensureFace(){ if(_faceReady)return true; if(_faceFail||!window.faceapi)return false;
@@ -1810,7 +1815,7 @@ function Fichar({sesion,sucursales}){
     }catch(e){}
     // Encargada (o quien tenga horario fijo): si no coincide con un evento, comparar con su HORARIO FIJO del día
     if(!coincide && (sesion.horario_fijo||[]).length){
-      const dow=new Date().getDay();
+      const dow=new Date(fechaHoyISO()+'T12:00:00').getDay();
       const hf=(sesion.horario_fijo||[]).find(h=>h.dia===dow);
       if(hf){ coincide=true; eventoDesc='Horario fijo '+(hf.entrada||'')+'-'+(hf.salida||''); ingreso=hf.entrada||'';
         if(tipo==='entrada'){ const esp=toMin(hf.entrada); minTarde=Math.max(0,ahoraMin()-esp); estado=(minTarde<=tol)?'en_hora':'tarde'; }
@@ -1823,7 +1828,7 @@ function Fichar({sesion,sucursales}){
     // penalización por tardanza
     let tardeInfo=null;
     if(estado==='tarde'){
-      try{ const ym=hoy.slice(0,7); const fs=(await dbAll('fichaje_fichajes')).filter(x=>x.empleado_id===sesion.id&&x.tipo==='entrada'&&x.estado==='tarde'&&String(x.ts||'').slice(0,7)===ym);
+      try{ const ym=hoy.slice(0,7); const fs=(await dbAll('fichaje_fichajes')).filter(x=>x.empleado_id===sesion.id&&x.tipo==='entrada'&&x.estado==='tarde'&&fechaDeTs(x.ts).slice(0,7)===ym);
         const cnt=fs.length, max=+cfg.tarde_max_mes||5, susp=+cfg.tarde_suspension_dias||30;
         tardeInfo={minTarde,cnt,max,susp,reach:cnt>=max,aviso:cnt===max-1};
       }catch(e){ tardeInfo={minTarde,cnt:0,max:+cfg.tarde_max_mes||5,susp:+cfg.tarde_suspension_dias||30}; }
