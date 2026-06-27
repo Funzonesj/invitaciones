@@ -2019,7 +2019,7 @@ function Dashboard({
       fontSize: 20,
       marginBottom: 4
     }
-  }, "Hola, ", String(sesion.nombre || '').split(' ')[0], " \uD83D\uDC4B"), /*#__PURE__*/React.createElement("p", {
+  }, "Hola", rol === 'empleado' || rol === 'mantenimiento' ? '' : ', ' + String(sesion.nombre || '').split(' ')[0], " \uD83D\uDC4B"), /*#__PURE__*/React.createElement("p", {
     style: {
       color: C.tx2,
       fontSize: 13,
