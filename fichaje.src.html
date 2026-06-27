@@ -549,18 +549,6 @@ function Dashboard({sesion,rol,sucursales,empleados,sucCtx,setVista}){
             <Metric n="0" l="Eventos hoy" col={C.amar}/>
             <Metric n="0" l="Alertas" col={C.rojo}/>
           </div>
-          {evSet && _libres.length>0 && (
-            <div style={{...S.card,marginTop:12,background:'#2a2418',border:'1px solid #4a3d1c'}}>
-              <div style={{fontWeight:800,color:C.oro,fontSize:14,marginBottom:2}}>📣 Días sin eventos (próximas 2 semanas)</div>
-              <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>Buena oportunidad para hacer una promoción 😉</div>
-              {_libres.map(x=>(
-                <div key={x.suc.id} style={{marginBottom:8}}>
-                  <div style={{fontWeight:700,fontSize:13,marginBottom:5}}>{x.suc.nombre} <span style={{color:C.tx2,fontWeight:400}}>({x.dias.length} libre{x.dias.length!==1?'s':''})</span></div>
-                  <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{x.dias.map(f=><span key={f} style={{...S.chip,background:C.surf2,color:C.tx}}>{_lblD(f)}</span>)}</div>
-                </div>
-              ))}
-            </div>
-          )}
         </>
       )}
     </div>
