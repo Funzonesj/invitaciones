@@ -3142,6 +3142,26 @@ function Horarios({
   const _diasTodos = Object.keys(porDia).sort();
   const _diasV = _diasTodos.filter(f => verPasados ? f >= _lunesAnt : f >= _lunesEsta);
   const _nPasados = _diasTodos.filter(f => f >= _lunesAnt && f < _lunesEsta).length;
+  const _fdm = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  function _semanas(dias) {
+    const g = {};
+    dias.forEach(f => {
+      const lun = lunesDeSemana(f, 0);
+      (g[lun] = g[lun] || []).push(f);
+    });
+    return Object.keys(g).sort().map(lun => {
+      const d2 = new Date(lun + 'T12:00:00');
+      d2.setDate(d2.getDate() + 6);
+      const dom = d2.getFullYear() + '-' + ('0' + (d2.getMonth() + 1)).slice(-2) + '-' + ('0' + d2.getDate()).slice(-2);
+      const dd = g[lun].slice().sort();
+      return {
+        lunes: lun,
+        domingo: dom,
+        dias: dd,
+        total: dd.reduce((s, f) => s + (porDia[f] ? porDia[f].length : 0), 0)
+      };
+    });
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "fade"
   }, /*#__PURE__*/React.createElement("h2", {
@@ -3202,10 +3222,29 @@ function Horarios({
       padding: '7px 12px',
       minHeight: 0
     }
-  }, verPasados ? 'Ocultar semana anterior' : '📋 Ver semana anterior (' + _nPasados + ')'), _diasV.map(f => /*#__PURE__*/React.createElement("div", {
+  }, verPasados ? 'Ocultar semana anterior' : '📋 Ver semana anterior (' + _nPasados + ')'), _semanas(_diasV).map(sem => /*#__PURE__*/React.createElement("div", {
+    key: sem.lunes,
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.tx,
+      background: C.surf2,
+      borderRadius: 8,
+      padding: '7px 11px',
+      marginBottom: 8
+    }
+  }, "\uD83D\uDCC5 Semana del ", _fdm(sem.lunes), " al ", _fdm(sem.domingo), " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.oro
+    }
+  }, "(", sem.total, " evento", sem.total !== 1 ? 's' : '', ")")), sem.dias.map(f => /*#__PURE__*/React.createElement("div", {
     key: f,
     style: {
-      marginBottom: 16,
+      marginBottom: 12,
       opacity: f < _hoyISO ? .6 : 1
     }
   }, /*#__PURE__*/React.createElement("div", {
@@ -3216,7 +3255,12 @@ function Horarios({
       fontFamily: 'Arial, Helvetica, sans-serif',
       color: f < _hoyISO ? C.tx2 : f === _hoyISO ? C.verde : C.oro
     }
-  }, fechaLinda(f), f === _hoyISO ? '  · HOY' : f < _hoyISO ? '  · pasó' : ''), porDia[f].map(ev => {
+  }, fechaLinda(f), " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.tx2,
+      fontWeight: 600
+    }
+  }, "(", (porDia[f] || []).length, " evento", (porDia[f] || []).length !== 1 ? 's' : '', ")"), f === _hoyISO ? '  · HOY' : f < _hoyISO ? '  · pasó' : ''), porDia[f].map(ev => {
     const rs = asign.filter(a => a.evento_id === ev.id);
     return /*#__PURE__*/React.createElement("div", {
       key: ev.id,
@@ -3325,7 +3369,7 @@ function Horarios({
         marginTop: 6
       }
     }, "\uD83D\uDC64 ", ev.cliente, ev.festejado ? ' · 🎂 ' + ev.festejado : ''));
-  }))))), tab === 'ver' && eventos.length > 0 && /*#__PURE__*/React.createElement("button", {
+  }))))))), tab === 'ver' && eventos.length > 0 && /*#__PURE__*/React.createElement("button", {
     onClick: borrarTodos,
     style: {
       ...S.btn,
