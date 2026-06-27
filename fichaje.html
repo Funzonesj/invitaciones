@@ -7237,6 +7237,26 @@ function MisHorarios({
   const _lunesAntMH = lunesDeSemana(_hoyMH, 1);
   const _diasMH = Object.keys(porDia).filter(f => verAntMH ? f >= _lunesAntMH : f >= _lunesMH).sort();
   const _nAntMH = Object.keys(porDia).filter(f => f >= _lunesAntMH && f < _lunesMH).length;
+  const _fdmMH = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  function _semanasMH(dias) {
+    const g = {};
+    dias.forEach(f => {
+      const lun = lunesDeSemana(f, 0);
+      (g[lun] = g[lun] || []).push(f);
+    });
+    return Object.keys(g).sort().map(lun => {
+      const d2 = new Date(lun + 'T12:00:00');
+      d2.setDate(d2.getDate() + 6);
+      const dom = d2.getFullYear() + '-' + ('0' + (d2.getMonth() + 1)).slice(-2) + '-' + ('0' + d2.getDate()).slice(-2);
+      const dd = g[lun].slice().sort();
+      return {
+        lunes: lun,
+        domingo: dom,
+        dias: dd,
+        total: dd.reduce((s, f) => s + (porDia[f] ? porDia[f].length : 0), 0)
+      };
+    });
+  }
   const etiqPdf = p => p.desde && p.hasta ? 'Semana del ' + p.desde + ' al ' + p.hasta : p.subido ? 'Subida el ' + p.subido : 'Horario';
   const ultimo = pdfs[0],
     viejos = pdfs.slice(1);
@@ -7367,7 +7387,26 @@ function MisHorarios({
       padding: '7px 12px',
       minHeight: 0
     }
-  }, verAntMH ? 'Ocultar semana anterior' : '📋 Ver semana anterior (' + _nAntMH + ')'), _diasMH.map(f => /*#__PURE__*/React.createElement("div", {
+  }, verAntMH ? 'Ocultar semana anterior' : '📋 Ver semana anterior (' + _nAntMH + ')'), _semanasMH(_diasMH).map(sem => /*#__PURE__*/React.createElement("div", {
+    key: sem.lunes,
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.tx,
+      background: C.surf2,
+      borderRadius: 8,
+      padding: '7px 11px',
+      marginBottom: 8
+    }
+  }, "\uD83D\uDCC5 Semana del ", _fdmMH(sem.lunes), " al ", _fdmMH(sem.domingo), " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.oro
+    }
+  }, "(", sem.total, " evento", sem.total !== 1 ? 's' : '', ")")), sem.dias.map(f => /*#__PURE__*/React.createElement("div", {
     key: f,
     style: {
       marginBottom: 12,
@@ -7381,7 +7420,12 @@ function MisHorarios({
       fontFamily: 'Arial, Helvetica, sans-serif',
       color: f < _hoyMH ? C.tx2 : f === _hoyMH ? C.verde : C.oro
     }
-  }, fechaLinda(f), f === _hoyMH ? '  · HOY' : f < _hoyMH ? '  · pasó' : ''), porDia[f].map((it, i) => {
+  }, fechaLinda(f), " ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.tx2,
+      fontWeight: 600
+    }
+  }, "(", (porDia[f] || []).length, " evento", (porDia[f] || []).length !== 1 ? 's' : '', ")"), f === _hoyMH ? '  · HOY' : f < _hoyMH ? '  · pasó' : ''), porDia[f].map((it, i) => {
     const key = f + '|' + i;
     const op = abierto === key;
     const ing = it.a.hora_ingreso_esperada || it.e.hora_inicio;
@@ -7458,7 +7502,7 @@ function MisHorarios({
         color: C.oro
       }
     }, it.e.adicionales)));
-  })))));
+  })))))));
 }
 
 /* ════════ MIS ENCUESTAS (empleado: solo lo negativo, últimas 2 semanas) ════════ */
