@@ -1674,7 +1674,7 @@ function BottomNav({
   vista,
   setVista
 }) {
-  const items = rol === 'dueno' ? [['dashboard', '🏠', 'Inicio'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['pagos', '💰', 'Pagos'], ['empleados', '👥', 'Empleados'], ['sucursales', '🏢', 'Salones'], ['config', '⚙️', 'Config']] : rol === 'encargada' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['registros', '📋', 'Fichajes'], ['pagos', '💰', 'Pagos'], ['alertas', '🔔', 'Alertas']] : rol === 'mantenimiento' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Marcar'], ['tareas', '✅', 'Tareas'], ['verhorarios', '🗓️', 'Salones']] : [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['tareas', '✅', 'Tareas'], ['mishorarios', '📅', 'Horarios'], ['miplanilla', '📝', 'Mi planilla'], ['misencuestas', '💬', 'Mis encuestas']];
+  const items = rol === 'dueno' ? [['dashboard', '🏠', 'Inicio'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['pagos', '💰', 'Pagos'], ['empleados', '👥', 'Empleados'], ['sucursales', '🏢', 'Salones'], ['config', '⚙️', 'Config']] : rol === 'encargada' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['horarios', '🗓️', 'Horarios'], ['tareas', '✅', 'Tareas'], ['registros', '📋', 'Fichajes'], ['pagos', '💰', 'Pagos'], ['alertas', '🔔', 'Alertas']] : rol === 'mantenimiento' ? [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Marcar'], ['tareas', '✅', 'Tareas'], ['verhorarios', '🗓️', 'Salones']] : [['dashboard', '🏠', 'Inicio'], ['fichar', '📍', 'Fichar'], ['tareas', '✅', 'Tareas'], ['mishorarios', '📅', 'Horarios'], ['miplanilla', '📝', 'Planilla'], ['misencuestas', '💬', 'Encuestas']];
   return /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
@@ -2480,7 +2480,8 @@ function Empleados({
     clave: '',
     rol_sistema: 'empleado',
     sucursal_encargada: '',
-    horario_fijo: []
+    horario_fijo: [],
+    vista_simple: false
   };
   const [form, setForm] = useState(vacio);
   const [editId, setEditId] = useState(null);
@@ -2511,7 +2512,8 @@ function Empleados({
       clave: em.clave || '',
       rol_sistema: em.rol_sistema || 'empleado',
       sucursal_encargada: em.sucursal_encargada || '',
-      horario_fijo: em.horario_fijo || []
+      horario_fijo: em.horario_fijo || [],
+      vista_simple: !!em.vista_simple
     });
     window.scrollTo(0, 0);
   }
@@ -2611,6 +2613,7 @@ function Empleados({
       rol_sistema: form.rol_sistema,
       sucursal_encargada: form.rol_sistema === 'encargada' ? form.sucursal_encargada || null : null,
       horario_fijo: form.rol_sistema === 'encargada' ? form.horario_fijo || [] : [],
+      vista_simple: form.rol_sistema === 'empleado' && !!form.vista_simple,
       activo: true
     };
     let ok;
@@ -2867,7 +2870,35 @@ function Empleados({
     style: {
       color: C.tx
     }
-  }, "Due\xF1a"), ": ve y maneja todo, los dos salones.")), form.rol_sistema === 'encargada' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+  }, "Due\xF1a"), ": ve y maneja todo, los dos salones.")), form.rol_sistema === 'empleado' && /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: 8,
+      cursor: 'pointer',
+      background: C.surf2,
+      borderRadius: 8,
+      padding: '10px 12px'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: !!form.vista_simple,
+    onChange: e => setForm({
+      ...form,
+      vista_simple: e.target.checked
+    }),
+    style: {
+      width: 18,
+      height: 18,
+      marginTop: 1,
+      flexShrink: 0
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      lineHeight: 1.4
+    }
+  }, "\uD83D\uDD12 ", /*#__PURE__*/React.createElement("b", null, "Vista reducida"), ": solo ve sus turnos. No ve la planilla (PDF) ni los d\xEDas que no trabaja.")), form.rol_sistema === 'encargada' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
   }, "Sucursal que maneja"), /*#__PURE__*/React.createElement("select", {
     style: S.input,
@@ -7557,6 +7588,7 @@ function MisHorarios({
   (items || []).forEach(it => {
     (porDia[it.e.fecha] = porDia[it.e.fecha] || []).push(it);
   });
+  const simple = !!sesion.vista_simple;
   const _misSucs = sesion.sucursales || [];
   const _diasSalon = {};
   Object.keys(evCount).forEach(k => {
@@ -7565,12 +7597,13 @@ function MisHorarios({
       f = k.slice(i + 1);
     if (_misSucs.indexOf(s) >= 0) _diasSalon[f] = (_diasSalon[f] || 0) + evCount[k];
   });
+  const _baseDias = simple ? Object.keys(porDia) : Object.keys(_diasSalon);
   const _hoyMH = fechaHoyISO();
   const _lunesMH = lunesDeSemana(_hoyMH, 0);
   const _lunesAntMH = lunesDeSemana(_hoyMH, 1);
-  const _diasMH = Object.keys(_diasSalon).filter(f => verAntMH ? f >= _lunesAntMH : f >= _lunesMH).sort();
-  const _nAntMH = Object.keys(_diasSalon).filter(f => f >= _lunesAntMH && f < _lunesMH).length;
-  const cntDiaMH = f => _diasSalon[f] || 0;
+  const _diasMH = _baseDias.filter(f => verAntMH ? f >= _lunesAntMH : f >= _lunesMH).sort();
+  const _nAntMH = _baseDias.filter(f => f >= _lunesAntMH && f < _lunesMH).length;
+  const cntDiaMH = f => simple ? (porDia[f] || []).length : _diasSalon[f] || 0;
   const _fdmMH = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
   function _semanasMH(dias) {
     const g = {};
@@ -7721,7 +7754,7 @@ function MisHorarios({
       fontSize: 20,
       marginBottom: 12
     }
-  }, "\uD83D\uDCC5 Horarios"), ultimo && /*#__PURE__*/React.createElement("a", {
+  }, "\uD83D\uDCC5 Horarios"), !simple && ultimo && /*#__PURE__*/React.createElement("a", {
     href: ultimo.url,
     target: "_blank",
     rel: "noopener",
@@ -7808,11 +7841,7 @@ function MisHorarios({
         padding: '7px 11px',
         marginBottom: 8
       }
-    }, "\uD83D\uDCC5 Semana del ", _fdmMH(sem.lunes), " al ", _fdmMH(sem.domingo), " ", /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: C.oro
-      }
-    }, "(", sem.total, " evento", sem.total !== 1 ? 's' : '', ")")), pas.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, "\uD83D\uDCC5 Semana del ", _fdmMH(sem.lunes), " al ", _fdmMH(sem.domingo)), pas.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 8
       }
@@ -7885,7 +7914,7 @@ function MisEncuestas({
       fontSize: 20,
       marginBottom: 4
     }
-  }, "\uD83D\uDCAC Mis encuestas"), /*#__PURE__*/React.createElement("p", {
+  }, "\uD83D\uDCAC Encuestas"), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 12,
       color: C.tx2,
@@ -8241,7 +8270,7 @@ function MiPlanilla({
       fontSize: 20,
       marginBottom: 4
     }
-  }, "\uD83D\uDCC5 Mi planilla"), /*#__PURE__*/React.createElement("p", {
+  }, "\uD83D\uDCC5 Planilla"), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 12,
       color: C.tx2,

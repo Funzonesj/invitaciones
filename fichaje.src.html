@@ -430,7 +430,7 @@ function BottomNav({rol,vista,setVista}){
     ? [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
     : rol==='mantenimiento'
     ? [['dashboard','🏠','Inicio'],['fichar','📍','Marcar'],['tareas','✅','Tareas'],['verhorarios','🗓️','Salones']]
-    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['tareas','✅','Tareas'],['mishorarios','📅','Horarios'],['miplanilla','📝','Mi planilla'],['misencuestas','💬','Mis encuestas']];
+    : [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['tareas','✅','Tareas'],['mishorarios','📅','Horarios'],['miplanilla','📝','Planilla'],['misencuestas','💬','Encuestas']];
   return (
     <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.surf,borderTop:'1px solid '+C.bd,zIndex:50,paddingBottom:'env(safe-area-inset-bottom)'}}>
       <div style={{maxWidth:560,margin:'0 auto',display:'flex'}}>
@@ -642,12 +642,12 @@ function Sucursales({sucursales,recargar}){
 
 /* ── Empleados (dueña) ── */
 function Empleados({empleados,sucursales,recargar}){
-  const vacio={legajo:'',nombre:'',rol_habitual:[],valor_hora:'',sucursales:[],foto_url:'',usuario:'',clave:'',rol_sistema:'empleado',sucursal_encargada:'',horario_fijo:[]};
+  const vacio={legajo:'',nombre:'',rol_habitual:[],valor_hora:'',sucursales:[],foto_url:'',usuario:'',clave:'',rol_sistema:'empleado',sucursal_encargada:'',horario_fijo:[],vista_simple:false};
   const [form,setForm]=useState(vacio); const [editId,setEditId]=useState(null); const [subiendo,setSubiendo]=useState(false);
   const parseRoles=v=>Array.isArray(v)?v:(v?String(v).split(',').map(s=>s.trim()).filter(Boolean):[]);
   function proximoLegajo(){ const usados=new Set((empleados||[]).map(e=>e.legajo).filter(x=>x!=null)); let n=1; while(usados.has(n))n++; return n; }
   useEffect(()=>{ if(editId===null && (form.legajo===''||form.legajo==null)) setForm(f=>({...f,legajo:proximoLegajo()})); },[empleados]);
-  function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',rol_habitual:parseRoles(em.rol_habitual),valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||'',horario_fijo:em.horario_fijo||[]}); window.scrollTo(0,0); }
+  function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',rol_habitual:parseRoles(em.rol_habitual),valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||'',horario_fijo:em.horario_fijo||[],vista_simple:!!em.vista_simple}); window.scrollTo(0,0); }
   function limpiar(){ setEditId(null); setForm({...vacio,legajo:''}); }
   function toggleSuc(id){ setForm(f=>({...f,sucursales:(f.sucursales||[]).includes(id)?f.sucursales.filter(x=>x!==id):[...(f.sucursales||[]),id]})); }
   function toggleRol(r){ setForm(f=>({...f,rol_habitual:(f.rol_habitual||[]).includes(r)?f.rol_habitual.filter(x=>x!==r):[...(f.rol_habitual||[]),r]})); }
@@ -663,7 +663,7 @@ function Empleados({empleados,sucursales,recargar}){
   async function guardar(){
     if(!form.nombre.trim()){ alert('Poné el nombre.'); return; }
     if(!form.usuario.trim()||!form.clave){ alert('Poné usuario y contraseña para que pueda ingresar.'); return; }
-    const row={ legajo:form.legajo===''?null:+form.legajo, nombre:form.nombre.trim(), rol_habitual:(form.rol_habitual||[]).join(', '), valor_hora:form.valor_hora===''?0:+form.valor_hora, sucursales:form.sucursales, foto_url:form.foto_url||null, usuario:form.usuario.trim(), clave:String(form.clave), rol_sistema:form.rol_sistema, sucursal_encargada:form.rol_sistema==='encargada'?(form.sucursal_encargada||null):null, horario_fijo:form.rol_sistema==='encargada'?(form.horario_fijo||[]):[], activo:true };
+    const row={ legajo:form.legajo===''?null:+form.legajo, nombre:form.nombre.trim(), rol_habitual:(form.rol_habitual||[]).join(', '), valor_hora:form.valor_hora===''?0:+form.valor_hora, sucursales:form.sucursales, foto_url:form.foto_url||null, usuario:form.usuario.trim(), clave:String(form.clave), rol_sistema:form.rol_sistema, sucursal_encargada:form.rol_sistema==='encargada'?(form.sucursal_encargada||null):null, horario_fijo:form.rol_sistema==='encargada'?(form.horario_fijo||[]):[], vista_simple:(form.rol_sistema==='empleado'&&!!form.vista_simple), activo:true };
     let ok;
     if(editId) ok=await dbUpdate('fichaje_empleados',editId,row); else ok=!!(await dbInsert('fichaje_empleados',row));
     if(ok){ limpiar(); await recargar(); }
@@ -732,6 +732,12 @@ function Empleados({empleados,sucursales,recargar}){
             <b style={{color:C.tx}}>Dueña</b>: ve y maneja todo, los dos salones.
           </div>
         </div>
+        {form.rol_sistema==='empleado' && (
+          <label style={{display:'flex',alignItems:'flex-start',gap:8,cursor:'pointer',background:C.surf2,borderRadius:8,padding:'10px 12px'}}>
+            <input type="checkbox" checked={!!form.vista_simple} onChange={e=>setForm({...form,vista_simple:e.target.checked})} style={{width:18,height:18,marginTop:1,flexShrink:0}}/>
+            <span style={{fontSize:13,lineHeight:1.4}}>🔒 <b>Vista reducida</b>: solo ve sus turnos. No ve la planilla (PDF) ni los días que no trabaja.</span>
+          </label>
+        )}
         {form.rol_sistema==='encargada' && (
           <div><label style={S.label}>Sucursal que maneja</label>
             <select style={S.input} value={form.sucursal_encargada} onChange={e=>setForm({...form,sucursal_encargada:e.target.value})}>
@@ -2031,11 +2037,13 @@ function MisHorarios({sesion}){
     setPdfs(ps);
   })();},[]);
   const porDia={}; (items||[]).forEach(it=>{(porDia[it.e.fecha]=porDia[it.e.fecha]||[]).push(it);});
+  const simple=!!sesion.vista_simple;
   const _misSucs=(sesion.sucursales)||[];
   const _diasSalon={}; Object.keys(evCount).forEach(k=>{const i=k.indexOf('|');const s=k.slice(0,i),f=k.slice(i+1);if(_misSucs.indexOf(s)>=0)_diasSalon[f]=(_diasSalon[f]||0)+evCount[k];});
+  const _baseDias=simple?Object.keys(porDia):Object.keys(_diasSalon);
   const _hoyMH=fechaHoyISO(); const _lunesMH=lunesDeSemana(_hoyMH,0); const _lunesAntMH=lunesDeSemana(_hoyMH,1);
-  const _diasMH=Object.keys(_diasSalon).filter(f=>verAntMH?(f>=_lunesAntMH):(f>=_lunesMH)).sort(); const _nAntMH=Object.keys(_diasSalon).filter(f=>f>=_lunesAntMH&&f<_lunesMH).length;
-  const cntDiaMH=f=>_diasSalon[f]||0;
+  const _diasMH=_baseDias.filter(f=>verAntMH?(f>=_lunesAntMH):(f>=_lunesMH)).sort(); const _nAntMH=_baseDias.filter(f=>f>=_lunesAntMH&&f<_lunesMH).length;
+  const cntDiaMH=f=>simple?(porDia[f]||[]).length:(_diasSalon[f]||0);
   const _fdmMH=iso=>iso.slice(8,10)+'/'+iso.slice(5,7);
   function _semanasMH(dias){ const g={}; dias.forEach(f=>{const lun=lunesDeSemana(f,0);(g[lun]=g[lun]||[]).push(f);}); return Object.keys(g).sort().map(lun=>{const d2=new Date(lun+'T12:00:00');d2.setDate(d2.getDate()+6);const dom=d2.getFullYear()+'-'+('0'+(d2.getMonth()+1)).slice(-2)+'-'+('0'+d2.getDate()).slice(-2);const dd=g[lun].slice().sort();return {lunes:lun,domingo:dom,dias:dd,total:dd.reduce((s,f)=>s+cntDiaMH(f),0)};}); }
   const etiqPdf=p=>(p.desde&&p.hasta)?('Semana del '+p.desde+' al '+p.hasta):(p.subido?('Subida el '+p.subido):'Horario');
@@ -2071,7 +2079,7 @@ function MisHorarios({sesion}){
   return (
     <div className="fade">
       <h2 style={{fontSize:20,marginBottom:12}}>📅 Horarios</h2>
-      {ultimo && (
+      {!simple && ultimo && (
         <a href={ultimo.url} target="_blank" rel="noopener" style={{...S.card,marginBottom:8,display:'flex',alignItems:'center',gap:12,textDecoration:'none',color:C.tx,border:'1px solid '+C.oro}}>
           <span style={{fontSize:28}}>📄</span>
           <div style={{flex:1}}><div style={{fontWeight:700}}>Ver la planilla completa (PDF)</div><div style={{fontSize:11,color:C.oro}}>{etiqPdf(ultimo)} · último</div></div>
@@ -2084,7 +2092,7 @@ function MisHorarios({sesion}){
         {_nAntMH>0 && <button onClick={()=>setVerAntMH(v=>!v)} style={{...S.btn,...S.btnGhost,marginBottom:12,fontSize:12,padding:'7px 12px',minHeight:0}}>{verAntMH?'Ocultar semana anterior':'📋 Ver semana anterior ('+_nAntMH+')'}</button>}
         {_semanasMH(_diasMH).map(sem=>{ const esAct=sem.lunes===_lunesMH; const pas=esAct?sem.dias.filter(f=>f<_hoyMH):[]; const resto=esAct?sem.dias.filter(f=>f>=_hoyMH):sem.dias; return (
           <div key={sem.lunes} style={{marginBottom:14}}>
-            <div style={{fontWeight:800,fontSize:13,color:C.tx,background:C.surf2,borderRadius:8,padding:'7px 11px',marginBottom:8}}>📅 Semana del {_fdmMH(sem.lunes)} al {_fdmMH(sem.domingo)} <span style={{color:C.oro}}>({sem.total} evento{sem.total!==1?'s':''})</span></div>
+            <div style={{fontWeight:800,fontSize:13,color:C.tx,background:C.surf2,borderRadius:8,padding:'7px 11px',marginBottom:8}}>📅 Semana del {_fdmMH(sem.lunes)} al {_fdmMH(sem.domingo)}</div>
             {pas.length>0 && <div style={{marginBottom:8}}>
               <button onClick={()=>setVerPasW(v=>!v)} style={{...S.btn,...S.btnGhost,width:'100%',fontSize:12,padding:'8px 12px',minHeight:0,marginBottom:8,display:'flex',justifyContent:'space-between'}}><span>🕘 Eventos pasados de esta semana ({pas.length})</span><span>{verPasW?'▲':'▼'}</span></button>
               {verPasW && pas.map(_diaMH)}
@@ -2115,7 +2123,7 @@ function MisEncuestas({sesion,sucursales}){
     .sort((a,b)=>(((b.anio||'')+_pad2(b.mes)+_pad2(b.dia)).localeCompare((a.anio||'')+_pad2(a.mes)+_pad2(a.dia)))); }
   return (
     <div className="fade">
-      <h2 style={{fontSize:20,marginBottom:4}}>💬 Mis encuestas</h2>
+      <h2 style={{fontSize:20,marginBottom:4}}>💬 Encuestas</h2>
       <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Lo que opinaron las familias de tus eventos (últimas 2 semanas). Solo se muestra lo que hay que mejorar y el mensajito.</p>
       {encs===null ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
         list.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>Todavía no hay encuestas de tus eventos.</div> :
@@ -2215,7 +2223,7 @@ function MiPlanilla({sesion,sucursales}){
   const selData = sel?data[sel]:null;
   return (
     <div className="fade">
-      <h2 style={{fontSize:20,marginBottom:4}}>📅 Mi planilla</h2>
+      <h2 style={{fontSize:20,marginBottom:4}}>📅 Planilla</h2>
       <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Marcá los días que trabajaste y qué hiciste. Es tu registro (después se compara con el del salón). Podés ver/cargar los <b style={{color:C.tx}}>últimos 15 días</b>.</p>
       <div style={{...S.card,marginBottom:12}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
