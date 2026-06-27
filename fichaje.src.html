@@ -2065,8 +2065,8 @@ function MisHorarios({sesion}){
                 </button>
                 {op && (()=>{ const dc=detAdicCli(it.e); return (
                   <div style={{padding:'0 14px 13px',fontSize:14,display:'flex',flexDirection:'column',gap:4}}>
+                    <div style={{fontWeight:800,color:C.oro,fontSize:16}}>{it.a.rol_en_evento}</div>
                     <div style={{fontWeight:700}}>{it.e.paquete}, de {String(it.e.hora_inicio||'').replace(/:00$/,'')} a {String(it.e.hora_fin||'').replace(/:00$/,'')} hs</div>
-                    <div style={{fontWeight:700}}>{it.a.rol_en_evento}</div>
                     {dc.cli&&<div style={{color:C.tx2}}>Mamá: {dc.cli}</div>}
                     {it.e.festejado&&<div style={{color:C.tx2}}>Niño: {it.e.festejado}</div>}
                     {dc.adic&&<div style={{color:C.rojo,fontWeight:700}}>⚠️ Adicional: {dc.adic}</div>}
