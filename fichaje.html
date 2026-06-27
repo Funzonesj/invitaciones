@@ -603,7 +603,13 @@ function Header({
       flex: 1,
       minWidth: 0
     }
-  }, /*#__PURE__*/React.createElement("div", {
+  }, sesion.rol_sistema === 'empleado' || sesion.rol_sistema === 'mantenimiento' ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14,
+      lineHeight: 1.1
+    }
+  }, "Control de Horarios") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 700,
       fontSize: 14,
@@ -614,7 +620,7 @@ function Header({
       fontSize: 11,
       color: C.tx2
     }
-  }, sesion.rol_sistema === 'dueno' ? 'Dueña' : sesion.rol_sistema === 'encargada' ? 'Encargada' : 'Empleado')), /*#__PURE__*/React.createElement("button", {
+  }, sesion.rol_sistema === 'dueno' ? 'Dueña' : 'Encargada'))), /*#__PURE__*/React.createElement("button", {
     onClick: onChat,
     title: "Chat",
     style: {
@@ -7514,6 +7520,7 @@ function MisHorarios({
   const [abierto, setAbierto] = useState(null);
   const [verAntMH, setVerAntMH] = useState(false);
   const [evCount, setEvCount] = useState({});
+  const [crew, setCrew] = useState({});
   useEffect(() => {
     (async () => {
       const evs = await dbAll('fichaje_eventos');
@@ -7525,7 +7532,13 @@ function MisHorarios({
         ec[k] = (ec[k] || 0) + 1;
       });
       setEvCount(ec);
-      const ee = (await dbAll('fichaje_evento_empleados')).filter(a => a.empleado_id === sesion.id || sesion.legajo != null && a.legajo === sesion.legajo);
+      const eeAll = await dbAll('fichaje_evento_empleados');
+      const byEv = {};
+      eeAll.forEach(a => {
+        (byEv[a.evento_id] = byEv[a.evento_id] || []).push(a);
+      });
+      setCrew(byEv);
+      const ee = eeAll.filter(a => a.empleado_id === sesion.id || sesion.legajo != null && a.legajo === sesion.legajo);
       const list = ee.map(a => ({
         a,
         e: evById[a.evento_id]
@@ -7792,7 +7805,24 @@ function MisHorarios({
           color: C.rojo,
           fontWeight: 700
         }
-      }, "\u26A0\uFE0F Adicional: ", dc.adic));
+      }, "\u26A0\uFE0F Adicional: ", dc.adic), (crew[it.e.id] || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          marginTop: 6,
+          paddingTop: 6,
+          borderTop: '1px solid ' + C.bd
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          color: C.tx2,
+          fontSize: 12,
+          marginBottom: 3
+        }
+      }, "Trabajan ese d\xEDa:"), (crew[it.e.id] || []).map((a, j) => /*#__PURE__*/React.createElement("div", {
+        key: j,
+        style: {
+          fontSize: 13
+        }
+      }, /*#__PURE__*/React.createElement("b", null, a.rol_en_evento), a.legajo != null ? ' · #' + a.legajo : ''))));
     })());
   })))))));
 }

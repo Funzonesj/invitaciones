@@ -183,8 +183,12 @@ function Header({sesion,esDuena,sucursales,sucActiva,setSucActiva,onSalir,onChat
       <div style={{maxWidth:560,margin:'0 auto',padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
         <div style={{width:34,height:34,borderRadius:9,background:C.oro,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🕒</div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:700,fontSize:14,lineHeight:1.1}}>{sesion.nombre}</div>
-          <div style={{fontSize:11,color:C.tx2}}>{sesion.rol_sistema==='dueno'?'Dueña':sesion.rol_sistema==='encargada'?'Encargada':'Empleado'}</div>
+          {(sesion.rol_sistema==='empleado'||sesion.rol_sistema==='mantenimiento')
+            ? <div style={{fontWeight:700,fontSize:14,lineHeight:1.1}}>Control de Horarios</div>
+            : <React.Fragment>
+                <div style={{fontWeight:700,fontSize:14,lineHeight:1.1}}>{sesion.nombre}</div>
+                <div style={{fontSize:11,color:C.tx2}}>{sesion.rol_sistema==='dueno'?'Dueña':'Encargada'}</div>
+              </React.Fragment>}
         </div>
         <button onClick={onChat} title="Chat" style={{position:'relative',background:chatActivo?C.oro:C.surf2,border:'1px solid '+C.bd,borderRadius:10,minHeight:0,padding:'7px 10px',cursor:'pointer',fontSize:17}}>
           💬
@@ -2012,11 +2016,13 @@ function Fichar({sesion,sucursales}){
 
 /* ════════ MIS HORARIOS (empleado: lo que cargó el salón, solo lectura) ════════ */
 function MisHorarios({sesion}){
-  const [items,setItems]=useState(null); const [pdfs,setPdfs]=useState([]); const [verHist,setVerHist]=useState(false); const [abierto,setAbierto]=useState(null); const [verAntMH,setVerAntMH]=useState(false); const [evCount,setEvCount]=useState({});
+  const [items,setItems]=useState(null); const [pdfs,setPdfs]=useState([]); const [verHist,setVerHist]=useState(false); const [abierto,setAbierto]=useState(null); const [verAntMH,setVerAntMH]=useState(false); const [evCount,setEvCount]=useState({}); const [crew,setCrew]=useState({});
   useEffect(()=>{(async()=>{
     const evs=await dbAll('fichaje_eventos'); const evById={}; evs.forEach(e=>evById[e.id]=e);
     const ec={}; evs.forEach(e=>{const k=e.sucursal_id+'|'+e.fecha; ec[k]=(ec[k]||0)+1;}); setEvCount(ec);
-    const ee=(await dbAll('fichaje_evento_empleados')).filter(a=>a.empleado_id===sesion.id||(sesion.legajo!=null&&a.legajo===sesion.legajo));
+    const eeAll=await dbAll('fichaje_evento_empleados');
+    const byEv={}; eeAll.forEach(a=>{(byEv[a.evento_id]=byEv[a.evento_id]||[]).push(a);}); setCrew(byEv);
+    const ee=eeAll.filter(a=>a.empleado_id===sesion.id||(sesion.legajo!=null&&a.legajo===sesion.legajo));
     const list=ee.map(a=>({a,e:evById[a.evento_id]})).filter(x=>x.e).sort((p,q)=>(p.e.fecha+p.e.hora_inicio).localeCompare(q.e.fecha+q.e.hora_inicio));
     setItems(list);
     const cfgs=await dbAll('fichaje_config');
@@ -2070,6 +2076,10 @@ function MisHorarios({sesion}){
                     {dc.cli&&<div style={{color:C.tx2}}>Mamá: {dc.cli}</div>}
                     {it.e.festejado&&<div style={{color:C.tx2}}>Niño: {it.e.festejado}</div>}
                     {dc.adic&&<div style={{color:C.rojo,fontWeight:700}}>⚠️ Adicional: {dc.adic}</div>}
+                    {(crew[it.e.id]||[]).length>0 && <div style={{marginTop:6,paddingTop:6,borderTop:'1px solid '+C.bd}}>
+                      <div style={{color:C.tx2,fontSize:12,marginBottom:3}}>Trabajan ese día:</div>
+                      {(crew[it.e.id]||[]).map((a,j)=>(<div key={j} style={{fontSize:13}}><b>{a.rol_en_evento}</b>{a.legajo!=null?(' · #'+a.legajo):''}</div>))}
+                    </div>}
                   </div>
                   ); })()}
               </div>
