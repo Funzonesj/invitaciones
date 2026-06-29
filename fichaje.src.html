@@ -425,7 +425,7 @@ function HorariosSalones({sucursales,empleados,detalle,sucDefault}){
 }
 function BottomNav({rol,vista,setVista}){
   const items = rol==='dueno'
-    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones'],['config','⚙️','Config']]
+    ? [['dashboard','🏠','Inicio'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['empleados','👥','Empleados'],['sucursales','🏢','Salones'],['config','⚙️','Config']]
     : rol==='encargada'
     ? [['dashboard','🏠','Inicio'],['fichar','📍','Fichar'],['horarios','🗓️','Horarios'],['tareas','✅','Tareas'],['registros','📋','Fichajes'],['pagos','💰','Pagos'],['alertas','🔔','Alertas']]
     : rol==='mantenimiento'
