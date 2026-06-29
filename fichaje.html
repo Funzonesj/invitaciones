@@ -3351,6 +3351,54 @@ function Horarios({
       alert('Elegí la sucursal.');
       return;
     }
+    {
+      // Avisos: 3+ eventos en un día / empleado sin día de descanso
+      const nom = lg => {
+        const e = empByLegajo(lg);
+        return e ? e.nombre + ' (#' + lg + ')' : '#' + lg;
+      };
+      const _dm = iso => {
+        try {
+          return iso.slice(8, 10) + '/' + iso.slice(5, 7);
+        } catch (e) {
+          return iso;
+        }
+      };
+      const cntDL = {};
+      const diasDe = {};
+      (previa.eventos || []).forEach(ev => {
+        (ev.roles || []).forEach(r => {
+          if (r.legajo == null) return;
+          const k = ev.dia + '|' + r.legajo;
+          cntDL[k] = (cntDL[k] || 0) + 1;
+          (diasDe[r.legajo] = diasDe[r.legajo] || new Set()).add(ev.dia);
+        });
+      });
+      const triples = [];
+      Object.keys(cntDL).forEach(k => {
+        if (cntDL[k] >= 3) {
+          const i = k.indexOf('|');
+          const dia = k.slice(0, i),
+            lg = k.slice(i + 1);
+          triples.push(nom(lg) + ': ' + cntDL[k] + ' eventos el ' + _dm(dia));
+        }
+      });
+      const sinDesc = new Set();
+      Object.keys(diasDe).forEach(lg => {
+        const porSem = {};
+        diasDe[lg].forEach(d => {
+          const lun = lunesDeSemana(d, 0);
+          (porSem[lun] = porSem[lun] || new Set()).add(d);
+        });
+        Object.keys(porSem).forEach(lun => {
+          if (porSem[lun].size >= 7) sinDesc.add(nom(lg));
+        });
+      });
+      let msg = '';
+      if (triples.length) msg += '⚠️ Empleados con 3 o más eventos en un día:\n' + triples.join('\n') + '\n\n';
+      if (sinDesc.size) msg += '🛌 Empleados SIN día de descanso esa semana:\n' + [...sinDesc].join('\n') + '\n\n';
+      if (msg && !window.confirm(msg + '¿Guardar igual los horarios?')) return;
+    }
     setCargando(true);
     // Antiduplicados: borrar los eventos de PDF ya cargados para esas mismas fechas y sucursal
     const fechasImp = [...new Set(previa.eventos.map(e => e.dia).filter(Boolean))];
@@ -4005,6 +4053,37 @@ function EditEvento({
       alert('Completá fecha, paquete y hora de inicio.');
       return;
     }
+    {
+      // Aviso: empleado repetido en el mismo horario
+      const legs = roles.map(r => +r.legajo).filter(n => n);
+      const dups = legs.some((l, i) => legs.indexOf(l) !== i);
+      const evs = (await dbAll('fichaje_eventos')).filter(e => e.fecha === f.fecha && e.sucursal_id === ev.sucursal_id && e.id !== ev.id);
+      const ee = evs.length ? await dbAll('fichaje_evento_empleados') : [];
+      const solapa = (aS, aE, bS, bE) => {
+        const a1 = toMin(aS),
+          a2 = aE ? toMin(aE) : a1 + 1,
+          b1 = toMin(bS),
+          b2 = bE ? toMin(bE) : b1 + 1;
+        return a1 < b2 && b1 < a2;
+      };
+      const ch = [];
+      roles.forEach(r => {
+        const lg = +r.legajo;
+        if (!lg) return;
+        ee.forEach(a => {
+          if (a.legajo !== lg) return;
+          const e = evs.find(x => x.id === a.evento_id);
+          if (e && solapa(f.hora_inicio, f.hora_fin, e.hora_inicio, e.hora_fin)) {
+            const emp = empleados.find(x => x.legajo === lg);
+            ch.push((emp ? emp.nombre : '#' + lg) + ' ya trabaja en "' + e.paquete + '" ' + e.hora_inicio);
+          }
+        });
+      });
+      let msg = '';
+      if (dups) msg += '⚠️ Hay un empleado puesto más de una vez en este mismo evento.\n';
+      if (ch.length) msg += '⚠️ Ya está trabajando a esa hora:\n' + [...new Set(ch)].join('\n') + '\n';
+      if (msg && !window.confirm(msg + '\n¿Guardar igual?')) return;
+    }
     setGuard(true);
     await dbUpdate('fichaje_eventos', ev.id, {
       fecha: f.fecha,
@@ -4259,6 +4338,37 @@ function ManualEvento({
     if (!f.fecha || !f.paquete || !f.hora_inicio) {
       alert('Completá fecha, paquete y hora de inicio.');
       return;
+    }
+    {
+      // Aviso: empleado repetido en el mismo horario
+      const legs = roles.map(r => +r.legajo).filter(n => n);
+      const dups = legs.some((l, i) => legs.indexOf(l) !== i);
+      const evs = (await dbAll('fichaje_eventos')).filter(e => e.fecha === f.fecha && e.sucursal_id === sucSel);
+      const ee = evs.length ? await dbAll('fichaje_evento_empleados') : [];
+      const solapa = (aS, aE, bS, bE) => {
+        const a1 = toMin(aS),
+          a2 = aE ? toMin(aE) : a1 + 1,
+          b1 = toMin(bS),
+          b2 = bE ? toMin(bE) : b1 + 1;
+        return a1 < b2 && b1 < a2;
+      };
+      const ch = [];
+      roles.forEach(r => {
+        const lg = +r.legajo;
+        if (!lg) return;
+        ee.forEach(a => {
+          if (a.legajo !== lg) return;
+          const e = evs.find(x => x.id === a.evento_id);
+          if (e && solapa(f.hora_inicio, f.hora_fin, e.hora_inicio, e.hora_fin)) {
+            const emp = empleados.find(x => x.legajo === lg);
+            ch.push((emp ? emp.nombre : '#' + lg) + ' ya trabaja en "' + e.paquete + '" ' + e.hora_inicio);
+          }
+        });
+      });
+      let msg = '';
+      if (dups) msg += '⚠️ Hay un empleado puesto más de una vez en este mismo evento.\n';
+      if (ch.length) msg += '⚠️ Ya está trabajando a esa hora:\n' + [...new Set(ch)].join('\n') + '\n';
+      if (msg && !window.confirm(msg + '\n¿Guardar igual?')) return;
     }
     setGuard(true);
     const row = await dbInsert('fichaje_eventos', {
