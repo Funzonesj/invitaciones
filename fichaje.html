@@ -8378,10 +8378,11 @@ function MiPlanilla({
   };
   async function guardar(n) {
     setData(n);
-    await dbUpsert('fichaje_config', {
+    const ok = await dbUpsert('fichaje_config', {
       id: cfgId,
       data: n
     });
+    if (!ok) alert('No se pudo guardar tu planilla 😟. Revisá tu conexión a internet y probá de nuevo.');
   }
   function setTipo(f, tipo) {
     const n = {

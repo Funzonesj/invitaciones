@@ -2261,7 +2261,7 @@ function MiPlanilla({sesion,sucursales}){
     const cands=encs.filter(e=>{ const d=(e.anio||'')+'-'+_pad2(e.mes)+'-'+_pad2(e.dia); if(d!==f)return false; if(misSucNombres.length && (e._sucNombre||'') && misSucNombres.indexOf((e._sucNombre||'').toLowerCase())<0)return false; return true; });
     return cands.find(e=>horas.indexOf(e.hIni)>=0)||cands[0]||null;
   };
-  async function guardar(n){ setData(n); await dbUpsert('fichaje_config',{id:cfgId,data:n}); }
+  async function guardar(n){ setData(n); const ok=await dbUpsert('fichaje_config',{id:cfgId,data:n}); if(!ok) alert('No se pudo guardar tu planilla 😟. Revisá tu conexión a internet y probá de nuevo.'); }
   function setTipo(f,tipo){ const n={...data}; const cur=n[f]||{}; n[f]={...cur,tipo,enc:cur.enc||0}; guardar(n); }
   function setEnc(f,enc){ const n={...data}; if(!n[f])return; n[f]={...n[f],enc}; guardar(n); }
   function setDeluxe(f,v){ const n={...data}; if(!n[f])return; n[f]={...n[f],deluxe:v}; guardar(n); }

@@ -128,10 +128,11 @@ module.exports = async (req, res) => {
       return;
     }
 
-    // ── Upsert (insertar o actualizar por PK) — para config (solo dueño/encargada) ──
+    // ── Upsert (insertar o actualizar por PK) — config: dueño/encargada; o el empleado SU PROPIA planilla (auto_<id>) ──
     if (action === 'upsert') {
-      if (!esAdmin) { res.status(401).json({ error: 'no autorizado' }); return; }
       const row = b.row || {};
+      const okConfigPropia = (tabla === 'fichaje_config' && String(row.id || '') === ('auto_' + ses.id));
+      if (!esAdmin && !okConfigPropia) { res.status(401).json({ error: 'no autorizado' }); return; }
       const r = await sbRest(tabla, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify(row) });
       res.status(r.ok ? 200 : r.status).json({ ok: r.ok, row: (r.data && r.data[0]) || null });
       return;
