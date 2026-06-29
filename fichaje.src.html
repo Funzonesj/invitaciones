@@ -1779,6 +1779,7 @@ function Registros({esDuena,sucursales,empleados,sucCtx}){
     list.sort((a,b)=>String(b.ts||'').localeCompare(String(a.ts||'')));
     setData({list,evById}); setAbierto({}); setCargando(false);
   }
+  useEffect(()=>{ if(tab==='fich') buscar(); },[]);
   function exportarPDF(){
     if(!data||!data.list.length)return;
     const byEmp={}; data.list.forEach(x=>{(byEmp[x.empleado_id]=byEmp[x.empleado_id]||[]).push(x);});
@@ -1974,7 +1975,8 @@ function Fichar({sesion,sucursales}){
     }
     // Mantenimiento: marca presencia, sin horario fijo (no cuenta tarde ni sin_horario)
     if(sesion.rol_sistema==='mantenimiento'){ coincide=true; eventoDesc='Mantenimiento'; estado=(tipo==='entrada')?'presente':'salida'; }
-    await dbInsert('fichaje_fichajes',{empleado_id:sesion.id,sucursal_id:sucOk.id,evento_id:eventoId,tipo,lat:geoRef.current.la,lng:geoRef.current.lo,foto_url:fotoUrl,facial_ok:facialOk,estado});
+    const _guardado=await dbInsert('fichaje_fichajes',{empleado_id:sesion.id,sucursal_id:sucOk.id,evento_id:eventoId,tipo,lat:geoRef.current.la,lng:geoRef.current.lo,foto_url:fotoUrl,facial_ok:facialOk,estado});
+    if(!_guardado){ setMsg('No se pudo guardar tu fichaje 😟. Revisá tu conexión a internet y probá de nuevo. Si sigue fallando, avisale a la dueña.'); setPaso('error'); return; }
     // penalización por tardanza
     let tardeInfo=null;
     if(estado==='tarde'){
