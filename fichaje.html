@@ -8332,7 +8332,8 @@ function MiPlanilla({
       triple: 12,
       deluxe: 1,
       prep_media: 0.5,
-      prep_hora: 1
+      prep_hora: 1,
+      prep_hora_media: 1.5
     }
   });
   const [sel, setSel] = useState(null);
@@ -8455,7 +8456,7 @@ function MiPlanilla({
     return t === 'simple' ? +PL.simple : t === 'doble' ? +PL.doble : t === '2simples' ? +PL.dossimples : t === 'triple' ? +PL.triple : 0;
   }
   function prepHoras(d) {
-    return d.prep === 'media' ? +PL.prep_media || 0 : d.prep === 'hora' ? +PL.prep_hora || 0 : 0;
+    return d.prep === 'media' ? +PL.prep_media || 0 : d.prep === 'hora' ? +PL.prep_hora || 0 : d.prep === 'horamedia' ? +PL.prep_hora_media || 0 : 0;
   }
   function horasDia(d) {
     let h = baseHoras(d.tipo);
@@ -8784,7 +8785,7 @@ function MiPlanilla({
       gap: 6,
       flexWrap: 'wrap'
     }
-  }, [['', 'No'], ['media', 'Media hora antes'], ['hora', '1 hora antes']].map(([v, l]) => /*#__PURE__*/React.createElement("button", {
+  }, [['', 'No'], ['media', 'Media hora antes'], ['hora', '1 hora antes'], ['horamedia', '1 hora y media antes']].map(([v, l]) => /*#__PURE__*/React.createElement("button", {
     key: v || 'no',
     onClick: () => setPrep(sel, v),
     style: {
@@ -8799,7 +8800,7 @@ function MiPlanilla({
       fontSize: 9,
       opacity: .7
     }
-  }, "+", v === 'media' ? PL.prep_media || 0 : PL.prep_hora || 0, "h") : null)))), /*#__PURE__*/React.createElement("label", {
+  }, "+", v === 'media' ? PL.prep_media || 0 : v === 'hora' ? PL.prep_hora || 0 : PL.prep_hora_media || 0, "h") : null)))), /*#__PURE__*/React.createElement("label", {
     style: S.label
   }, "\xBFCu\xE1ntas encuestas salieron bien (Excelente)?"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8973,7 +8974,8 @@ function Configuracion({
     triple: 12,
     deluxe: 1,
     prep_media: 0.5,
-    prep_hora: 1
+    prep_hora: 1,
+    prep_hora_media: 1.5
   };
   const [cfg, setCfg] = useState({
     horas_simple: 4.5,
@@ -9227,7 +9229,7 @@ function Configuracion({
       display: 'flex',
       gap: 8
     }
-  }, numPl('prep_media', 'Media hora antes (hs)'), numPl('prep_hora', '1 hora antes (hs)'))), /*#__PURE__*/React.createElement("div", {
+  }, numPl('prep_media', 'Media hora antes (hs)'), numPl('prep_hora', '1 hora antes (hs)'), numPl('prep_hora_media', '1 hora y media antes (hs)'))), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 12
