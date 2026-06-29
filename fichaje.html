@@ -8326,14 +8326,12 @@ function MiPlanilla({
     horas_triple: 12,
     bonus_excelente: 7000,
     planilla: {
-      simple: 3.5,
-      doble: 8,
-      dossimples: 7,
-      triple: 12,
-      deluxe: 1,
-      prep_media: 0.5,
-      prep_hora: 1,
-      prep_hora_media: 1.5
+      evento: 3,
+      entre: 1,
+      salida: 0.5,
+      entrada1: 1.5,
+      entrada2: 1,
+      deluxe: 1
     }
   });
   const [sel, setSel] = useState(null);
@@ -8428,14 +8426,14 @@ function MiPlanilla({
     };
     guardar(n);
   }
-  function setPrep(f, v) {
+  function setTurno(f, v) {
     const n = {
       ...data
     };
     if (!n[f]) return;
     n[f] = {
       ...n[f],
-      prep: n[f].prep === v ? '' : v
+      turno: v
     };
     guardar(n);
   }
@@ -8448,20 +8446,25 @@ function MiPlanilla({
   }
   const esFig = t => typeof t === 'string' && t.indexOf('fig:') === 0;
   const PL = cfg.planilla || {};
+  const nEv = t => t === 'simple' ? 1 : t === 'doble' || t === '2simples' ? 2 : t === 'triple' ? 3 : 0;
+  // huecos "entre eventos": doble 1, triple 2, 2 simples 0 (separados)
+  const gapsEv = t => t === 'doble' ? 1 : t === 'triple' ? 2 : 0;
+  function entradaHoras(d) {
+    if (d.tipo === 'triple') return +PL.entrada1 || 0;
+    return d.turno === '2' ? +PL.entrada2 || 0 : +PL.entrada1 || 0;
+  }
   function baseHoras(t) {
     if (esFig(t)) {
       const f = (cfg.figuras_hora || []).find(x => 'fig:' + x.nombre === t);
       return f ? +f.horas : 0;
     }
-    return t === 'simple' ? +PL.simple : t === 'doble' ? +PL.doble : t === '2simples' ? +PL.dossimples : t === 'triple' ? +PL.triple : 0;
-  }
-  function prepHoras(d) {
-    return d.prep === 'media' ? +PL.prep_media || 0 : d.prep === 'hora' ? +PL.prep_hora || 0 : d.prep === 'horamedia' ? +PL.prep_hora_media || 0 : 0;
+    return 0;
   }
   function horasDia(d) {
-    let h = baseHoras(d.tipo);
-    if (!esFig(d.tipo)) h += (+d.deluxe || 0) * (+PL.deluxe || 0);
-    h += prepHoras(d);
+    if (esFig(d.tipo)) return baseHoras(d.tipo);
+    const n = nEv(d.tipo);
+    let h = entradaHoras(d) + n * (+PL.evento || 0) + gapsEv(d.tipo) * (+PL.entre || 0) + (+PL.salida || 0);
+    h += (+d.deluxe || 0) * (+PL.deluxe || 0);
     return h;
   }
   const maxDx = t => t === 'simple' ? 1 : t === 'doble' || t === '2simples' ? 2 : t === 'triple' ? 3 : 0;
@@ -8773,34 +8776,40 @@ function MiPlanilla({
       fontSize: 13,
       ...((selData.deluxe || 0) === n ? S.btnOro : S.btnGhost)
     }
-  }, n)))), !esFig(selData.tipo) && /*#__PURE__*/React.createElement("div", {
+  }, n)))), !esFig(selData.tipo) && selData.tipo !== 'triple' && /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 10
     }
   }, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "\xBFEntraste antes del evento?"), /*#__PURE__*/React.createElement("div", {
+  }, "\xBFEntraste al 1\xB0 o 2\xB0 turno?"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
       flexWrap: 'wrap'
     }
-  }, [['', 'No'], ['media', 'Media hora antes'], ['hora', '1 hora antes'], ['horamedia', '1 hora y media antes']].map(([v, l]) => /*#__PURE__*/React.createElement("button", {
-    key: v || 'no',
-    onClick: () => setPrep(sel, v),
+  }, [['1', '1° turno', PL.entrada1 || 0], ['2', '2° turno', PL.entrada2 || 0]].map(([v, l, hh]) => /*#__PURE__*/React.createElement("button", {
+    key: v,
+    onClick: () => setTurno(sel, v),
     style: {
       ...S.btn,
       minHeight: 0,
       padding: '8px 12px',
       fontSize: 12,
-      ...((selData.prep || '') === v ? S.btnOro : S.btnGhost)
+      ...((selData.turno || '1') === v ? S.btnOro : S.btnGhost)
     }
-  }, l, v ? /*#__PURE__*/React.createElement("div", {
+  }, l, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 9,
       opacity: .7
     }
-  }, "+", v === 'media' ? PL.prep_media || 0 : v === 'hora' ? PL.prep_hora || 0 : PL.prep_hora_media || 0, "h") : null)))), /*#__PURE__*/React.createElement("label", {
+  }, "+", hh, "h antes"))))), selData.tipo === 'triple' && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.tx2,
+      marginBottom: 10
+    }
+  }, "\uD83D\uDD52 Triple: entra siempre al 1\xB0 turno (+", PL.entrada1 || 0, "h antes)."), /*#__PURE__*/React.createElement("label", {
     style: S.label
   }, "\xBFCu\xE1ntas encuestas salieron bien (Excelente)?"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -8968,14 +8977,12 @@ function Configuracion({
   recargar
 }) {
   const PL_DEF = {
-    simple: 3.5,
-    doble: 8,
-    dossimples: 7,
-    triple: 12,
-    deluxe: 1,
-    prep_media: 0.5,
-    prep_hora: 1,
-    prep_hora_media: 1.5
+    evento: 3,
+    entre: 1,
+    salida: 0.5,
+    entrada1: 1.5,
+    entrada2: 1,
+    deluxe: 1
   };
   const [cfg, setCfg] = useState({
     horas_simple: 4.5,
@@ -9196,40 +9203,69 @@ function Configuracion({
       fontSize: 14,
       marginBottom: 4
     }
-  }, "\uD83D\uDCDD Planilla del empleado (independiente)"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDCDD Planilla del empleado (bloques configurables)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.tx2,
       marginBottom: 10
     }
-  }, "Horas SOLO para la planilla que carga cada empleado. ", /*#__PURE__*/React.createElement("b", {
+  }, "Las horas se arman con estos bloques: ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.tx
     }
-  }, "No afecta"), " la liquidaci\xF3n del sal\xF3n. Ac\xE1 el evento va con su duraci\xF3n real y aparte el empleado marca si entr\xF3 antes."), /*#__PURE__*/React.createElement("div", {
+  }, "entrada + (eventos \xD7 duraci\xF3n) + (horas entre eventos) + salida"), ". El empleado elige si entr\xF3 al ", /*#__PURE__*/React.createElement("b", {
+    style: {
+      color: C.tx
+    }
+  }, "1\xB0 o 2\xB0 turno"), ". El Triple siempre entra al 1\xB0 turno."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
     }
-  }, numPl('simple', 'Simple (hs)'), numPl('doble', 'Doble (hs)'), numPl('triple', 'Triple (hs)')), /*#__PURE__*/React.createElement("div", {
+  }, numPl('evento', 'Dura cada evento (hs)'), numPl('entre', 'Entre eventos (hs)'), numPl('salida', 'Salida después (hs)')), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
       marginTop: 10
     }
-  }, numPl('dossimples', '2 simples (hs)'), numPl('deluxe', 'Extra Deluxe (hs)')), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: C.tx2,
-      margin: '12px 0 6px',
-      fontWeight: 700
-    }
-  }, "\"\xBFEntraste antes?\" \u2014 horas que suma el empleado"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8
-    }
-  }, numPl('prep_media', 'Media hora antes (hs)'), numPl('prep_hora', '1 hora antes (hs)'), numPl('prep_hora_media', '1 hora y media antes (hs)'))), /*#__PURE__*/React.createElement("div", {
+  }, numPl('entrada1', 'Entra 1° turno (hs antes)'), numPl('entrada2', 'Entra 2° turno (hs antes)'), numPl('deluxe', 'Extra Deluxe (hs)')), (() => {
+    const P = cfg.planilla || {};
+    const e = +P.evento || 0,
+      en = +P.entre || 0,
+      s = +P.salida || 0,
+      a1 = +P.entrada1 || 0,
+      a2 = +P.entrada2 || 0;
+    const f = (n, a, gaps) => a + n * e + gaps * en + s;
+    const rows = [['Simple · 1° turno', f(1, a1, 0)], ['Simple · 2° turno', f(1, a2, 0)], ['Doble · 1° turno', f(2, a1, 1)], ['Doble · 2° turno', f(2, a2, 1)], ['Triple', f(3, a1, 2)]];
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 12,
+        background: C.surf2,
+        borderRadius: 8,
+        padding: '9px 11px'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: C.oro,
+        marginBottom: 5
+      }
+    }, "\uD83D\uDC41\uFE0F Vista previa (horas que cobra)"), rows.map(([l, v]) => /*#__PURE__*/React.createElement("div", {
+      key: l,
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        fontSize: 12.5,
+        color: C.tx2,
+        padding: '2px 0'
+      }
+    }, /*#__PURE__*/React.createElement("span", null, l), /*#__PURE__*/React.createElement("b", {
+      style: {
+        color: C.tx
+      }
+    }, v, " hs"))));
+  })()), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 12

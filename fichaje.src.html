@@ -2244,7 +2244,7 @@ function tipoCorto(t){return t==='simple'?'S':t==='doble'?'D':t==='2simples'?'2S
 function MiPlanilla({sesion,sucursales}){
   const hoy=new Date();
   const [y,setY]=useState(hoy.getFullYear()); const [m,setM]=useState(hoy.getMonth());
-  const [data,setData]=useState({}); const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,bonus_excelente:7000,planilla:{simple:3.5,doble:8,dossimples:7,triple:12,deluxe:1,prep_media:0.5,prep_hora:1,prep_hora_media:1.5}});
+  const [data,setData]=useState({}); const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,bonus_excelente:7000,planilla:{evento:3,entre:1,salida:0.5,entrada1:1.5,entrada2:1,deluxe:1}});
   const [sel,setSel]=useState(null); const [encs,setEncs]=useState([]); const [verEnc,setVerEnc]=useState(null); const [asignF,setAsignF]=useState({}); const [exD,setExD]=useState(''); const [exH,setExH]=useState('');
   const cfgId='auto_'+sesion.id; const valorHora=+(sesion.valor_hora||0);
   const misSucNombres=((sesion.sucursales)||[]).map(id=>{const s=(sucursales||[]).find(x=>x.id===id);return s?s.nombre.toLowerCase():'';}).filter(Boolean);
@@ -2265,13 +2265,16 @@ function MiPlanilla({sesion,sucursales}){
   function setTipo(f,tipo){ const n={...data}; const cur=n[f]||{}; n[f]={...cur,tipo,enc:cur.enc||0}; guardar(n); }
   function setEnc(f,enc){ const n={...data}; if(!n[f])return; n[f]={...n[f],enc}; guardar(n); }
   function setDeluxe(f,v){ const n={...data}; if(!n[f])return; n[f]={...n[f],deluxe:v}; guardar(n); }
-  function setPrep(f,v){ const n={...data}; if(!n[f])return; n[f]={...n[f],prep:(n[f].prep===v?'':v)}; guardar(n); }
+  function setTurno(f,v){ const n={...data}; if(!n[f])return; n[f]={...n[f],turno:v}; guardar(n); }
   function borrarDia(f){ const n={...data}; delete n[f]; guardar(n); }
   const esFig=t=>typeof t==='string'&&t.indexOf('fig:')===0;
   const PL=cfg.planilla||{};
-  function baseHoras(t){ if(esFig(t)){const f=(cfg.figuras_hora||[]).find(x=>('fig:'+x.nombre)===t);return f?+f.horas:0;} return t==='simple'?+PL.simple:t==='doble'?+PL.doble:t==='2simples'?+PL.dossimples:t==='triple'?+PL.triple:0; }
-  function prepHoras(d){ return d.prep==='media'?(+PL.prep_media||0):d.prep==='hora'?(+PL.prep_hora||0):d.prep==='horamedia'?(+PL.prep_hora_media||0):0; }
-  function horasDia(d){ let h=baseHoras(d.tipo); if(!esFig(d.tipo)) h+=(+d.deluxe||0)*(+PL.deluxe||0); h+=prepHoras(d); return h; }
+  const nEv=t=>t==='simple'?1:(t==='doble'||t==='2simples')?2:t==='triple'?3:0;
+  // huecos "entre eventos": doble 1, triple 2, 2 simples 0 (separados)
+  const gapsEv=t=>t==='doble'?1:t==='triple'?2:0;
+  function entradaHoras(d){ if(d.tipo==='triple') return +PL.entrada1||0; return (d.turno==='2')?(+PL.entrada2||0):(+PL.entrada1||0); }
+  function baseHoras(t){ if(esFig(t)){const f=(cfg.figuras_hora||[]).find(x=>('fig:'+x.nombre)===t);return f?+f.horas:0;} return 0; }
+  function horasDia(d){ if(esFig(d.tipo)) return baseHoras(d.tipo); const n=nEv(d.tipo); let h=entradaHoras(d) + n*(+PL.evento||0) + gapsEv(d.tipo)*(+PL.entre||0) + (+PL.salida||0); h+=(+d.deluxe||0)*(+PL.deluxe||0); return h; }
   const maxDx=t=>t==='simple'?1:(t==='doble'||t==='2simples')?2:t==='triple'?3:0;
   function montoDia(d){ return horasDia(d)*valorHora + (d.enc||0)*(+cfg.bonus_excelente); }
   const opciones=[...TIPOS, ...((cfg.figuras_hora||[]).map(f=>['fig:'+f.nombre, f.nombre, (f.horas)+' hs']))];
@@ -2353,14 +2356,15 @@ function MiPlanilla({sesion,sucursales}){
                   </div>
                 </div>
               )}
-              {!esFig(selData.tipo) && (
+              {!esFig(selData.tipo) && selData.tipo!=='triple' && (
                 <div style={{marginBottom:10}}>
-                  <label style={S.label}>¿Entraste antes del evento?</label>
+                  <label style={S.label}>¿Entraste al 1° o 2° turno?</label>
                   <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                    {[['','No'],['media','Media hora antes'],['hora','1 hora antes'],['horamedia','1 hora y media antes']].map(([v,l])=>(<button key={v||'no'} onClick={()=>setPrep(sel,v)} style={{...S.btn,minHeight:0,padding:'8px 12px',fontSize:12,...(((selData.prep||'')===v)?S.btnOro:S.btnGhost)}}>{l}{v?<div style={{fontSize:9,opacity:.7}}>+{v==='media'?(PL.prep_media||0):v==='hora'?(PL.prep_hora||0):(PL.prep_hora_media||0)}h</div>:null}</button>))}
+                    {[['1','1° turno',(PL.entrada1||0)],['2','2° turno',(PL.entrada2||0)]].map(([v,l,hh])=>(<button key={v} onClick={()=>setTurno(sel,v)} style={{...S.btn,minHeight:0,padding:'8px 12px',fontSize:12,...(((selData.turno||'1')===v)?S.btnOro:S.btnGhost)}}>{l}<div style={{fontSize:9,opacity:.7}}>+{hh}h antes</div></button>))}
                   </div>
                 </div>
               )}
+              {selData.tipo==='triple' && <div style={{fontSize:11,color:C.tx2,marginBottom:10}}>🕒 Triple: entra siempre al 1° turno (+{PL.entrada1||0}h antes).</div>}
               <label style={S.label}>¿Cuántas encuestas salieron bien (Excelente)?</label>
               <div style={{display:'flex',gap:6,marginBottom:10}}>
                 {[0,1,2,3].map(n=>(<button key={n} onClick={()=>setEnc(sel,n)} style={{...S.btn,minHeight:0,padding:'8px 14px',fontSize:13,...((selData.enc||0)===n?S.btnOro:S.btnGhost)}}>{n}</button>))}
@@ -2404,7 +2408,7 @@ function MiPlanilla({sesion,sucursales}){
 
 /* ════════ CONFIGURACIÓN (dueña) ════════ */
 function Configuracion({sucursales,empleados,recargar}){
-  const PL_DEF={simple:3.5,doble:8,dossimples:7,triple:12,deluxe:1,prep_media:0.5,prep_hora:1,prep_hora_media:1.5};
+  const PL_DEF={evento:3,entre:1,salida:0.5,entrada1:1.5,entrada2:1,deluxe:1};
   const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,horas_extra_deluxe:1,bonus_excelente:7000,prep_1:90,prep_2:30,prep_3:30,figuras_hora:[],planilla:PL_DEF,tarde_tolerancia_min:5,tarde_max_mes:5,tarde_suspension_dias:30});
   const [vh,setVh]=useState({}); const [msg,setMsg]=useState(''); const [guardando,setGuardando]=useState(false); const [vhOk,setVhOk]=useState(null);
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data,figuras_hora:g.data.figuras_hora||[],planilla:{...PL_DEF,...(g.data.planilla||{})}}));})();},[]);
@@ -2448,12 +2452,15 @@ function Configuracion({sucursales,empleados,recargar}){
       </div>
 
       <div style={{...S.card,marginBottom:12,border:'1px solid '+C.oro}}>
-        <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>📝 Planilla del empleado (independiente)</div>
-        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>Horas SOLO para la planilla que carga cada empleado. <b style={{color:C.tx}}>No afecta</b> la liquidación del salón. Acá el evento va con su duración real y aparte el empleado marca si entró antes.</div>
-        <div style={{display:'flex',gap:8}}>{numPl('simple','Simple (hs)')}{numPl('doble','Doble (hs)')}{numPl('triple','Triple (hs)')}</div>
-        <div style={{display:'flex',gap:8,marginTop:10}}>{numPl('dossimples','2 simples (hs)')}{numPl('deluxe','Extra Deluxe (hs)')}</div>
-        <div style={{fontSize:12,color:C.tx2,margin:'12px 0 6px',fontWeight:700}}>"¿Entraste antes?" — horas que suma el empleado</div>
-        <div style={{display:'flex',gap:8}}>{numPl('prep_media','Media hora antes (hs)')}{numPl('prep_hora','1 hora antes (hs)')}{numPl('prep_hora_media','1 hora y media antes (hs)')}</div>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>📝 Planilla del empleado (bloques configurables)</div>
+        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>Las horas se arman con estos bloques: <b style={{color:C.tx}}>entrada + (eventos × duración) + (horas entre eventos) + salida</b>. El empleado elige si entró al <b style={{color:C.tx}}>1° o 2° turno</b>. El Triple siempre entra al 1° turno.</div>
+        <div style={{display:'flex',gap:8}}>{numPl('evento','Dura cada evento (hs)')}{numPl('entre','Entre eventos (hs)')}{numPl('salida','Salida después (hs)')}</div>
+        <div style={{display:'flex',gap:8,marginTop:10}}>{numPl('entrada1','Entra 1° turno (hs antes)')}{numPl('entrada2','Entra 2° turno (hs antes)')}{numPl('deluxe','Extra Deluxe (hs)')}</div>
+        {(()=>{ const P=cfg.planilla||{}; const e=+P.evento||0,en=+P.entre||0,s=+P.salida||0,a1=+P.entrada1||0,a2=+P.entrada2||0; const f=(n,a,gaps)=>a+n*e+gaps*en+s; const rows=[['Simple · 1° turno',f(1,a1,0)],['Simple · 2° turno',f(1,a2,0)],['Doble · 1° turno',f(2,a1,1)],['Doble · 2° turno',f(2,a2,1)],['Triple',f(3,a1,2)]];
+          return <div style={{marginTop:12,background:C.surf2,borderRadius:8,padding:'9px 11px'}}>
+            <div style={{fontSize:12,fontWeight:700,color:C.oro,marginBottom:5}}>👁️ Vista previa (horas que cobra)</div>
+            {rows.map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12.5,color:C.tx2,padding:'2px 0'}}><span>{l}</span><b style={{color:C.tx}}>{v} hs</b></div>)}
+          </div>; })()}
       </div>
 
       <div style={{...S.card,marginBottom:12}}>
