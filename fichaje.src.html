@@ -396,6 +396,50 @@ function HorariosSalones({sucursales,empleados,detalle,sucDefault}){
       </div>
     );
   }
+  if(!detalle){
+    // ── Vista MANTENIMIENTO: dos columnas (un salón al lado del otro), solo hoy en adelante ──
+    const _hoyM=fechaHoyISO();
+    const _iso=d=>d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+    const _DOWm=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+    const _lblM=f=>{const d=new Date(f+'T12:00:00');return _DOWm[d.getDay()]+' '+f.slice(8,10)+'/'+f.slice(5,7);};
+    const byF={}; (eventos||[]).filter(e=>e.fecha>=_hoyM).forEach(e=>{ (byF[e.fecha]=byF[e.fecha]||{}); (byF[e.fecha][e.sucursal_id]=byF[e.fecha][e.sucursal_id]||[]).push(e); });
+    Object.keys(byF).forEach(f=>Object.keys(byF[f]).forEach(s=>byF[f][s].sort((x,y)=>toMin(x.hora_inicio)-toMin(y.hora_inicio))));
+    const diasConEv=Object.keys(byF).sort();
+    const libres=[];
+    if(diasConEv.length){ const ult=diasConEv[diasConEv.length-1]; const d=new Date(_hoyM+'T12:00:00'); const dEnd=new Date(ult+'T12:00:00'); while(d<=dEnd){ const f=_iso(d); if(!byF[f]) libres.push(f); d.setDate(d.getDate()+1); } }
+    return (
+      <div className="fade">
+        <h2 style={{fontSize:20,marginBottom:4}}>🗓️ Horario de salones</h2>
+        <p style={{fontSize:12,color:C.tx2,marginBottom:12}}>Eventos de hoy en adelante, los dos salones lado a lado.</p>
+        {eventos===null ? <div style={{textAlign:'center',padding:30}}><span className="spin"></span></div> :
+         diasConEv.length===0 ? <div style={{...S.card,textAlign:'center',color:C.tx2,padding:26}}>No hay eventos cargados de hoy en adelante.</div> :
+         <React.Fragment>
+           {libres.length>0 && <div style={{...S.card,marginBottom:12,background:'#2a2418',border:'1px solid #4a3d1c'}}>
+             <div style={{fontWeight:800,color:C.oro,fontSize:14,marginBottom:6}}>📣 Días sin eventos en ningún salón</div>
+             <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>{libres.map(f=><span key={f} style={{...S.chip,background:C.surf2,color:C.tx}}>{_lblM(f)}</span>)}</div>
+           </div>}
+           {diasConEv.map(f=>(
+             <div key={f} style={{marginBottom:12}}>
+               <div style={{fontWeight:700,fontSize:14,marginBottom:6,fontFamily:'Arial, Helvetica, sans-serif',color:f===_hoyM?C.verde:C.oro}}>{fechaLinda(f)}{f===_hoyM?'  · HOY':''}</div>
+               <div style={{display:'flex',gap:8,alignItems:'stretch'}}>
+                 {sucursales.map(s=>{ const list=byF[f][s.id]||[]; return (
+                   <div key={s.id} style={{flex:1,minWidth:0,background:C.surf2,borderRadius:10,padding:'8px 9px'}}>
+                     <div style={{fontWeight:800,fontSize:12,color:C.oro,marginBottom:6,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{s.nombre}</div>
+                     {list.length ? list.map(ev=>(
+                       <div key={ev.id} style={{marginBottom:6,paddingBottom:6,borderBottom:'1px solid '+C.bd}}>
+                         <div style={{color:C.verde,fontWeight:700,fontFamily:'Arial, Helvetica, sans-serif',fontSize:13}}>{sh(ev.hora_inicio)} a {sh(ev.hora_fin)}</div>
+                         <div style={{fontWeight:700,fontSize:13}}>{ev.paquete}</div>
+                       </div>
+                     )) : <div style={{fontSize:12,color:C.tx2,fontStyle:'italic'}}>Sin eventos</div>}
+                   </div>
+                 );})}
+               </div>
+             </div>
+           ))}
+         </React.Fragment>}
+      </div>
+    );
+  }
   return (
     <div className="fade">
       <h2 style={{fontSize:20,marginBottom:4}}>🗓️ {detalle?'Resumen de horarios':'Horario de salones'}</h2>
