@@ -1363,7 +1363,7 @@ function PagoMantenimiento({esDuena,sucursales,empleados,sucCtx}){
 function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
   const [sucSel,setSucSel]=useState(esDuena?(sucCtx||(sucursales[0]||{}).id||''):(sucCtx||''));
   const [desde,setDesde]=useState(''); const [hasta,setHasta]=useState('');
-  const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,bonus_excelente:7000});
+  const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,bonus_excelente:7000,planilla:{evento:3,entre:1,salida:0.5,entrada1:1.5,entrada2:1,entrada3:1,deluxe:1}});
   const [res,setRes]=useState(null); const [cargando,setCargando]=useState(false); const [tab,setTab]=useState('liq'); const [empSel,setEmpSel]=useState(''); const [abierto,setAbierto]=useState({});
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data}));})();},[]);
   const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
@@ -1404,7 +1404,7 @@ function Pagos({sesion,esDuena,sucursales,empleados,sucCtx}){
         xhs.forEach(it=>detalle.push({dia,desc:it.a.rol_en_evento+' · '+it.e.paquete,horas:it.horas}));
         normal.sort((p,q)=>toMin(p.e.hora_inicio)-toMin(q.e.hora_inicio));
         let grupo=[], finPrev=null;
-        const cerrar=()=>{ if(!grupo.length)return; const n=grupo.length; let horas=n===1?+cfg.horas_simple:n===2?+cfg.horas_doble:+cfg.horas_triple; const tipo=n===1?'Evento simple':n===2?'Evento doble':(n+' eventos'); const deluxe=grupo.filter(g=>/deluxe/i.test(g.e.paquete||'')).length; const extra=deluxe*(+cfg.horas_extra_deluxe||0); if(extra)horas+=extra; detalle.push({dia,desc:tipo+' ('+grupo.map(g=>g.e.paquete).join(' + ')+')'+(extra?(' +'+extra+'h Deluxe'):''),horas}); grupo=[]; };
+        const cerrar=()=>{ if(!grupo.length)return; const n=grupo.length; const P=cfg.planilla||{}; const ord=grupo[0].e.orden_dia||1; const ent=ord>=3?(+P.entrada3||0):ord===2?(+P.entrada2||0):(+P.entrada1||0); let horas=ent + n*(+P.evento||0) + (n-1)*(+P.entre||0) + (+P.salida||0); const tipo=(n===1?'Simple':n===2?'Doble':n+' eventos')+' · '+ord+'° turno'; const deluxe=grupo.filter(g=>/deluxe/i.test(g.e.paquete||'')).length; const extra=deluxe*(+P.deluxe||0); if(extra)horas+=extra; detalle.push({dia,desc:tipo+' ('+grupo.map(g=>g.e.paquete).join(' + ')+')'+(extra?(' +'+extra+'h Deluxe'):''),horas}); grupo=[]; };
         normal.forEach(it=>{ const ini=toMin(it.e.hora_inicio); if(finPrev!==null && (ini-finPrev)/60 >= +cfg.gap_horas) cerrar(); grupo.push(it); let fin=toMin(it.e.hora_fin); if(fin<ini)fin+=1440; finPrev=fin; });
         cerrar();
       });
@@ -2244,7 +2244,7 @@ function tipoCorto(t){return t==='simple'?'S':t==='doble'?'D':t==='2simples'?'2S
 function MiPlanilla({sesion,sucursales}){
   const hoy=new Date();
   const [y,setY]=useState(hoy.getFullYear()); const [m,setM]=useState(hoy.getMonth());
-  const [data,setData]=useState({}); const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,bonus_excelente:7000,planilla:{evento:3,entre:1,salida:0.5,entrada1:1.5,entrada2:1,deluxe:1}});
+  const [data,setData]=useState({}); const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,bonus_excelente:7000,planilla:{evento:3,entre:1,salida:0.5,entrada1:1.5,entrada2:1,entrada3:1,deluxe:1}});
   const [sel,setSel]=useState(null); const [encs,setEncs]=useState([]); const [verEnc,setVerEnc]=useState(null); const [asignF,setAsignF]=useState({}); const [exD,setExD]=useState(''); const [exH,setExH]=useState('');
   const cfgId='auto_'+sesion.id; const valorHora=+(sesion.valor_hora||0);
   const misSucNombres=((sesion.sucursales)||[]).map(id=>{const s=(sucursales||[]).find(x=>x.id===id);return s?s.nombre.toLowerCase():'';}).filter(Boolean);
@@ -2272,7 +2272,7 @@ function MiPlanilla({sesion,sucursales}){
   const nEv=t=>t==='simple'?1:(t==='doble'||t==='2simples')?2:t==='triple'?3:0;
   // huecos "entre eventos": doble 1, triple 2, 2 simples 0 (separados)
   const gapsEv=t=>t==='doble'?1:t==='triple'?2:0;
-  function entradaHoras(d){ if(d.tipo==='triple') return +PL.entrada1||0; return (d.turno==='2')?(+PL.entrada2||0):(+PL.entrada1||0); }
+  function entradaHoras(d){ if(d.tipo==='triple') return +PL.entrada1||0; return d.turno==='3'?(+PL.entrada3||0):d.turno==='2'?(+PL.entrada2||0):(+PL.entrada1||0); }
   function baseHoras(t){ if(esFig(t)){const f=(cfg.figuras_hora||[]).find(x=>('fig:'+x.nombre)===t);return f?+f.horas:0;} return 0; }
   function horasDia(d){ if(esFig(d.tipo)) return baseHoras(d.tipo); const n=nEv(d.tipo); let h=entradaHoras(d) + n*(+PL.evento||0) + gapsEv(d.tipo)*(+PL.entre||0) + (+PL.salida||0); h+=(+d.deluxe||0)*(+PL.deluxe||0); return h; }
   const maxDx=t=>t==='simple'?1:(t==='doble'||t==='2simples')?2:t==='triple'?3:0;
@@ -2360,7 +2360,7 @@ function MiPlanilla({sesion,sucursales}){
                 <div style={{marginBottom:10}}>
                   <label style={S.label}>¿Entraste al 1° o 2° turno?</label>
                   <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                    {[['1','1° turno',(PL.entrada1||0)],['2','2° turno',(PL.entrada2||0)]].map(([v,l,hh])=>(<button key={v} onClick={()=>setTurno(sel,v)} style={{...S.btn,minHeight:0,padding:'8px 12px',fontSize:12,...(((selData.turno||'1')===v)?S.btnOro:S.btnGhost)}}>{l}<div style={{fontSize:9,opacity:.7}}>+{hh}h antes</div></button>))}
+                    {[['1','1° turno',(PL.entrada1||0)],['2','2° turno',(PL.entrada2||0)],['3','3° turno',(PL.entrada3||0)]].map(([v,l,hh])=>(<button key={v} onClick={()=>setTurno(sel,v)} style={{...S.btn,minHeight:0,padding:'8px 12px',fontSize:12,...(((selData.turno||'1')===v)?S.btnOro:S.btnGhost)}}>{l}<div style={{fontSize:9,opacity:.7}}>+{hh}h antes</div></button>))}
                   </div>
                 </div>
               )}
@@ -2408,7 +2408,7 @@ function MiPlanilla({sesion,sucursales}){
 
 /* ════════ CONFIGURACIÓN (dueña) ════════ */
 function Configuracion({sucursales,empleados,recargar}){
-  const PL_DEF={evento:3,entre:1,salida:0.5,entrada1:1.5,entrada2:1,deluxe:1};
+  const PL_DEF={evento:3,entre:1,salida:0.5,entrada1:1.5,entrada2:1,entrada3:1,deluxe:1};
   const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,horas_extra_deluxe:1,bonus_excelente:7000,prep_1:90,prep_2:30,prep_3:30,figuras_hora:[],planilla:PL_DEF,tarde_tolerancia_min:5,tarde_max_mes:5,tarde_suspension_dias:30});
   const [vh,setVh]=useState({}); const [msg,setMsg]=useState(''); const [guardando,setGuardando]=useState(false); const [vhOk,setVhOk]=useState(null);
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data,figuras_hora:g.data.figuras_hora||[],planilla:{...PL_DEF,...(g.data.planilla||{})}}));})();},[]);
@@ -2443,20 +2443,14 @@ function Configuracion({sucursales,empleados,recargar}){
         <input style={S.input} type="number" value={cfg.bonus_excelente} onChange={e=>setCfg({...cfg,bonus_excelente:e.target.value})}/>
       </div>
 
-      <div style={{...S.card,marginBottom:12}}>
-        <div style={{fontWeight:700,fontSize:14,marginBottom:8}}>🕐 Horas por tipo de evento</div>
-        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>El monto = estas horas × el valor hora de cada empleado.</div>
-        <div style={{display:'flex',gap:8}}>{num('horas_simple','Simple (hs)','0.5')}{num('horas_doble','Doble (hs)','0.5')}{num('horas_triple','Triple (hs)','0.5')}</div>
-        <div style={{display:'flex',gap:8,marginTop:10}}>{num('gap_horas','Hueco p/ separar (hs)','0.5')}{num('horas_extra_deluxe','Extra por Deluxe (hs)','0.5')}</div>
-        <div style={{fontSize:11,color:C.tx2,marginTop:6}}>Hueco: si entre dos eventos pasan ese tiempo o más, cuentan separados. Deluxe: si el evento es Deluxe, suma esas horas extra.</div>
-      </div>
-
       <div style={{...S.card,marginBottom:12,border:'1px solid '+C.oro}}>
-        <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>📝 Planilla del empleado (bloques configurables)</div>
-        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>Las horas se arman con estos bloques: <b style={{color:C.tx}}>entrada + (eventos × duración) + (horas entre eventos) + salida</b>. El empleado elige si entró al <b style={{color:C.tx}}>1° o 2° turno</b>. El Triple siempre entra al 1° turno.</div>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>🕐 Horas de eventos (planilla y sueldos)</div>
+        <div style={{fontSize:12,color:C.tx2,marginBottom:10}}>Las horas se arman con estos bloques: <b style={{color:C.tx}}>entrada + (eventos × duración) + (horas entre eventos) + salida</b>. Se usa <b style={{color:C.tx}}>igual</b> en la planilla del empleado y en la liquidación de sueldos. El monto = estas horas × el valor hora.</div>
         <div style={{display:'flex',gap:8}}>{numPl('evento','Dura cada evento (hs)')}{numPl('entre','Entre eventos (hs)')}{numPl('salida','Salida después (hs)')}</div>
-        <div style={{display:'flex',gap:8,marginTop:10}}>{numPl('entrada1','Entra 1° turno (hs antes)')}{numPl('entrada2','Entra 2° turno (hs antes)')}{numPl('deluxe','Extra Deluxe (hs)')}</div>
-        {(()=>{ const P=cfg.planilla||{}; const e=+P.evento||0,en=+P.entre||0,s=+P.salida||0,a1=+P.entrada1||0,a2=+P.entrada2||0; const f=(n,a,gaps)=>a+n*e+gaps*en+s; const rows=[['Simple · 1° turno',f(1,a1,0)],['Simple · 2° turno',f(1,a2,0)],['Doble · 1° turno',f(2,a1,1)],['Doble · 2° turno',f(2,a2,1)],['Triple',f(3,a1,2)]];
+        <div style={{display:'flex',gap:8,marginTop:10}}>{numPl('entrada1','Entra 1° turno (hs antes)')}{numPl('entrada2','Entra 2° turno (hs antes)')}{numPl('entrada3','Entra 3° turno (hs antes)')}</div>
+        <div style={{display:'flex',gap:8,marginTop:10}}>{numPl('deluxe','Extra Deluxe (hs)')}{num('gap_horas','Hueco p/ separar turnos (hs)','0.5')}</div>
+        <div style={{fontSize:11,color:C.tx2,marginTop:6}}>Hueco: en sueldos, si entre dos eventos pasan ese tiempo o más, cuentan como turnos separados.</div>
+        {(()=>{ const P=cfg.planilla||{}; const e=+P.evento||0,en=+P.entre||0,s=+P.salida||0,a1=+P.entrada1||0,a2=+P.entrada2||0,a3=+P.entrada3||0; const f=(n,a,gaps)=>a+n*e+gaps*en+s; const rows=[['Simple · 1° turno',f(1,a1,0)],['Simple · 2° turno',f(1,a2,0)],['Simple · 3° turno',f(1,a3,0)],['Doble · 1° turno',f(2,a1,1)],['Doble · 2° turno',f(2,a2,1)],['Triple',f(3,a1,2)]];
           return <div style={{marginTop:12,background:C.surf2,borderRadius:8,padding:'9px 11px'}}>
             <div style={{fontSize:12,fontWeight:700,color:C.oro,marginBottom:5}}>👁️ Vista previa (horas que cobra)</div>
             {rows.map(([l,v])=><div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12.5,color:C.tx2,padding:'2px 0'}}><span>{l}</span><b style={{color:C.tx}}>{v} hs</b></div>)}

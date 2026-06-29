@@ -5087,7 +5087,16 @@ function Pagos({
     horas_doble: 8,
     horas_triple: 12,
     gap_horas: 2,
-    bonus_excelente: 7000
+    bonus_excelente: 7000,
+    planilla: {
+      evento: 3,
+      entre: 1,
+      salida: 0.5,
+      entrada1: 1.5,
+      entrada2: 1,
+      entrada3: 1,
+      deluxe: 1
+    }
   });
   const [res, setRes] = useState(null);
   const [cargando, setCargando] = useState(false);
@@ -5213,10 +5222,13 @@ function Pagos({
         const cerrar = () => {
           if (!grupo.length) return;
           const n = grupo.length;
-          let horas = n === 1 ? +cfg.horas_simple : n === 2 ? +cfg.horas_doble : +cfg.horas_triple;
-          const tipo = n === 1 ? 'Evento simple' : n === 2 ? 'Evento doble' : n + ' eventos';
+          const P = cfg.planilla || {};
+          const ord = grupo[0].e.orden_dia || 1;
+          const ent = ord >= 3 ? +P.entrada3 || 0 : ord === 2 ? +P.entrada2 || 0 : +P.entrada1 || 0;
+          let horas = ent + n * (+P.evento || 0) + (n - 1) * (+P.entre || 0) + (+P.salida || 0);
+          const tipo = (n === 1 ? 'Simple' : n === 2 ? 'Doble' : n + ' eventos') + ' · ' + ord + '° turno';
           const deluxe = grupo.filter(g => /deluxe/i.test(g.e.paquete || '')).length;
-          const extra = deluxe * (+cfg.horas_extra_deluxe || 0);
+          const extra = deluxe * (+P.deluxe || 0);
           if (extra) horas += extra;
           detalle.push({
             dia,
@@ -8331,6 +8343,7 @@ function MiPlanilla({
       salida: 0.5,
       entrada1: 1.5,
       entrada2: 1,
+      entrada3: 1,
       deluxe: 1
     }
   });
@@ -8451,7 +8464,7 @@ function MiPlanilla({
   const gapsEv = t => t === 'doble' ? 1 : t === 'triple' ? 2 : 0;
   function entradaHoras(d) {
     if (d.tipo === 'triple') return +PL.entrada1 || 0;
-    return d.turno === '2' ? +PL.entrada2 || 0 : +PL.entrada1 || 0;
+    return d.turno === '3' ? +PL.entrada3 || 0 : d.turno === '2' ? +PL.entrada2 || 0 : +PL.entrada1 || 0;
   }
   function baseHoras(t) {
     if (esFig(t)) {
@@ -8788,7 +8801,7 @@ function MiPlanilla({
       gap: 6,
       flexWrap: 'wrap'
     }
-  }, [['1', '1° turno', PL.entrada1 || 0], ['2', '2° turno', PL.entrada2 || 0]].map(([v, l, hh]) => /*#__PURE__*/React.createElement("button", {
+  }, [['1', '1° turno', PL.entrada1 || 0], ['2', '2° turno', PL.entrada2 || 0], ['3', '3° turno', PL.entrada3 || 0]].map(([v, l, hh]) => /*#__PURE__*/React.createElement("button", {
     key: v,
     onClick: () => setTurno(sel, v),
     style: {
@@ -8982,6 +8995,7 @@ function Configuracion({
     salida: 0.5,
     entrada1: 1.5,
     entrada2: 1,
+    entrada3: 1,
     deluxe: 1
   };
   const [cfg, setCfg] = useState({
@@ -9160,40 +9174,6 @@ function Configuracion({
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
-      marginBottom: 12
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 700,
-      fontSize: 14,
-      marginBottom: 8
-    }
-  }, "\uD83D\uDD50 Horas por tipo de evento"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 12,
-      color: C.tx2,
-      marginBottom: 10
-    }
-  }, "El monto = estas horas \xD7 el valor hora de cada empleado."), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8
-    }
-  }, num('horas_simple', 'Simple (hs)', '0.5'), num('horas_doble', 'Doble (hs)', '0.5'), num('horas_triple', 'Triple (hs)', '0.5')), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8,
-      marginTop: 10
-    }
-  }, num('gap_horas', 'Hueco p/ separar (hs)', '0.5'), num('horas_extra_deluxe', 'Extra por Deluxe (hs)', '0.5')), /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      color: C.tx2,
-      marginTop: 6
-    }
-  }, "Hueco: si entre dos eventos pasan ese tiempo o m\xE1s, cuentan separados. Deluxe: si el evento es Deluxe, suma esas horas extra.")), /*#__PURE__*/React.createElement("div", {
-    style: {
-      ...S.card,
       marginBottom: 12,
       border: '1px solid ' + C.oro
     }
@@ -9203,7 +9183,7 @@ function Configuracion({
       fontSize: 14,
       marginBottom: 4
     }
-  }, "\uD83D\uDCDD Planilla del empleado (bloques configurables)"), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDD50 Horas de eventos (planilla y sueldos)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.tx2,
@@ -9213,11 +9193,11 @@ function Configuracion({
     style: {
       color: C.tx
     }
-  }, "entrada + (eventos \xD7 duraci\xF3n) + (horas entre eventos) + salida"), ". El empleado elige si entr\xF3 al ", /*#__PURE__*/React.createElement("b", {
+  }, "entrada + (eventos \xD7 duraci\xF3n) + (horas entre eventos) + salida"), ". Se usa ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.tx
     }
-  }, "1\xB0 o 2\xB0 turno"), ". El Triple siempre entra al 1\xB0 turno."), /*#__PURE__*/React.createElement("div", {
+  }, "igual"), " en la planilla del empleado y en la liquidaci\xF3n de sueldos. El monto = estas horas \xD7 el valor hora."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
@@ -9228,15 +9208,28 @@ function Configuracion({
       gap: 8,
       marginTop: 10
     }
-  }, numPl('entrada1', 'Entra 1° turno (hs antes)'), numPl('entrada2', 'Entra 2° turno (hs antes)'), numPl('deluxe', 'Extra Deluxe (hs)')), (() => {
+  }, numPl('entrada1', 'Entra 1° turno (hs antes)'), numPl('entrada2', 'Entra 2° turno (hs antes)'), numPl('entrada3', 'Entra 3° turno (hs antes)')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      marginTop: 10
+    }
+  }, numPl('deluxe', 'Extra Deluxe (hs)'), num('gap_horas', 'Hueco p/ separar turnos (hs)', '0.5')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.tx2,
+      marginTop: 6
+    }
+  }, "Hueco: en sueldos, si entre dos eventos pasan ese tiempo o m\xE1s, cuentan como turnos separados."), (() => {
     const P = cfg.planilla || {};
     const e = +P.evento || 0,
       en = +P.entre || 0,
       s = +P.salida || 0,
       a1 = +P.entrada1 || 0,
-      a2 = +P.entrada2 || 0;
+      a2 = +P.entrada2 || 0,
+      a3 = +P.entrada3 || 0;
     const f = (n, a, gaps) => a + n * e + gaps * en + s;
-    const rows = [['Simple · 1° turno', f(1, a1, 0)], ['Simple · 2° turno', f(1, a2, 0)], ['Doble · 1° turno', f(2, a1, 1)], ['Doble · 2° turno', f(2, a2, 1)], ['Triple', f(3, a1, 2)]];
+    const rows = [['Simple · 1° turno', f(1, a1, 0)], ['Simple · 2° turno', f(1, a2, 0)], ['Simple · 3° turno', f(1, a3, 0)], ['Doble · 1° turno', f(2, a1, 1)], ['Doble · 2° turno', f(2, a2, 1)], ['Triple', f(3, a1, 2)]];
     return /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 12,
