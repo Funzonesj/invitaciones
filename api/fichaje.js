@@ -119,8 +119,8 @@ module.exports = async (req, res) => {
     if (action === 'insert') {
       const row = b.row || {};
       if (!esAdmin && !okTarea) {
-        // un empleado SOLO puede registrar su propio fichaje
-        if (tabla !== 'fichaje_fichajes') { res.status(401).json({ error: 'no autorizado' }); return; }
+        // un empleado/mantenimiento SOLO puede registrar su propio fichaje o su propia alerta
+        if (tabla !== 'fichaje_fichajes' && tabla !== 'fichaje_alertas') { res.status(401).json({ error: 'no autorizado' }); return; }
         row.empleado_id = ses.id; // forzar que sea él mismo
       }
       const r = await sbRest(tabla, { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(row) });
