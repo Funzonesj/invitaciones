@@ -4115,6 +4115,10 @@ function AdminEventos({
   }
   function sub(e) {
     e.preventDefault();
+    // TODOS los campos obligatorios antes de guardar
+    var _oblig=[['nombre','nombre del agasajado'],['edad','edad'],['dia','día'],['mes','mes'],['anio','año'],['hIni','hora de inicio'],['hFin','hora de fin'],['celPapa','celular'],['dni','DNI'],['nomPapa','nombre del papá/mamá'],['temId','temática']];
+    for(var _oi=0;_oi<_oblig.length;_oi++){ if(!String((form[_oblig[_oi][0]]==null?'':form[_oblig[_oi][0]])).trim()){ alert('Falta completar: '+_oblig[_oi][1]+'.\nTodos los campos son obligatorios antes de guardar.'); return; } }
+    if(form.doble){ var _ob2=[['nombre2','nombre del 2º agasajado'],['edad2','edad del 2º'],['nomPapa2','papá/mamá del 2º'],['celPapa2','celular del 2º']]; for(var _oj=0;_oj<_ob2.length;_oj++){ if(!String((form[_ob2[_oj][0]]==null?'':form[_ob2[_oj][0]])).trim()){ alert('Falta completar: '+_ob2[_oj][1]+'.'); return; } } }
     // Detectar superposición de horarios en la misma sucursal y día
     const conflicto = eventos.find(x => x.sucId === sucAct.id && x.id !== editId && x.dia === form.dia && x.mes === form.mes && x.anio === form.anio && !(form.hFin <= x.hIni || form.hIni >= x.hFin));
     if (conflicto) {
