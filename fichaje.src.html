@@ -973,7 +973,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
           dia:h.fecha, paquete:h.paquete||'Evento', hora_inicio:h.hora_inicio||'', hora_fin:h.hora_fin||'',
           orden_dia:porDiaCnt[h.fecha], cliente:h.cliente||null,
           festejado:(h.festejados&&h.festejados.length)?h.festejados.join(', '):null, adicionales:null,
-          roles:(h.empleados||[]).map(e=>({ legajo:(e.legajo!=null?String(e.legajo):null), rol:e.rol||'Mozo', ingreso:e.entrada||h.hora_inicio||null, salida:e.salida||null }))
+          roles:(h.empleados||[]).map(e=>{ let _l=(e.legajo==null||e.legajo==='')?null:+e.legajo; if(_l!=null&&isNaN(_l))_l=null; return { legajo:_l, rol:e.rol||'Mozo', ingreso:e.entrada||h.hora_inicio||null, salida:e.salida||null }; })
         };
       });
       setPrevia({sucursal_id:sucSel, eventos:evs, origen:'salones'}); setSisMsg('');
