@@ -325,7 +325,14 @@ function App() {
       return null;
     }
   });
-  const [vista, setVista] = useState('dashboard');
+  const [vista, setVista] = useState(function () {
+    // Permite abrir directo en una vista desde la web unificada, ej: fichaje.html#config
+    try {
+      var h = (window.location.hash || '').replace(/^#/, '').split(/[?&]/)[0];
+      if (['dashboard', 'config', 'sucursales', 'empleados', 'registros', 'pagos', 'horarios', 'tareas', 'alertas', 'fichar'].indexOf(h) >= 0) return h;
+    } catch (e) {}
+    return 'dashboard';
+  });
   const [sucursales, setSucursales] = useState([]);
   const [empleados, setEmpleados] = useState([]);
   const [sucActiva, setSucActiva] = useState(''); // para la dueña: '' = todas

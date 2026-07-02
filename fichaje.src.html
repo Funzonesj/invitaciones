@@ -92,7 +92,13 @@ function nombrePila(emp){ if(!emp) return ''; const p=(emp.nombre_pila||'').trim
 function App(){
   const [boot,setBoot]=useState(true);
   const [sesion,setSesion]=useState(()=>{try{return JSON.parse(localStorage.getItem('fichaje_sesion')||'null');}catch(e){return null;}});
-  const [vista,setVista]=useState('dashboard');
+  const [vista,setVista]=useState(function(){
+    // Permite abrir directo en una vista desde la web unificada, ej: fichaje.html#config
+    try{ var h=(window.location.hash||'').replace(/^#/,'').split(/[?&]/)[0];
+      if(['dashboard','config','sucursales','empleados','registros','pagos','horarios','tareas','alertas','fichar'].indexOf(h)>=0) return h;
+    }catch(e){}
+    return 'dashboard';
+  });
   const [sucursales,setSucursales]=useState([]);
   const [empleados,setEmpleados]=useState([]);
   const [sucActiva,setSucActiva]=useState(''); // para la dueña: '' = todas
