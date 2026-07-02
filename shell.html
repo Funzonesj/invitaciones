@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#1A1A1A"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Fun Zone"/>
+<link rel="apple-touch-icon" href="/icon-salon.png"/>
+<title>Fun Zone & Play Point</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  html,body{height:100%;background:#1A1A1A;color:#F5F5F5;font-family:'Inter',system-ui,Arial,sans-serif;overflow:hidden}
+  #contenido{position:fixed;top:0;left:0;right:0;bottom:64px;background:#1A1A1A}
+  .panel{position:absolute;inset:0;display:none;flex-direction:column}
+  .panel.activo{display:flex}
+  iframe{width:100%;height:100%;border:0;background:#1A1A1A;flex:1;display:block}
+  .subnav{display:flex;gap:6px;padding:8px;background:#111;border-bottom:1px solid #2a2a2a;flex-shrink:0}
+  .subnav button{flex:1;background:#242424;color:#cfcfcf;border:1px solid #333;border-radius:8px;padding:9px 6px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+  .subnav button.on{background:#E8A838;color:#1A1A1A;border-color:#E8A838}
+  .subpane{flex:1;position:relative;display:none}
+  .subpane.on{display:block}
+  .cargando{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#7a7a7a;font-size:13px;pointer-events:none}
+  /* Barra inferior */
+  #nav{position:fixed;bottom:0;left:0;right:0;height:64px;background:#151515;border-top:1px solid #2a2a2a;display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:50}
+  #nav button{flex:1;background:none;border:none;color:#8a8a8a;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:inherit}
+  #nav button .ic{font-size:21px;line-height:1}
+  #nav button .tx{font-size:10.5px;font-weight:600}
+  #nav button.activo{color:#E8A838}
+  #nav button.oculto{display:none}
+</style>
+</head>
+<body>
+
+<div id="contenido">
+  <!-- GESTIÓN -->
+  <div class="panel" data-tab="gestion">
+    <div class="cargando">Cargando gestión…</div>
+    <iframe data-src="SALONES/reservas" title="Gestión"></iframe>
+  </div>
+
+  <!-- EMPLEADOS -->
+  <div class="panel" data-tab="empleados">
+    <div class="cargando">Cargando empleados…</div>
+    <iframe data-src="/fichaje.html" title="Empleados"></iframe>
+  </div>
+
+  <!-- INVITACIONES -->
+  <div class="panel" data-tab="invitaciones">
+    <div class="cargando">Cargando invitaciones…</div>
+    <iframe data-src="/index.html" title="Invitaciones"></iframe>
+  </div>
+
+  <!-- CONFIGURACIÓN (solo dueña/admin) -->
+  <div class="panel" data-tab="config">
+    <div class="subnav">
+      <button data-sub="cfg-salon" class="on">🏢 Salón</button>
+      <button data-sub="cfg-emple">👥 Empleados</button>
+      <button data-sub="cfg-invi">🎉 Invitaciones</button>
+    </div>
+    <div class="subpane on" data-pane="cfg-salon"><div class="cargando">Cargando…</div><iframe data-src="SALONES/sucursales" title="Config salón"></iframe></div>
+    <div class="subpane" data-pane="cfg-emple"><div class="cargando">Cargando…</div><iframe data-src="/fichaje.html#config" title="Config empleados"></iframe></div>
+    <div class="subpane" data-pane="cfg-invi"><div class="cargando">Cargando…</div><iframe data-src="/index.html" title="Config invitaciones"></iframe></div>
+  </div>
+</div>
+
+<nav id="nav">
+  <button data-go="gestion" class="activo"><span class="ic">📊</span><span class="tx">Gestión</span></button>
+  <button data-go="empleados"><span class="ic">👥</span><span class="tx">Empleados</span></button>
+  <button data-go="invitaciones"><span class="ic">🎉</span><span class="tx">Invitaciones</span></button>
+  <button data-go="config" id="btnConfig"><span class="ic">⚙️</span><span class="tx">Configuración</span></button>
+</nav>
+
+<script>
+(function(){
+  // Dirección del software del salón (Railway). Cambiar acá si algún día cambia el dominio.
+  var SALONES = 'https://software-salones-production.up.railway.app';
+
+  // Resolver los data-src (reemplaza el prefijo SALONES)
+  function resolver(v){ return v.indexOf('SALONES')===0 ? (SALONES + v.slice('SALONES'.length)) : v; }
+
+  // Carga perezosa: el iframe recién carga su src cuando se muestra por primera vez
+  function cargarIframe(cont){
+    var ifr = cont.querySelector('iframe');
+    if(ifr && !ifr.src && ifr.getAttribute('data-src')){
+      ifr.src = resolver(ifr.getAttribute('data-src'));
+      ifr.addEventListener('load', function(){ var c=cont.querySelector('.cargando'); if(c) c.style.display='none'; });
+    }
+  }
+
+  // ── Pestañas principales ──
+  var paneles = {}, botones = {};
+  document.querySelectorAll('.panel').forEach(function(p){ paneles[p.getAttribute('data-tab')] = p; });
+  document.querySelectorAll('#nav button').forEach(function(b){ botones[b.getAttribute('data-go')] = b; });
+
+  function ir(tab){
+    Object.keys(paneles).forEach(function(k){ paneles[k].classList.toggle('activo', k===tab); });
+    Object.keys(botones).forEach(function(k){ botones[k].classList.toggle('activo', k===tab); });
+    var p = paneles[tab];
+    if(tab==='config'){ // cargar el subpanel activo
+      var sp = p.querySelector('.subpane.on'); if(sp) cargarIframe(sp);
+    } else {
+      cargarIframe(p);
+    }
+    try{ localStorage.setItem('fz_tab', tab); }catch(e){}
+    aplicarPermisos();
+  }
+  document.querySelectorAll('#nav button').forEach(function(b){ b.addEventListener('click', function(){ ir(b.getAttribute('data-go')); }); });
+
+  // ── Sub-pestañas de Configuración ──
+  document.querySelectorAll('.subnav button').forEach(function(b){
+    b.addEventListener('click', function(){
+      var sub = b.getAttribute('data-sub');
+      document.querySelectorAll('.subnav button').forEach(function(x){ x.classList.toggle('on', x===b); });
+      document.querySelectorAll('.subpane').forEach(function(x){ x.classList.toggle('on', x.getAttribute('data-pane')===sub); });
+      var pane = document.querySelector('.subpane[data-pane="'+sub+'"]'); if(pane) cargarIframe(pane);
+    });
+  });
+
+  // ── Permisos: la encargada NO ve Configuración ──
+  function rolActual(){
+    try{ var s=JSON.parse(localStorage.getItem('fichaje_sesion')||'null'); return s ? (s.rol_sistema||'empleado') : null; }catch(e){ return null; }
+  }
+  function aplicarPermisos(){
+    var rol = rolActual();
+    var esEncargada = (rol==='encargada' || rol==='empleado' || rol==='mantenimiento');
+    var btn = document.getElementById('btnConfig');
+    btn.classList.toggle('oculto', esEncargada);
+    // si estaba en config y ya no puede, mandarla a gestión
+    if(esEncargada && paneles.config.classList.contains('activo')) ir('gestion');
+  }
+  window.addEventListener('focus', aplicarPermisos);
+  window.addEventListener('storage', aplicarPermisos);
+  setInterval(aplicarPermisos, 4000);
+
+  // Arranque
+  var inicial = 'gestion';
+  try{ var t=localStorage.getItem('fz_tab'); if(t && paneles[t]) inicial=t; }catch(e){}
+  ir(inicial);
+})();
+</script>
+</body>
+</html>
