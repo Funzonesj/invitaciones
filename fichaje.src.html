@@ -85,6 +85,8 @@ async function dbUpsert(tabla,row){
 async function subirFoto(dataUri){ try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:dataUri})});const d=await r.json().catch(()=>({}));return (r.ok&&d.url)?d.url:dataUri;}catch(e){return dataUri;} }
 async function subirPDF(file){ try{ const r=await fetch('/api/subir-init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:'application/pdf',ext:'pdf'})}); const d=await r.json().catch(()=>({})); if(!r.ok||!d.upload_url||!d.file_url)return null; const up=await fetch(d.upload_url,{method:'PUT',headers:{'Content-Type':'application/pdf'},body:file}); if(!up.ok)return null; return d.file_url; }catch(e){return null;} }
 function distancia(la1,lo1,la2,lo2){const R=6371000,t=x=>x*Math.PI/180;const d1=t(la2-la1),d2=t(lo2-lo1);const a=Math.sin(d1/2)**2+Math.cos(t(la1))*Math.cos(t(la2))*Math.sin(d2/2)**2;return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
+// Nombre corto para mostrar: el "nombre de pila" cargado, o si no el primer nombre.
+function nombrePila(emp){ if(!emp) return ''; const p=(emp.nombre_pila||'').trim(); if(p) return p; return String(emp.nombre||'').trim().split(/\s+/)[0]||String(emp.nombre||''); }
 
 /* ════════════════════════════════════════════ */
 function App(){
@@ -686,12 +688,12 @@ function Sucursales({sucursales,recargar}){
 
 /* ── Empleados (dueña) ── */
 function Empleados({empleados,sucursales,recargar}){
-  const vacio={legajo:'',nombre:'',rol_habitual:[],valor_hora:'',sucursales:[],foto_url:'',usuario:'',clave:'',rol_sistema:'empleado',sucursal_encargada:'',horario_fijo:[],vista_simple:false};
+  const vacio={legajo:'',nombre:'',nombre_pila:'',rol_habitual:[],valor_hora:'',sucursales:[],foto_url:'',usuario:'',clave:'',rol_sistema:'empleado',sucursal_encargada:'',horario_fijo:[],vista_simple:false};
   const [form,setForm]=useState(vacio); const [editId,setEditId]=useState(null); const [subiendo,setSubiendo]=useState(false);
   const parseRoles=v=>Array.isArray(v)?v:(v?String(v).split(',').map(s=>s.trim()).filter(Boolean):[]);
   function proximoLegajo(){ const usados=new Set((empleados||[]).map(e=>e.legajo).filter(x=>x!=null)); let n=1; while(usados.has(n))n++; return n; }
   useEffect(()=>{ if(editId===null && (form.legajo===''||form.legajo==null)) setForm(f=>({...f,legajo:proximoLegajo()})); },[empleados]);
-  function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',rol_habitual:parseRoles(em.rol_habitual),valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||'',horario_fijo:em.horario_fijo||[],vista_simple:!!em.vista_simple}); window.scrollTo(0,0); }
+  function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',nombre_pila:em.nombre_pila||'',rol_habitual:parseRoles(em.rol_habitual),valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||'',horario_fijo:em.horario_fijo||[],vista_simple:!!em.vista_simple}); window.scrollTo(0,0); }
   function limpiar(){ setEditId(null); setForm({...vacio,legajo:''}); }
   function toggleSuc(id){ setForm(f=>({...f,sucursales:(f.sucursales||[]).includes(id)?f.sucursales.filter(x=>x!==id):[...(f.sucursales||[]),id]})); }
   function toggleRol(r){ setForm(f=>({...f,rol_habitual:(f.rol_habitual||[]).includes(r)?f.rol_habitual.filter(x=>x!==r):[...(f.rol_habitual||[]),r]})); }
@@ -707,7 +709,7 @@ function Empleados({empleados,sucursales,recargar}){
   async function guardar(){
     if(!form.nombre.trim()){ alert('Poné el nombre.'); return; }
     if(!form.usuario.trim()||!form.clave){ alert('Poné usuario y contraseña para que pueda ingresar.'); return; }
-    const row={ legajo:form.legajo===''?null:+form.legajo, nombre:form.nombre.trim(), rol_habitual:(form.rol_habitual||[]).join(', '), valor_hora:form.valor_hora===''?0:+form.valor_hora, sucursales:form.sucursales, foto_url:form.foto_url||null, usuario:form.usuario.trim(), clave:String(form.clave), rol_sistema:form.rol_sistema, sucursal_encargada:form.rol_sistema==='encargada'?(form.sucursal_encargada||null):null, horario_fijo:form.rol_sistema==='encargada'?(form.horario_fijo||[]):[], vista_simple:(form.rol_sistema==='empleado'&&!!form.vista_simple), activo:true };
+    const row={ legajo:form.legajo===''?null:+form.legajo, nombre:form.nombre.trim(), nombre_pila:(form.nombre_pila||'').trim()||null, rol_habitual:(form.rol_habitual||[]).join(', '), valor_hora:form.valor_hora===''?0:+form.valor_hora, sucursales:form.sucursales, foto_url:form.foto_url||null, usuario:form.usuario.trim(), clave:String(form.clave), rol_sistema:form.rol_sistema, sucursal_encargada:form.rol_sistema==='encargada'?(form.sucursal_encargada||null):null, horario_fijo:form.rol_sistema==='encargada'?(form.horario_fijo||[]):[], vista_simple:(form.rol_sistema==='empleado'&&!!form.vista_simple), activo:true };
     let ok;
     if(editId) ok=await dbUpdate('fichaje_empleados',editId,row); else ok=!!(await dbInsert('fichaje_empleados',row));
     if(ok){ limpiar(); await recargar(); }
@@ -740,6 +742,7 @@ function Empleados({empleados,sucursales,recargar}){
           <div style={{width:90}}><label style={S.label}>Legajo N°</label><input style={S.input} type="number" value={form.legajo} onChange={e=>setForm({...form,legajo:e.target.value})} placeholder="1"/></div>
           <div style={{flex:1}}><label style={S.label}>Nombre completo</label><input style={S.input} value={form.nombre} onChange={e=>setForm({...form,nombre:e.target.value})} placeholder="Lorena Pérez"/></div>
         </div>
+        <div><label style={S.label}>Nombre de pila <span style={{color:C.tx2,fontWeight:400}}>— cómo se muestra en horarios (opcional). Si lo dejás vacío usa el primer nombre.</span></label><input style={S.input} value={form.nombre_pila} onChange={e=>setForm({...form,nombre_pila:e.target.value})} placeholder={((form.nombre||'').trim().split(/\s+/)[0])||'ej: Cami'}/></div>
         <div>
           <label style={S.label}>Roles que puede hacer (tocá para sumar o quitar)</label>
           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
@@ -989,7 +992,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
   const [verPasados,setVerPasados]=useState(false);
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfgGen({p1:+g.data.prep_1||90,p2:+g.data.prep_2||30,p3:+g.data.prep_3||30,figuras:g.data.figuras_hora||[],naLegajo:(g.data.legajo_sin_id!=null?+g.data.legajo_sin_id:null)});})();},[]);
   const empByLegajo=l=>empleados.find(e=>e.legajo===l);
-  const nomLegajo=l=>{const e=empByLegajo(l);return e?e.nombre:('#'+l+' (sin cargar)');};
+  const nomLegajo=l=>{const e=empByLegajo(l);return e?nombrePila(e):('#'+l+' (sin cargar)');};
   const sucNom=id=>{const s=sucursales.find(x=>x.id===id);return s?s.nombre:'';};
 
   async function cargar(){ if(!sucSel)return; setCargando(true);

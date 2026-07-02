@@ -307,6 +307,13 @@ function distancia(la1, lo1, la2, lo2) {
   const a = Math.sin(d1 / 2) ** 2 + Math.cos(t(la1)) * Math.cos(t(la2)) * Math.sin(d2 / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
+// Nombre corto para mostrar: el "nombre de pila" cargado, o si no el primer nombre.
+function nombrePila(emp) {
+  if (!emp) return '';
+  const p = (emp.nombre_pila || '').trim();
+  if (p) return p;
+  return String(emp.nombre || '').trim().split(/\s+/)[0] || String(emp.nombre || '');
+}
 
 /* ════════════════════════════════════════════ */
 function App() {
@@ -2621,6 +2628,7 @@ function Empleados({
   const vacio = {
     legajo: '',
     nombre: '',
+    nombre_pila: '',
     rol_habitual: [],
     valor_hora: '',
     sucursales: [],
@@ -2653,6 +2661,7 @@ function Empleados({
     setForm({
       legajo: em.legajo ?? '',
       nombre: em.nombre || '',
+      nombre_pila: em.nombre_pila || '',
       rol_habitual: parseRoles(em.rol_habitual),
       valor_hora: em.valor_hora ?? '',
       sucursales: em.sucursales || [],
@@ -2753,6 +2762,7 @@ function Empleados({
     const row = {
       legajo: form.legajo === '' ? null : +form.legajo,
       nombre: form.nombre.trim(),
+      nombre_pila: (form.nombre_pila || '').trim() || null,
       rol_habitual: (form.rol_habitual || []).join(', '),
       valor_hora: form.valor_hora === '' ? 0 : +form.valor_hora,
       sucursales: form.sucursales,
@@ -2891,6 +2901,21 @@ function Empleados({
     }),
     placeholder: "Lorena P\xE9rez"
   }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    style: S.label
+  }, "Nombre de pila ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.tx2,
+      fontWeight: 400
+    }
+  }, "\u2014 c\xF3mo se muestra en horarios (opcional). Si lo dej\xE1s vac\xEDo usa el primer nombre.")), /*#__PURE__*/React.createElement("input", {
+    style: S.input,
+    value: form.nombre_pila,
+    onChange: e => setForm({
+      ...form,
+      nombre_pila: e.target.value
+    }),
+    placeholder: (form.nombre || '').trim().split(/\s+/)[0] || 'ej: Cami'
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
   }, "Roles que puede hacer (toc\xE1 para sumar o quitar)"), /*#__PURE__*/React.createElement("div", {
     style: {
@@ -3576,7 +3601,7 @@ function Horarios({
   const empByLegajo = l => empleados.find(e => e.legajo === l);
   const nomLegajo = l => {
     const e = empByLegajo(l);
-    return e ? e.nombre : '#' + l + ' (sin cargar)';
+    return e ? nombrePila(e) : '#' + l + ' (sin cargar)';
   };
   const sucNom = id => {
     const s = sucursales.find(x => x.id === id);
