@@ -92,6 +92,30 @@ module.exports = async (req, res) => {
     const rol = ses.rol || 'empleado';
     const esAdmin = (rol === 'dueno' || rol === 'encargada');
 
+    // ── Traer horarios del SISTEMA (Software Salones) — proxy server-side ──
+    //   La clave (SALONES_HORARIOS_TOKEN) NUNCA sale al navegador: la agrega acá el servidor.
+    //   Reemplaza al lector de PDF: fichaje pide los horarios ya armados en Salones.
+    if (action === 'horariosSalones') {
+      if (!esAdmin) { res.status(401).json({ error: 'no autorizado' }); return; }
+      const base = process.env.SALONES_HORARIOS_URL;              // ej: https://tu-app.up.railway.app/p/api/horarios
+      const tok  = process.env.SALONES_HORARIOS_TOKEN;            // = FICHAJE_API_TOKEN de Railway (funzone2026)
+      if (!base) { res.status(200).json({ ok: false, reason: 'sin-config', error: 'Falta configurar SALONES_HORARIOS_URL en Vercel.' }); return; }
+      const qs = [];
+      if (b.desde) qs.push('desde=' + encodeURIComponent(String(b.desde)));
+      if (b.hasta) qs.push('hasta=' + encodeURIComponent(String(b.hasta)));
+      if (b.slug)  qs.push('slug='  + encodeURIComponent(String(b.slug)));
+      const url = base + (base.indexOf('?') >= 0 ? '&' : '?') + qs.join('&');
+      try {
+        const r = await fetch(url, { headers: tok ? { 'x-api-token': tok } : {} });
+        const txt = await r.text(); let data = null; try { data = txt ? JSON.parse(txt) : null; } catch (e) { data = txt; }
+        if (!r.ok) { res.status(200).json({ ok: false, reason: 'salones', status: r.status, error: (data && data.error) || ('HTTP ' + r.status) }); return; }
+        res.status(200).json({ ok: true, data: data });
+      } catch (e) {
+        res.status(200).json({ ok: false, reason: 'red', error: String((e && e.message) || e) });
+      }
+      return;
+    }
+
     const tabla = String(b.tabla || '');
     if (!/^fichaje_[a-z_]+$/.test(tabla)) { res.status(400).json({ error: 'tabla inválida' }); return; }
     // Tareas: empleado y mantenimiento pueden agregar/tildar tareas; las LISTAS solo mantenimiento (y admins)

@@ -3457,6 +3457,85 @@ function Horarios({
   const pdfFileRef = useRef(null);
   const [editEv, setEditEv] = useState(null);
   const [abEv, setAbEv] = useState(null);
+  const [sisDesde, setSisDesde] = useState('');
+  const [sisHasta, setSisHasta] = useState('');
+  const [sisCargando, setSisCargando] = useState(false);
+  const [sisMsg, setSisMsg] = useState('');
+  // Traer los horarios YA ARMADOS desde Software Salones (reemplaza el lector de PDF).
+  async function traerDelSistema() {
+    setSisMsg('');
+    setSisCargando(true);
+    try {
+      const d = await gwF('horariosSalones', {
+        desde: sisDesde || undefined,
+        hasta: sisHasta || undefined
+      });
+      if (!d || !d.ok) {
+        const r = d && d.reason || '';
+        setSisMsg(r === 'sin-config' ? '⚠️ Falta conectar el sistema. Avisale a quien lo configura: cargar SALONES_HORARIOS_URL y SALONES_HORARIOS_TOKEN en Vercel.' : r === 'salones' ? 'No se pudo traer del sistema: ' + (d && d.error || 'error') + '. Revisá la clave (FICHAJE_API_TOKEN) o la dirección.' : 'No se pudo conectar con el sistema. ' + (d && d.error || ''));
+        setSisCargando(false);
+        return;
+      }
+      const horarios = d.data && d.data.horarios || [];
+      if (!horarios.length) {
+        setSisMsg('El sistema no devolvió horarios para ese rango (¿ya armaste el personal de esos eventos en Salones?).');
+        setSisCargando(false);
+        return;
+      }
+      // Agrupar por sucursal (por nombre) y matchear con las sucursales de fichaje
+      const norm = s => String(s || '').toLowerCase();
+      const grupos = {};
+      horarios.forEach(h => {
+        const k = norm(h.sucursal);
+        (grupos[k] = grupos[k] || []).push(h);
+      });
+      // Elegir la sucursal seleccionada; si su nombre matchea, cargamos sólo esa
+      const sucObj = sucursales.find(s => s.id === sucSel);
+      let clave = sucObj ? norm(sucObj.nombre) : '';
+      // match flexible (Fun Zone / Play Point)
+      const claves = Object.keys(grupos);
+      if (!grupos[clave]) {
+        const alt = claves.find(k => k.includes(clave) || clave.includes(k) || /(fun|zone)/.test(clave) && /(fun|zone)/.test(k) || /(play|point)/.test(clave) && /(play|point)/.test(k));
+        if (alt) clave = alt;
+      }
+      const lista = grupos[clave] || [];
+      if (!lista.length) {
+        setSisMsg('Hay horarios en el sistema, pero ninguno de la sucursal "' + (sucObj && sucObj.nombre || '') + '". Sucursales encontradas: ' + claves.join(', ') + '.');
+        setSisCargando(false);
+        return;
+      }
+      // Armar el mismo formato que usa el PDF (previa)
+      const porDiaCnt = {};
+      const evs = lista.slice().sort((a, b) => (a.fecha + (a.hora_inicio || '')).localeCompare(b.fecha + (b.hora_inicio || ''))).map(h => {
+        porDiaCnt[h.fecha] = (porDiaCnt[h.fecha] || 0) + 1;
+        return {
+          dia: h.fecha,
+          paquete: h.paquete || 'Evento',
+          hora_inicio: h.hora_inicio || '',
+          hora_fin: h.hora_fin || '',
+          orden_dia: porDiaCnt[h.fecha],
+          cliente: h.cliente || null,
+          festejado: h.festejados && h.festejados.length ? h.festejados.join(', ') : null,
+          adicionales: null,
+          roles: (h.empleados || []).map(e => ({
+            legajo: e.legajo != null ? String(e.legajo) : null,
+            rol: e.rol || 'Mozo',
+            ingreso: e.entrada || h.hora_inicio || null,
+            salida: e.salida || null
+          }))
+        };
+      });
+      setPrevia({
+        sucursal_id: sucSel,
+        eventos: evs,
+        origen: 'salones'
+      });
+      setSisMsg('');
+    } catch (err) {
+      setSisMsg('No se pudo traer del sistema: ' + (err && err.message || err));
+    }
+    setSisCargando(false);
+  }
   async function recomputarDia(fecha) {
     const evsAll = (await dbAll('fichaje_eventos')).filter(e => e.sucursal_id === sucSel && e.fecha === fecha).sort((a, b) => toMin(a.hora_inicio) - toMin(b.hora_inicio));
     const eeAll = await dbAll('fichaje_evento_empleados');
@@ -3598,10 +3677,11 @@ function Horarios({
       if (msg && !window.confirm(msg + '¿Guardar igual los horarios?')) return;
     }
     setCargando(true);
-    // Antiduplicados: borrar los eventos de PDF ya cargados para esas mismas fechas y sucursal
+    const origen = previa.origen || 'pdf';
+    // Antiduplicados: borrar los eventos del MISMO origen ya cargados para esas mismas fechas y sucursal
     const fechasImp = [...new Set(previa.eventos.map(e => e.dia).filter(Boolean))];
     if (fechasImp.length) {
-      const evPrev = (await dbAll('fichaje_eventos')).filter(e => e.sucursal_id === previa.sucursal_id && e.origen === 'pdf' && fechasImp.indexOf(e.fecha) >= 0);
+      const evPrev = (await dbAll('fichaje_eventos')).filter(e => e.sucursal_id === previa.sucursal_id && e.origen === origen && fechasImp.indexOf(e.fecha) >= 0);
       if (evPrev.length) {
         const eePrev = await dbAll('fichaje_evento_empleados');
         for (const e of evPrev) {
@@ -3621,7 +3701,7 @@ function Horarios({
         cliente: ev.cliente || null,
         festejado: ev.festejado || null,
         adicionales: ev.adicionales || null,
-        origen: 'pdf',
+        origen: origen,
         creado_por: sesion.id
       });
       if (row) {
@@ -3784,7 +3864,7 @@ function Horarios({
       marginBottom: 14,
       flexWrap: 'wrap'
     }
-  }, tabBtn('ver', '📅 Ver'), tabBtn('resumen', '📋 Resumen'), tabBtn('pdf', '📄 PDF'), tabBtn('manual', '✏️ Manual'), tabBtn('encuestas', '📝 Encuestas')), tab === 'resumen' && /*#__PURE__*/React.createElement(HorariosSalones, {
+  }, tabBtn('ver', '📅 Ver'), tabBtn('resumen', '📋 Resumen'), tabBtn('sistema', '🔄 Del sistema'), tabBtn('pdf', '📄 PDF'), tabBtn('manual', '✏️ Manual'), tabBtn('encuestas', '📝 Encuestas')), tab === 'resumen' && /*#__PURE__*/React.createElement(HorariosSalones, {
     sucursales: sucursales,
     empleados: empleados,
     detalle: true,
@@ -4018,7 +4098,74 @@ function Horarios({
       width: '100%',
       marginTop: 6
     }
-  }, "\uD83D\uDDD1 Borrar TODOS los eventos de ", sucNom(sucSel)), tab === 'pdf' && (!previa ? /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDDD1 Borrar TODOS los eventos de ", sucNom(sucSel)), tab === 'sistema' && !previa && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      padding: '22px 16px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 38
+    }
+  }, "\uD83D\uDD04"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      color: C.tx2,
+      fontSize: 13,
+      margin: '10px 0 4px',
+      lineHeight: 1.5
+    }
+  }, "Tra\xE9 los horarios ", /*#__PURE__*/React.createElement("b", null, "ya armados en Software Salones"), " para ", /*#__PURE__*/React.createElement("b", null, sucNom(sucSel)), ". Ya no hace falta el PDF: se toman directo del sistema.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      margin: '12px 0'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: S.label
+  }, "Desde (opcional)"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: sisDesde,
+    onChange: e => setSisDesde(e.target.value),
+    style: S.input
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: S.label
+  }, "Hasta (opcional)"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: sisHasta,
+    onChange: e => setSisHasta(e.target.value),
+    style: S.input
+  }))), /*#__PURE__*/React.createElement("button", {
+    onClick: traerDelSistema,
+    disabled: sisCargando,
+    style: {
+      ...S.btn,
+      ...S.btnOro,
+      width: '100%'
+    }
+  }, sisCargando ? 'Trayendo…' : '📥 Traer horarios del sistema'), sisMsg && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      color: C.tx2,
+      background: C.surf2,
+      borderRadius: 8,
+      padding: '10px 11px',
+      marginTop: 10,
+      lineHeight: 1.5,
+      whiteSpace: 'pre-wrap'
+    }
+  }, sisMsg)), tab === 'pdf' && !previa && /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       textAlign: 'center',
@@ -4049,7 +4196,17 @@ function Horarios({
       display: 'none'
     },
     onChange: elegirPdf
-  }))) : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }))), (tab === 'pdf' || tab === 'sistema') && previa && /*#__PURE__*/React.createElement("div", null, previa.origen === 'salones' && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 12,
+      background: '#122',
+      border: '1px solid ' + C.verde,
+      color: C.verde,
+      fontSize: 12.5,
+      fontWeight: 600
+    }
+  }, "\uD83D\uDD04 Tra\xEDdo del sistema (Software Salones). Revis\xE1 y guard\xE1."), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 12
@@ -4140,12 +4297,15 @@ function Horarios({
       flex: 1
     }
   }, cargando ? 'Guardando…' : '✓ Guardar todo'), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setPrevia(null),
+    onClick: () => {
+      setPrevia(null);
+      setSisMsg('');
+    },
     style: {
       ...S.btn,
       ...S.btnGhost
     }
-  }, "Cancelar")))), tab === 'manual' && /*#__PURE__*/React.createElement(ManualEvento, {
+  }, "Cancelar"))), tab === 'manual' && /*#__PURE__*/React.createElement(ManualEvento, {
     sesion: sesion,
     sucSel: sucSel,
     empleados: empleados,

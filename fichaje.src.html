@@ -938,6 +938,48 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
   const [sucSel,setSucSel]=useState(esDuena ? (sucCtx||(sucursales[0]||{}).id||'') : (sucCtx||''));
   const [eventos,setEventos]=useState([]); const [asign,setAsign]=useState([]); const [cargando,setCargando]=useState(false);
   const [previa,setPrevia]=useState(null); const [leyendo,setLeyendo]=useState(false); const [reempl,setReempl]=useState(null); const pdfFileRef=useRef(null); const [editEv,setEditEv]=useState(null); const [abEv,setAbEv]=useState(null);
+  const [sisDesde,setSisDesde]=useState(''); const [sisHasta,setSisHasta]=useState(''); const [sisCargando,setSisCargando]=useState(false); const [sisMsg,setSisMsg]=useState('');
+  // Traer los horarios YA ARMADOS desde Software Salones (reemplaza el lector de PDF).
+  async function traerDelSistema(){
+    setSisMsg(''); setSisCargando(true);
+    try{
+      const d=await gwF('horariosSalones',{desde:sisDesde||undefined,hasta:sisHasta||undefined});
+      if(!d||!d.ok){
+        const r=(d&&d.reason)||'';
+        setSisMsg(r==='sin-config'?'⚠️ Falta conectar el sistema. Avisale a quien lo configura: cargar SALONES_HORARIOS_URL y SALONES_HORARIOS_TOKEN en Vercel.'
+          :r==='salones'?('No se pudo traer del sistema: '+((d&&d.error)||'error')+'. Revisá la clave (FICHAJE_API_TOKEN) o la dirección.')
+          :('No se pudo conectar con el sistema. '+((d&&d.error)||'')));
+        setSisCargando(false); return;
+      }
+      const horarios=(d.data&&d.data.horarios)||[];
+      if(!horarios.length){ setSisMsg('El sistema no devolvió horarios para ese rango (¿ya armaste el personal de esos eventos en Salones?).'); setSisCargando(false); return; }
+      // Agrupar por sucursal (por nombre) y matchear con las sucursales de fichaje
+      const norm=s=>String(s||'').toLowerCase();
+      const grupos={};
+      horarios.forEach(h=>{ const k=norm(h.sucursal); (grupos[k]=grupos[k]||[]).push(h); });
+      // Elegir la sucursal seleccionada; si su nombre matchea, cargamos sólo esa
+      const sucObj=sucursales.find(s=>s.id===sucSel);
+      let clave=sucObj?norm(sucObj.nombre):'';
+      // match flexible (Fun Zone / Play Point)
+      const claves=Object.keys(grupos);
+      if(!grupos[clave]){ const alt=claves.find(k=>k.includes(clave)||clave.includes(k)|| (/(fun|zone)/.test(clave)&&/(fun|zone)/.test(k)) || (/(play|point)/.test(clave)&&/(play|point)/.test(k)) ); if(alt) clave=alt; }
+      const lista=grupos[clave]||[];
+      if(!lista.length){ setSisMsg('Hay horarios en el sistema, pero ninguno de la sucursal "'+((sucObj&&sucObj.nombre)||'')+'". Sucursales encontradas: '+claves.join(', ')+'.'); setSisCargando(false); return; }
+      // Armar el mismo formato que usa el PDF (previa)
+      const porDiaCnt={};
+      const evs=lista.slice().sort((a,b)=>((a.fecha+(a.hora_inicio||'')).localeCompare(b.fecha+(b.hora_inicio||'')))).map(h=>{
+        porDiaCnt[h.fecha]=(porDiaCnt[h.fecha]||0)+1;
+        return {
+          dia:h.fecha, paquete:h.paquete||'Evento', hora_inicio:h.hora_inicio||'', hora_fin:h.hora_fin||'',
+          orden_dia:porDiaCnt[h.fecha], cliente:h.cliente||null,
+          festejado:(h.festejados&&h.festejados.length)?h.festejados.join(', '):null, adicionales:null,
+          roles:(h.empleados||[]).map(e=>({ legajo:(e.legajo!=null?String(e.legajo):null), rol:e.rol||'Mozo', ingreso:e.entrada||h.hora_inicio||null, salida:e.salida||null }))
+        };
+      });
+      setPrevia({sucursal_id:sucSel, eventos:evs, origen:'salones'}); setSisMsg('');
+    }catch(err){ setSisMsg('No se pudo traer del sistema: '+((err&&err.message)||err)); }
+    setSisCargando(false);
+  }
   async function recomputarDia(fecha){
     const evsAll=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===sucSel&&e.fecha===fecha).sort((a,b)=>toMin(a.hora_inicio)-toMin(b.hora_inicio));
     const eeAll=await dbAll('fichaje_evento_empleados');
@@ -989,17 +1031,18 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
       if(msg && !window.confirm(msg+'¿Guardar igual los horarios?')) return;
     }
     setCargando(true);
-    // Antiduplicados: borrar los eventos de PDF ya cargados para esas mismas fechas y sucursal
+    const origen = previa.origen || 'pdf';
+    // Antiduplicados: borrar los eventos del MISMO origen ya cargados para esas mismas fechas y sucursal
     const fechasImp=[...new Set(previa.eventos.map(e=>e.dia).filter(Boolean))];
     if(fechasImp.length){
-      const evPrev=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===previa.sucursal_id && e.origen==='pdf' && fechasImp.indexOf(e.fecha)>=0);
+      const evPrev=(await dbAll('fichaje_eventos')).filter(e=>e.sucursal_id===previa.sucursal_id && e.origen===origen && fechasImp.indexOf(e.fecha)>=0);
       if(evPrev.length){
         const eePrev=await dbAll('fichaje_evento_empleados');
         for(const e of evPrev){ for(const a of eePrev.filter(x=>x.evento_id===e.id)) await dbDelete('fichaje_evento_empleados',a.id); await dbDelete('fichaje_eventos',e.id); }
       }
     }
     for(const ev of previa.eventos){
-      const row=await dbInsert('fichaje_eventos',{ sucursal_id:previa.sucursal_id, fecha:ev.dia, paquete:ev.paquete, hora_inicio:ev.hora_inicio, hora_fin:ev.hora_fin, orden_dia:ev.orden_dia||1, cliente:ev.cliente||null, festejado:ev.festejado||null, adicionales:ev.adicionales||null, origen:'pdf', creado_por:sesion.id });
+      const row=await dbInsert('fichaje_eventos',{ sucursal_id:previa.sucursal_id, fecha:ev.dia, paquete:ev.paquete, hora_inicio:ev.hora_inicio, hora_fin:ev.hora_fin, orden_dia:ev.orden_dia||1, cliente:ev.cliente||null, festejado:ev.festejado||null, adicionales:ev.adicionales||null, origen:origen, creado_por:sesion.id });
       if(row){ for(const r of ev.roles){ const emp=empByLegajo(r.legajo); await dbInsert('fichaje_evento_empleados',{ evento_id:row.id, empleado_id:emp?emp.id:null, legajo:r.legajo, rol_en_evento:r.rol, hora_ingreso_esperada:r.ingreso||null }); } }
     }
     // Guardar el PDF en el historial (no reemplaza: queda la lista por semana)
@@ -1058,7 +1101,7 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
           {sucursales.map(s=><option key={s.id} value={s.id}>{s.nombre}</option>)}
         </select>
       )}
-      <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>{tabBtn('ver','📅 Ver')}{tabBtn('resumen','📋 Resumen')}{tabBtn('pdf','📄 PDF')}{tabBtn('manual','✏️ Manual')}{tabBtn('encuestas','📝 Encuestas')}</div>
+      <div style={{display:'flex',gap:6,marginBottom:14,flexWrap:'wrap'}}>{tabBtn('ver','📅 Ver')}{tabBtn('resumen','📋 Resumen')}{tabBtn('sistema','🔄 Del sistema')}{tabBtn('pdf','📄 PDF')}{tabBtn('manual','✏️ Manual')}{tabBtn('encuestas','📝 Encuestas')}</div>
       {tab==='resumen' && <HorariosSalones sucursales={sucursales} empleados={empleados} detalle={true} sucDefault={esDuena?'':sucCtx}/>}
       {tab==='encuestas' && <EncuestasView esDuena={esDuena} sucCtx={sucCtx} sucursales={sucursales}/>}
 
@@ -1113,15 +1156,30 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
         <button onClick={borrarTodos} style={{...S.btn,background:'#3a2020',color:C.rojo,border:'1px solid '+C.rojo,width:'100%',marginTop:6}}>🗑 Borrar TODOS los eventos de {sucNom(sucSel)}</button>
       )}
 
-      {tab==='pdf' && (
-        !previa ? (
+      {tab==='sistema' && !previa && (
+        <div style={{...S.card,padding:'22px 16px'}}>
+          <div style={{textAlign:'center'}}>
+            <div style={{fontSize:38}}>🔄</div>
+            <p style={{color:C.tx2,fontSize:13,margin:'10px 0 4px',lineHeight:1.5}}>Traé los horarios <b>ya armados en Software Salones</b> para <b>{sucNom(sucSel)}</b>. Ya no hace falta el PDF: se toman directo del sistema.</p>
+          </div>
+          <div style={{display:'flex',gap:8,margin:'12px 0'}}>
+            <div style={{flex:1}}><label style={S.label}>Desde (opcional)</label><input type="date" value={sisDesde} onChange={e=>setSisDesde(e.target.value)} style={S.input}/></div>
+            <div style={{flex:1}}><label style={S.label}>Hasta (opcional)</label><input type="date" value={sisHasta} onChange={e=>setSisHasta(e.target.value)} style={S.input}/></div>
+          </div>
+          <button onClick={traerDelSistema} disabled={sisCargando} style={{...S.btn,...S.btnOro,width:'100%'}}>{sisCargando?'Trayendo…':'📥 Traer horarios del sistema'}</button>
+          {sisMsg && <div style={{fontSize:12.5,color:C.tx2,background:C.surf2,borderRadius:8,padding:'10px 11px',marginTop:10,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{sisMsg}</div>}
+        </div>
+      )}
+      {tab==='pdf' && !previa && (
           <div style={{...S.card,textAlign:'center',padding:'28px 16px'}}>
             <div style={{fontSize:38}}>📄</div>
             <p style={{color:C.tx2,fontSize:13,margin:'10px 0 16px',lineHeight:1.5}}>Subí el PDF de horarios (Fun Zone o Play Point). Lo leo y te muestro todo para confirmar antes de guardar.</p>
             <label style={{...S.btn,...S.btnOro,cursor:'pointer',display:'inline-block'}}>{leyendo?'Leyendo…':'📄 Elegir PDF'}<input type="file" accept="application/pdf" style={{display:'none'}} onChange={elegirPdf}/></label>
           </div>
-        ) : (
+      )}
+      {(tab==='pdf'||tab==='sistema') && previa && (
           <div>
+            {previa.origen==='salones' && <div style={{...S.card,marginBottom:12,background:'#122', border:'1px solid '+C.verde,color:C.verde,fontSize:12.5,fontWeight:600}}>🔄 Traído del sistema (Software Salones). Revisá y guardá.</div>}
             <div style={{...S.card,marginBottom:12}}>
               <label style={S.label}>Guardar en sucursal</label>
               <select value={previa.sucursal_id} onChange={e=>setPrevia({...previa,sucursal_id:e.target.value})} style={S.input}>
@@ -1144,10 +1202,9 @@ function Horarios({sesion,esDuena,sucursales,empleados,sucCtx}){
             ))}
             <div style={{display:'flex',gap:8,marginTop:8}}>
               <button onClick={guardarPrevia} disabled={cargando} style={{...S.btn,...S.btnOro,flex:1}}>{cargando?'Guardando…':'✓ Guardar todo'}</button>
-              <button onClick={()=>setPrevia(null)} style={{...S.btn,...S.btnGhost}}>Cancelar</button>
+              <button onClick={()=>{setPrevia(null);setSisMsg('');}} style={{...S.btn,...S.btnGhost}}>Cancelar</button>
             </div>
           </div>
-        )
       )}
 
       {tab==='manual' && <ManualEvento sesion={sesion} sucSel={sucSel} empleados={empleados} figuras={cfgGen.figuras||[]} onGuardado={()=>setTab('ver')}/>}
