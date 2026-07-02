@@ -6927,6 +6927,17 @@ function Registros({
     const evs = await dbAll('fichaje_eventos');
     const evById = {};
     evs.forEach(e => evById[e.id] = e);
+    // Horario que le correspondía a cada empleado en cada evento (entrada esperada → salida del evento)
+    const asg = await dbAll('fichaje_evento_empleados');
+    const asgBy = {};
+    asg.forEach(a => {
+      const ev = evById[a.evento_id];
+      if (!ev) return;
+      asgBy[a.evento_id + '|' + a.empleado_id] = {
+        entrada: a.hora_ingreso_esperada || ev.hora_inicio || '',
+        salida: ev.hora_fin || ''
+      };
+    });
     let list = f.slice();
     if (miSuc) list = list.filter(x => x.sucursal_id === miSuc);
     if (empSel) list = list.filter(x => x.empleado_id === empSel);
@@ -6935,7 +6946,8 @@ function Registros({
     list.sort((a, b) => String(b.ts || '').localeCompare(String(a.ts || '')));
     setData({
       list,
-      evById
+      evById,
+      asgBy
     });
     setAbierto({});
     setCargando(false);
@@ -7178,7 +7190,10 @@ function Registros({
         }
       }, items.map(x => {
         const ev = x.evento_id ? data.evById[x.evento_id] : null;
+        const asg = ev && data.asgBy ? data.asgBy[x.evento_id + '|' + x.empleado_id] : null;
         const est = estChip[x.estado] || ['—', C.tx2];
+        const esSal = x.tipo === 'salida';
+        const debia = asg ? esSal ? asg.salida : asg.entrada : '';
         return /*#__PURE__*/React.createElement("div", {
           key: x.id,
           style: {
@@ -7190,12 +7205,22 @@ function Registros({
             borderRadius: 8,
             padding: '8px 10px'
           }
-        }, /*#__PURE__*/React.createElement("span", null, x.tipo === 'salida' ? '⬅️' : '➡️'), /*#__PURE__*/React.createElement("div", {
+        }, /*#__PURE__*/React.createElement("span", null, esSal ? '⬅️' : '➡️'), /*#__PURE__*/React.createElement("div", {
           style: {
             flex: 1,
             minWidth: 0
           }
-        }, fmtTs(x.ts), " \xB7 ", x.tipo === 'salida' ? 'Salida' : 'Entrada', ev ? ' · ' + ev.paquete : ''), /*#__PURE__*/React.createElement("span", {
+        }, /*#__PURE__*/React.createElement("div", null, fmtTs(x.ts), " \xB7 ", esSal ? 'Salida' : 'Entrada', ev ? ' · ' + ev.paquete : ''), asg && /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 11,
+            color: C.tx2,
+            marginTop: 2
+          }
+        }, "\uD83D\uDD52 Horario: ", /*#__PURE__*/React.createElement("b", {
+          style: {
+            color: C.tx
+          }
+        }, asg.entrada || '—', " \u2192 ", asg.salida || '—'), debia ? ' · debía ' + (esSal ? 'salir' : 'entrar') + ' ' + debia : '')), /*#__PURE__*/React.createElement("span", {
           style: {
             ...S.chip,
             background: '#242424',
