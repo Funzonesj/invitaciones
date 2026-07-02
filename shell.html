@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-title" content="Fun Zone"/>
 <link rel="apple-touch-icon" href="/icon-salon.png"/>
+<link rel="manifest" href="/manifest-app.json"/>
 <title>Fun Zone & Play Point</title>
 <style>
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
@@ -138,6 +139,9 @@
   var inicial = 'gestion';
   try{ var t=localStorage.getItem('fz_tab'); if(t && paneles[t]) inicial=t; }catch(e){}
   ir(inicial);
+
+  // Instalable como app (service worker mínimo, sin caché)
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(function(){}); }
 })();
 </script>
 </body>
