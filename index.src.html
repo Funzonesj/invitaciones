@@ -3473,15 +3473,6 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,setConfs,aviso,adm
           <h2 style={{fontWeight:900,fontSize:20,marginTop:8}}>Acceso para Padres</h2>
           <p style={{color:'#64748b',fontSize:12,marginTop:4}}>Personalizá tu invitación digital</p>
         </div>
-        {adminSesion&&(
-          <div style={{background:'#0f172a',borderRadius:12,padding:12,marginBottom:16}}>
-            <div style={{fontSize:11,fontWeight:800,color:'#fbbf24',marginBottom:8}}>👑 Sos admin — entrá sin contraseña:</div>
-            <select onChange={e=>{const ev=eventos.find(x=>x.id===e.target.value);if(ev){setPapaSesion({...ev,optinWA:true});setInvEvId(ev.id);setVista('papa-creador');}}} defaultValue="" style={{...S.input,color:'#1e293b'}}>
-              <option value="">Elegí un evento…</option>
-              {eventos.filter(ev=>String(ev.id).indexOf('__')!==0&&(!sucAct||ev.sucId===sucAct.id)).map(ev=><option key={ev.id} value={ev.id}>{ev.nombre} · {ev.dia}/{ev.mes}/{ev.anio}</option>)}
-            </select>
-          </div>
-        )}
         {(err||aviso)&&<div style={{background:'#fef2f2',border:'1px solid #fecaca',color:'#dc2626',padding:'10px 14px',borderRadius:12,fontSize:12,marginBottom:12}}>{err||aviso}</div>}
         <form onSubmit={sub} style={{display:'flex',flexDirection:'column',gap:12}}>
           <input style={S.input} value={u} onChange={e=>{setU(e.target.value);setErr('');}} placeholder="Usuario" autoComplete="username" required/>

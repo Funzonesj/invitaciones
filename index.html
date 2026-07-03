@@ -4116,9 +4116,22 @@ function AdminEventos({
   function sub(e) {
     e.preventDefault();
     // TODOS los campos obligatorios antes de guardar
-    var _oblig=[['nombre','nombre del agasajado'],['edad','edad'],['dia','día'],['mes','mes'],['anio','año'],['hIni','hora de inicio'],['hFin','hora de fin'],['celPapa','celular'],['dni','DNI'],['nomPapa','nombre del papá/mamá'],['temId','temática']];
-    for(var _oi=0;_oi<_oblig.length;_oi++){ if(!String((form[_oblig[_oi][0]]==null?'':form[_oblig[_oi][0]])).trim()){ alert('Falta completar: '+_oblig[_oi][1]+'.\nTodos los campos son obligatorios antes de guardar.'); return; } }
-    if(form.doble){ var _ob2=[['nombre2','nombre del 2º agasajado'],['edad2','edad del 2º'],['nomPapa2','papá/mamá del 2º'],['celPapa2','celular del 2º']]; for(var _oj=0;_oj<_ob2.length;_oj++){ if(!String((form[_ob2[_oj][0]]==null?'':form[_ob2[_oj][0]])).trim()){ alert('Falta completar: '+_ob2[_oj][1]+'.'); return; } } }
+    var _oblig = [['nombre', 'nombre del agasajado'], ['edad', 'edad'], ['dia', 'día'], ['mes', 'mes'], ['anio', 'año'], ['hIni', 'hora de inicio'], ['hFin', 'hora de fin'], ['celPapa', 'celular'], ['dni', 'DNI'], ['nomPapa', 'nombre del papá/mamá'], ['temId', 'temática']];
+    for (var _oi = 0; _oi < _oblig.length; _oi++) {
+      if (!String(form[_oblig[_oi][0]] == null ? '' : form[_oblig[_oi][0]]).trim()) {
+        alert('Falta completar: ' + _oblig[_oi][1] + '.\nTodos los campos son obligatorios antes de guardar.');
+        return;
+      }
+    }
+    if (form.doble) {
+      var _ob2 = [['nombre2', 'nombre del 2º agasajado'], ['edad2', 'edad del 2º'], ['nomPapa2', 'papá/mamá del 2º'], ['celPapa2', 'celular del 2º']];
+      for (var _oj = 0; _oj < _ob2.length; _oj++) {
+        if (!String(form[_ob2[_oj][0]] == null ? '' : form[_ob2[_oj][0]]).trim()) {
+          alert('Falta completar: ' + _ob2[_oj][1] + '.');
+          return;
+        }
+      }
+    }
     // Detectar superposición de horarios en la misma sucursal y día
     const conflicto = eventos.find(x => x.sucId === sucAct.id && x.id !== editId && x.dia === form.dia && x.mes === form.mes && x.anio === form.anio && !(form.hFin <= x.hIni || form.hIni >= x.hFin));
     if (conflicto) {
@@ -14588,43 +14601,7 @@ function PapaLogin({
       fontSize: 12,
       marginTop: 4
     }
-  }, "Personaliz\xE1 tu invitaci\xF3n digital")), adminSesion && /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: '#0f172a',
-      borderRadius: 12,
-      padding: 12,
-      marginBottom: 16
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 11,
-      fontWeight: 800,
-      color: '#fbbf24',
-      marginBottom: 8
-    }
-  }, "\uD83D\uDC51 Sos admin \u2014 entr\xE1 sin contrase\xF1a:"), /*#__PURE__*/React.createElement("select", {
-    onChange: e => {
-      const ev = eventos.find(x => x.id === e.target.value);
-      if (ev) {
-        setPapaSesion({
-          ...ev,
-          optinWA: true
-        });
-        setInvEvId(ev.id);
-        setVista('papa-creador');
-      }
-    },
-    defaultValue: "",
-    style: {
-      ...S.input,
-      color: '#1e293b'
-    }
-  }, /*#__PURE__*/React.createElement("option", {
-    value: ""
-  }, "Eleg\xED un evento\u2026"), eventos.filter(ev => String(ev.id).indexOf('__') !== 0 && (!sucAct || ev.sucId === sucAct.id)).map(ev => /*#__PURE__*/React.createElement("option", {
-    key: ev.id,
-    value: ev.id
-  }, ev.nombre, " \xB7 ", ev.dia, "/", ev.mes, "/", ev.anio)))), (err || aviso) && /*#__PURE__*/React.createElement("div", {
+  }, "Personaliz\xE1 tu invitaci\xF3n digital")), (err || aviso) && /*#__PURE__*/React.createElement("div", {
     style: {
       background: '#fef2f2',
       border: '1px solid #fecaca',
