@@ -7,28 +7,6 @@
       "permanent": false
     }
   ],
-  "rewrites": [
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "funzonepro.com" }],
-      "missing": [
-        { "type": "query", "key": "inv" },
-        { "type": "query", "key": "rec" },
-        { "type": "query", "key": "papa" }
-      ],
-      "destination": "/shell.html"
-    },
-    {
-      "source": "/",
-      "has": [{ "type": "host", "value": "www.funzonepro.com" }],
-      "missing": [
-        { "type": "query", "key": "inv" },
-        { "type": "query", "key": "rec" },
-        { "type": "query", "key": "papa" }
-      ],
-      "destination": "/shell.html"
-    }
-  ],
   "headers": [
     {
       "source": "/",
