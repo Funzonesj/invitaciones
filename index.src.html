@@ -132,14 +132,16 @@ async function sbUpsertConfig(key,data){ if(!key)return;
   if(SB){ try{ SB.from('eventos').upsert({id:key,data:data}).then(function(){},function(){}); }catch(e){} } }
 
 /* ── HELPERS ─────────────────────────────────────────────── */
-function genUser(nombre, edad) {
-  const base = (nombre||'fiesta').toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').slice(0,10)||'fiesta';
-  const ed = (edad!=null && edad!=='') ? String(edad).replace(/[^0-9]/g,'') : '';
-  return base + (ed || Math.floor(100+Math.random()*900)); // nombre + edad (ej: mateo8); si no hay edad, un número
+function _nombreSlug(nombre) {
+  // nombre en minúsculas, sin acentos (í→i, á→a) ni espacios/símbolos. Nombre COMPLETO (no se corta).
+  return (nombre||'fiesta').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'')||'fiesta';
 }
-function genPass(nombre) {
-  const base=(nombre||'fiesta').toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'').slice(0,10)||'fiesta';
-  return base+Math.floor(100+Math.random()*900); // ej: mateo481 (fácil + un número)
+function genUser(nombre) {
+  return _nombreSlug(nombre); // USUARIO = nombre del niño (ej: mariajosefina)
+}
+function genPass(nombre, edad) {
+  const ed = (edad!=null && edad!=='') ? String(edad).replace(/[^0-9]/g,'') : '';
+  return _nombreSlug(nombre) + ed; // CONTRASEÑA = nombre + edad (ej: mariajosefina7)
 }
 // ¿El acceso del evento está vencido?
 // La tarjeta sigue viva el día del cumple + 1 semana completa después (para subir
@@ -468,7 +470,7 @@ function App() {
         if(d.cfgPed && d.cfgPed.length) setPedidos(d.cfgPed);
         if(_PAPA_PARAM && !_PAPA_DATA){
           const ev=d.eventos.find(e=>e.id===_PAPA_PARAM);
-          if(ev && !estaVencido(ev)){setPapaSesion(ev);setInvEvId(ev.id);}
+          if(ev && !estaVencido(ev)){setInvEvId(ev.id);} // seguridad: NO auto-login. El papá pone la contraseña; el usuario se pre-completa en PapaLogin.
         }
       }
       setDbReady(true);
@@ -1232,7 +1234,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
 
   function autoCredenciales(){
     if(!form.nombre) return alert('Ingresá primero el nombre del agasajado.');
-    setForm(f=>({...f, user: genUser(f.nombre, f.edad), pass: genPass(f.nombre)}));
+    setForm(f=>({...f, user: genUser(f.nombre), pass: genPass(f.nombre, f.edad)}));
   }
   const listFiltrada=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fDia||e.dia===fDia));
 
@@ -1269,7 +1271,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   function guardarEvento(){
     const fmt=fmtTipo(form.tipo,iaConfig);
     // Asegurar credenciales (usuario = nombre+edad; clave = nombre+números) aunque no haya tocado el botón
-    const f2={...form, user: form.user || (form.nombre?genUser(form.nombre,form.edad):''), pass: form.pass || (form.nombre?genPass(form.nombre):'')};
+    const f2={...form, user: form.user || (form.nombre?genUser(form.nombre):''), pass: form.pass || (form.nombre?genPass(form.nombre,form.edad):'')};
     if(editId){setEventos(eventos.map(x=>x.id===editId?{...x,...f2,...fmt}:x));setEditId(null);}
     else{setEventos(prev=>[...prev,{...f2,...fmt,id:'ev-'+Date.now().toString(16),sucId:sucAct.id,creado:Date.now()}]);}
     setForm(ef);setOpen(false);setTemOpen(false);
@@ -1351,10 +1353,10 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>{editId?'✏️ Editar Evento':'+ Nuevo Evento'}</h3>
           <form onSubmit={sub}>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:14}}>
-              <label><span style={S.label}>Nombre</span><input type="text" value={form.nombre} autoComplete="off" onChange={e=>{const nv=e.target.value;setForm(f=>({...f,nombre:nv,user:nv?genUser(nv,f.edad):''}));}} style={S.input} required/></label>
+              <label><span style={S.label}>Nombre</span><input type="text" value={form.nombre} autoComplete="off" onChange={e=>{const nv=e.target.value;setForm(f=>({...f,nombre:nv,user:nv?genUser(nv):'',pass:nv?genPass(nv,f.edad):''}));}} style={S.input} required/></label>
               <label><span style={S.label}>Edad</span>
                 <div style={{display:'flex',gap:4}}>
-                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} onChange={e=>{const ev=e.target.value;setForm(f=>({...f,edad:ev,user:f.nombre?genUser(f.nombre,ev):f.user}));}} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
+                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} onChange={e=>{const ev=e.target.value;setForm(f=>({...f,edad:ev,pass:f.nombre?genPass(f.nombre,ev):f.pass}));}} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
                   <select value={form.edadUnidad||'años'} onChange={e=>setForm({...form,edadUnidad:e.target.value,edad:e.target.value==='noaplica'?'':form.edad})} style={{...S.input,flex:1}}>
                     <option value="años">años</option>
                     <option value="meses">meses</option>
@@ -3445,6 +3447,9 @@ function AdminMenu({setVista,iaConfig,setIaConfig}){
 
 function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,setConfs,aviso,adminSesion,sucAct}){
   const [u,setU]=useState('');const [p,setP]=useState('');const [err,setErr]=useState('');const [showP,setShowP]=useState(false);
+  React.useEffect(()=>{ // pre-completar SOLO el usuario desde el link ?papa=<id> (la contraseña la escribe el papá)
+    try{ const pp=new URLSearchParams(window.location.search).get('papa'); if(pp){ const ev=(eventos||[]).find(x=>x.id===pp); if(ev&&ev.user) setU(ev.user); } }catch(e){}
+  },[eventos]);
   async function sub(e){
     e.preventDefault();
     const uu=u.trim().toLowerCase(), pp=p.trim().toLowerCase();
