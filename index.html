@@ -18018,7 +18018,7 @@ function PapaCreador({
   }
   const _PT = iaConfig && iaConfig.papaTiles || {};
   const _PORD = iaConfig && iaConfig.papaOrden || [];
-  const SECCIONES = [['tarjeta', '🎨', 'Editar Tarjeta', '#7c3aed'], ['album', '🎞️', 'Generador de Recuerdos', '#ec4899'], ['confirmaciones', '👥', 'Confirmados', '#06b6d4'], ['descargables', '📦', 'Descargas', '#16a34a'], ['menu', '🍽️', 'Menú IA', '#f97316'], ['faq', '💬', 'Consultas', '#e11d48'], ['adicionales', '➕', 'Adicionales', '#8b5cf6'], ['reglas', '📋', 'Reglas del Salón', '#0ea5e9'], ['encuesta', '📝', 'Encuesta', '#0ea5e9'], ['recordar', '📣', 'Recordar invitados', '#f97316']].map(([v, e, l, c]) => [v, _PT[v] && _PT[v].e || e, _PT[v] && _PT[v].t !== undefined && _PT[v].t !== '' ? _PT[v].t : l, c]).filter(([v]) => !(_PT[v] && _PT[v].oculto)).sort((a, b) => {
+  const SECCIONES = [['tarjeta', '🎨', 'Editar Tarjeta', '#7c3aed'], ['album', '🎞️', 'Generador de Recuerdos', '#ec4899'], ['confirmaciones', '👥', 'Confirmados', '#06b6d4'], ['descargables', '📦', 'Descargas', '#16a34a'], ['menu', '🍽️', 'Menú IA', '#f97316'], ['faq', '💬', 'Consultas', '#e11d48'], ['adicionales', '➕', 'Adicionales', '#8b5cf6'], ['reglas', '📋', 'Reglas del Salón', '#0ea5e9'], ['recordar', '📣', 'Recordar invitados', '#f97316']].map(([v, e, l, c]) => [v, _PT[v] && _PT[v].e || e, _PT[v] && _PT[v].t !== undefined && _PT[v].t !== '' ? _PT[v].t : l, c]).filter(([v]) => !(_PT[v] && _PT[v].oculto)).sort((a, b) => {
     const ia = _PORD.indexOf(a[0]),
       ib = _PORD.indexOf(b[0]);
     if (ia < 0 && ib < 0) return 0;
@@ -20438,58 +20438,7 @@ function PapaCreador({
       color: '#9a3412',
       lineHeight: 1.4
     }
-  }, "Si necesit\xE1s m\xE1s tiempo, comunicate con el sal\xF3n para que te habiliten unos d\xEDas m\xE1s.")))), seccion === 'album' && !encuestaVencida && !encuestaHecha && /*#__PURE__*/React.createElement("div", {
-    className: "fade-in",
-    style: {
-      maxWidth: 520,
-      margin: '0 auto'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: S.card
-  }, /*#__PURE__*/React.createElement("h2", {
-    style: {
-      fontWeight: 900,
-      fontSize: 18,
-      marginBottom: 8
-    }
-  }, "\uD83C\uDF9E\uFE0F Generador de Recuerdos"), /*#__PURE__*/React.createElement("div", {
-    style: {
-      background: '#fff7ed',
-      border: '1px solid #fed7aa',
-      borderRadius: 14,
-      padding: '18px',
-      textAlign: 'center'
-    }
-  }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontSize: 38,
-      marginBottom: 8
-    }
-  }, "\uD83D\uDCDD"), /*#__PURE__*/React.createElement("p", {
-    style: {
-      fontWeight: 800,
-      fontSize: 14,
-      color: '#9a3412',
-      marginBottom: 4
-    }
-  }, "Antes de crear los recuerdos, complet\xE1 la encuesta"), /*#__PURE__*/React.createElement("p", {
-    style: {
-      fontSize: 12,
-      color: '#9a3412',
-      marginBottom: 14,
-      lineHeight: 1.4
-    }
-  }, "Tu opini\xF3n nos ayuda much\xEDsimo. Es rapidita, son unos toques. \uD83D\uDC9C"), /*#__PURE__*/React.createElement("button", {
-    onClick: () => setSeccion('encuesta'),
-    style: {
-      ...S.btn,
-      background: '#16a34a',
-      color: 'white',
-      padding: '13px 22px',
-      fontSize: 14,
-      fontWeight: 900
-    }
-  }, "\uD83D\uDCDD Ir a la encuesta \u2192")))), seccion === 'album' && encuestaHecha && !encuestaVencida && /*#__PURE__*/React.createElement("div", {
+  }, "Si necesit\xE1s m\xE1s tiempo, comunicate con el sal\xF3n para que te habiliten unos d\xEDas m\xE1s.")))), seccion === 'album' && !encuestaVencida && /*#__PURE__*/React.createElement("div", {
     className: "fade-in",
     style: {
       maxWidth: 520,

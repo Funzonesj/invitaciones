@@ -4563,7 +4563,6 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     ['faq','💬','Consultas','#e11d48'],
     ['adicionales','➕','Adicionales','#8b5cf6'],
     ['reglas','📋','Reglas del Salón','#0ea5e9'],
-    ['encuesta','📝','Encuesta','#0ea5e9'],
     ['recordar','📣','Recordar invitados','#f97316'],
   ].map(([v,e,l,c])=>[v,(_PT[v]&&_PT[v].e)||e,(_PT[v]&&_PT[v].t!==undefined&&_PT[v].t!=='')?_PT[v].t:l,c]).filter(([v])=>!(_PT[v]&&_PT[v].oculto))
    .sort((a,b)=>{const ia=_PORD.indexOf(a[0]),ib=_PORD.indexOf(b[0]);if(ia<0&&ib<0)return 0;if(ia<0)return 1;if(ib<0)return -1;return ia-ib;});
@@ -5160,20 +5159,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           </div>
         </div>
       )}
-      {seccion==='album'&&!encuestaVencida&&!encuestaHecha&&(
-        <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
-          <div style={S.card}>
-            <h2 style={{fontWeight:900,fontSize:18,marginBottom:8}}>🎞️ Generador de Recuerdos</h2>
-            <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:14,padding:'18px',textAlign:'center'}}>
-              <div style={{fontSize:38,marginBottom:8}}>📝</div>
-              <p style={{fontWeight:800,fontSize:14,color:'#9a3412',marginBottom:4}}>Antes de crear los recuerdos, completá la encuesta</p>
-              <p style={{fontSize:12,color:'#9a3412',marginBottom:14,lineHeight:1.4}}>Tu opinión nos ayuda muchísimo. Es rapidita, son unos toques. 💜</p>
-              <button onClick={()=>setSeccion('encuesta')} style={{...S.btn,background:'#16a34a',color:'white',padding:'13px 22px',fontSize:14,fontWeight:900}}>📝 Ir a la encuesta →</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {seccion==='album'&&encuestaHecha&&!encuestaVencida&&(
+      {seccion==='album'&&!encuestaVencida&&(
         <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
           <div style={S.card}>
             <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>🎞️ Generador de Recuerdos</h2>
