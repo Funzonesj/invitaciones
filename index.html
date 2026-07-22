@@ -4619,8 +4619,8 @@ function AdminEventos({
       setForm(f => ({
         ...f,
         nombre: nv,
-        user: nv ? genUser(nv) : '',
-        pass: nv ? genPass(nv, f.edad) : ''
+        user: editId && f.user ? f.user : nv ? genUser(nv) : '',
+        pass: editId && f.pass ? f.pass : nv ? genPass(nv, f.edad) : ''
       }));
     },
     style: S.input,
@@ -4642,7 +4642,7 @@ function AdminEventos({
       setForm(f => ({
         ...f,
         edad: ev,
-        pass: f.nombre ? genPass(f.nombre, ev) : f.pass
+        pass: editId && f.pass ? f.pass : f.nombre ? genPass(f.nombre, ev) : f.pass
       }));
     },
     style: {

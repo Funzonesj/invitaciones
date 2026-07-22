@@ -1353,10 +1353,10 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>{editId?'✏️ Editar Evento':'+ Nuevo Evento'}</h3>
           <form onSubmit={sub}>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:14}}>
-              <label><span style={S.label}>Nombre</span><input type="text" value={form.nombre} autoComplete="off" onChange={e=>{const nv=e.target.value;setForm(f=>({...f,nombre:nv,user:nv?genUser(nv):'',pass:nv?genPass(nv,f.edad):''}));}} style={S.input} required/></label>
+              <label><span style={S.label}>Nombre</span><input type="text" value={form.nombre} autoComplete="off" onChange={e=>{const nv=e.target.value;setForm(f=>({...f,nombre:nv,user:(editId&&f.user)?f.user:(nv?genUser(nv):''),pass:(editId&&f.pass)?f.pass:(nv?genPass(nv,f.edad):'')}));}} style={S.input} required/></label>
               <label><span style={S.label}>Edad</span>
                 <div style={{display:'flex',gap:4}}>
-                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} onChange={e=>{const ev=e.target.value;setForm(f=>({...f,edad:ev,pass:f.nombre?genPass(f.nombre,ev):f.pass}));}} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
+                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} onChange={e=>{const ev=e.target.value;setForm(f=>({...f,edad:ev,pass:(editId&&f.pass)?f.pass:(f.nombre?genPass(f.nombre,ev):f.pass)}));}} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
                   <select value={form.edadUnidad||'años'} onChange={e=>setForm({...form,edadUnidad:e.target.value,edad:e.target.value==='noaplica'?'':form.edad})} style={{...S.input,flex:1}}>
                     <option value="años">años</option>
                     <option value="meses">meses</option>
