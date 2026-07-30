@@ -9,6 +9,7 @@
 const MODEL = 'fal-ai/kling-video/v3/pro/image-to-video';
 
 const origenOk = require('./_origen');
+const PAGOS = require('./_pagos');
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -35,6 +36,10 @@ module.exports = async (req, res) => {
         const rd = await rr.json().catch(() => ({}));
         const url = rd && rd.video && rd.video.url;
         if (!url) { res.status(200).json({ failed: true, error: 'El video terminó pero no se recibió el archivo. Probá generarlo de nuevo.' }); return; }
+        // El regalo se marca como usado recién cuando el video salió BIEN
+        // (si falla, el papá lo puede volver a intentar sin perderlo).
+        const evIdOk = String(body.evId || '').slice(0, 80);
+        if (evIdOk) { try { await PAGOS.marcarVideoRegalo(evIdOk); } catch (e) {} }
         res.status(200).json({ done: true, url: url });
         return;
       }
@@ -59,6 +64,24 @@ module.exports = async (req, res) => {
     // ── Encolar un nuevo video ──
     const { image, prompt, duration, generate_audio } = body;
     if (!image) { res.status(400).json({ error: 'Falta la imagen de inicio para el video.' }); return; }
+
+    // ── PUERTA DEL REGALO ──
+    // El video es el REGALO por comprar el pack de imágenes (regla de la dueña):
+    // sin pago aprobado no se genera. Cada video cuesta crédito de fal.ai, así que
+    // sin esta puerta cualquiera con la cabecera Origin falsificada podía vaciar la
+    // cuenta. El "una sola vez" se marca recién cuando el video sale bien (en 'status').
+    const evId = String(body.evId || '').slice(0, 80);
+    if (!evId) { res.status(402).json({ error: 'El video es un regalo por tu pack de imágenes. Primero hay que abonarlo.' }); return; }
+    const regalo = await PAGOS.puedeVideoRegalo(evId);
+    if (!regalo.ok) {
+      const msg = regalo.motivo === 'regalo-ya-usado'
+        ? 'Tu video de regalo ya fue generado.'
+        : regalo.motivo === 'base-no-disponible'
+          ? 'No pudimos verificar tu pack en este momento. Probá de nuevo en un minuto.'
+          : 'El video es un regalo por tu pack de imágenes. Primero hay que abonarlo.';
+      res.status(402).json({ error: msg, motivo: regalo.motivo });
+      return;
+    }
     const reqBody = {
       start_image_url: image,
       prompt: prompt || '',

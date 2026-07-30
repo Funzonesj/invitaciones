@@ -6,6 +6,8 @@
 // Usa MP_ACCESS_TOKEN (Vercel · Access Token, SECRETO).
 // (Se unieron mp-crear + mp-estado en un archivo por el límite de 12 funciones de Vercel.)
 // ────────────────────────────────────────────────────────────────
+const PAGOS = require('./_pagos');
+
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -19,11 +21,24 @@ module.exports = async (req, res) => {
     // ── Crear preferencia de pago ──
     if (req.method === 'POST') {
       const b = req.body || {};
-      const precio = Number(b.precio || 0);
       const titulo = String(b.titulo || 'Generación IA Fun Zone').slice(0, 250);
       const ref = String(b.ref || '').slice(0, 120);
       const backUrl = String(b.backUrl || '').slice(0, 500);
-      if (!(precio > 0)) { res.status(400).json({ error: 'Precio inválido.' }); return; }
+      const evId = String(b.evId || b.eventId || '').slice(0, 80);
+      const tipo = (String(b.tipo || 'imagen') === 'video') ? 'video' : 'imagen';
+      if (!ref) { res.status(400).json({ error: 'Falta la referencia del pago.' }); return; }
+      if (!evId) { res.status(400).json({ error: 'Falta el evento.' }); return; }
+
+      // El PRECIO sale del panel de administración, NO del navegador.
+      // Antes venía en el body: el papá podía mandar precio:1 y pagar $1 por el pack.
+      const cfg = await PAGOS.configIA();
+      const precio = (tipo === 'video') ? cfg.precioVideo : cfg.precioImagen;
+      const cantidad = (tipo === 'video') ? 1 : cfg.packImagenes;
+      if (!(precio > 0)) { res.status(400).json({ error: 'El precio no está configurado en el panel de administración.' }); return; }
+
+      // Anotar la intención ANTES de mandar a pagar, con el precio y el pack de este momento.
+      const anotado = await PAGOS.registrarIntento(evId, ref, tipo, precio, cantidad);
+      if (!anotado) { res.status(503).json({ error: 'No se pudo registrar el pago. Probá de nuevo en un momento.' }); return; }
 
       const pref = {
         items: [{ title: titulo, quantity: 1, unit_price: precio, currency_id: 'ARS' }],
@@ -42,34 +57,41 @@ module.exports = async (req, res) => {
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) { res.status(r.status).json({ error: (d && d.message) || 'No se pudo crear el pago en Mercado Pago.' }); return; }
-      res.status(200).json({ init_point: d.init_point || d.sandbox_init_point, id: d.id, ref: ref });
+      res.status(200).json({ init_point: d.init_point || d.sandbox_init_point, id: d.id, ref: ref, precio: precio, cantidad: cantidad });
       return;
     }
 
     // ── Verificar estado del pago ──
+    // Ahora pasa por _pagos.confirmar, que además de "aprobado" comprueba que el
+    // MONTO alcance el precio del panel y deja el pago anotado del lado del servidor
+    // (es lo que después habilita a generar). Antes solo miraba `approved` y el papá
+    // podía pagar $1 para desbloquear el pack completo.
     const q = req.query || {};
     const ref = String(q.ref || '').slice(0, 120);
-    const payId = String(q.payment_id || '').slice(0, 40);
-    let approved = false, status = '', amount = 0;
+    const evId = String(q.evId || '').slice(0, 80);
+    if (!ref) { res.status(400).json({ error: 'Falta ref.' }); return; }
 
-    if (payId) {
-      const r = await fetch('https://api.mercadopago.com/v1/payments/' + encodeURIComponent(payId), { headers: { Authorization: 'Bearer ' + token } });
-      const d = await r.json().catch(() => ({}));
-      status = d.status || '';
-      approved = status === 'approved';
-      amount = d.transaction_amount || 0;
-    } else if (ref) {
-      const r = await fetch('https://api.mercadopago.com/v1/payments/search?external_reference=' + encodeURIComponent(ref) + '&sort=date_created&criteria=desc', { headers: { Authorization: 'Bearer ' + token } });
-      const d = await r.json().catch(() => ({}));
-      const results = (d && d.results) || [];
-      const ok = results.find(p => p.status === 'approved');
-      if (ok) { approved = true; status = 'approved'; amount = ok.transaction_amount || 0; }
-      else if (results[0]) { status = results[0].status || ''; }
-    } else {
-      res.status(400).json({ error: 'Falta ref o payment_id.' }); return;
+    if (evId) {
+      const c = await PAGOS.confirmar(evId, ref);
+      if (c.ok) { res.status(200).json({ approved: true, status: 'approved', restantes: c.restantes }); return; }
+      if (c.motivo === 'monto-insuficiente') {
+        res.status(200).json({ approved: false, status: 'monto-insuficiente', error: 'El monto pagado ($' + (c.monto || 0) + ') no cubre el precio ($' + (c.esperado || 0) + ').' });
+        return;
+      }
+      res.status(200).json({ approved: false, status: c.motivo || 'no-aprobado' });
+      return;
     }
 
-    res.status(200).json({ approved: approved, status: status, amount: amount });
+    // Compatibilidad: consulta sin evento (solo informa, NO habilita a generar).
+    const r = await fetch('https://api.mercadopago.com/v1/payments/search?external_reference=' + encodeURIComponent(ref) + '&sort=date_created&criteria=desc', { headers: { Authorization: 'Bearer ' + token } });
+    const d = await r.json().catch(() => ({}));
+    const results = (d && d.results) || [];
+    const ok = results.find(p => p.status === 'approved');
+    res.status(200).json({
+      approved: !!ok,
+      status: ok ? 'approved' : ((results[0] && results[0].status) || ''),
+      amount: ok ? (ok.transaction_amount || 0) : 0,
+    });
   } catch (e) {
     res.status(500).json({ error: String((e && e.message) || e) });
   }

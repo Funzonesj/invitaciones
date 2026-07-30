@@ -382,6 +382,7 @@ function App() {
     fraseVideo:   FRASE_VIDEO_DEF,
     precioImagen: 1500,
     precioVideo:  3500,
+    packImagenes: 2,   // cuántas imágenes recibe el papá al pagar (se edita en IA & Precios)
     txtTarjeta: {
       portadaSub:'¿Descubrí dónde es el evento?',
       portadaBtn:'Abrir Invitación',
@@ -827,7 +828,9 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
       const body=esTresD
         ?{prompt:p,image:img,model:'fal-ai/flux-pro/kontext/text-to-image',size,describir:true,isI2I:false}
         :{prompt:p,image:img,model:'fal-ai/flux-pro/kontext',size,isI2I:true};
-      const resp=await fetch('/api/generar-catalogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      // _gwHeaders manda el token de la dueña/encargada: así el panel genera sin
+      // pasar por la puerta del pago (que es solo para el papá).
+      const resp=await fetch('/api/generar-catalogo',{method:'POST',headers:_gwHeaders(),body:JSON.stringify(body)});
       const data=await resp.json().catch(()=>({error:'Respuesta inválida del servidor.'}));
       if(!resp.ok)throw new Error(data.error||'No se pudo generar.');
       if(!data.url)throw new Error('No se recibió imagen. Probá de nuevo.');
@@ -2122,10 +2125,18 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
       <label style={{display:'block',marginBottom:10}}><span style={S.label}>🔑 API Key</span>
         <input value={cfg[kApi]||''} onChange={e=>set(kApi,e.target.value)} style={S.input} placeholder="Pegá aquí la API key del servicio" autoComplete="off"/>
       </label>
-      <label style={{display:'block',maxWidth:220}}><span style={S.label}>💲 Precio al papá ($)</span>
-        <input type="number" value={cfg[kPrecio]==null?'':cfg[kPrecio]} onChange={e=>{const v=e.target.value===''?'':+e.target.value;set(kPrecio,v);setIaConfig(c=>({...c,[kPrecio]:v}));}} style={S.input}/>
-        <span style={{fontSize:10,color:'#16a34a',fontWeight:700}}>💾 El precio se guarda solo al cambiarlo (sin botón).</span>
-      </label>
+      <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
+        <label style={{display:'block',maxWidth:220,flex:'1 1 180px'}}><span style={S.label}>💲 Precio al papá ($)</span>
+          <input type="number" value={cfg[kPrecio]==null?'':cfg[kPrecio]} onChange={e=>{const v=e.target.value===''?'':+e.target.value;set(kPrecio,v);setIaConfig(c=>({...c,[kPrecio]:v}));}} style={S.input}/>
+          <span style={{fontSize:10,color:'#16a34a',fontWeight:700}}>💾 El precio se guarda solo al cambiarlo (sin botón).</span>
+        </label>
+        {kPrecio==='precioImagen'&&(
+          <label style={{display:'block',maxWidth:220,flex:'1 1 180px'}}><span style={S.label}>🖼️ Imágenes del pack</span>
+            <input type="number" min="1" max="20" value={cfg.packImagenes==null?'':cfg.packImagenes} onChange={e=>{const v=e.target.value===''?'':Math.max(1,Math.min(20,+e.target.value));set('packImagenes',v);setIaConfig(c=>({...c,packImagenes:v}));}} style={S.input} placeholder="2"/>
+            <span style={{fontSize:10,color:'#16a34a',fontWeight:700}}>Cuántas recibe el papá por ese precio. El video va de regalo.</span>
+          </label>
+        )}
+      </div>
     </div>
   );
   return(
@@ -3844,7 +3855,9 @@ function PagoMP({tipo, precio, nombre, tematica, modo, eventId, onPagado, onCanc
       try{
         const ref='fz-'+(modo||tipo)+'-'+Date.now()+'-'+Math.floor(Math.random()*1e6);
         const backUrl=window.location.href.split('?')[0];
-        const r=await fetch('/api/mp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:tipo,precio:precio,titulo:('Generar '+(tipo==='imagen'?'imagen':'video')+' IA — '+(nombre||'Fun Zone')),ref:ref,backUrl:backUrl})});
+        // El PRECIO ya no se manda desde acá: lo pone el servidor según el panel de
+        // administración. Antes se mandaba y el papá podía pagar $1 por el pack.
+        const r=await fetch('/api/mp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tipo:tipo,titulo:('Generar '+(tipo==='imagen'?'imagen':'video')+' IA — '+(nombre||'Fun Zone')),ref:ref,backUrl:backUrl,evId:eventId})});
         const d=await r.json().catch(()=>({}));
         if(cancelado)return;
         if(!r.ok||!d.id){ setErr((d&&d.error)||'No se pudo iniciar el pago. Verificá que Mercado Pago esté configurado.'); setEstado('error'); return; }
@@ -3912,7 +3925,7 @@ function PagoMP({tipo, precio, nombre, tematica, modo, eventId, onPagado, onCanc
 }
 
 /* ── GENERADOR IA ─────────────────────────────────────────── */
-function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,modelA,modelB,cantidad,fotoNino,personaje,personajeNombre,genero,salon,edad,startImage,onResultado,onCerrar}){
+function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,modelA,modelB,cantidad,fotoNino,personaje,personajeNombre,genero,salon,edad,startImage,evId,pagoRef,onResultado,onCerrar}){
   const [paso,setPaso]=useState('generando'); // generando | listo | error
   const [progreso,setProgreso]=useState(0);
   const [resultados,setResultados]=useState([]);
@@ -3952,7 +3965,8 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
           // Generar todas en paralelo, tolerando fallos individuales
           const calls=lista.map(it=>fetch('/api/generar-catalogo',{
             method:'POST',headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({prompt:it.p,images:[fotoNino,personaje],model:it.m,aspect_ratio:'9:16'})
+            // evId+pagoRef: el servidor comprueba el pago antes de gastar crédito
+            body:JSON.stringify({prompt:it.p,images:[fotoNino,personaje],model:it.m,aspect_ratio:'9:16',evId:evId,ref:pagoRef})
           }).then(async r=>{const d=await r.json().catch(()=>({}));if(!cancel){setHechas(h=>h+1);if(r.ok&&d.url)setImgsLive(prev=>[...prev,d.url]);}return (r.ok&&d.url)?d.url:null;}).catch(()=>{if(!cancel)setHechas(h=>h+1);return null;}));
           const settled=await Promise.all(calls);
           if(cancel)return;
@@ -3969,7 +3983,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
             if(!fotoNino||!personaje) throw new Error('Subí la foto del niño/a y elegí el personaje.');
             // 1) Imagen base del video: el PERSONAJE mira a la cámara (va a hablar); el niño/a lo mira a ÉL (de costado, boca cerrada) para que el lip-sync no le mueva la boca al niño.
             const baseImgPrompt=(repl(promptComposite)||'')+' Usá las DOS imágenes adjuntas: conservá EXACTAMENTE la cara y el parecido del niño/a de la PRIMERA imagen (no la cambies). El PERSONAJE '+persNom+' de la SEGUNDA imagen está de CUERPO ENTERO, de FRENTE MIRANDO A LA CÁMARA (es el que va a hablar). El niño/a está al lado, de cuerpo entero, MIRANDO AL PERSONAJE (vista de 3/4 o perfil, la cara del niño NO mira a la cámara), con una sonrisa de BOCA CERRADA. Ambos en el mundo/escenario del personaje; UNA SOLA escena cohesiva y realista, misma iluminación; imagen vertical 9:16; sin texto ni letras.';
-            const ir=await fetch('/api/generar-catalogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:baseImgPrompt,images:[fotoNino,personaje],model:'fal-ai/nano-banana/edit',aspect_ratio:'9:16'})});
+            const ir=await fetch('/api/generar-catalogo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:baseImgPrompt,images:[fotoNino,personaje],model:'fal-ai/nano-banana/edit',aspect_ratio:'9:16',evId:evId,paraVideo:true})});
             const idata=await ir.json().catch(()=>({}));
             if(!ir.ok||!idata.url) throw new Error((idata&&idata.error)||'No se pudo crear la imagen base del video.');
             if(cancel)return;
@@ -3989,7 +4003,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
           // Voz NATIVA de Kling (como al principio).
           if(genero==='f') pr+=' The cartoon character speaks with a clearly female voice. After fully finishing the whole sentence, as the final action, the character and the child happily wave goodbye with their hands.'; else if(genero==='m') pr+=' The cartoon character speaks with a clearly male voice. After fully finishing the whole sentence, as the final action, the character and the child happily high-five each other.'; else pr+=' After fully finishing the whole sentence, as the final action, they happily wave goodbye with their hands.';
           pr+=' VERY IMPORTANT: the character does NOT wave, greet or do any hand gesture WHILE talking; it keeps talking with the message until the very last word. The greeting / wave / high-five happens ONLY at the end, AFTER the last word is completely spoken, never before.';
-          const s=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:talkImg,prompt:pr,duration:10,generate_audio:true})});
+          const s=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:talkImg,prompt:pr,duration:10,generate_audio:true,evId:evId})});
           const sj=await s.json().catch(()=>({}));
           if(!s.ok) throw new Error(sj.error||'No se pudo iniciar el video.');
           if(!sj.statusUrl||!sj.responseUrl) throw new Error('No se pudo iniciar el video.');
@@ -3997,7 +4011,7 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
           for(let i=0;i<100;i++){
             await new Promise(r=>setTimeout(r,6000));
             if(cancel)return;
-            try{const ps=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:sj.statusUrl,responseUrl:sj.responseUrl})});const pd=await ps.json().catch(()=>({}));if(pd&&pd.done&&pd.url){urlVid=pd.url;break;}if(pd&&pd.failed){failMsg=pd.error||'El video no se pudo generar.';break;}}catch(e){}
+            try{const ps=await fetch('/api/generar-video',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status',statusUrl:sj.statusUrl,responseUrl:sj.responseUrl,evId:evId})});const pd=await ps.json().catch(()=>({}));if(pd&&pd.done&&pd.url){urlVid=pd.url;break;}if(pd&&pd.failed){failMsg=pd.error||'El video no se pudo generar.';break;}}catch(e){}
             setProgreso(p=>p<96?p+1:p);
           }
           if(cancel)return;
@@ -4140,14 +4154,17 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [videoDiag,setVideoDiag]=useState(''); // nota de diagnóstico (si la voz de EL no se aplicó)
   const [videoUrl,setVideoUrl]=useState('');
   const [videoPaga,setVideoPaga]=useState(false);
-  const _VIDEO_GRATIS=false; // Normal: el video es gratis SOLO si el papá pagó las imágenes (papaSesion.videoFreeDisponible). Si no, se cobra/desbloquea.
+  const _VIDEO_GRATIS=false; // (histórico) "video incluido para TODOS". Hoy no se usa: el video es el regalo del pack.
   const [videoPagoMP,setVideoPagoMP]=useState(false); // false | 'unlock' | 'genpay'
   const [videoPendImg,setVideoPendImg]=useState(null);
   const genVideoPagadoRef=useRef(false);
-  // Estado del video: 1 video GRATIS por cada pack de imágenes pagado
-  const videoFreeDisponible=_VIDEO_GRATIS||!!(papaSesion&&papaSesion.videoFreeDisponible); // _VIDEO_GRATIS: video incluido para todos
+  // Estado del video: es el REGALO por comprar el pack de imágenes (1 por pack).
+  const videoFreeDisponible=_VIDEO_GRATIS||!!(papaSesion&&papaSesion.videoFreeDisponible);
   const videoGuardado=(papaSesion&&papaSesion.videoUrl)||'';
   const videoYaPago=!!(papaSesion&&papaSesion.videoPagado);
+  // El video ya está pago (viene con el pack): ni marca de agua ni segundo cobro.
+  // El servidor igual lo verifica: sin pack aprobado, /api/generar-video no genera.
+  const videoRegalo=_VIDEO_GRATIS||videoFreeDisponible||videoYaPago;
   // Decide qué hacer al tocar "Generar/Ver video"
   function abrirVideoUpsell(img){
     if(videoFreeDisponible){ setVideoInfo(img); }                                                 // pagó pack de imágenes → 1 video gratis
@@ -4163,12 +4180,17 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     }).catch(()=>alert('No se pudo preparar el video.'));
   }
   const [invGuardada,setInvGuardada]=useState(false);
-  const PACK_IA=6;
+  // Cuántas imágenes trae el pack: se configura en el panel de administración,
+  // al lado del precio (antes estaba fijo en 6 dentro del código).
+  const PACK_IA=(function(){const n=parseInt(iaConfig&&iaConfig.packImagenes,10);return (n>0&&n<=20)?n:2;})();
   const genUsados=(papaSesion&&papaSesion.iaGenCount)||0;
   const pagadasIA=(papaSesion&&papaSesion.iaPagadas)||0;
   const restantesIA=Math.max(0,pagadasIA-genUsados); // imágenes que ya pagó y le quedan
+  // Comprobante del pago aprobado. El servidor lo exige para generar, y lleva ÉL la
+  // cuenta de los cupos: lo de acá arriba es solo para mostrar en pantalla.
+  const pagoRef=(papaSesion&&papaSesion.iaRef)||'';
   function pedirGenerar(tipo){
-    if(restantesIA>0) setGenActivo(tipo);      // ya pagó este pack → genera
+    if(restantesIA>0&&pagoRef) setGenActivo(tipo);   // ya pagó este pack → genera
     else { persistirFormPago(); setPagoActivo(tipo); }  // necesita pagar → guardo elecciones por si se recarga al volver de MP
   }
   // Guarda en papaSesion lo que eligió el papá, para que sobreviva la recarga al volver de Mercado Pago
@@ -4176,9 +4198,11 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     setPapaSesion(ps=>{const n={...ps,personajeIA:form.personajeIA,fotoNinoIA:form.fotoNinoIA,iaImagenes:form.iaImagenes,iaImagenSel:form.iaImagenSel,portadaSrc:form.portadaSrc,nombre:form.nombre,edad:form.edad};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,personajeIA:n.personajeIA,fotoNinoIA:n.fotoNinoIA,iaImagenes:n.iaImagenes,iaImagenSel:n.iaImagenSel}:e));return n;});
   }
   // Aplica el efecto del pago ya APROBADO (mismo resultado que el onPagado, pero sirve también al volver de MP)
-  function aplicarPagoOk(modo){
+  function aplicarPagoOk(modo,ref,restantes){
     if(modo==='imagen'){
-      setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA,videoFreeDisponible:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas,videoFreeDisponible:true}:e));return n;});
+      // Guardamos el comprobante (iaRef): es lo que el servidor pide para dejar generar.
+      const suma=(typeof restantes==='number'&&restantes>0)?restantes:PACK_IA;
+      setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+suma,iaRef:ref||(ps&&ps.iaRef)||'',videoFreeDisponible:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas,iaRef:n.iaRef,videoFreeDisponible:true}:e));return n;});
       setGenActivo('imagen');
     }else if(modo==='video-genpay'){
       genVideoPagadoRef.current=true;setVideoUrl('');setVideoPaga(false);setVideoDiag('');
@@ -4196,9 +4220,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     const sp=new URLSearchParams(window.location.search);
     const tieneRet=sp.get('payment_id')||sp.get('collection_id')||sp.get('status');
     if(pend&&pend.eventId===papaSesion.id&&pend.ref&&(Date.now()-(pend.t||0)<2*3600*1000)){
-      fetch('/api/mp?ref='+encodeURIComponent(pend.ref)).then(r=>r.json()).then(d=>{
+      // Con evId, el servidor NO solo mira "aprobado": comprueba que el monto cubra
+      // el precio del panel y deja el pago anotado (eso es lo que después habilita a generar).
+      fetch('/api/mp?ref='+encodeURIComponent(pend.ref)+'&evId='+encodeURIComponent(papaSesion.id)).then(r=>r.json()).then(d=>{
         try{localStorage.removeItem('fz_mp_pend');}catch(e){}
-        if(d&&d.approved){ flashOk('✅ ¡Pago aprobado! Generando…'); aplicarPagoOk(pend.modo); }
+        if(d&&d.approved){ flashOk('✅ ¡Pago aprobado! Generando…'); aplicarPagoOk(pend.modo,pend.ref,d.restantes); }
+        else if(d&&d.status==='monto-insuficiente'){ flashOk('⚠️ '+(d.error||'El monto abonado no cubre el precio.')); }
         else { flashOk('⚠️ No detectamos un pago aprobado. Si pagaste, esperá un momento y reintentá.'); }
       }).catch(()=>{});
     }
@@ -5540,7 +5567,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} modo={pagoActivo==='imagen'?'imagen':'video-genpay'} eventId={papaSesion.id} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA,videoFreeDisponible:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas,videoFreeDisponible:true}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.vozNombre||suc.nombre} startImage={genActivo==='video'?videoStartImg:null} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});/* Las imágenes ya están listas: cerramos el generador y volvemos a la galería (el video se ofrece como cartel debajo, al elegir la imagen) */setGenActivo(null);}else{const vu=imgs[0]||'';genVideoPagadoRef.current=false;setVideoStartImg(null);setVideoDiag(diag||'');setPapaSesion(ps=>{const prevV=((ps&&ps.iaVideos&&ps.iaVideos.length)?ps.iaVideos:((ps&&ps.videoUrl)?[ps.videoUrl]:[]));const vids=[vu,...prevV.filter(x=>x&&x!==vu)].filter(Boolean);const n={...ps,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true}:e));return n;});setGenActivo(null);}}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.vozNombre||suc.nombre} startImage={genActivo==='video'?videoStartImg:null} evId={papaSesion.id} pagoRef={pagoRef} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});/* Las imágenes ya están listas: cerramos el generador y volvemos a la galería (el video se ofrece como cartel debajo, al elegir la imagen) */setGenActivo(null);}else{const vu=imgs[0]||'';genVideoPagadoRef.current=false;setVideoStartImg(null);setVideoDiag(diag||'');setPapaSesion(ps=>{const prevV=((ps&&ps.iaVideos&&ps.iaVideos.length)?ps.iaVideos:((ps&&ps.videoUrl)?[ps.videoUrl]:[]));const vids=[vu,...prevV.filter(x=>x&&x!==vu)].filter(Boolean);const n={...ps,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true}:e));return n;});setGenActivo(null);}}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
 
       {/* Cartel "¡Te regalamos un video!" — aparece RECIÉN cuando ya se generaron las imágenes */}
       {regaloVideo&&(
@@ -5602,19 +5629,20 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             <div style={{fontSize:46,marginBottom:10}}>🎬</div>
             <h3 style={{fontWeight:900,fontSize:18,marginBottom:10}}>Tu video con IA</h3>
             <p style={{fontSize:13.5,color:'#475569',lineHeight:1.6,marginBottom:8}}>El personaje cobra vida: camina, te mira y saluda a <b>{form.nombre}</b> 🎉</p>
-            {_VIDEO_GRATIS?(
+            {videoRegalo?(
               <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:'12px',marginBottom:14}}>
-                <div style={{fontSize:22,fontWeight:900,color:'#16a34a'}}>🎁 ¡Incluido GRATIS!</div>
-                <div style={{fontSize:12,color:'#166534',marginTop:4}}>Generalo, miralo y <b>descargalo sin costo</b>. 😊</div>
+                <div style={{fontSize:22,fontWeight:900,color:'#16a34a'}}>🎁 ¡Es tu REGALO!</div>
+                <div style={{fontSize:12,color:'#166534',marginTop:4}}>Viene incluido con tu pack de imágenes: generalo, miralo y <b>descargalo sin costo</b>. 😊</div>
               </div>
             ):(
               <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:12,padding:'12px',marginBottom:14}}>
-                <div style={{fontSize:12,color:'#9a3412'}}>El video tiene un costo de</div>
-                <div style={{fontSize:26,fontWeight:900,color:'#ea580c'}}>${(iaConfig.precioVideo||0).toLocaleString('es-AR')}</div>
-                <div style={{fontSize:12,color:'#9a3412',marginTop:4}}>Lo generás y lo <b>mirás GRATIS</b>. Si te gusta, lo abonás y lo descargás. <b>Si no, no pagás nada.</b> 😊</div>
+                <div style={{fontSize:22,fontWeight:900,color:'#ea580c'}}>🎁 Va de regalo con tu pack</div>
+                <div style={{fontSize:12,color:'#9a3412',marginTop:4}}>El video es un <b>regalo</b> para quien se lleva el pack de imágenes. Primero elegí tus imágenes y aboná el pack, y el video queda incluido. 😊</div>
               </div>
             )}
-            <button onClick={()=>{const img=videoInfo;setVideoUrl('');setVideoPaga(false);setVideoStartImg(img);setVideoInfo(null);setGenActivo('video');}} style={{...S.btn,width:'100%',padding:'14px',fontSize:15,fontWeight:900,background:'#e11d48',color:'white',marginBottom:8}}>🎬 Generar mi video</button>
+            {videoRegalo
+              ?<button onClick={()=>{const img=videoInfo;setVideoUrl('');setVideoPaga(false);setVideoStartImg(img);setVideoInfo(null);setGenActivo('video');}} style={{...S.btn,width:'100%',padding:'14px',fontSize:15,fontWeight:900,background:'#e11d48',color:'white',marginBottom:8}}>🎬 Generar mi video</button>
+              :<button onClick={()=>{setVideoInfo(null);pedirGenerar('imagen');}} style={{...S.btn,width:'100%',padding:'14px',fontSize:15,fontWeight:900,background:'#16a34a',color:'white',marginBottom:8}}>✨ Ver el pack de imágenes</button>}
             <button onClick={()=>setVideoInfo(null)} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#64748b',padding:'11px',fontSize:13,fontWeight:700}}>Ahora no</button>
           </div>
         </div>
@@ -5628,7 +5656,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           {videoDiag&&<div style={{maxWidth:380,width:'100%',background:'rgba(220,38,38,.15)',border:'1px solid rgba(254,202,202,.4)',color:'#fecaca',borderRadius:10,padding:'8px 10px',fontSize:11,marginBottom:10,textAlign:'center'}}>{videoDiag}</div>}
           <div style={{position:'relative',width:'100%',maxWidth:380,marginBottom:14}}>
             <video src={videoUrl} controls autoPlay playsInline disablePictureInPicture controlsList="nofullscreen noremoteplayback nodownload" style={{width:'100%',borderRadius:14,background:'#000',display:'block'}}></video>
-            {!videoPaga&&!_VIDEO_GRATIS&&(
+            {!videoPaga&&!videoRegalo&&(
               <div style={{position:'absolute',inset:0,pointerEvents:'none',overflow:'hidden',borderRadius:14,zIndex:3}}>
                 <div style={{position:'absolute',top:'-20%',left:'-20%',width:'140%',height:'140%',transform:'rotate(-22deg)',display:'flex',flexDirection:'column',justifyContent:'space-around'}}>
                   {[0,1,2,3,4,5,6].map(i=>(
@@ -5638,7 +5666,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
           </div>
-          {(videoPaga||_VIDEO_GRATIS)?(
+          {(videoPaga||videoRegalo)?(
             <button onClick={()=>guardarVideoArchivo(videoUrl)} style={{...S.btn,width:'100%',maxWidth:380,background:'#22c55e',color:'white',padding:'15px',fontSize:16,fontWeight:900}}>⬇️ Descargar / Compartir video</button>
           ):(
             <div style={{width:'100%',maxWidth:380,textAlign:'center'}}>

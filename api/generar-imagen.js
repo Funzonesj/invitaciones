@@ -5,6 +5,7 @@
 // ────────────────────────────────────────────────────────────────
 
 const origenOk = require('./_origen');
+const PAGOS = require('./_pagos');
 module.exports = async (req, res) => {
   // CORS básico (mismo origen, pero por las dudas)
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -26,6 +27,26 @@ module.exports = async (req, res) => {
     const { fotoNino, personaje, personajeNombre, prompt, n } = body;
     if (!fotoNino || !personaje) {
       res.status(400).json({ error: 'Faltan las imágenes (foto del niño/a y personaje).' });
+      return;
+    }
+
+    // ── PUERTA DEL PAGO ──
+    // Esto es lo único que impide que alguien gaste el crédito de OpenAI gratis.
+    // El control de origen de arriba se falsifica con una línea, así que la
+    // autorización REAL es esta: tiene que haber un pago aprobado en Mercado Pago,
+    // por el monto del panel, con cupos sin usar. La cuenta la lleva el servidor
+    // (fila `__pago_<evento>__`), no el navegador.
+    const evId = String(body.evId || '').slice(0, 80);
+    const ref = String(body.ref || '').slice(0, 120);
+    if (!evId || !ref) { res.status(402).json({ error: 'Para generar las imágenes primero hay que abonar.' }); return; }
+    const permiso = await PAGOS.puedeGenerar(evId, ref);
+    if (!permiso.ok) {
+      const msg = permiso.motivo === 'pack-agotado'
+        ? 'Ya usaste todas las imágenes de tu pack.'
+        : permiso.motivo === 'base-no-disponible'
+          ? 'No pudimos verificar el pago en este momento. Probá de nuevo en un minuto.'
+          : 'No encontramos un pago aprobado para estas imágenes.';
+      res.status(402).json({ error: msg, motivo: permiso.motivo });
       return;
     }
 
@@ -65,7 +86,8 @@ module.exports = async (req, res) => {
       + 'sin texto, sin letras, sin números, sin marcas de agua.';
     const finalPrompt = creativo + reglas;
 
-    const cantidad = Math.min(Math.max(parseInt(n, 10) || 2, 1), 3);
+    // Nunca más de los cupos que le quedan pagados (el navegador pide, el server manda).
+    const cantidad = Math.min(Math.max(parseInt(n, 10) || 2, 1), 3, permiso.restantes);
 
     const fd = new FormData();
     fd.append('model', 'gpt-image-1');
@@ -89,6 +111,8 @@ module.exports = async (req, res) => {
     }
     const imagenes = (data.data || []).map(d => 'data:image/png;base64,' + d.b64_json);
     if (!imagenes.length) { res.status(502).json({ error: 'OpenAI no devolvió imágenes.' }); return; }
+    // Descontar del pack SOLO lo que realmente se generó (si falla, no se cobra el cupo).
+    await PAGOS.consumir(evId, ref, imagenes.length);
     res.status(200).json({ imagenes });
   } catch (e) {
     res.status(500).json({ error: String((e && e.message) || e) });

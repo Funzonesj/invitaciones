@@ -3,11 +3,15 @@
 // Lee el saldo de la cuenta usando la misma FAL_KEY (Settings → Env Vars).
 // ────────────────────────────────────────────────────────────────
 
+const origenOk = require('./_origen');
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
+  // Este endpoint estaba ABIERTO a internet: mostraba el saldo y el usuario de la
+  // cuenta de fal.ai a cualquiera que supiera la dirección.
+  if (!origenOk(req)) { res.status(403).json({ error: 'Origen no permitido' }); return; }
 
   // El saldo (billing) necesita una clave con permiso de administración.
   // Usamos FAL_ADMIN_KEY si existe; si no, probamos con FAL_KEY.

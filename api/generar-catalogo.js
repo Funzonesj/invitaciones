@@ -5,10 +5,11 @@
 // ────────────────────────────────────────────────────────────────
 
 const origenOk = require('./_origen');
+const PAGOS = require('./_pagos');
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-encargada-token');
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   if (req.method !== 'POST') { res.status(405).json({ error: 'Método no permitido' }); return; }
   if (!origenOk(req)) { res.status(403).json({ error: 'Origen no permitido' }); return; }
@@ -23,6 +24,19 @@ module.exports = async (req, res) => {
     const body = req.body || {};
     const { prompt, image, images, model, size, aspect_ratio, isI2I, describir } = body;
     if (!prompt || !model) { res.status(400).json({ error: 'Faltan datos (prompt o modelo).' }); return; }
+
+    // ── PUERTA DEL PAGO ──
+    // Este endpoint lo usan DOS: el panel de administración (catálogo de temáticas,
+    // mejorar/3D) y el papá (sus imágenes con IA y la base de su video). El control
+    // de origen de arriba se falsifica con una línea, así que la autorización real
+    // es esta: la dueña/encargada pasa con su token; el papá necesita pago aprobado.
+    const permiso = await PAGOS.autorizarGasto(req, body);
+    if (!permiso.ok) {
+      res.status(402).json({ error: PAGOS.mensajeMotivo(permiso.motivo), motivo: permiso.motivo });
+      return;
+    }
+    // Si es el papá gastando cupos de su pack, descontarlos al final (abajo).
+    const cobrarCupo = !permiso.admin && !body.paraVideo;
 
     // Paso opcional: describir el personaje de la imagen (para text-to-image, esquivando marcas)
     let finalPrompt = prompt;
@@ -84,6 +98,8 @@ module.exports = async (req, res) => {
     }
     const url = (data.images && data.images[0] && data.images[0].url) || (data.image && data.image.url);
     if (!url) { res.status(502).json({ error: 'fal.ai no devolvió imagen. Probá otro modelo.' }); return; }
+    // Descontar el cupo recién ahora: si la generación falla, al papá no se le cobra.
+    if (cobrarCupo) { try { await PAGOS.consumir(String(body.evId), String(body.ref), 1); } catch (e) {} }
     res.status(200).json({ url });
   } catch (e) {
     res.status(500).json({ error: String((e && e.message) || e) });
