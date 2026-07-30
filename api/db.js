@@ -112,15 +112,30 @@ module.exports = async (req, res) => {
       const usuario = String(b.usuario || '').trim().toLowerCase();
       const clave = String(b.clave || '').trim().toLowerCase();
       if (!usuario || !clave) { res.status(400).json({ error: 'faltan datos' }); return; }
-      const r = await sbRest('eventos?select=id,data');
-      const rows = (r.data || []);
-      const hit = rows.find(x => x.data && typeof x.data === 'object' && !String(x.id).startsWith('__')
-        && String(x.data.user || '').trim().toLowerCase() === usuario
-        && String(x.data.pass || '').trim().toLowerCase() === clave);
+      // Que filtre la BASE, no el server: antes se bajaba la tabla ENTERA (~15 MB de fotos
+      // en base64) en CADA intento de login, y eso volteaba a Postgres → el papá veía
+      // "Datos incorrectos" cuando en realidad la base se había caído.
+      // Traemos solo id+usuario de los candidatos (unos pocos bytes).
+      const cand = await sbRest('eventos?select=id,u:data->>user&data->>user=ilike.' + encodeURIComponent(usuario));
+      // Si la base está caída, r.data es un objeto de error: avisar en vez de decir "clave mal".
+      if (!Array.isArray(cand.data)) { res.status(503).json({ error: 'base-no-disponible' }); return; }
+      // OJO: ilike interpreta % y _ como comodines, así que la comparación que MANDA es
+      // esta de acá (exacta, en JS). Sin esto, un usuario "%" entraría a cualquier evento.
+      const ids = cand.data
+        .filter(x => x && !String(x.id).startsWith('__') && String(x.u || '').trim().toLowerCase() === usuario)
+        .map(x => x.id).slice(0, 5);
+      let hit = null, hitId = '';
+      for (const id of ids) {
+        const one = await sbRest('eventos?id=eq.' + encodeURIComponent(id) + '&select=data');
+        if (!Array.isArray(one.data)) { res.status(503).json({ error: 'base-no-disponible' }); return; }
+        const ev = (one.data[0] && one.data[0].data) || null;
+        if (ev && typeof ev === 'object' && String(ev.pass || '').trim().toLowerCase() === clave) { hit = ev; hitId = id; break; }
+      }
       if (!hit) { res.status(200).json({ ok: false }); return; }
-      const cf = await sbRest('confs?select=data');
-      const confs = ((cf.data || []).map(x => x.data)).filter(c => c && c.evId === hit.data.id);
-      res.status(200).json({ ok: true, ev: hit.data, confs: confs });
+      const evId = hit.id || hitId;
+      const cf = await sbRest('confs?select=data&data->>evId=eq.' + encodeURIComponent(evId));
+      const confs = Array.isArray(cf.data) ? cf.data.map(x => x.data).filter(c => c && c.evId === evId) : [];
+      res.status(200).json({ ok: true, ev: hit, confs: confs });
       return;
     }
 
