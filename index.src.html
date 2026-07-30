@@ -136,12 +136,30 @@ function _nombreSlug(nombre) {
   // nombre en minúsculas, sin acentos (í→i, á→a) ni espacios/símbolos. Nombre COMPLETO (no se corta).
   return (nombre||'fiesta').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'')||'fiesta';
 }
-function genUser(nombre) {
-  return _nombreSlug(nombre); // USUARIO = nombre del niño (ej: mariajosefina)
-}
-function genPass(nombre, edad) {
-  const ed = (edad!=null && edad!=='') ? String(edad).replace(/[^0-9]/g,'') : '';
-  return _nombreSlug(nombre) + ed; // CONTRASEÑA = nombre + edad (ej: mariajosefina7)
+// Credenciales del papá: USUARIO = nombre del niño, CLAVE = usuario + edad
+// (ej: mariajosefina / mariajosefina7). Se generan SIEMPRE con genCreds, que además
+// garantiza que no se repitan. No agregar helpers sueltos que armen el usuario o la
+// clave por su cuenta: sin el chequeo de repetidos vuelve el bug de los dos "Felipe".
+//
+// Credenciales que NO pueden repetirse.
+// El formato de siempre (usuario=nombre, clave=nombre+edad) choca cuando hay dos chicos
+// con el mismo nombre Y la misma edad: quedaban usuario y clave idénticos y el papá
+// entraba a la invitación de la otra familia. Pasó en vivo con dos "Felipe" de 6.
+// Si el nombre ya está tomado por otro evento, se le suma el día del cumple (y si hace
+// falta el mes). La clave sale del usuario, así que si el usuario es único, la clave también.
+function genCreds(nombre, edad, dia, mes, eventos, idActual) {
+  const base = _nombreSlug(nombre);
+  const ed = (edad != null && edad !== '') ? String(edad).replace(/[^0-9]/g, '') : '';
+  const d = String(dia || '').replace(/[^0-9]/g, '');
+  const m = String(mes || '').replace(/[^0-9]/g, '');
+  const usados = new Set((eventos || [])
+    .filter(e => e && e.user && e.id !== idActual)
+    .map(e => String(e.user).trim().toLowerCase()));
+  let user = base;
+  if (usados.has(user) && d) user = base + d;          // felipe → felipe9
+  if (usados.has(user) && d && m) user = base + d + m; // felipe9 → felipe908
+  for (let n = 2; usados.has(user) && n < 100; n++) user = base + d + m + n; // último recurso
+  return { user: user, pass: user + ed };              // clave = usuario + edad
 }
 // ¿El acceso del evento está vencido?
 // La tarjeta sigue viva el día del cumple + 1 semana completa después (para subir
@@ -1234,7 +1252,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
 
   function autoCredenciales(){
     if(!form.nombre) return alert('Ingresá primero el nombre del agasajado.');
-    setForm(f=>({...f, user: genUser(f.nombre), pass: genPass(f.nombre, f.edad)}));
+    setForm(f=>({...f, ...genCreds(f.nombre, f.edad, f.dia, f.mes, eventos, editId)}));
   }
   const listFiltrada=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fDia||e.dia===fDia));
 
@@ -1270,8 +1288,9 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   }
   function guardarEvento(){
     const fmt=fmtTipo(form.tipo,iaConfig);
-    // Asegurar credenciales (usuario = nombre+edad; clave = nombre+números) aunque no haya tocado el botón
-    const f2={...form, user: form.user || (form.nombre?genUser(form.nombre):''), pass: form.pass || (form.nombre?genPass(form.nombre,form.edad):'')};
+    // Asegurar credenciales (usuario = nombre; clave = usuario+edad) aunque no haya tocado el botón
+    const _c=form.nombre?genCreds(form.nombre,form.edad,form.dia,form.mes,eventos,editId):{user:'',pass:''};
+    const f2={...form, user: form.user || _c.user, pass: form.pass || _c.pass};
     if(editId){setEventos(eventos.map(x=>x.id===editId?{...x,...f2,...fmt}:x));setEditId(null);}
     else{setEventos(prev=>[...prev,{...f2,...fmt,id:'ev-'+Date.now().toString(16),sucId:sucAct.id,creado:Date.now()}]);}
     setForm(ef);setOpen(false);setTemOpen(false);
@@ -1353,10 +1372,15 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
           <h3 style={{fontWeight:900,fontSize:14,marginBottom:14}}>{editId?'✏️ Editar Evento':'+ Nuevo Evento'}</h3>
           <form onSubmit={sub}>
             <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,marginBottom:14}}>
-              <label><span style={S.label}>Nombre</span><input type="text" value={form.nombre} autoComplete="off" onChange={e=>{const nv=e.target.value;setForm(f=>({...f,nombre:nv,user:(editId&&f.user)?f.user:(nv?genUser(nv):''),pass:(editId&&f.pass)?f.pass:(nv?genPass(nv,f.edad):'')}));}} style={S.input} required/></label>
+              <label><span style={S.label}>Nombre</span><input type="text" value={form.nombre} autoComplete="off" onChange={e=>{const nv=e.target.value;setForm(f=>{const c=nv?genCreds(nv,f.edad,f.dia,f.mes,eventos,editId):{user:'',pass:''};return {...f,nombre:nv,user:(editId&&f.user)?f.user:c.user,pass:(editId&&f.pass)?f.pass:c.pass};});}} style={S.input} required/></label>
               <label><span style={S.label}>Edad</span>
                 <div style={{display:'flex',gap:4}}>
-                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} onChange={e=>{const ev=e.target.value;setForm(f=>({...f,edad:ev,pass:(editId&&f.pass)?f.pass:(f.nombre?genPass(f.nombre,ev):f.pass)}));}} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
+                  <input type="number" value={form.edad} autoComplete="off" disabled={form.edadUnidad==='noaplica'} onChange={e=>{const nv=e.target.value;setForm(f=>{
+                    if(editId&&f.pass) return {...f,edad:nv};                       // editando: no pisar credenciales ya entregadas
+                    if(f.user) return {...f,edad:nv,pass:f.user+String(nv||'').replace(/[^0-9]/g,'')}; // clave = usuario + edad
+                    const c=f.nombre?genCreds(f.nombre,nv,f.dia,f.mes,eventos,editId):{user:'',pass:''};
+                    return {...f,edad:nv,user:c.user,pass:c.pass};
+                  });}} style={{...S.input,flex:1,background:form.edadUnidad==='noaplica'?'#f1f5f9':'#f8fafc'}} placeholder={form.edadUnidad==='noaplica'?'—':''}/>
                   <select value={form.edadUnidad||'años'} onChange={e=>setForm({...form,edadUnidad:e.target.value,edad:e.target.value==='noaplica'?'':form.edad})} style={{...S.input,flex:1}}>
                     <option value="años">años</option>
                     <option value="meses">meses</option>
