@@ -1046,6 +1046,50 @@ function App() {
       }
     })();
   }, []);
+  // 🧳 MUDANZA de fotos al depósito (Storage): corre sola cuando la dueña o la
+  // encargada abren el panel, de a 4 filas por vez, hasta dejar la base liviana.
+  // Se puede cerrar el panel a mitad de camino: la próxima vez sigue sola.
+  const [migrando, setMigrando] = useState(null); // null | {hechos,total} | 'listo'
+  React.useEffect(() => {
+    if (!fullLoaded || !adminSesion) return;
+    if (localStorage.getItem('fz_fotos_migradas') === '1') return; // ya terminó desde este aparato
+    let vivo = true;
+    (async () => {
+      if (!(await gwPing())) return;
+      const total = Math.max(eventos.length, 1);
+      let off = 0;
+      while (vivo) {
+        try {
+          const r = await gwCall('migrarFotos', {
+            offset: off
+          });
+          off += r.revisados || 0;
+          if (vivo) setMigrando({
+            hechos: Math.min(off, total),
+            total: Math.max(total, off)
+          });
+          if (r.fin) break;
+        } catch (e) {
+          if (vivo) setMigrando(null);
+          return;
+        }
+        await new Promise(res => setTimeout(res, 1200)); // que la base respire entre tandas
+      }
+      if (vivo) {
+        setMigrando('listo');
+        try {
+          localStorage.setItem('fz_fotos_migradas', '1');
+        } catch (e) {}
+        setTimeout(() => {
+          setMigrando(m => m === 'listo' ? null : m);
+        }, 10000);
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [fullLoaded, adminSesion]);
+
   // Reintentar solo la carga completa cuando falló (cada 30 segundos).
   React.useEffect(() => {
     if (!cargaFallo) return;
@@ -1318,7 +1362,16 @@ function App() {
     style: {
       fontWeight: 400
     }
-  }, " Reintento solo en unos segundos \u2014 si sigue as\xED, reinici\xE1 el proyecto en Supabase.")), vista !== 'invitado-portada' && vista !== 'invitado-web' && vista !== 'recuerdos' && /*#__PURE__*/React.createElement("header", {
+  }, " Reintento solo en unos segundos \u2014 si sigue as\xED, reinici\xE1 el proyecto en Supabase.")), migrando && !!adminSesion && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: migrando === 'listo' ? '#166534' : '#1d4ed8',
+      color: 'white',
+      padding: '7px 14px',
+      textAlign: 'center',
+      fontWeight: 700,
+      fontSize: 13
+    }
+  }, migrando === 'listo' ? '✅ Fotos mudadas al depósito. La base quedó liviana: el panel va a cargar mucho más rápido.' : '🧳 Mudando las fotos al depósito… ' + migrando.hechos + ' de ' + migrando.total + ' tarjetas revisadas. Podés seguir usando todo normalmente.'), vista !== 'invitado-portada' && vista !== 'invitado-web' && vista !== 'recuerdos' && /*#__PURE__*/React.createElement("header", {
     style: {
       background: '#ffffff',
       color: '#1e293b',
@@ -17705,6 +17758,7 @@ function PapaCreador({
     if (!form.fotoNino) return;
     const canvas = canvasRef.current;
     const img = new Image();
+    if (/^https?:/.test(form.fotoNino)) img.crossOrigin = 'anonymous'; /* la foto ahora vive en Storage (es un link): sin esto el canvas queda "sucio" y toDataURL explota */
     img.onload = () => {
       canvas.width = img.width;
       canvas.height = img.height;

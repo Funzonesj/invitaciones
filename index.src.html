@@ -510,6 +510,36 @@ function App() {
       else { setCargaFallo(true); }
     })();
   },[]);
+  // 🧳 MUDANZA de fotos al depósito (Storage): corre sola cuando la dueña o la
+  // encargada abren el panel, de a 4 filas por vez, hasta dejar la base liviana.
+  // Se puede cerrar el panel a mitad de camino: la próxima vez sigue sola.
+  const [migrando, setMigrando] = useState(null); // null | {hechos,total} | 'listo'
+  React.useEffect(()=>{
+    if(!fullLoaded || !adminSesion) return;
+    if(localStorage.getItem('fz_fotos_migradas')==='1') return; // ya terminó desde este aparato
+    let vivo=true;
+    (async()=>{
+      if(!(await gwPing())) return;
+      const total=Math.max(eventos.length,1);
+      let off=0;
+      while(vivo){
+        try{
+          const r=await gwCall('migrarFotos',{offset:off});
+          off+=(r.revisados||0);
+          if(vivo) setMigrando({hechos:Math.min(off,total),total:Math.max(total,off)});
+          if(r.fin) break;
+        }catch(e){ if(vivo) setMigrando(null); return; }
+        await new Promise(res=>setTimeout(res,1200)); // que la base respire entre tandas
+      }
+      if(vivo){
+        setMigrando('listo');
+        try{localStorage.setItem('fz_fotos_migradas','1');}catch(e){}
+        setTimeout(()=>{ setMigrando(m=>m==='listo'?null:m); },10000);
+      }
+    })();
+    return ()=>{vivo=false;};
+  },[fullLoaded,adminSesion]);
+
   // Reintentar solo la carga completa cuando falló (cada 30 segundos).
   React.useEffect(()=>{
     if(!cargaFallo) return;
@@ -633,6 +663,13 @@ function App() {
         <div style={{background:'#b91c1c',color:'white',padding:'10px 16px',textAlign:'center',fontWeight:800,fontSize:14,position:'sticky',top:0,zIndex:300}}>
           ⚠️ No me puedo conectar con la base de datos. Tus tarjetas ESTÁN GUARDADAS, solo no se pueden mostrar ahora.
           <span style={{fontWeight:400}}> Reintento solo en unos segundos — si sigue así, reiniciá el proyecto en Supabase.</span>
+        </div>
+      )}
+      {migrando&&!!adminSesion&&(
+        <div style={{background:migrando==='listo'?'#166534':'#1d4ed8',color:'white',padding:'7px 14px',textAlign:'center',fontWeight:700,fontSize:13}}>
+          {migrando==='listo'
+            ? '✅ Fotos mudadas al depósito. La base quedó liviana: el panel va a cargar mucho más rápido.'
+            : ('🧳 Mudando las fotos al depósito… '+migrando.hechos+' de '+migrando.total+' tarjetas revisadas. Podés seguir usando todo normalmente.')}
         </div>
       )}
 
@@ -4480,7 +4517,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     }catch(e){ alert('No se pudo grabar el video en este dispositivo. Probá desde una computadora. Igual te quedan el link y el PDF.'); }
     setVidGen(false);
   }
-  function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
+  function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();if(/^https?:/.test(form.fotoNino))img.crossOrigin='anonymous';/* la foto ahora vive en Storage (es un link): sin esto el canvas queda "sucio" y toDataURL explota */img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
   function guardar(e){e.preventDefault();const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvGuardada(true);alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');}
   function verTarjeta(opts){_PAPA_NAV=opts||{seccion:'home'};const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}
   function borrarIaImg(i){

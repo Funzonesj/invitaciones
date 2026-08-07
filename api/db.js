@@ -46,6 +46,70 @@ async function sbRest(path, opts){
   return { ok: r.ok, status: r.status, data };
 }
 
+// ── FOTOS AL DEPÓSITO (Supabase Storage) ────────────────────────
+// Las fotos venían PEGADAS adentro de la base (base64): la tabla pesaba ~25 MB
+// y la base se caía a cada rato. Acá se suben al Storage y en la base queda
+// solo el link. El nombre del archivo sale del CONTENIDO (md5): subir la misma
+// foto dos veces da el mismo archivo, así que nunca se duplica.
+const BUCKET = 'fotos';
+let _bucketOk = false;
+async function asegurarBucket(){
+  if (_bucketOk) return;
+  try {
+    const h = { apikey: SERVICE, Authorization: 'Bearer ' + SERVICE, 'Content-Type': 'application/json' };
+    const r = await fetch(SB_URL + '/storage/v1/bucket/' + BUCKET, { headers: h });
+    if (!r.ok) await fetch(SB_URL + '/storage/v1/bucket', { method: 'POST', headers: h, body: JSON.stringify({ id: BUCKET, name: BUCKET, public: true }) });
+    _bucketOk = true;
+  } catch (e) {}
+}
+function _md5(s){ return crypto.createHash('md5').update(s).digest('hex').slice(0, 12); }
+async function subirBase64(prefijo, dataUri){
+  const m = String(dataUri).match(/^data:([a-z]+\/[a-z0-9.+-]+);base64,(.+)$/i);
+  if (!m) return null;
+  const ct = m[1].toLowerCase();
+  const buf = Buffer.from(m[2], 'base64');
+  if (!buf.length) return null;
+  const ext = ct.indexOf('png') >= 0 ? 'png' : ct.indexOf('webp') >= 0 ? 'webp' : ct.indexOf('gif') >= 0 ? 'gif'
+    : ct.indexOf('mp4') >= 0 ? 'mp4' : ct.indexOf('webm') >= 0 ? 'webm' : ct.indexOf('mpeg') >= 0 ? 'mp3' : 'jpg';
+  const path = prefijo + '/' + _md5(m[2]) + '.' + ext;
+  await asegurarBucket();
+  const up = await fetch(SB_URL + '/storage/v1/object/' + BUCKET + '/' + path, {
+    method: 'POST',
+    headers: { apikey: SERVICE, Authorization: 'Bearer ' + SERVICE, 'Content-Type': ct, 'x-upsert': 'true' },
+    body: buf,
+  });
+  if (!up.ok) return null; // si falla, el base64 se queda como está (no se pierde nada)
+  return SB_URL + '/storage/v1/object/public/' + BUCKET + '/' + path;
+}
+// Recorre el dato (hasta 4 niveles) y cambia cada foto/video pegado por su link.
+// Devuelve { v: dato aligerado, n: cuántas subió }.
+const B64_MIN = 20000; // ~15 KB reales: lo más chico no vale el viaje
+async function aligerar(valor, prefijo, prof){
+  prof = prof || 0;
+  if (valor == null || prof > 4) return { v: valor, n: 0 };
+  if (typeof valor === 'string') {
+    if (valor.length > B64_MIN && /^data:(image|video|audio)\//i.test(valor)) {
+      const url = await subirBase64(prefijo, valor);
+      if (url) return { v: url, n: 1 };
+    }
+    return { v: valor, n: 0 };
+  }
+  if (Array.isArray(valor)) {
+    let n = 0; const out = [];
+    for (const x of valor) { const r = await aligerar(x, prefijo, prof + 1); out.push(r.v); n += r.n; }
+    return { v: out, n };
+  }
+  if (typeof valor === 'object') {
+    let n = 0; const out = {};
+    for (const k of Object.keys(valor)) { const r = await aligerar(valor[k], prefijo, prof + 1); out[k] = r.v; n += r.n; }
+    return { v: out, n };
+  }
+  return { v: valor, n: 0 };
+}
+function _prefijoDe(id){
+  return (String(id).indexOf('__') === 0 ? 'config/' : 'ev/') + String(id).replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
 // Verifica el token de Supabase Auth (dueña). Devuelve el user o null.
 async function verificarDuena(jwt){
   if (!jwt) return null;
@@ -188,12 +252,40 @@ module.exports = async (req, res) => {
 
     // ── Guardar evento (dueña, encargada, o papá SOLO su propio evento) ──
     if (action === 'upsertEvento') {
-      const ev = b.ev || {};
+      let ev = b.ev || {};
       if (!ev.id) { res.status(400).json({ error: 'falta id' }); return; }
       const esPapaDeEste = papaOk && String(ev.id) === String(evIdHdr);
       if (!duena && !encargadaId && !esPapaDeEste) { res.status(401).json({ error: 'no autorizado' }); return; }
+      // Las fotos pegadas se van al depósito ANTES de guardar: la base queda
+      // liviana para siempre, y si la subida falla el base64 se guarda igual.
+      try { ev = (await aligerar(ev, _prefijoDe(ev.id))).v; } catch (e) {}
       const r = await sbRest('eventos', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ id: ev.id, data: ev }) });
       res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
+      return;
+    }
+
+    // ── Mudanza: aligerar una tanda de filas ya guardadas (dueña o encargada) ──
+    // El panel la corre solo, de a poquito, hasta que no queda ninguna foto
+    // pegada en la base. Re-correrla no hace nada (las filas ya livianas se saltean).
+    if (action === 'migrarFotos') {
+      if (!duena && !encargadaId) { res.status(401).json({ error: 'no autorizado' }); return; }
+      const off = Math.max(0, Number(b.offset) || 0);
+      const TANDA = 4;
+      const r = await sbRest('eventos?select=id,data&order=id&limit=' + TANDA + '&offset=' + off);
+      if (!Array.isArray(r.data)) { res.status(503).json({ error: 'base-no-disponible' }); return; }
+      let cambiados = 0, subidas = 0;
+      for (const row of r.data) {
+        try {
+          const lig = await aligerar(row.data, _prefijoDe(row.id));
+          if (lig.n > 0) {
+            // Se escribe ENSEGUIDA después de aligerar esa fila (ventana mínima
+            // por si alguien la está editando justo en ese momento).
+            const w = await sbRest('eventos', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ id: row.id, data: lig.v }) });
+            if (w.ok) { cambiados++; subidas += lig.n; }
+          }
+        } catch (e) {}
+      }
+      res.status(200).json({ revisados: r.data.length, cambiados, subidas, fin: r.data.length < TANDA });
       return;
     }
 
@@ -212,8 +304,10 @@ module.exports = async (req, res) => {
       if (soloDuena ? !duena : (!duena && !encargadaId)) { res.status(401).json({ error: 'no autorizado' }); return; }
       const tabla = (action === 'upsertConf') ? 'confs' : 'eventos';
       const id = String(b.id || (b.c && b.c.id) || '');
-      const data = (action === 'upsertConf') ? b.c : b.data;
+      let data = (action === 'upsertConf') ? b.c : b.data;
       if (!id) { res.status(400).json({ error: 'falta id' }); return; }
+      // La config también llevaba imágenes pegadas (temáticas, logos): al depósito.
+      if (action === 'upsertConfig') { try { data = (await aligerar(data, _prefijoDe(id))).v; } catch (e) {} }
       const r = await sbRest(tabla, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ id: id, data: data }) });
       res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
       return;
