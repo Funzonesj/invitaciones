@@ -1405,7 +1405,21 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   const _hoy=new Date(); const _hoyKey=_hoy.getFullYear()+'-'+_hoy.getMonth()+'-'+_hoy.getDate();
   const esDeHoy=ev=>{ const ms=evCreadoMs(ev); if(!ms) return false; const d=new Date(ms); return (d.getFullYear()+'-'+d.getMonth()+'-'+d.getDate())===_hoyKey; };
   const creadasHoy=evsLocal.filter(esDeHoy).sort((a,b)=>evCreadoMs(b)-evCreadoMs(a));
-  const historial=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fAnio||String(e.anio)===String(fAnio))&&(!fDia||String(e.dia)===String(fDia))).sort((a,b)=>evCreadoMs(b)-evCreadoMs(a));
+  // Fecha del CUMPLE en número (aaaammdd) para poder ordenar por ella.
+  // Las que no tienen fecha cargada van al final, no mezcladas en el medio.
+  const evFechaNum=ev=>{
+    const a=parseInt(String((ev&&ev.anio)||''),10), m=parseInt(String((ev&&ev.mes)||''),10), d=parseInt(String((ev&&ev.dia)||''),10);
+    if(!a||!m||!d) return 0;
+    return a*10000+m*100+d;
+  };
+  // El historial va por FECHA DEL CUMPLE (el más próximo primero), no por
+  // cuándo se creó la tarjeta: así se busca como se piensa, por el día del evento.
+  const historial=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fAnio||String(e.anio)===String(fAnio))&&(!fDia||String(e.dia)===String(fDia)))
+    .sort((a,b)=>{
+      const fa=evFechaNum(a), fb=evFechaNum(b);
+      if(fa!==fb) return fb-fa;                 // primero las de fecha más nueva
+      return evCreadoMs(b)-evCreadoMs(a);       // mismo día: la cargada más tarde arriba
+    });
   const _anioActual=new Date().getFullYear();
   const _aniosSet=new Set(evsLocal.map(e=>String(e.anio)).filter(Boolean));
   for(let y=_anioActual+1;y>=2023;y--)_aniosSet.add(String(y));
