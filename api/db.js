@@ -159,11 +159,21 @@ module.exports = async (req, res) => {
     }
 
     // ── Cargar TODO (dueña o encargada) ──
+    // De a TANDAS chicas: un solo pedido con 150 eventos y las fotos adentro
+    // (~25 MB) volteaba la base ("statement timeout" → 522 → el panel mostraba
+    // "0 activos" como si no hubiera nada). En tandas de 25 la base respira.
     if (action === 'load') {
       if (!duena && !encargadaId) { res.status(401).json({ error: 'no autorizado' }); return; }
-      const ev = await sbRest('eventos?select=id,data');
+      const TANDA = 25;
+      const eventos = [];
+      for (let off = 0; off < 4000; off += TANDA) {
+        const r = await sbRest('eventos?select=id,data&order=id&limit=' + TANDA + '&offset=' + off);
+        if (!r.ok || !Array.isArray(r.data)) break;
+        eventos.push.apply(eventos, r.data);
+        if (r.data.length < TANDA) break;
+      }
       const cf = await sbRest('confs?select=id,data');
-      res.status(200).json({ eventos: ev.data || [], confs: cf.data || [] });
+      res.status(200).json({ eventos, confs: cf.data || [] });
       return;
     }
 

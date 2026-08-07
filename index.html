@@ -93,9 +93,17 @@ async function sbLoadAll() {
   // Directo: dueña autenticada lee todo; invitado/papá solo ven la config no sensible (eventos van por el portero)
   if (!SB) return null;
   try {
-    const ev = await SB.from('eventos').select('id,data');
+    // En TANDAS de 25: pedir la tabla entera de un saque (150 eventos con las
+    // fotos adentro, ~25 MB) hacía que la base se corte por tiempo y se caiga.
+    const TANDA = 25;
+    let rows = [];
+    for (let off = 0; off < 4000; off += TANDA) {
+      const p = await SB.from('eventos').select('id,data').order('id').range(off, off + TANDA - 1);
+      if (p.error || !Array.isArray(p.data)) break;
+      rows = rows.concat(p.data);
+      if (p.data.length < TANDA) break;
+    }
     const cf = await SB.from('confs').select('id,data');
-    const rows = ev.data || [];
     const eventos = rows.filter(r => !String(r.id).startsWith('__')).map(r => r.data);
     const cfgIa = (rows.find(r => r.id === '__config_ia__') || {}).data || null;
     const cfgSuc = (rows.find(r => r.id === '__config_suc__') || {}).data || null;
@@ -887,6 +895,9 @@ function App() {
   // fullLoaded = la base terminó de cargar TODO (no solo la carga rápida de 1 evento).
   // Recién con esto habilitamos escrituras de eventos/config, para no subir datos viejos del celular.
   const [fullLoaded, setFullLoaded] = useState(!SB);
+  // La base no contestó: mostrar el cartel y NO dibujar "0 eventos" como si
+  // estuviera vacía (el susto de "me borraron todo" era esto).
+  const [cargaFallo, setCargaFallo] = useState(false);
 
   // Detect ?inv= / ?rec= param after mount as reliable fallback
   React.useEffect(() => {
@@ -1024,31 +1035,92 @@ function App() {
         }
       }
       setDbReady(true);
-      setFullLoaded(true);
+      // Si la carga COMPLETA falló, NO habilitar escrituras: con la base caída
+      // el panel quedaba "cargado" con la lista vacía y cualquier guardado
+      // podía pisar los datos buenos cuando la base volviera.
+      if (d) {
+        setFullLoaded(true);
+        setCargaFallo(false);
+      } else {
+        setCargaFallo(true);
+      }
     })();
   }, []);
+  // Reintentar solo la carga completa cuando falló (cada 30 segundos).
+  React.useEffect(() => {
+    if (!cargaFallo) return;
+    const t = setTimeout(async () => {
+      const d = await sbLoadAll();
+      if (d) {
+        setEventos(prev => {
+          const ids = new Set(d.eventos.map(e => e.id));
+          const extra = prev.filter(e => !ids.has(e.id));
+          return [...d.eventos, ...extra];
+        });
+        setConfs(d.confs);
+        setFullLoaded(true);
+        setCargaFallo(false);
+      } else {
+        setCargaFallo(false);
+        setTimeout(() => setCargaFallo(true), 0);
+      } // re-dispara el reintento
+    }, 30000);
+    return () => clearTimeout(t);
+  }, [cargaFallo]);
   // Auto-save: localStorage (respaldo) + base de datos central.
   // IMPORTANTE: el INVITADO sin sesión (link ?inv/?rec y sin admin/papá) NO escribe (si no pisa los datos buenos).
   // Pero si está logueada la ADMINISTRADORA (o el papá), SÍ puede guardar, aunque la URL tenga un link.
   // Y los eventos/config recién se suben tras la carga COMPLETA (fullLoaded), no con la rápida.
   const _puedeEscribir = !_SOLO_LECTURA || !!adminSesion || !!papaSesion;
   const _puedeConfig = !!adminSesion; // SOLO la dueña/admin guarda la config del salón (el papá nunca la pisa)
+  // Guardar SOLO los eventos que cambiaron, no los 150 con las fotos adentro.
+  // Antes, cualquier cambio re-subía la tabla entera (~25 MB de escrituras) y
+  // eso era lo que volteaba la base a cada rato. React reemplaza el objeto del
+  // evento tocado y deja los demás idénticos, así que se comparan por identidad.
+  const _evPrevRef = React.useRef(null);
   React.useEffect(() => {
     try {
       localStorage.setItem('fz_eventos', JSON.stringify(eventos));
     } catch (e) {}
     ;
     if (fullLoaded && _puedeEscribir) {
-      eventos.forEach(sbUpsertEvento);
+      const prev = _evPrevRef.current;
+      if (prev === null) {
+        _evPrevRef.current = eventos;
+        return;
+      } // la carga inicial no se re-sube
+      const prevById = {};
+      prev.forEach(function (e) {
+        if (e && e.id) prevById[e.id] = e;
+      });
+      const cambiados = eventos.filter(function (e) {
+        return e && e.id && prevById[e.id] !== e;
+      });
+      cambiados.forEach(sbUpsertEvento);
+      _evPrevRef.current = eventos;
     }
   }, [eventos]);
+  // Las confs igual: solo las que cambiaron (cada confirmación re-subía todas).
+  const _cfPrevRef = React.useRef(null);
   React.useEffect(() => {
     try {
       localStorage.setItem('fz_confs', JSON.stringify(confs));
     } catch (e) {}
     ;
     if (dbReady) {
-      confs.forEach(sbUpsertConf);
+      const prev = _cfPrevRef.current;
+      if (prev === null) {
+        _cfPrevRef.current = confs;
+        return;
+      }
+      const prevById = {};
+      prev.forEach(function (c) {
+        if (c && c.id) prevById[c.id] = c;
+      });
+      confs.filter(function (c) {
+        return c && c.id && prevById[c.id] !== c;
+      }).forEach(sbUpsertConf);
+      _cfPrevRef.current = confs;
     }
   }, [confs]);
   React.useEffect(() => {
@@ -1230,7 +1302,23 @@ function App() {
       flexDirection: 'column',
       background: '#f7f9fc'
     }
-  }, vista !== 'invitado-portada' && vista !== 'invitado-web' && vista !== 'recuerdos' && /*#__PURE__*/React.createElement("header", {
+  }, cargaFallo && !!adminSesion && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#b91c1c',
+      color: 'white',
+      padding: '10px 16px',
+      textAlign: 'center',
+      fontWeight: 800,
+      fontSize: 14,
+      position: 'sticky',
+      top: 0,
+      zIndex: 300
+    }
+  }, "\u26A0\uFE0F No me puedo conectar con la base de datos. Tus tarjetas EST\xC1N GUARDADAS, solo no se pueden mostrar ahora.", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 400
+    }
+  }, " Reintento solo en unos segundos \u2014 si sigue as\xED, reinici\xE1 el proyecto en Supabase.")), vista !== 'invitado-portada' && vista !== 'invitado-web' && vista !== 'recuerdos' && /*#__PURE__*/React.createElement("header", {
     style: {
       background: '#ffffff',
       color: '#1e293b',
