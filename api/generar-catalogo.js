@@ -27,16 +27,22 @@ module.exports = async (req, res) => {
 
     // ── PUERTA DEL PAGO ──
     // Este endpoint lo usan DOS: el panel de administración (catálogo de temáticas,
-    // mejorar/3D) y el papá (sus imágenes con IA y la base de su video). El control
-    // de origen de arriba se falsifica con una línea, así que la autorización real
-    // es esta: la dueña/encargada pasa con su token; el papá necesita pago aprobado.
-    const permiso = await PAGOS.autorizarGasto(req, body);
+    // mejorar/3D) y el papá (sus imágenes con IA). El control de origen de arriba
+    // se falsifica con una línea, así que la autorización real es esta: la
+    // dueña/encargada pasa con su token; el papá necesita pago aprobado.
+    //
+    // SIEMPRE se cobra cupo de imagen al papá. Antes, mandando `paraVideo:true`
+    // se colaba por la puerta del REGALO (que no descuenta nada) y generaba
+    // imágenes ilimitadas de fal.ai sin gastar cupos: acá se genera una IMAGEN,
+    // así que cuenta como imagen (auditoría 18/08). El regalo del video vive en
+    // su propio endpoint (generar-video.js), que sí lo marca como usado.
+    const permiso = await PAGOS.autorizarGasto(req, Object.assign({}, body, { paraVideo: false }));
     if (!permiso.ok) {
       res.status(402).json({ error: PAGOS.mensajeMotivo(permiso.motivo), motivo: permiso.motivo });
       return;
     }
-    // Si es el papá gastando cupos de su pack, descontarlos al final (abajo).
-    const cobrarCupo = !permiso.admin && !body.paraVideo;
+    // Papá → siempre descuenta un cupo (al final, si la generación salió bien).
+    const cobrarCupo = !permiso.admin;
 
     // Paso opcional: describir el personaje de la imagen (para text-to-image, esquivando marcas)
     let finalPrompt = prompt;

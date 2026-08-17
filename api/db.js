@@ -30,8 +30,21 @@ function verifyEncargada(tok){
   return null;
 }
 
-// Campos que NUNCA salen al invitado (link público de la tarjeta)
-const CAMPOS_PRIVADOS = ['pass','user','clave','celPapa','dni','tel','telefono','encuesta'];
+// Campos que NUNCA salen al invitado (link público de la tarjeta).
+// Se limpian a CUALQUIER profundidad y por PATRÓN, no solo por nombre exacto:
+// antes se colaba `celPapa2` (el teléfono del segundo papá) porque la lista
+// solo miraba el nivel de arriba y el nombre exacto (auditoría 18/08).
+const CAMPOS_PRIVADOS = ['pass','user','clave','dni','documento','encuesta'];
+const PATRON_PRIVADO = /(^cel)|tel|celular|dni|documento|pass|clave|(^user$)|encuesta/i;
+function esClavePrivada(k) {
+  if (CAMPOS_PRIVADOS.indexOf(k) !== -1) return true;
+  return PATRON_PRIVADO.test(String(k));
+}
+
+// Configs que SÍ se pueden leer sin sesión (marca del salón y precios que la
+// tarjeta necesita para dibujarse). El resto de los `__config_*__` —y sobre
+// todo `__config_usuarios__`, que guarda las claves de las encargadas— NO.
+const CONFIGS_PUBLICAS = ['__config_suc__', '__config_ia__', '__config_tematicas__', '__config_pedidos__'];
 
 async function sbRest(path, opts){
   opts = opts || {};
@@ -121,11 +134,20 @@ async function verificarDuena(jwt){
   } catch (e) { return null; }
 }
 
-function sanitizar(data){
-  if (!data || typeof data !== 'object') return data;
-  const out = {};
-  for (const k of Object.keys(data)) { if (CAMPOS_PRIVADOS.indexOf(k) === -1) out[k] = data[k]; }
-  return out;
+// Limpia los datos privados a cualquier profundidad (objetos y listas).
+function sanitizar(data, prof){
+  prof = prof || 0;
+  if (data == null || prof > 6) return data;
+  if (Array.isArray(data)) return data.map((x) => sanitizar(x, prof + 1));
+  if (typeof data === 'object') {
+    const out = {};
+    for (const k of Object.keys(data)) {
+      if (esClavePrivada(k)) continue;
+      out[k] = sanitizar(data[k], prof + 1);
+    }
+    return out;
+  }
+  return data;
 }
 
 module.exports = async (req, res) => {
@@ -148,10 +170,31 @@ module.exports = async (req, res) => {
     if (action === 'invitacion') {
       const id = String(b.id || (req.query && req.query.id) || '');
       if (!id) { res.status(400).json({ error: 'falta id' }); return; }
+      // NUNCA una fila de configuración por acá: `__config_usuarios__` tiene las
+      // claves de las encargadas y `__pago_*__` el estado de pago. Los eventos
+      // reales no empiezan con `__` (auditoría 18/08).
+      if (id.indexOf('__') === 0) { res.status(404).json({ error: 'no existe' }); return; }
       const r = await sbRest('eventos?id=eq.' + encodeURIComponent(id) + '&select=id,data');
       const row = (r.data && r.data[0]) || null;
       if (!row) { res.status(404).json({ error: 'no existe' }); return; }
       res.status(200).json({ id: row.id, data: sanitizar(row.data) });
+      return;
+    }
+
+    // ── Config pública del salón (marca y precios) — SIN sesión ──
+    // Solo las de la lista blanca. Sirve para que la tarjeta se dibuje con el
+    // candado de la base puesto, sin exponer las claves de las encargadas.
+    if (action === 'config') {
+      const pedidos = Array.isArray(b.ids) ? b.ids.map(String)
+        : (b.id ? [String(b.id)] : []);
+      const ids = pedidos.filter((x) => CONFIGS_PUBLICAS.indexOf(x) !== -1);
+      if (!ids.length) { res.status(200).json({ configs: {} }); return; }
+      // Los ids de config son solo letras y guiones bajos, así que el filtro
+      // `in.(a,b)` va sin comillas (igual que lo hacía el arranque).
+      const r = await sbRest('eventos?id=in.(' + ids.join(',') + ')&select=id,data');
+      const out = {};
+      (Array.isArray(r.data) ? r.data : []).forEach((row) => { out[row.id] = row.data; });
+      res.status(200).json({ configs: out });
       return;
     }
 

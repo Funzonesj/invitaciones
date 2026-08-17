@@ -90,38 +90,11 @@ async function sbLoadAll() {
       }
     }
   } catch (e) {}
-  // Directo: dueña autenticada lee todo; invitado/papá solo ven la config no sensible (eventos van por el portero)
-  if (!SB) return null;
-  try {
-    // En TANDAS de 25: pedir la tabla entera de un saque (150 eventos con las
-    // fotos adentro, ~25 MB) hacía que la base se corte por tiempo y se caiga.
-    const TANDA = 25;
-    let rows = [];
-    for (let off = 0; off < 4000; off += TANDA) {
-      const p = await SB.from('eventos').select('id,data').order('id').range(off, off + TANDA - 1);
-      if (p.error || !Array.isArray(p.data)) break;
-      rows = rows.concat(p.data);
-      if (p.data.length < TANDA) break;
-    }
-    const cf = await SB.from('confs').select('id,data');
-    const eventos = rows.filter(r => !String(r.id).startsWith('__')).map(r => r.data);
-    const cfgIa = (rows.find(r => r.id === '__config_ia__') || {}).data || null;
-    const cfgSuc = (rows.find(r => r.id === '__config_suc__') || {}).data || null;
-    const cfgUsr = (rows.find(r => r.id === '__config_usuarios__') || {}).data || null;
-    const cfgTem = (rows.find(r => r.id === '__config_tematicas__') || {}).data || null;
-    const cfgPed = (rows.find(r => r.id === '__config_pedidos__') || {}).data || null;
-    return {
-      eventos,
-      confs: (cf.data || []).map(r => r.data),
-      cfgIa,
-      cfgSuc,
-      cfgUsr,
-      cfgTem,
-      cfgPed
-    };
-  } catch (e) {
-    return null;
-  }
+  // Sin acceso directo a la base: TODO pasa por el portero (arriba). Si el
+  // portero no autorizó (no hay sesión de dueña/encargada), no se carga la
+  // tabla — antes acá había un acceso directo con la clave pública, que es
+  // justo lo que se cerró (auditoría 18/08).
+  return null;
 }
 /* ── PORTERO SEGURO (gateway /api/db) ──────────────────────────
    Las ESCRITURAS pasan por el portero (con la llave secreta del server).
@@ -170,6 +143,9 @@ async function gwCall(action, payload) {
   if (!r.ok) throw new Error('gw ' + r.status);
   return r.json();
 }
+// Todas las escrituras van SOLO por el portero (llave secreta del server). Sin
+// el fallback directo: con el candado de la base puesto, la clave pública ya no
+// puede escribir (auditoría 18/08).
 async function sbUpsertEvento(ev) {
   if (!(ev && ev.id)) return;
   if (await gwPing()) {
@@ -177,15 +153,6 @@ async function sbUpsertEvento(ev) {
       await gwCall('upsertEvento', {
         ev: ev
       });
-      return;
-    } catch (e) {}
-  }
-  if (SB) {
-    try {
-      SB.from('eventos').upsert({
-        id: ev.id,
-        data: ev
-      }).then(function () {}, function () {});
     } catch (e) {}
   }
 }
@@ -196,12 +163,6 @@ async function sbDeleteEvento(id) {
       await gwCall('deleteEvento', {
         id: id
       });
-      return;
-    } catch (e) {}
-  }
-  if (SB) {
-    try {
-      SB.from('eventos').delete().eq('id', id).then(function () {}, function () {});
     } catch (e) {}
   }
 }
@@ -213,15 +174,6 @@ async function sbUpsertConf(c) {
       await gwCall(_GWAUTH.jwt || _GWAUTH.enc ? 'upsertConf' : 'addConf', {
         c: c
       });
-      return;
-    } catch (e) {}
-  }
-  if (SB) {
-    try {
-      SB.from('confs').upsert({
-        id: c.id,
-        data: c
-      }).then(function () {}, function () {});
     } catch (e) {}
   }
 }
@@ -233,15 +185,6 @@ async function sbUpsertConfig(key, data) {
         id: key,
         data: data
       });
-      return;
-    } catch (e) {}
-  }
-  if (SB) {
-    try {
-      SB.from('eventos').upsert({
-        id: key,
-        data: data
-      }).then(function () {}, function () {});
     } catch (e) {}
   }
 }
@@ -950,23 +893,19 @@ function App() {
         const t = localStorage.getItem('fz_enc_token');
         if (t) _GWAUTH.enc = t;
       } catch (e) {}
-      // Config del salón SIEMPRE FRESCA (sin caché del navegador), antes que nada y para todos.
-      // El navegador cacheaba la config vieja (sin reglas/FAQ) y por eso "no aparecían"; con no-store + cache-buster se evita.
+      // Config del salón SIEMPRE FRESCA, antes que nada y para todos. Va por el
+      // PORTERO (no directo a Supabase): la marca y los precios se leen con el
+      // candado de la base puesto, sin exponer la clave pública (auditoría 18/08).
       try {
-        const _cu = SB_URL + '/rest/v1/eventos?id=in.(__config_suc__,__config_ia__)&select=id,data';
-        const _rr = await fetch(_cu, {
-          cache: 'no-store',
-          headers: {
-            apikey: SB_KEY,
-            Authorization: 'Bearer ' + SB_KEY
-          }
-        });
-        const cr = await _rr.json();
-        const _f = function (id) {
-          var r = cr.find(function (x) {
-            return x.id === id;
+        let _cfgs = {};
+        if (await gwPing()) {
+          const _rr = await gwCall('config', {
+            ids: ['__config_suc__', '__config_ia__']
           });
-          return r ? r.data : null;
+          _cfgs = _rr && _rr.configs || {};
+        }
+        const _f = function (id) {
+          return _cfgs[id] || null;
         };
         const cs = _f('__config_suc__'),
           ci = _f('__config_ia__');
@@ -997,10 +936,6 @@ function App() {
             });
             ev = r && r.data || null;
           }
-          if (!ev) {
-            const one = await SB.from('eventos').select('id,data').eq('id', quickId);
-            ev = one.data && one.data[0] && one.data[0].data;
-          } // plan B (si el candado no está)
           if (ev) {
             setEventos(prev => prev.some(e => e.id === ev.id) ? prev : [ev, ...prev]);
             setDbReady(true);
@@ -1213,10 +1148,13 @@ function App() {
     }
   }, [pedidos]);
   async function refrescarPedidos() {
-    if (!SB) return;
     try {
-      const r = await SB.from('eventos').select('data').eq('id', '__config_pedidos__').maybeSingle();
-      if (r && r.data && r.data.data) setPedidos(r.data.data);
+      if (!(await gwPing())) return;
+      const r = await gwCall('config', {
+        id: '__config_pedidos__'
+      });
+      const d = r && r.configs && r.configs['__config_pedidos__'];
+      if (d) setPedidos(d);
     } catch (e) {}
   }
   // Recordar sesión del admin/encargada en este dispositivo (no pedir contraseña cada vez)
@@ -17694,9 +17632,11 @@ function PapaCreador({
     try {
       let sucPDF = suc;
       try {
-        if (SB) {
-          const r = await SB.from('eventos').select('data').eq('id', '__config_suc__').maybeSingle();
-          const arr = r && r.data && r.data.data;
+        if (await gwPing()) {
+          const r = await gwCall('config', {
+            id: '__config_suc__'
+          });
+          const arr = r && r.configs && r.configs['__config_suc__'];
           if (Array.isArray(arr)) {
             const fr = arr.find(s => s.id === (suc && suc.id));
             if (fr) sucPDF = fr;
@@ -17740,9 +17680,11 @@ function PapaCreador({
     try {
       let sucV = suc;
       try {
-        if (SB) {
-          const r = await SB.from('eventos').select('data').eq('id', '__config_suc__').maybeSingle();
-          const arr = r && r.data && r.data.data;
+        if (await gwPing()) {
+          const r = await gwCall('config', {
+            id: '__config_suc__'
+          });
+          const arr = r && r.configs && r.configs['__config_suc__'];
           if (Array.isArray(arr)) {
             const fr = arr.find(s => s.id === (suc && suc.id));
             if (fr) sucV = fr;
