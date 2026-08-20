@@ -1178,7 +1178,7 @@ function App() {
       if (vista && vista.indexOf('admin') === 0) localStorage.setItem('fz_ultimo_modo', 'admin');else if (vista && vista.indexOf('papa') === 0) localStorage.setItem('fz_ultimo_modo', 'papa');
     } catch (e) {}
   }, [vista]);
-  const sucAct = sucursales.find(s => s.id === sucActId) || sucursales[0];
+  const sucAct = sucursales.find(s => s.id === sucActId) || sucursales[0] || {};
   const esSA = (adminSesion || {}).rol === 'superadmin';
   const evsLocal = eventos.filter(e => e.sucId === sucActId);
   async function loginAdmin(u, p) {
@@ -17406,7 +17406,7 @@ function PapaCreador({
       return n;
     });
   }
-  const suc = sucursales.find(s => s.id === papaSesion.sucId) || sucursales[0];
+  const suc = sucursales.find(s => s.id === papaSesion.sucId) || sucursales[0] || {};
   // Importante: si la temática real todavía no cargó, NO caer a tematicas[0]
   // (eso mostraba un instante una imagen ajena, ej. Sonic, antes de la correcta).
   const temA = tematicas.find(t => t.id === form.temId) || {};
@@ -20497,7 +20497,7 @@ function PapaCreador({
     }
   }, /*#__PURE__*/React.createElement("button", {
     onClick: () => {
-      const suc = sucursales.find(s => s.id === papaSesion.sucId) || sucursales[0];
+      const suc = sucursales.find(s => s.id === papaSesion.sucId) || sucursales[0] || {};
       const lines = [`🎉 Lista de Compras - Fiesta de ${papaSesion.nombre}`, `📅 ${menuResult.estacion} · ${menuResult.horas}hs · ${menuResult.ninos} niños + ${menuResult.adultos} adultos`, ``, ...menuResult.shopping.map(s => `${s.emoji} ${s.nombre}: ${s.cant} ${s.u}`), ``, `💡 Agregar 10-15% de margen extra.`, `📍 ${suc.nombre} · ${suc.tel}`];
       const txt = lines.join('\n');
       abrirWA('', txt);
@@ -20514,7 +20514,7 @@ function PapaCreador({
     }
   }, /*#__PURE__*/React.createElement("span", null, "📱"), " Compartir"), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
-      const suc = sucursales.find(s => s.id === papaSesion.sucId) || sucursales[0];
+      const suc = sucursales.find(s => s.id === papaSesion.sucId) || sucursales[0] || {};
       const lines = [`LISTA DE COMPRAS`, `Fiesta de ${papaSesion.nombre}`, `${menuResult.estacion} · ${menuResult.horas} horas · ${menuResult.ninos} niños + ${menuResult.adultos} adultos`, ``, ...menuResult.shopping.map(s => `${s.emoji}  ${s.nombre.padEnd(20)} ${s.cant} ${s.u}`), ``, `* Agregar 10-15% de margen extra`, `${suc.nombre} · Tel: ${suc.tel}`];
       const txt = lines.join('\n');
       const blob = new Blob([txt], {
@@ -23962,7 +23962,7 @@ function InvRecuerdos({
   tematicas,
   volverInv
 }) {
-  const ev = eventos.find(e => e.id === invEvId) || eventos[0];
+  const ev = eventos.find(e => e.id === invEvId) || eventos[0] || {};
   const suc = (sucursales || []).find(s => s.id === (ev || {}).sucId) || (sucursales || [])[0] || {};
   const col = suc.color || '#ec4899';
   const tem = (tematicas || []).find(t => t.id === (ev || {}).temId);
@@ -24319,11 +24319,11 @@ function InvPortada({
   iaConfig,
   volverInv
 }) {
-  const ev = eventos.find(e => e.id === invEvId) || eventos[0];
-  const suc = sucursales.find(s => s.id === (ev || {}).sucId) || sucursales[0];
+  const ev = eventos.find(e => e.id === invEvId) || eventos[0] || {};
+  const suc = sucursales.find(s => s.id === (ev || {}).sucId) || sucursales[0] || {};
   const col = suc.color || '#f97316';
   const _temMatchP = (tematicas || []).find(t => t.id === (ev || {}).temId);
-  const tem = _temMatchP || (tematicas || [])[0];
+  const tem = _temMatchP || (tematicas || [])[0] || {};
   const _temImgCalc = ev && ev.portadaSrc || _temMatchP && _temMatchP.img || '';
   const [temImg, setTemImg] = useState(_temImgCalc);
   React.useEffect(() => {
@@ -24585,10 +24585,10 @@ function InvWeb({
   volverInv
 }) {
   const T = iaConfig && iaConfig.txtTarjeta || {};
-  const ev = eventos.find(e => e.id === invEvId) || eventos[0];
-  const suc = sucursales.find(s => s.id === (ev || {}).sucId) || sucursales[0];
+  const ev = eventos.find(e => e.id === invEvId) || eventos[0] || {};
+  const suc = sucursales.find(s => s.id === (ev || {}).sucId) || sucursales[0] || {};
   const _temMatch = tematicas.find(t => t.id === (ev || {}).temId);
-  const tem = _temMatch || tematicas[0];
+  const tem = _temMatch || (tematicas || [])[0] || {};
   const _portCalc = ev && ev.portadaSrc || _temMatch && _temMatch.img || '';
   const [portada, setPortadaSticky] = useState(_portCalc);
   React.useEffect(() => {
