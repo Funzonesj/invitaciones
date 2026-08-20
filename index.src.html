@@ -6257,7 +6257,13 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
             </React.Fragment>
           )
         ):(
-          <img src={portada} alt={tem.nombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&ev.portadaPos)||0)+'%',display:'block'}}/>
+          portada
+          ? <img src={portada} alt={tem.nombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&ev.portadaPos)||0)+'%',display:'block'}}/>
+          : <div style={{width:'100%',height:'100%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,background:'linear-gradient(160deg,'+col+' 0%,'+col+'cc 100%)',color:'white',textAlign:'center',padding:'18px'}}>
+            <div style={{fontSize:44,lineHeight:1}}>🎉</div>
+            <div style={{fontWeight:900,fontSize:26,textShadow:'0 2px 8px rgba(0,0,0,.25)'}}>{(ev&&ev.nombre)||'¡Te esperamos!'}</div>
+            <div style={{fontSize:13,opacity:.9,fontWeight:700}}>{tem.nombre||''}</div>
+          </div>
         )}
         <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)',pointerEvents:'none'}}></div>
         <span style={{position:'absolute',top:14,left:14,background:'#f43f5e',color:'white',fontSize:12,padding:'5px 16px',borderRadius:99,fontWeight:900,letterSpacing:1,zIndex:2}}>TE INVITO!</span>
