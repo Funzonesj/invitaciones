@@ -581,7 +581,7 @@ function App() {
   React.useEffect(()=>{try{if(vista&&vista.indexOf('admin')===0)localStorage.setItem('fz_ultimo_modo','admin');else if(vista&&vista.indexOf('papa')===0)localStorage.setItem('fz_ultimo_modo','papa');}catch(e){}},[vista]);
 
   const sucAct   = sucursales.find(s=>s.id===sucActId)||sucursales[0];
-  const esSA     = adminSesion?.rol==='superadmin';
+  const esSA     = (adminSesion||{}).rol==='superadmin';
   const evsLocal = eventos.filter(e=>e.sucId===sucActId);
 
   async function loginAdmin(u,p){
@@ -1379,7 +1379,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     setMsgOk('✅ Se guardó correctamente');flashOk('✓ ¡Guardado!');setTimeout(()=>setMsgOk(''),3500);
     window.scrollTo(0,0);
   }
-  function copiarLink(id){navigator.clipboard?.writeText(window.location.href.split('?')[0]+'?inv='+id);alert('¡Enlace copiado!');}
+  function copiarLink(id){navigator.clipboard && navigator.clipboard.writeText(window.location.href.split('?')[0]+'?inv='+id);alert('¡Enlace copiado!');}
   function compartirLinkInv(ev){const link=window.location.href.split('?')[0]+'?inv='+ev.id;const txt='¡Te invito al '+(ev.tipo||'cumpleaños')+' de '+ev.nombre+'! Abrí la tarjeta acá: '+link;abrirWA('', txt);}
 
   // ¿Cuándo se creó la tarjeta? (marca 'creado' o la fecha codificada en el id)
@@ -1863,7 +1863,7 @@ function AdminExcel({setVista,sucActId,eventos,setEventos}){
 
 /* ── ADMIN ASISTENCIAS ───────────────────────────────────── */
 function AdminAsistencias({setVista,evsLocal,confs}){
-  const [selId,setSelId]=useState(evsLocal[0]?.id||'');
+  const [selId,setSelId]=useState((evsLocal[0]||{}).id||'');
   const [fMes,setFMes]=useState(''); const [fDia,setFDia]=useState('');
   const evsFilt=evsLocal.filter(e=>(!fMes||e.mes===fMes)&&(!fDia||e.dia===fDia));
   const cSel=confs.filter(c=>c.evId===selId);
@@ -1890,7 +1890,7 @@ function AdminAsistencias({setVista,evsLocal,confs}){
               <div style={{display:'flex',alignItems:'center',gap:14}}>
                 <div style={{background:sel?'#f59e0b':'#0088cc',color:'white',borderRadius:12,padding:'4px 10px',textAlign:'center',minWidth:50}}>
                   <div style={{fontWeight:900,fontSize:20,lineHeight:1}}>{ev.dia}</div>
-                  <div style={{fontSize:8,textTransform:'uppercase'}}>{MESES[+ev.mes]?.slice(0,3)}</div>
+                  <div style={{fontSize:8,textTransform:'uppercase'}}>{(MESES[+ev.mes] || '').slice(0,3)}</div>
                 </div>
                 <div><div style={{fontWeight:800,fontSize:14}}>{ev.nombre}</div><div style={{fontSize:11,color:'#64748b'}}>{ev.hIni} a {ev.hFin} · {ev.tipo}</div></div>
               </div>
@@ -5130,7 +5130,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <label><span style={S.label}>⏰ Duración de la fiesta</span>
                   <select value={menuHoras} onChange={e=>setMenuHoras(e.target.value)} style={S.input}>
                     <option value="">Seleccioná...</option>
-                    {(iaConfig.menuConfig?.horas||[3,4,5,6]).map(h=><option key={h} value={h}>{h} horas</option>)}
+                    {((iaConfig.menuConfig||{}).horas||[3,4,5,6]).map(h=><option key={h} value={h}>{h} horas</option>)}
                   </select>
                 </label>
                 <label style={{gridColumn:'1 / -1'}}><span style={S.label}>🕐 Franja del evento</span>
@@ -5146,7 +5146,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
             {/* Paso 3: Menú */}
             {['ninos','adultos','snacks','postres','bebidas'].map(cat=>{
               const labels={ninos:'🧒 Menú Niños',adultos:'👨 Menú Adultos',snacks:'🍿 Snacks',postres:'🎂 Torta y Postres',descartables:'🍽️ Descartables',bebidas:'🥤 Bebidas'};
-              const items=((iaConfig.menuConfig?.[cat])||[]).filter(i=>i.verPapa!==false);
+              const items=(((iaConfig.menuConfig||{})[cat])||[]).filter(i=>i.verPapa!==false);
               if(!items.length)return null;
               return(
                 <div key={cat} style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:12,padding:14,marginBottom:14}}>
@@ -5944,9 +5944,9 @@ async function genVideoServidor(opts,onProg){
 /* ── RECUERDOS (página propia: se comparte DESPUÉS del cumple, aparte de la invitación) ── */
 function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv}){
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
-  const suc=(sucursales||[]).find(s=>s.id===ev?.sucId)||(sucursales||[])[0]||{};
+  const suc=(sucursales||[]).find(s=>s.id===(ev||{}).sucId)||(sucursales||[])[0]||{};
   const col=suc.color||'#ec4899';
-  const tem=(tematicas||[]).find(t=>t.id===ev?.temId);
+  const tem=(tematicas||[]).find(t=>t.id===(ev||{}).temId);
   // El recuerdo usa las fotos que sube la mamá (las del festejo).
   const _album=Array.isArray(ev&&ev.album)?ev.album.filter(Boolean):[];
   const fotos=_album;
@@ -6039,9 +6039,9 @@ function InvRecuerdos({setVista,eventos,invEvId,sucursales,tematicas,volverInv})
 /* ── INVITADO PORTADA ────────────────────────────────────── */
 function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volverInv}){
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
-  const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
+  const suc=sucursales.find(s=>s.id===(ev||{}).sucId)||sucursales[0];
   const col=suc.color||'#f97316';
-  const _temMatchP=(tematicas||[]).find(t=>t.id===ev?.temId);
+  const _temMatchP=(tematicas||[]).find(t=>t.id===(ev||{}).temId);
   const tem=_temMatchP||(tematicas||[])[0];
   const _temImgCalc=(ev&&ev.portadaSrc)||(_temMatchP&&_temMatchP.img)||'';
   const [temImg,setTemImg]=useState(_temImgCalc);
@@ -6113,8 +6113,8 @@ function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volv
 function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,iaConfig,volverInv}){
   const T=(iaConfig&&iaConfig.txtTarjeta)||{};
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0];
-  const suc=sucursales.find(s=>s.id===ev?.sucId)||sucursales[0];
-  const _temMatch=tematicas.find(t=>t.id===ev?.temId);
+  const suc=sucursales.find(s=>s.id===(ev||{}).sucId)||sucursales[0];
+  const _temMatch=tematicas.find(t=>t.id===(ev||{}).temId);
   const tem=_temMatch||tematicas[0];
   const _portCalc=(ev&&ev.portadaSrc)||(_temMatch&&_temMatch.img)||'';
   const [portada,setPortadaSticky]=useState(_portCalc);

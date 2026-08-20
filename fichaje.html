@@ -612,7 +612,7 @@ function Header({
       justifyContent: 'center',
       fontSize: 18
     }
-  }, "\uD83D\uDD52"), /*#__PURE__*/React.createElement("div", {
+  }, "🕒"), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       minWidth: 0
@@ -647,7 +647,7 @@ function Header({
       cursor: 'pointer',
       fontSize: 17
     }
-  }, "\uD83D\uDCAC", chatTotal > 0 && /*#__PURE__*/React.createElement("span", {
+  }, "💬", chatTotal > 0 && /*#__PURE__*/React.createElement("span", {
     style: {
       position: 'absolute',
       top: -6,
@@ -780,7 +780,7 @@ function TareaItem({
       color: C.rojo,
       flexShrink: 0
     }
-  }, "\uD83D\uDDD1")), t.fotos && t.fotos.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "🗑")), t.fotos && t.fotos.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -982,7 +982,7 @@ function Tareas({
       fontSize: 20,
       marginBottom: 12
     }
-  }, "\u2705 Tareas"), esDuena && !sel && /*#__PURE__*/React.createElement("select", {
+  }, "✅ Tareas"), esDuena && !sel && /*#__PURE__*/React.createElement("select", {
     value: sucSel,
     onChange: e => {
       setSucSel(e.target.value);
@@ -996,7 +996,7 @@ function Tareas({
     value: s.id
   }, s.nombre)), /*#__PURE__*/React.createElement("option", {
     value: "general"
-  }, "\u2B50 General")), sel ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
+  }, "⭐ General")), sel ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       setSel(null);
       setAsignOpen(false);
@@ -1006,7 +1006,7 @@ function Tareas({
       ...S.btnGhost,
       marginBottom: 10
     }
-  }, "\u2190 Listas"), /*#__PURE__*/React.createElement("div", {
+  }, "← Listas"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -1027,7 +1027,7 @@ function Tareas({
       color: C.tx2,
       fontWeight: 600
     }
-  }, " \xB7 ", sel.sucursal_id === 'general' ? 'General' : sucNom(sel.sucursal_id))), esManager && /*#__PURE__*/React.createElement("div", {
+  }, " · ", sel.sucursal_id === 'general' ? 'General' : sucNom(sel.sucursal_id))), esManager && /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -1042,7 +1042,7 @@ function Tareas({
       minHeight: 0,
       fontSize: 12
     }
-  }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
+  }, "✏️"), /*#__PURE__*/React.createElement("button", {
     onClick: () => borrarLista(sel),
     style: {
       ...S.btn,
@@ -1052,7 +1052,7 @@ function Tareas({
       minHeight: 0,
       fontSize: 12
     }
-  }, "\uD83D\uDDD1"))), esManager && /*#__PURE__*/React.createElement("div", {
+  }, "🗑"))), esManager && /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 12,
@@ -1073,7 +1073,7 @@ function Tareas({
       fontSize: 14,
       fontWeight: 700
     }
-  }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDC65 Qui\xE9n la ve (", (sel.empleados || []).length, ")"), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("span", null, "👥 Quién la ve (", (sel.empleados || []).length, ")"), /*#__PURE__*/React.createElement("span", {
     style: {
       color: C.tx2
     }
@@ -1235,7 +1235,7 @@ function Tareas({
         color: C.tx2,
         padding: 24
       }
-    }, "No ten\xE9s listas de tareas asignadas todav\xEDa.") : /*#__PURE__*/React.createElement("div", null, grupos.map(g => {
+    }, "No tenés listas de tareas asignadas todavía.") : /*#__PURE__*/React.createElement("div", null, grupos.map(g => {
       const ls = mias.filter(l => (l.sucursal_id || '') === g.id);
       if (!ls.length) return null;
       return /*#__PURE__*/React.createElement("div", {
@@ -1265,7 +1265,7 @@ function Tareas({
         style: {
           fontSize: 20
         }
-      }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("div", {
+      }, "📋"), /*#__PURE__*/React.createElement("div", {
         style: {
           flex: 1,
           minWidth: 0
@@ -1283,7 +1283,7 @@ function Tareas({
         style: {
           color: C.tx2
         }
-      }, "\u25B8"))));
+      }, "▸"))));
     }));
   })() : !sucSel ? /*#__PURE__*/React.createElement("div", {
     style: {
@@ -1292,7 +1292,7 @@ function Tareas({
       color: C.tx2,
       padding: 24
     }
-  }, "Eleg\xED una sucursal.") : /*#__PURE__*/React.createElement("div", null, (() => {
+  }, "Elegí una sucursal.") : /*#__PURE__*/React.createElement("div", null, (() => {
     const ls = listas.filter(l => (l.sucursal_id || '') === sucSel);
     return ls.length === 0 ? /*#__PURE__*/React.createElement("div", {
       style: {
@@ -1301,7 +1301,7 @@ function Tareas({
         color: C.tx2,
         padding: 24
       }
-    }, "No hay listas todav\xEDa.", /*#__PURE__*/React.createElement("br", null), "Cre\xE1 la primera abajo \uD83D\uDC47") : ls.map(l => /*#__PURE__*/React.createElement("div", {
+    }, "No hay listas todavía.", /*#__PURE__*/React.createElement("br", null), "Creá la primera abajo 👇") : ls.map(l => /*#__PURE__*/React.createElement("div", {
       key: l.id,
       onClick: () => setSel(l),
       style: {
@@ -1316,7 +1316,7 @@ function Tareas({
       style: {
         fontSize: 20
       }
-    }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("div", {
+    }, "📋"), /*#__PURE__*/React.createElement("div", {
       style: {
         flex: 1,
         minWidth: 0
@@ -1330,7 +1330,7 @@ function Tareas({
         fontSize: 11,
         color: C.tx2
       }
-    }, cnt(l.id), " pendientes \xB7 \uD83D\uDC65 ", nAsig(l))), /*#__PURE__*/React.createElement("button", {
+    }, cnt(l.id), " pendientes · 👥 ", nAsig(l))), /*#__PURE__*/React.createElement("button", {
       onClick: e => borrarLista(l, e),
       style: {
         ...S.btn,
@@ -1340,7 +1340,7 @@ function Tareas({
         minHeight: 0,
         fontSize: 13
       }
-    }, "\uD83D\uDDD1")));
+    }, "🗑")));
   })(), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
@@ -1404,7 +1404,7 @@ function Tareas({
       background: '#3a2020',
       color: C.rojo
     }
-  }, "\uD83D\uDDD1 Quitar foto"), /*#__PURE__*/React.createElement("button", {
+  }, "🗑 Quitar foto"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setVisor(null),
     style: {
       ...S.btn,
@@ -1542,7 +1542,7 @@ function HorariosSalones({
         color: C.rojo,
         fontWeight: 800
       }
-    }, " \xB7 ", ad) : ''), /*#__PURE__*/React.createElement("span", {
+    }, " · ", ad) : ''), /*#__PURE__*/React.createElement("span", {
       style: {
         color: C.tx2,
         fontSize: 12
@@ -1560,7 +1560,7 @@ function HorariosSalones({
         color: C.rojo,
         fontWeight: 800
       }
-    }, "\u26A0\uFE0F ", ad), rs.length ? rs.map(a => /*#__PURE__*/React.createElement("div", {
+    }, "⚠️ ", ad), rs.length ? rs.map(a => /*#__PURE__*/React.createElement("div", {
       key: a.id,
       style: {
         color: C.tx2
@@ -1569,7 +1569,7 @@ function HorariosSalones({
       style: {
         color: C.tx
       }
-    }, nomLeg(a)), " \u2014 ", a.rol_en_evento, a.hora_ingreso_esperada ? ' · entra ' + a.hora_ingreso_esperada : '')) : /*#__PURE__*/React.createElement("div", {
+    }, nomLeg(a)), " — ", a.rol_en_evento, a.hora_ingreso_esperada ? ' · entra ' + a.hora_ingreso_esperada : '')) : /*#__PURE__*/React.createElement("div", {
       style: {
         color: C.tx2
       }
@@ -1577,11 +1577,11 @@ function HorariosSalones({
       style: {
         color: C.tx2
       }
-    }, "\uD83D\uDC69 Mam\xE1: ", dc.cli), ev.festejado && /*#__PURE__*/React.createElement("div", {
+    }, "👩 Mamá: ", dc.cli), ev.festejado && /*#__PURE__*/React.createElement("div", {
       style: {
         color: C.tx2
       }
-    }, "\uD83C\uDF82 ", ev.festejado)));
+    }, "🎂 ", ev.festejado)));
   }
   if (!detalle) {
     // ── Vista MANTENIMIENTO: dos columnas (un salón al lado del otro), solo hoy en adelante ──
@@ -1617,7 +1617,7 @@ function HorariosSalones({
         fontSize: 20,
         marginBottom: 4
       }
-    }, "\uD83D\uDDD3\uFE0F Horario de salones"), /*#__PURE__*/React.createElement("p", {
+    }, "🗓️ Horario de salones"), /*#__PURE__*/React.createElement("p", {
       style: {
         fontSize: 12,
         color: C.tx2,
@@ -1651,7 +1651,7 @@ function HorariosSalones({
         fontSize: 14,
         marginBottom: 6
       }
-    }, "\uD83D\uDCE3 D\xEDas sin eventos en ning\xFAn sal\xF3n"), /*#__PURE__*/React.createElement("div", {
+    }, "📣 Días sin eventos en ningún salón"), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 6,
@@ -1739,13 +1739,13 @@ function HorariosSalones({
       fontSize: 20,
       marginBottom: 4
     }
-  }, "\uD83D\uDDD3\uFE0F ", detalle ? 'Resumen de horarios' : 'Horario de salones'), /*#__PURE__*/React.createElement("p", {
+  }, "🗓️ ", detalle ? 'Resumen de horarios' : 'Horario de salones'), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 12,
       color: C.tx2,
       marginBottom: 12
     }
-  }, "Eleg\xED un sal\xF3n para ver los horarios de cada d\xEDa.", detalle ? ' Tocá un evento para ver el personal y los adicionales.' : ''), /*#__PURE__*/React.createElement("select", {
+  }, "Elegí un salón para ver los horarios de cada día.", detalle ? ' Tocá un evento para ver el personal y los adicionales.' : ''), /*#__PURE__*/React.createElement("select", {
     value: sucSel,
     onChange: e => {
       setSucSel(e.target.value);
@@ -1780,7 +1780,7 @@ function HorariosSalones({
       marginTop: 10,
       fontSize: 13
     }
-  }, "\uD83D\uDCCB Ver semana anterior (", _nPas, ")")) : /*#__PURE__*/React.createElement("span", null, "No hay horarios cargados para este sal\xF3n.")) : /*#__PURE__*/React.createElement(React.Fragment, null, _nPas > 0 && /*#__PURE__*/React.createElement("button", {
+  }, "📋 Ver semana anterior (", _nPas, ")")) : /*#__PURE__*/React.createElement("span", null, "No hay horarios cargados para este salón.")) : /*#__PURE__*/React.createElement(React.Fragment, null, _nPas > 0 && /*#__PURE__*/React.createElement("button", {
     onClick: () => setVerPasados(v => !v),
     style: {
       ...S.btn,
@@ -1805,7 +1805,7 @@ function HorariosSalones({
       padding: '7px 11px',
       marginBottom: 8
     }
-  }, "\uD83D\uDCC5 Semana del ", _fdm(sem.lunes), " al ", _fdm(sem.domingo), " ", /*#__PURE__*/React.createElement("span", {
+  }, "📅 Semana del ", _fdm(sem.lunes), " al ", _fdm(sem.domingo), " ", /*#__PURE__*/React.createElement("span", {
     style: {
       color: C.oro
     }
@@ -2004,7 +2004,7 @@ function Login({
     style: {
       fontSize: 44
     }
-  }, "\uD83D\uDD52"), /*#__PURE__*/React.createElement("h1", {
+  }, "🕒"), /*#__PURE__*/React.createElement("h1", {
     style: {
       fontSize: 24,
       marginTop: 6
@@ -2036,7 +2036,7 @@ function Login({
     required: true
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "Contrase\xF1a"), /*#__PURE__*/React.createElement("div", {
+  }, "Contraseña"), /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'relative'
     }
@@ -2051,7 +2051,7 @@ function Login({
       setP(e.target.value);
       setErr('');
     },
-    placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022",
+    placeholder: "••••••",
     required: true
   }), /*#__PURE__*/React.createElement("button", {
     type: "button",
@@ -2089,7 +2089,7 @@ function Login({
       cursor: 'pointer',
       padding: 4
     }
-  }, "\xBFOlvidaste tu contrase\xF1a?"), recuMsg && /*#__PURE__*/React.createElement("div", {
+  }, "¿Olvidaste tu contraseña?"), recuMsg && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.tx2,
@@ -2105,7 +2105,7 @@ function Login({
       textAlign: 'center',
       marginTop: 14
     }
-  }, "Solo la due\xF1a crea los usuarios. Si no ten\xE9s acceso, ped\xEDselo a ella.")));
+  }, "Solo la dueña crea los usuarios. Si no tenés acceso, pedíselo a ella.")));
 }
 
 /* ── Dashboard ── */
@@ -2182,7 +2182,7 @@ function Dashboard({
       fontSize: 20,
       marginBottom: 4
     }
-  }, "Hola", rol === 'empleado' || rol === 'mantenimiento' ? '' : ', ' + String(sesion.nombre || '').split(' ')[0], " \uD83D\uDC4B"), /*#__PURE__*/React.createElement("p", {
+  }, "Hola", rol === 'empleado' || rol === 'mantenimiento' ? '' : ', ' + String(sesion.nombre || '').split(' ')[0], " 👋"), /*#__PURE__*/React.createElement("p", {
     style: {
       color: C.tx2,
       fontSize: 13,
@@ -2198,7 +2198,7 @@ function Dashboard({
     style: {
       fontSize: 40
     }
-  }, "\uD83D\uDCCD"), /*#__PURE__*/React.createElement("p", {
+  }, "📍"), /*#__PURE__*/React.createElement("p", {
     style: {
       fontWeight: 700,
       marginTop: 8
@@ -2209,14 +2209,14 @@ function Dashboard({
       fontSize: 13,
       margin: '6px 0 14px'
     }
-  }, "Toc\xE1 el bot\xF3n y segu\xED los pasos (ubicaci\xF3n + foto)."), /*#__PURE__*/React.createElement("button", {
+  }, "Tocá el botón y seguí los pasos (ubicación + foto)."), /*#__PURE__*/React.createElement("button", {
     onClick: () => setVista('fichar'),
     style: {
       ...S.btn,
       ...S.btnOro,
       width: '100%'
     }
-  }, "\uD83D\uDCCD ", rol === 'mantenimiento' ? 'Marcar ahora' : 'Fichar ahora')) : /*#__PURE__*/React.createElement(React.Fragment, null, rol === 'encargada' && /*#__PURE__*/React.createElement("div", {
+  }, "📍 ", rol === 'mantenimiento' ? 'Marcar ahora' : 'Fichar ahora')) : /*#__PURE__*/React.createElement(React.Fragment, null, rol === 'encargada' && /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       textAlign: 'center',
@@ -2227,7 +2227,7 @@ function Dashboard({
     style: {
       fontSize: 34
     }
-  }, "\uD83D\uDCCD"), /*#__PURE__*/React.createElement("p", {
+  }, "📍"), /*#__PURE__*/React.createElement("p", {
     style: {
       fontWeight: 700,
       marginTop: 4
@@ -2238,14 +2238,14 @@ function Dashboard({
       fontSize: 12,
       margin: '4px 0 12px'
     }
-  }, "Fich\xE1 tu entrada y salida (ubicaci\xF3n + foto), igual que los empleados."), /*#__PURE__*/React.createElement("button", {
+  }, "Fichá tu entrada y salida (ubicación + foto), igual que los empleados."), /*#__PURE__*/React.createElement("button", {
     onClick: () => setVista('fichar'),
     style: {
       ...S.btn,
       ...S.btnOro,
       width: '100%'
     }
-  }, "\uD83D\uDCCD Fichar entrada / salida")), /*#__PURE__*/React.createElement("div", {
+  }, "📍 Fichar entrada / salida")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 10,
@@ -2280,13 +2280,13 @@ function Dashboard({
       fontSize: 14,
       marginBottom: 2
     }
-  }, "\uD83D\uDCE3 D\xEDas sin eventos (pr\xF3ximos 7 d\xEDas)"), /*#__PURE__*/React.createElement("div", {
+  }, "📣 Días sin eventos (próximos 7 días)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.tx2,
       marginBottom: 10
     }
-  }, "Buena oportunidad para hacer una promoci\xF3n \uD83D\uDE09"), _libres.map(x => /*#__PURE__*/React.createElement("div", {
+  }, "Buena oportunidad para hacer una promoción 😉"), _libres.map(x => /*#__PURE__*/React.createElement("div", {
     key: x.suc.id,
     style: {
       marginBottom: 8
@@ -2340,7 +2340,7 @@ function Placeholder({
     style: {
       fontSize: 38
     }
-  }, "\uD83D\uDEA7"), /*#__PURE__*/React.createElement("p", {
+  }, "🚧"), /*#__PURE__*/React.createElement("p", {
     style: {
       color: C.tx2,
       fontSize: 13,
@@ -2371,8 +2371,8 @@ function Sucursales({
     setForm({
       nombre: s.nombre || '',
       direccion: s.direccion || '',
-      lat: s.lat ?? '',
-      lng: s.lng ?? '',
+      lat: s.lat == null ? '' : s.lat,
+      lng: s.lng == null ? '' : s.lng,
       radio_metros: s.radio_metros || 80,
       activa: s.activa !== false
     });
@@ -2434,7 +2434,7 @@ function Sucursales({
       fontSize: 20,
       marginBottom: 12
     }
-  }, "\uD83C\uDFE2 Sucursales"), /*#__PURE__*/React.createElement("div", {
+  }, "🏢 Sucursales"), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       display: 'flex',
@@ -2459,7 +2459,7 @@ function Sucursales({
     placeholder: "Fun Zone"
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "Direcci\xF3n"), /*#__PURE__*/React.createElement("input", {
+  }, "Dirección"), /*#__PURE__*/React.createElement("input", {
     style: S.input,
     value: form.direccion,
     onChange: e => setForm({
@@ -2480,7 +2480,7 @@ function Sucursales({
       color: C.tx2,
       marginBottom: 8
     }
-  }, "\uD83D\uDCCD Ubicaci\xF3n (para validar el fichaje por GPS)"), /*#__PURE__*/React.createElement("button", {
+  }, "📍 Ubicación (para validar el fichaje por GPS)"), /*#__PURE__*/React.createElement("button", {
     onClick: usarUbicacion,
     style: {
       ...S.btn,
@@ -2488,7 +2488,7 @@ function Sucursales({
       width: '100%',
       marginBottom: 8
     }
-  }, "\uD83D\uDCCD Usar mi ubicaci\xF3n actual"), /*#__PURE__*/React.createElement("div", {
+  }, "📍 Usar mi ubicación actual"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
@@ -2506,7 +2506,7 @@ function Sucursales({
       ...form,
       lat: e.target.value
     }),
-    placeholder: "(vac\xEDo)"
+    placeholder: "(vacío)"
   })), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1
@@ -2520,7 +2520,7 @@ function Sucursales({
       ...form,
       lng: e.target.value
     }),
-    placeholder: "(vac\xEDo)"
+    placeholder: "(vacío)"
   }))), geoMsg && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
@@ -2623,7 +2623,7 @@ function Sucursales({
       minHeight: 0,
       fontSize: 13
     }
-  }, "\uD83D\uDDD1"))));
+  }, "🗑"))));
 }
 
 /* ── Empleados (dueña) ── */
@@ -2666,11 +2666,11 @@ function Empleados({
   function editar(em) {
     setEditId(em.id);
     setForm({
-      legajo: em.legajo ?? '',
+      legajo: em.legajo == null ? '' : em.legajo,
       nombre: em.nombre || '',
       nombre_pila: em.nombre_pila || '',
       rol_habitual: parseRoles(em.rol_habitual),
-      valor_hora: em.valor_hora ?? '',
+      valor_hora: em.valor_hora == null ? '' : em.valor_hora,
       sucursales: em.sucursales || [],
       foto_url: em.foto_url || '',
       usuario: em.usuario || '',
@@ -2812,7 +2812,7 @@ function Empleados({
       fontSize: 20,
       marginBottom: 12
     }
-  }, "\uD83D\uDC65 Empleados"), /*#__PURE__*/React.createElement("div", {
+  }, "👥 Empleados"), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       display: 'flex',
@@ -2858,7 +2858,7 @@ function Empleados({
     style: {
       fontSize: 26
     }
-  }, "\uD83D\uDE42")), /*#__PURE__*/React.createElement("label", {
+  }, "🙂")), /*#__PURE__*/React.createElement("label", {
     style: {
       ...S.btn,
       ...S.btnGhost,
@@ -2866,7 +2866,7 @@ function Empleados({
       fontSize: 13,
       padding: '10px 14px'
     }
-  }, "\uD83D\uDCF7 Foto", /*#__PURE__*/React.createElement("input", {
+  }, "📷 Foto", /*#__PURE__*/React.createElement("input", {
     type: "file",
     accept: "image/*",
     style: {
@@ -2884,7 +2884,7 @@ function Empleados({
     }
   }, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "Legajo N\xB0"), /*#__PURE__*/React.createElement("input", {
+  }, "Legajo N°"), /*#__PURE__*/React.createElement("input", {
     style: S.input,
     type: "number",
     value: form.legajo,
@@ -2906,7 +2906,7 @@ function Empleados({
       ...form,
       nombre: e.target.value
     }),
-    placeholder: "Lorena P\xE9rez"
+    placeholder: "Lorena Pérez"
   }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
   }, "Nombre de pila ", /*#__PURE__*/React.createElement("span", {
@@ -2914,7 +2914,7 @@ function Empleados({
       color: C.tx2,
       fontWeight: 400
     }
-  }, "\u2014 c\xF3mo se muestra en horarios (opcional). Si lo dej\xE1s vac\xEDo usa el primer nombre.")), /*#__PURE__*/React.createElement("input", {
+  }, "— cómo se muestra en horarios (opcional). Si lo dejás vacío usa el primer nombre.")), /*#__PURE__*/React.createElement("input", {
     style: S.input,
     value: form.nombre_pila,
     onChange: e => setForm({
@@ -2924,7 +2924,7 @@ function Empleados({
     placeholder: (form.nombre || '').trim().split(/\s+/)[0] || 'ej: Cami'
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "Roles que puede hacer (toc\xE1 para sumar o quitar)"), /*#__PURE__*/React.createElement("div", {
+  }, "Roles que puede hacer (tocá para sumar o quitar)"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
@@ -2957,7 +2957,7 @@ function Empleados({
     placeholder: "0"
   })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "Sucursales donde trabaja (toc\xE1 para sumar o quitar)"), /*#__PURE__*/React.createElement("div", {
+  }, "Sucursales donde trabaja (tocá para sumar o quitar)"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
@@ -3003,17 +3003,17 @@ function Empleados({
     }
   }, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "Contrase\xF1a"), /*#__PURE__*/React.createElement("input", {
+  }, "Contraseña"), /*#__PURE__*/React.createElement("input", {
     style: S.input,
     value: form.clave,
     onChange: e => setForm({
       ...form,
       clave: e.target.value
     }),
-    placeholder: "\u2022\u2022\u2022\u2022"
+    placeholder: "••••"
   }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "\xBFQu\xE9 puede hacer en la app? (permisos)"), /*#__PURE__*/React.createElement("select", {
+  }, "¿Qué puede hacer en la app? (permisos)"), /*#__PURE__*/React.createElement("select", {
     style: S.input,
     value: form.rol_sistema,
     onChange: e => setForm({
@@ -3022,13 +3022,13 @@ function Empleados({
     })
   }, /*#__PURE__*/React.createElement("option", {
     value: "empleado"
-  }, "Empleado \u2014 solo fichar"), /*#__PURE__*/React.createElement("option", {
+  }, "Empleado — solo fichar"), /*#__PURE__*/React.createElement("option", {
     value: "encargada"
-  }, "Encargada \u2014 gestiona su sal\xF3n"), /*#__PURE__*/React.createElement("option", {
+  }, "Encargada — gestiona su salón"), /*#__PURE__*/React.createElement("option", {
     value: "mantenimiento"
-  }, "Mantenimiento \u2014 marca y ve tareas"), /*#__PURE__*/React.createElement("option", {
+  }, "Mantenimiento — marca y ve tareas"), /*#__PURE__*/React.createElement("option", {
     value: "dueno"
-  }, "Due\xF1a \u2014 acceso total")), /*#__PURE__*/React.createElement("div", {
+  }, "Dueña — acceso total")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: C.tx2,
@@ -3043,7 +3043,7 @@ function Empleados({
     style: {
       color: C.tx
     }
-  }, "Encargada"), ": ve y maneja los horarios, fichajes y pagos de su sal\xF3n.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("b", {
+  }, "Encargada"), ": ve y maneja los horarios, fichajes y pagos de su salón.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.tx
     }
@@ -3051,7 +3051,7 @@ function Empleados({
     style: {
       color: C.tx
     }
-  }, "Due\xF1a"), ": ve y maneja todo, los dos salones.")), form.rol_sistema === 'empleado' && /*#__PURE__*/React.createElement("label", {
+  }, "Dueña"), ": ve y maneja todo, los dos salones.")), form.rol_sistema === 'empleado' && /*#__PURE__*/React.createElement("label", {
     style: {
       display: 'flex',
       alignItems: 'flex-start',
@@ -3079,7 +3079,7 @@ function Empleados({
       fontSize: 13,
       lineHeight: 1.4
     }
-  }, "\uD83D\uDD12 ", /*#__PURE__*/React.createElement("b", null, "Vista reducida"), ": solo ve sus turnos. No ve la planilla (PDF) ni los d\xEDas que no trabaja.")), form.rol_sistema === 'encargada' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+  }, "🔒 ", /*#__PURE__*/React.createElement("b", null, "Vista reducida"), ": solo ve sus turnos. No ve la planilla (PDF) ni los días que no trabaja.")), form.rol_sistema === 'encargada' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
   }, "Sucursal que maneja"), /*#__PURE__*/React.createElement("select", {
     style: S.input,
@@ -3090,18 +3090,18 @@ function Empleados({
     })
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "Eleg\xED\u2026"), sucursales.map(s => /*#__PURE__*/React.createElement("option", {
+  }, "Elegí…"), sucursales.map(s => /*#__PURE__*/React.createElement("option", {
     key: s.id,
     value: s.id
   }, s.nombre)))), form.rol_sistema === 'encargada' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "\uD83D\uDDD3\uFE0F Horario fijo (semanal)"), /*#__PURE__*/React.createElement("div", {
+  }, "🗓️ Horario fijo (semanal)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: C.tx2,
       marginBottom: 8
     }
-  }, "Toc\xE1 los d\xEDas que trabaja y pon\xE9 entrada y salida. Queda fijo todas las semanas."), [['Lunes', 1], ['Martes', 2], ['Miércoles', 3], ['Jueves', 4], ['Viernes', 5], ['Sábado', 6], ['Domingo', 0]].map(([lbl, dia]) => {
+  }, "Tocá los días que trabaja y poné entrada y salida. Queda fijo todas las semanas."), [['Lunes', 1], ['Martes', 2], ['Miércoles', 3], ['Jueves', 4], ['Viernes', 5], ['Sábado', 6], ['Domingo', 0]].map(([lbl, dia]) => {
     const on = diaOn(dia);
     const h = (form.horario_fijo || []).find(x => x.dia === dia) || {};
     return /*#__PURE__*/React.createElement("div", {
@@ -3172,7 +3172,7 @@ function Empleados({
       marginTop: 6,
       fontSize: 13
     }
-  }, "\uD83D\uDCCB Repetir el horario del 1\xB0 d\xEDa en todos los marcados")), /*#__PURE__*/React.createElement("div", {
+  }, "📋 Repetir el horario del 1° día en todos los marcados")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
@@ -3223,7 +3223,7 @@ function Empleados({
     style: {
       fontSize: 20
     }
-  }, "\uD83D\uDE42")), /*#__PURE__*/React.createElement("div", {
+  }, "🙂")), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       minWidth: 0
@@ -3242,7 +3242,7 @@ function Empleados({
       fontSize: 12,
       color: C.tx2
     }
-  }, em.rol_habitual || '—', " \xB7 ", em.valor_hora ? '$' + (+em.valor_hora).toLocaleString('es-AR') + '/h' : 'sin valor hora'), /*#__PURE__*/React.createElement("div", {
+  }, em.rol_habitual || '—', " · ", em.valor_hora ? '$' + (+em.valor_hora).toLocaleString('es-AR') + '/h' : 'sin valor hora'), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: C.tx2,
@@ -3274,7 +3274,7 @@ function Empleados({
       minHeight: 0,
       fontSize: 13
     }
-  }, "\uD83D\uDDD1"))));
+  }, "🗑"))));
 }
 
 /* ════════ HORARIOS: lector de PDF + regla de ingreso ════════ */
@@ -3883,7 +3883,7 @@ function Horarios({
       fontSize: 20,
       marginBottom: 12
     }
-  }, "\uD83D\uDDD3\uFE0F Horarios"), esDuena && /*#__PURE__*/React.createElement("select", {
+  }, "🗓️ Horarios"), esDuena && /*#__PURE__*/React.createElement("select", {
     value: sucSel,
     onChange: e => setSucSel(e.target.value),
     style: {
@@ -3931,7 +3931,7 @@ function Horarios({
       marginTop: 10,
       fontSize: 13
     }
-  }, "\uD83D\uDCCB Ver semana anterior (", _nPasados, ")")) : /*#__PURE__*/React.createElement("span", null, "No hay horarios cargados para ", sucNom(sucSel), ".", /*#__PURE__*/React.createElement("br", null), "Sub\xED un PDF o carg\xE1 manual.")) : /*#__PURE__*/React.createElement(React.Fragment, null, _nPasados > 0 && /*#__PURE__*/React.createElement("button", {
+  }, "📋 Ver semana anterior (", _nPasados, ")")) : /*#__PURE__*/React.createElement("span", null, "No hay horarios cargados para ", sucNom(sucSel), ".", /*#__PURE__*/React.createElement("br", null), "Subí un PDF o cargá manual.")) : /*#__PURE__*/React.createElement(React.Fragment, null, _nPasados > 0 && /*#__PURE__*/React.createElement("button", {
     onClick: () => setVerPasados(v => !v),
     style: {
       ...S.btn,
@@ -3956,7 +3956,7 @@ function Horarios({
       padding: '7px 11px',
       marginBottom: 8
     }
-  }, "\uD83D\uDCC5 Semana del ", _fdm(sem.lunes), " al ", _fdm(sem.domingo), " ", /*#__PURE__*/React.createElement("span", {
+  }, "📅 Semana del ", _fdm(sem.lunes), " al ", _fdm(sem.domingo), " ", /*#__PURE__*/React.createElement("span", {
     style: {
       color: C.oro
     }
@@ -4019,12 +4019,12 @@ function Horarios({
         color: C.rojo,
         fontWeight: 800
       }
-    }, " \xB7 ", dc.adic)), /*#__PURE__*/React.createElement("div", {
+    }, " · ", dc.adic)), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: C.tx2
       }
-    }, ev.hora_inicio, " - ", ev.hora_fin, ev.orden_dia > 1 ? ' · 2º evento' : '', " \xB7 ", rs.length, " pers.")), /*#__PURE__*/React.createElement("span", {
+    }, ev.hora_inicio, " - ", ev.hora_fin, ev.orden_dia > 1 ? ' · 2º evento' : '', " · ", rs.length, " pers.")), /*#__PURE__*/React.createElement("span", {
       style: {
         color: C.tx2,
         fontSize: 13,
@@ -4052,7 +4052,7 @@ function Horarios({
         minHeight: 0,
         fontSize: 12
       }
-    }, "\u270F\uFE0F Editar"), /*#__PURE__*/React.createElement("button", {
+    }, "✏️ Editar"), /*#__PURE__*/React.createElement("button", {
       onClick: () => borrarEvento(ev.id),
       style: {
         ...S.btn,
@@ -4062,7 +4062,7 @@ function Horarios({
         minHeight: 0,
         fontSize: 12
       }
-    }, "\uD83D\uDDD1")), /*#__PURE__*/React.createElement("div", {
+    }, "🗑")), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         flexDirection: 'column',
@@ -4096,7 +4096,7 @@ function Horarios({
         color: C.amar,
         fontSize: 10
       }
-    }, " \u21BA")), a.hora_ingreso_esperada && /*#__PURE__*/React.createElement("span", {
+    }, " ↺")), a.hora_ingreso_esperada && /*#__PURE__*/React.createElement("span", {
       style: {
         fontSize: 11,
         color: C.verde,
@@ -4117,13 +4117,13 @@ function Horarios({
         color: C.tx2,
         marginTop: 6
       }
-    }, "\uD83D\uDC64 ", dc.cli, ev.festejado ? ' · 🎂 ' + ev.festejado : ''), !dc.cli && ev.festejado && /*#__PURE__*/React.createElement("div", {
+    }, "👤 ", dc.cli, ev.festejado ? ' · 🎂 ' + ev.festejado : ''), !dc.cli && ev.festejado && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: C.tx2,
         marginTop: 6
       }
-    }, "\uD83C\uDF82 ", ev.festejado)));
+    }, "🎂 ", ev.festejado)));
   }))))))), tab === 'ver' && eventos.length > 0 && /*#__PURE__*/React.createElement("button", {
     onClick: borrarTodos,
     style: {
@@ -4134,7 +4134,7 @@ function Horarios({
       width: '100%',
       marginTop: 6
     }
-  }, "\uD83D\uDDD1 Borrar TODOS los eventos de ", sucNom(sucSel)), tab === 'sistema' && !previa && /*#__PURE__*/React.createElement("div", {
+  }, "🗑 Borrar TODOS los eventos de ", sucNom(sucSel)), tab === 'sistema' && !previa && /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       padding: '22px 16px'
@@ -4147,14 +4147,14 @@ function Horarios({
     style: {
       fontSize: 38
     }
-  }, "\uD83D\uDD04"), /*#__PURE__*/React.createElement("p", {
+  }, "🔄"), /*#__PURE__*/React.createElement("p", {
     style: {
       color: C.tx2,
       fontSize: 13,
       margin: '10px 0 4px',
       lineHeight: 1.5
     }
-  }, "Tra\xE9 los horarios ", /*#__PURE__*/React.createElement("b", null, "ya armados en Software Salones"), " para ", /*#__PURE__*/React.createElement("b", null, sucNom(sucSel)), ". Ya no hace falta el PDF: se toman directo del sistema.")), /*#__PURE__*/React.createElement("div", {
+  }, "Traé los horarios ", /*#__PURE__*/React.createElement("b", null, "ya armados en Software Salones"), " para ", /*#__PURE__*/React.createElement("b", null, sucNom(sucSel)), ". Ya no hace falta el PDF: se toman directo del sistema.")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
@@ -4211,14 +4211,14 @@ function Horarios({
     style: {
       fontSize: 38
     }
-  }, "\uD83D\uDCC4"), /*#__PURE__*/React.createElement("p", {
+  }, "📄"), /*#__PURE__*/React.createElement("p", {
     style: {
       color: C.tx2,
       fontSize: 13,
       margin: '10px 0 16px',
       lineHeight: 1.5
     }
-  }, "Sub\xED el PDF de horarios (Fun Zone o Play Point). Lo leo y te muestro todo para confirmar antes de guardar."), /*#__PURE__*/React.createElement("label", {
+  }, "Subí el PDF de horarios (Fun Zone o Play Point). Lo leo y te muestro todo para confirmar antes de guardar."), /*#__PURE__*/React.createElement("label", {
     style: {
       ...S.btn,
       ...S.btnOro,
@@ -4242,7 +4242,7 @@ function Horarios({
       fontSize: 12.5,
       fontWeight: 600
     }
-  }, "\uD83D\uDD04 Tra\xEDdo del sistema (Software Salones). Revis\xE1 y guard\xE1."), /*#__PURE__*/React.createElement("div", {
+  }, "🔄 Traído del sistema (Software Salones). Revisá y guardá."), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 12
@@ -4258,7 +4258,7 @@ function Horarios({
     style: S.input
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "Eleg\xED\u2026"), sucursales.map(s => /*#__PURE__*/React.createElement("option", {
+  }, "Elegí…"), sucursales.map(s => /*#__PURE__*/React.createElement("option", {
     key: s.id,
     value: s.id
   }, s.nombre))), /*#__PURE__*/React.createElement("div", {
@@ -4267,7 +4267,7 @@ function Horarios({
       color: C.tx2,
       marginTop: 8
     }
-  }, previa.eventos.length, " eventos le\xEDdos. Revis\xE1 y guard\xE1. \u2935")), previa.eventos.map((ev, i) => /*#__PURE__*/React.createElement("div", {
+  }, previa.eventos.length, " eventos leídos. Revisá y guardá. ⤵")), previa.eventos.map((ev, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
       ...S.card,
@@ -4278,7 +4278,7 @@ function Horarios({
       fontWeight: 700,
       fontSize: 13
     }
-  }, fechaLinda(ev.dia), " \xB7 ", ev.paquete, " ", /*#__PURE__*/React.createElement("span", {
+  }, fechaLinda(ev.dia), " · ", ev.paquete, " ", /*#__PURE__*/React.createElement("span", {
     style: {
       color: C.tx2,
       fontWeight: 400
@@ -4377,7 +4377,7 @@ function Horarios({
       color: C.tx2,
       marginBottom: 12
     }
-  }, "Puesto: ", reempl.rol_en_evento, ". Eleg\xED qui\xE9n lo cubre:"), /*#__PURE__*/React.createElement("div", {
+  }, "Puesto: ", reempl.rol_en_evento, ". Elegí quién lo cubre:"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
@@ -4532,7 +4532,7 @@ function EditEvento({
       fontWeight: 800,
       fontSize: 16
     }
-  }, "\u270F\uFE0F Editar evento"), /*#__PURE__*/React.createElement("div", {
+  }, "✏️ Editar evento"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
@@ -4599,7 +4599,7 @@ function EditEvento({
     placeholder: "19:30"
   }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "Personal (rol + legajo) \u2014 cambi\xE1 o reemplaz\xE1 ac\xE1"), roles.map((r, i) => /*#__PURE__*/React.createElement("div", {
+  }, "Personal (rol + legajo) — cambiá o reemplazá acá"), roles.map((r, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
       display: 'flex',
@@ -4623,7 +4623,7 @@ function EditEvento({
     type: "number",
     value: r.legajo,
     onChange: e => setRol(i, 'legajo', e.target.value),
-    placeholder: "N\xB0"
+    placeholder: "N°"
   }), /*#__PURE__*/React.createElement("button", {
     onClick: () => setRoles(rs => rs.filter((_, j) => j !== i)),
     style: {
@@ -4633,7 +4633,7 @@ function EditEvento({
       padding: '0 12px',
       minHeight: 0
     }
-  }, "\u2212"))), /*#__PURE__*/React.createElement("button", {
+  }, "−"))), /*#__PURE__*/React.createElement("button", {
     onClick: () => setRoles([...roles, {
       rol: 'Mozo',
       legajo: ''
@@ -4893,7 +4893,7 @@ function ManualEvento({
     type: "number",
     value: r.legajo,
     onChange: e => setRol(i, 'legajo', e.target.value),
-    placeholder: "N\xB0"
+    placeholder: "N°"
   }), /*#__PURE__*/React.createElement("button", {
     onClick: () => setRoles(rs => rs.filter((_, j) => j !== i)),
     style: {
@@ -4903,7 +4903,7 @@ function ManualEvento({
       padding: '0 12px',
       minHeight: 0
     }
-  }, "\u2212"))), /*#__PURE__*/React.createElement("button", {
+  }, "−"))), /*#__PURE__*/React.createElement("button", {
     onClick: () => setRoles([...roles, {
       rol: 'Mozo',
       legajo: ''
@@ -5138,7 +5138,7 @@ function PagoMantenimiento({
       fontSize: 11,
       color: C.tx2
     }
-  }, "Suma las horas entre entrada y salida de cada d\xEDa \xD7 valor hora. Sirve para pagar por semana.")), mants.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Suma las horas entre entrada y salida de cada día × valor hora. Sirve para pagar por semana.")), mants.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       textAlign: 'center',
@@ -5181,7 +5181,7 @@ function PagoMantenimiento({
         ...S.btn,
         ...S.btnGhost
       }
-    }, "\u2B07 PDF")), filas.map(f => {
+    }, "⬇ PDF")), filas.map(f => {
       const op = uno || abierto[f.emp.id];
       return /*#__PURE__*/React.createElement("div", {
         key: f.emp.id,
@@ -5242,7 +5242,7 @@ function PagoMantenimiento({
         style: {
           color: C.amar
         }
-      }, "\u26A0\uFE0F Falta cargar el valor hora") : money(f.vh) + '/h · ' + f.totalH.toFixed(2) + ' hs')), op && /*#__PURE__*/React.createElement("div", {
+      }, "⚠️ Falta cargar el valor hora") : money(f.vh) + '/h · ' + f.totalH.toFixed(2) + ' hs')), op && /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
           flexDirection: 'column',
@@ -5537,7 +5537,7 @@ function Pagos({
       fontSize: 20,
       marginBottom: 12
     }
-  }, "\uD83D\uDCB0 Pagos"), /*#__PURE__*/React.createElement("div", {
+  }, "💰 Pagos"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -5554,7 +5554,7 @@ function Pagos({
       fontSize: 12,
       ...(tab === 'liq' ? S.btnOro : S.btnGhost)
     }
-  }, "\uD83D\uDCB5 Liquidaci\xF3n"), /*#__PURE__*/React.createElement("button", {
+  }, "💵 Liquidación"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setTab('mant'),
     style: {
       ...S.btn,
@@ -5564,7 +5564,7 @@ function Pagos({
       fontSize: 12,
       ...(tab === 'mant' ? S.btnOro : S.btnGhost)
     }
-  }, "\uD83D\uDD27 Manten."), /*#__PURE__*/React.createElement("button", {
+  }, "🔧 Manten."), /*#__PURE__*/React.createElement("button", {
     onClick: () => setTab('comp'),
     style: {
       ...S.btn,
@@ -5574,7 +5574,7 @@ function Pagos({
       fontSize: 12,
       ...(tab === 'comp' ? S.btnOro : S.btnGhost)
     }
-  }, "\uD83D\uDD0D Comparar"), /*#__PURE__*/React.createElement("button", {
+  }, "🔍 Comparar"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setTab('stats'),
     style: {
       ...S.btn,
@@ -5584,7 +5584,7 @@ function Pagos({
       fontSize: 12,
       ...(tab === 'stats' ? S.btnOro : S.btnGhost)
     }
-  }, "\uD83D\uDCCA Encuestas")), tab === 'mant' && /*#__PURE__*/React.createElement(PagoMantenimiento, {
+  }, "📊 Encuestas")), tab === 'mant' && /*#__PURE__*/React.createElement(PagoMantenimiento, {
     esDuena: esDuena,
     sucursales: sucursales,
     empleados: empleados,
@@ -5693,7 +5693,7 @@ function Pagos({
         ...S.btn,
         ...S.btnGhost
       }
-    }, "\u2B07 PDF")), filas.map(f => {
+    }, "⬇ PDF")), filas.map(f => {
       const op = uno || abierto[f.key];
       return /*#__PURE__*/React.createElement("div", {
         key: f.key,
@@ -5754,7 +5754,7 @@ function Pagos({
         style: {
           color: C.amar
         }
-      }, "\u26A0\uFE0F Falta cargar el valor hora") : money(f.valorHora) + '/h · ' + f.horasTot + 'hs' + (f.bonusTot ? ' + bonus' : ''))), op && /*#__PURE__*/React.createElement("div", {
+      }, "⚠️ Falta cargar el valor hora") : money(f.valorHora) + '/h · ' + f.horasTot + 'hs' + (f.bonusTot ? ' + bonus' : ''))), op && /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
           flexDirection: 'column',
@@ -5772,7 +5772,7 @@ function Pagos({
           justifyContent: 'space-between',
           gap: 8
         }
-      }, /*#__PURE__*/React.createElement("span", null, fechaLinda(d.dia), " \xB7 ", d.desc), /*#__PURE__*/React.createElement("span", {
+      }, /*#__PURE__*/React.createElement("span", null, fechaLinda(d.dia), " · ", d.desc), /*#__PURE__*/React.createElement("span", {
         style: {
           whiteSpace: 'nowrap'
         }
@@ -5785,7 +5785,7 @@ function Pagos({
           justifyContent: 'space-between',
           gap: 8
         }
-      }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDC9C Bonus encuesta Excelente \xD7", f.bonusCount), /*#__PURE__*/React.createElement("span", {
+      }, /*#__PURE__*/React.createElement("span", null, "💜 Bonus encuesta Excelente ×", f.bonusCount), /*#__PURE__*/React.createElement("span", {
         style: {
           whiteSpace: 'nowrap'
         }
@@ -5795,7 +5795,7 @@ function Pagos({
           color: C.rojo,
           fontWeight: 700
         }
-      }, "\u23F0 Perdi\xF3 ", f.bonusPerdido, " bonus por llegadas tarde")));
+      }, "⏰ Perdió ", f.bonusPerdido, " bonus por llegadas tarde")));
     }), /*#__PURE__*/React.createElement("div", {
       style: {
         ...S.card,
@@ -5804,11 +5804,11 @@ function Pagos({
         fontSize: 12,
         color: C.tx2
       }
-    }, "\uD83D\uDC9C ", /*#__PURE__*/React.createElement("b", {
+    }, "💜 ", /*#__PURE__*/React.createElement("b", {
       style: {
         color: C.oro
       }
-    }, "Bonus \"Excelente\""), ": $", (+cfg.bonus_excelente).toLocaleString('es-AR'), " por cada evento que el pap\xE1 calific\xF3 Excelente. Total bonus del per\xEDodo: ", /*#__PURE__*/React.createElement("b", {
+    }, "Bonus \"Excelente\""), ": $", (+cfg.bonus_excelente).toLocaleString('es-AR'), " por cada evento que el papá calificó Excelente. Total bonus del período: ", /*#__PURE__*/React.createElement("b", {
       style: {
         color: C.oro
       }
@@ -5958,7 +5958,7 @@ function StatsEncuestas({
       fontSize: 11,
       color: C.tx2
     }
-  }, "Por empleado: cu\xE1ntas encuestas tuvieron algo malo o que no fue Excelente.")), res && (() => {
+  }, "Por empleado: cuántas encuestas tuvieron algo malo o que no fue Excelente.")), res && (() => {
     const filas = empSel ? res.filter(f => f.key === empSel) : res;
     return filas.length === 0 ? /*#__PURE__*/React.createElement("div", {
       style: {
@@ -6003,7 +6003,7 @@ function StatsEncuestas({
         background: f.obs ? '#3a3320' : '#16331f',
         color: f.obs ? C.amar : C.verde
       }
-    }, f.obs, " con observaci\xF3n", f.obs !== 1 ? 'es' : '', " de ", f.total), f.obs > 0 && /*#__PURE__*/React.createElement("span", {
+    }, f.obs, " con observación", f.obs !== 1 ? 'es' : '', " de ", f.total), f.obs > 0 && /*#__PURE__*/React.createElement("span", {
       style: {
         color: C.tx2
       }
@@ -6034,7 +6034,7 @@ function StatsEncuestas({
         fontSize: 12,
         color: C.amar
       }
-    }, "\u26A0\uFE0F ", n))))))));
+    }, "⚠️ ", n))))))));
   })());
 }
 
@@ -6240,7 +6240,7 @@ function Comparacion({
       fontSize: 11,
       color: C.tx2
     }
-  }, "Cruza lo cargado (horarios) con lo que cada empleado anot\xF3 en \"Mi planilla\".")), res && (() => {
+  }, "Cruza lo cargado (horarios) con lo que cada empleado anotó en \"Mi planilla\".")), res && (() => {
     const filas = empSel ? res.filter(f => f.key === empSel) : res;
     const uno = filas.length === 1;
     return filas.length === 0 ? /*#__PURE__*/React.createElement("div", {
@@ -6298,13 +6298,13 @@ function Comparacion({
           background: '#3a3320',
           color: C.amar
         }
-      }, "\u26A0\uFE0F ", f.difs, " a revisar") : /*#__PURE__*/React.createElement("span", {
+      }, "⚠️ ", f.difs, " a revisar") : /*#__PURE__*/React.createElement("span", {
         style: {
           ...S.chip,
           background: '#16331f',
           color: C.verde
         }
-      }, "\u2705 Coincide")), op && /*#__PURE__*/React.createElement("div", {
+      }, "✅ Coincide")), op && /*#__PURE__*/React.createElement("div", {
         style: {
           display: 'flex',
           flexDirection: 'column',
@@ -6340,7 +6340,7 @@ function Comparacion({
         style: {
           color: C.tx
         }
-      }, tl(r.st)), " \xB7 \xC9l: ", /*#__PURE__*/React.createElement("b", {
+      }, tl(r.st)), " · Él: ", /*#__PURE__*/React.createElement("b", {
         style: {
           color: ic[r.estado][1]
         }
@@ -6418,7 +6418,7 @@ function EncuestaImg({
       color: C.tx2,
       marginBottom: 10
     }
-  }, ev.festejado || ev.nombre || '', " \xB7 ", q.fecha || (ev.dia || '') + '/' + (ev.mes || '') + '/' + (ev.anio || ''), verPrivado && ev._sucNombre ? ' · ' + ev._sucNombre : '');
+  }, ev.festejado || ev.nombre || '', " · ", q.fecha || (ev.dia || '') + '/' + (ev.mes || '') + '/' + (ev.anio || ''), verPrivado && ev._sucNombre ? ' · ' + ev._sucNombre : '');
   // Audio sin descarga (para el empleado)
   const audioMsg = noDl => q.agradecimientoAudio || q.agradecimiento && String(q.agradecimiento).trim() ? /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6435,7 +6435,7 @@ function EncuestaImg({
       fontWeight: 700,
       marginBottom: 6
     }
-  }, "\uD83D\uDC9C Mensajito de la familia"), q.agradecimientoAudio && /*#__PURE__*/React.createElement("audio", {
+  }, "💜 Mensajito de la familia"), q.agradecimientoAudio && /*#__PURE__*/React.createElement("audio", {
     src: q.agradecimientoAudio,
     controls: true,
     controlsList: noDl ? 'nodownload noplaybackrate' : undefined,
@@ -6470,7 +6470,7 @@ function EncuestaImg({
         fontSize: 13,
         fontWeight: 700
       }
-    }, "\u2713 Todo bien, sin observaciones.") : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    }, "✓ Todo bien, sin observaciones.") : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 12,
         color: C.tx2,
@@ -6483,7 +6483,7 @@ function EncuestaImg({
         color: C.amar,
         marginBottom: 4
       }
-    }, "\u26A0\uFE0F ", n))), audioMsg(true));
+    }, "⚠️ ", n))), audioMsg(true));
   }
   return /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6495,11 +6495,11 @@ function EncuestaImg({
       fontFamily: 'Arial, Helvetica, sans-serif',
       fontSize: 16
     }
-  }, "\uD83D\uDCDD Encuesta del pap\xE1"), cab, /*#__PURE__*/React.createElement(Row, {
-    l: "\uD83D\uDC69 Encargada",
+  }, "📝 Encuesta del papá"), cab, /*#__PURE__*/React.createElement(Row, {
+    l: "👩 Encargada",
     par: cal(q.encargada)
   }), /*#__PURE__*/React.createElement(Row, {
-    l: "\uD83E\uDDD1\u200D\uD83C\uDF73 Mozos atentos",
+    l: "🧑‍🍳 Mozos atentos",
     par: sn(q.m1)
   }), /*#__PURE__*/React.createElement(Row, {
     l: "Presentes todo el evento",
@@ -6511,13 +6511,13 @@ function EncuestaImg({
     l: "Mesas limpias",
     par: sn(q.m4)
   }), /*#__PURE__*/React.createElement(Row, {
-    l: "\uD83C\uDFAE Auxiliares presentes",
+    l: "🎮 Auxiliares presentes",
     par: sn(q.aux)
   }), /*#__PURE__*/React.createElement(Row, {
-    l: "\uD83D\uDEBB Ba\xF1os limpios",
+    l: "🚻 Baños limpios",
     par: q.banos === 'novisito' ? ['No los visitó', C.tx2] : sn(q.banos === 'si')
   }), /*#__PURE__*/React.createElement(Row, {
-    l: "\u2B50 Atenci\xF3n del personal",
+    l: "⭐ Atención del personal",
     par: cal(q.personal)
   }), q.pagoExtra === 'si' && /*#__PURE__*/React.createElement("div", {
     style: {
@@ -6526,13 +6526,13 @@ function EncuestaImg({
       color: C.amar,
       fontWeight: 700
     }
-  }, "\uD83D\uDCB5 Abon\xF3 extra: $", q.pagoMonto != null && q.pagoMonto !== '' ? (+q.pagoMonto).toLocaleString('es-AR') : '?', q.pagoConcepto ? ' (' + q.pagoConcepto + ')' : ''), audioMsg(false), q.comentario && String(q.comentario).trim() && /*#__PURE__*/React.createElement("div", {
+  }, "💵 Abonó extra: $", q.pagoMonto != null && q.pagoMonto !== '' ? (+q.pagoMonto).toLocaleString('es-AR') : '?', q.pagoConcepto ? ' (' + q.pagoConcepto + ')' : ''), audioMsg(false), q.comentario && String(q.comentario).trim() && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
       fontSize: 12.5,
       color: C.tx2
     }
-  }, "\uD83D\uDCAC ", q.comentario), q.critica && String(q.critica).trim() && /*#__PURE__*/React.createElement("div", {
+  }, "💬 ", q.comentario), q.critica && String(q.critica).trim() && /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 8,
       background: '#2a1a10',
@@ -6542,7 +6542,7 @@ function EncuestaImg({
       fontSize: 12.5,
       color: '#fdba74'
     }
-  }, "\uD83D\uDD12 Cr\xEDtica (privada): ", q.critica));
+  }, "🔒 Crítica (privada): ", q.critica));
 }
 function EncuestasView({
   esDuena,
@@ -6585,7 +6585,7 @@ function EncuestasView({
   }, /*#__PURE__*/React.createElement("input", {
     value: busca,
     onChange: e => setBusca(e.target.value),
-    placeholder: "\uD83D\uDD0E Buscar festejado/nombre\u2026",
+    placeholder: "🔎 Buscar festejado/nombre…",
     style: {
       ...S.input,
       flex: 1,
@@ -6641,12 +6641,12 @@ function EncuestasView({
       color: C.verde,
       flexShrink: 0
     }
-  }, "\uD83E\uDD29 Excelente") : /*#__PURE__*/React.createElement("span", {
+  }, "🤩 Excelente") : /*#__PURE__*/React.createElement("span", {
     style: {
       color: C.tx2,
       fontSize: 18
     }
-  }, "\u203A"))), abrir && /*#__PURE__*/React.createElement("div", {
+  }, "›"))), abrir && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
       inset: 0,
@@ -6801,7 +6801,7 @@ function ControlEncargadas({
       fontSize: 11,
       color: C.tx2
     }
-  }, "Compara el horario fijo de cada encargada con lo que fich\xF3. Marca ", /*#__PURE__*/React.createElement("b", {
+  }, "Compara el horario fijo de cada encargada con lo que fichó. Marca ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.amar
     }
@@ -6809,21 +6809,21 @@ function ControlEncargadas({
     style: {
       color: C.rojo
     }
-  }, "faltas"), " (d\xEDas que ten\xEDa horario y no fich\xF3).")), encs.length === 0 && /*#__PURE__*/React.createElement("div", {
+  }, "faltas"), " (días que tenía horario y no fichó).")), encs.length === 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       textAlign: 'center',
       color: C.tx2,
       padding: 24
     }
-  }, "No hay encargadas con horario fijo cargado. Carg\xE1selo en \uD83D\uDC65 Empleados."), res && (res.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, "No hay encargadas con horario fijo cargado. Cargáselo en 👥 Empleados."), res && (res.length === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       textAlign: 'center',
       color: C.tx2,
       padding: 24
     }
-  }, "No hay d\xEDas con horario en ese rango.") : res.map(f => {
+  }, "No hay días con horario en ese rango.") : res.map(f => {
     const op = res.length === 1 || abierto[f.enc.id];
     return /*#__PURE__*/React.createElement("div", {
       key: f.enc.id,
@@ -6884,7 +6884,7 @@ function ControlEncargadas({
         background: '#16331f',
         color: C.verde
       }
-    }, "\u2705 Todo OK"))), op && /*#__PURE__*/React.createElement("div", {
+    }, "✅ Todo OK"))), op && /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         flexDirection: 'column',
@@ -7031,7 +7031,7 @@ function Registros({
       fontSize: 20,
       marginBottom: 10
     }
-  }, "\uD83D\uDCCB Fichajes"), /*#__PURE__*/React.createElement("div", {
+  }, "📋 Fichajes"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -7047,7 +7047,7 @@ function Registros({
       fontSize: 12.5,
       ...(tab === 'fich' ? S.btnOro : S.btnGhost)
     }
-  }, "\uD83D\uDCCB Fichajes"), /*#__PURE__*/React.createElement("button", {
+  }, "📋 Fichajes"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setTab('enc'),
     style: {
       ...S.btn,
@@ -7057,7 +7057,7 @@ function Registros({
       fontSize: 12.5,
       ...(tab === 'enc' ? S.btnOro : S.btnGhost)
     }
-  }, "\uD83D\uDC54 Encargadas")), tab === 'enc' ? /*#__PURE__*/React.createElement(ControlEncargadas, {
+  }, "👔 Encargadas")), tab === 'enc' ? /*#__PURE__*/React.createElement(ControlEncargadas, {
     esDuena: esDuena,
     sucursales: sucursales,
     empleados: empleados,
@@ -7068,7 +7068,7 @@ function Registros({
       color: C.tx2,
       marginBottom: 12
     }
-  }, "Consult\xE1 qui\xE9n fich\xF3, cu\xE1ndo y su estado. Filtr\xE1 por empleado y fecha."), /*#__PURE__*/React.createElement("div", {
+  }, "Consultá quién fichó, cuándo y su estado. Filtrá por empleado y fecha."), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 12,
@@ -7158,7 +7158,7 @@ function Registros({
         fontSize: 12,
         color: C.tx2
       }
-    }, data.list.length, " fichaje", data.list.length === 1 ? '' : 's', " \xB7 ", eids.length, " empleado", eids.length === 1 ? '' : 's'), /*#__PURE__*/React.createElement("button", {
+    }, data.list.length, " fichaje", data.list.length === 1 ? '' : 's', " · ", eids.length, " empleado", eids.length === 1 ? '' : 's'), /*#__PURE__*/React.createElement("button", {
       onClick: exportarPDF,
       style: {
         ...S.btn,
@@ -7168,7 +7168,7 @@ function Registros({
         fontSize: 12,
         flexShrink: 0
       }
-    }, "\uD83D\uDCC4 Exportar PDF")), eids.map(eid => {
+    }, "📄 Exportar PDF")), eids.map(eid => {
       const items = byEmp[eid];
       const op = uno || abierto[eid];
       return /*#__PURE__*/React.createElement("div", {
@@ -7200,7 +7200,7 @@ function Registros({
         style: {
           fontSize: 18
         }
-      }, "\uD83D\uDC64"), /*#__PURE__*/React.createElement("span", {
+      }, "👤"), /*#__PURE__*/React.createElement("span", {
         style: {
           flex: 1,
           minWidth: 0,
@@ -7246,17 +7246,17 @@ function Registros({
             flex: 1,
             minWidth: 0
           }
-        }, /*#__PURE__*/React.createElement("div", null, fmtTs(x.ts), " \xB7 ", esSal ? 'Salida' : 'Entrada', ev ? ' · ' + ev.paquete : ''), asg && /*#__PURE__*/React.createElement("div", {
+        }, /*#__PURE__*/React.createElement("div", null, fmtTs(x.ts), " · ", esSal ? 'Salida' : 'Entrada', ev ? ' · ' + ev.paquete : ''), asg && /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 11,
             color: C.tx2,
             marginTop: 2
           }
-        }, "\uD83D\uDD52 Horario: ", /*#__PURE__*/React.createElement("b", {
+        }, "🕒 Horario: ", /*#__PURE__*/React.createElement("b", {
           style: {
             color: C.tx
           }
-        }, asg.entrada || '—', " \u2192 ", asg.salida || '—'), debia ? ' · debía ' + (esSal ? 'salir' : 'entrar') + ' ' + debia : '')), /*#__PURE__*/React.createElement("span", {
+        }, asg.entrada || '—', " → ", asg.salida || '—'), debia ? ' · debía ' + (esSal ? 'salir' : 'entrar') + ' ' + debia : '')), /*#__PURE__*/React.createElement("span", {
           style: {
             ...S.chip,
             background: '#242424',
@@ -7318,7 +7318,7 @@ function Alertas({
       fontSize: 20,
       marginBottom: 4
     }
-  }, "\uD83D\uDD14 Alertas"), /*#__PURE__*/React.createElement("p", {
+  }, "🔔 Alertas"), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 12,
       color: C.tx2,
@@ -7355,7 +7355,7 @@ function Alertas({
       fontSize: 34,
       marginBottom: 6
     }
-  }, "\u2705"), "No hay alertas.") : list.map(a => {
+  }, "✅"), "No hay alertas.") : list.map(a => {
     const I = ic[a.tipo] || ['🔔', C.tx2];
     return /*#__PURE__*/React.createElement("div", {
       key: a.id,
@@ -7406,7 +7406,7 @@ function Alertas({
         minHeight: 0,
         fontSize: 11
       }
-    }, "\u2713 Le\xEDda"), /*#__PURE__*/React.createElement("button", {
+    }, "✓ Leída"), /*#__PURE__*/React.createElement("button", {
       onClick: () => borrar(a.id),
       style: {
         ...S.btn,
@@ -7416,7 +7416,7 @@ function Alertas({
         minHeight: 0,
         fontSize: 11
       }
-    }, "\uD83D\uDDD1")));
+    }, "🗑")));
   }));
 }
 
@@ -7823,7 +7823,7 @@ function Fichar({
       fontSize: 20,
       marginBottom: 12
     }
-  }, "\uD83D\uDCCD Fichar"), paso === 'inicio' && /*#__PURE__*/React.createElement("div", {
+  }, "📍 Fichar"), paso === 'inicio' && /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       textAlign: 'center',
@@ -7834,13 +7834,13 @@ function Fichar({
       fontSize: 40,
       marginBottom: 8
     }
-  }, "\uD83D\uDD52"), /*#__PURE__*/React.createElement("p", {
+  }, "🕒"), /*#__PURE__*/React.createElement("p", {
     style: {
       color: C.tx2,
       fontSize: 13,
       marginBottom: 16
     }
-  }, "Vas a fichar con tu ubicaci\xF3n y una foto (reconocimiento facial). Funciona desde cualquier tel\xE9fono \u2014 te reconoce por la cara."), /*#__PURE__*/React.createElement("div", {
+  }, "Vas a fichar con tu ubicación y una foto (reconocimiento facial). Funciona desde cualquier teléfono — te reconoce por la cara."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 10
@@ -7853,7 +7853,7 @@ function Fichar({
       flex: 1,
       padding: '15px'
     }
-  }, "\u27A1\uFE0F Entrada"), /*#__PURE__*/React.createElement("button", {
+  }, "➡️ Entrada"), /*#__PURE__*/React.createElement("button", {
     onClick: () => comenzar('salida'),
     style: {
       ...S.btn,
@@ -7863,13 +7863,13 @@ function Fichar({
       flex: 1,
       padding: '15px'
     }
-  }, "\u2B05\uFE0F Salida")), !sesion.foto_url && /*#__PURE__*/React.createElement("div", {
+  }, "⬅️ Salida")), !sesion.foto_url && /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: C.amar,
       marginTop: 12
     }
-  }, "\u26A0\uFE0F No ten\xE9s foto de perfil cargada \u2014 la due\xF1a debe cargarla para el reconocimiento facial.")), paso === 'cargando' && /*#__PURE__*/React.createElement("div", {
+  }, "⚠️ No tenés foto de perfil cargada — la dueña debe cargarla para el reconocimiento facial.")), paso === 'cargando' && /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       textAlign: 'center',
@@ -7894,7 +7894,7 @@ function Fichar({
       marginBottom: 10,
       textAlign: 'center'
     }
-  }, "\uD83D\uDCCD Ubicaci\xF3n verificada \xB7 Pon\xE9 tu cara en el centro"), /*#__PURE__*/React.createElement("div", {
+  }, "📍 Ubicación verificada · Poné tu cara en el centro"), /*#__PURE__*/React.createElement("div", {
     style: {
       borderRadius: 14,
       overflow: 'hidden',
@@ -7929,7 +7929,7 @@ function Fichar({
       padding: '15px',
       fontSize: 16
     }
-  }, "\uD83D\uDCF8 Sacar foto y fichar"), /*#__PURE__*/React.createElement("button", {
+  }, "📸 Sacar foto y fichar"), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       pararCamara();
       setPaso('inicio');
@@ -7966,7 +7966,7 @@ function Fichar({
       fontSize: 38,
       marginBottom: 8
     }
-  }, "\u26A0\uFE0F"), /*#__PURE__*/React.createElement("p", {
+  }, "⚠️"), /*#__PURE__*/React.createElement("p", {
     style: {
       color: C.tx,
       fontSize: 14,
@@ -8018,23 +8018,23 @@ function Fichar({
       flexDirection: 'column',
       gap: 6
     }
-  }, /*#__PURE__*/React.createElement("div", null, "\uD83D\uDCCD Ubicaci\xF3n: ", /*#__PURE__*/React.createElement("b", {
+  }, /*#__PURE__*/React.createElement("div", null, "📍 Ubicación: ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.verde
     }
-  }, "verificada \u2713")), /*#__PURE__*/React.createElement("div", null, "\uD83D\uDCF8 Cara: ", /*#__PURE__*/React.createElement("b", {
+  }, "verificada ✓")), /*#__PURE__*/React.createElement("div", null, "📸 Cara: ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: res.facialOk === true ? C.verde : res.facialOk === false ? C.rojo : C.tx2
     }
-  }, res.facialOk === true ? 'verificada ✓' : res.facialMsg)), res.coincide ? /*#__PURE__*/React.createElement("div", null, "\uD83D\uDDD3\uFE0F Horario: ", /*#__PURE__*/React.createElement("b", {
+  }, res.facialOk === true ? 'verificada ✓' : res.facialMsg)), res.coincide ? /*#__PURE__*/React.createElement("div", null, "🗓️ Horario: ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.verde
     }
-  }, "coincide \u2713"), " (", res.eventoDesc, ")", res.ingreso && res.tipo === 'entrada' ? ' · entrada esperada ' + res.ingreso : '') : /*#__PURE__*/React.createElement("div", null, "\uD83D\uDDD3\uFE0F Horario: ", /*#__PURE__*/React.createElement("b", {
+  }, "coincide ✓"), " (", res.eventoDesc, ")", res.ingreso && res.tipo === 'entrada' ? ' · entrada esperada ' + res.ingreso : '') : /*#__PURE__*/React.createElement("div", null, "🗓️ Horario: ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.amar
     }
-  }, "no figur\xE1s hoy"), " (queda registrado igual)"), res.tipo === 'entrada' && res.coincide && /*#__PURE__*/React.createElement("div", null, "\u23F1\uFE0F Estado: ", /*#__PURE__*/React.createElement("b", {
+  }, "no figurás hoy"), " (queda registrado igual)"), res.tipo === 'entrada' && res.coincide && /*#__PURE__*/React.createElement("div", null, "⏱️ Estado: ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: res.estado === 'tarde' ? C.amar : C.verde
     }
@@ -8050,24 +8050,24 @@ function Fichar({
       color: '#fdba74',
       lineHeight: 1.5
     }
-  }, /*#__PURE__*/React.createElement("div", null, "\u23F0 ", /*#__PURE__*/React.createElement("b", null, "Llegaste ", res.tardeInfo.minTarde, " min tarde \u2014 hoy no cobr\xE1s el bonus de encuesta.")), res.tardeInfo.reach ? /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("div", null, "⏰ ", /*#__PURE__*/React.createElement("b", null, "Llegaste ", res.tardeInfo.minTarde, " min tarde — hoy no cobrás el bonus de encuesta.")), res.tardeInfo.reach ? /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 6,
       color: C.rojo,
       fontWeight: 800
     }
-  }, "\uD83D\uDEAB Llev\xE1s ", res.tardeInfo.cnt, " llegadas tarde este mes: no vas a cobrar encuestas por ", res.tardeInfo.susp, " d\xEDas.") : res.tardeInfo.aviso ? /*#__PURE__*/React.createElement("div", {
+  }, "🚫 Llevás ", res.tardeInfo.cnt, " llegadas tarde este mes: no vas a cobrar encuestas por ", res.tardeInfo.susp, " días.") : res.tardeInfo.aviso ? /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 6,
       color: C.amar,
       fontWeight: 800
     }
-  }, "\u26A0\uFE0F Llev\xE1s ", res.tardeInfo.cnt, " llegadas tarde. Con UNA m\xE1s, perd\xE9s las encuestas por ", res.tardeInfo.susp, " d\xEDas.") : /*#__PURE__*/React.createElement("div", {
+  }, "⚠️ Llevás ", res.tardeInfo.cnt, " llegadas tarde. Con UNA más, perdés las encuestas por ", res.tardeInfo.susp, " días.") : /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 6,
       color: C.tx2
     }
-  }, "Llev\xE1s ", res.tardeInfo.cnt, " llegada", res.tardeInfo.cnt > 1 ? 's' : '', " tarde este mes (a las ", res.tardeInfo.max, " se suspenden las encuestas ", res.tardeInfo.susp, " d\xEDas).")), /*#__PURE__*/React.createElement("button", {
+  }, "Llevás ", res.tardeInfo.cnt, " llegada", res.tardeInfo.cnt > 1 ? 's' : '', " tarde este mes (a las ", res.tardeInfo.max, " se suspenden las encuestas ", res.tardeInfo.susp, " días).")), /*#__PURE__*/React.createElement("button", {
     onClick: () => setPaso('inicio'),
     style: {
       ...S.btn,
@@ -8255,16 +8255,16 @@ function MisHorarios({
         style: {
           color: C.tx2
         }
-      }, "Mam\xE1: ", dc.cli), it.e.festejado && /*#__PURE__*/React.createElement("div", {
+      }, "Mamá: ", dc.cli), it.e.festejado && /*#__PURE__*/React.createElement("div", {
         style: {
           color: C.tx2
         }
-      }, "Ni\xF1o: ", it.e.festejado), dc.adic && /*#__PURE__*/React.createElement("div", {
+      }, "Niño: ", it.e.festejado), dc.adic && /*#__PURE__*/React.createElement("div", {
         style: {
           color: C.rojo,
           fontWeight: 700
         }
-      }, "\u26A0\uFE0F Adicional: ", dc.adic), (crew[it.e.id] || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+      }, "⚠️ Adicional: ", dc.adic), (crew[it.e.id] || []).length > 0 && /*#__PURE__*/React.createElement("div", {
         style: {
           marginTop: 6,
           paddingTop: 6,
@@ -8276,7 +8276,7 @@ function MisHorarios({
           fontSize: 12,
           marginBottom: 3
         }
-      }, "Trabajan ese d\xEDa:"), (crew[it.e.id] || []).map((a, j) => /*#__PURE__*/React.createElement("div", {
+      }, "Trabajan ese día:"), (crew[it.e.id] || []).map((a, j) => /*#__PURE__*/React.createElement("div", {
         key: j,
         style: {
           fontSize: 13
@@ -8291,7 +8291,7 @@ function MisHorarios({
       fontSize: 20,
       marginBottom: 12
     }
-  }, "\uD83D\uDCC5 Horarios"), !simple && ultimo && /*#__PURE__*/React.createElement("a", {
+  }, "📅 Horarios"), !simple && ultimo && /*#__PURE__*/React.createElement("a", {
     href: ultimo.url,
     target: "_blank",
     rel: "noopener",
@@ -8309,7 +8309,7 @@ function MisHorarios({
     style: {
       fontSize: 28
     }
-  }, "\uD83D\uDCC4"), /*#__PURE__*/React.createElement("div", {
+  }, "📄"), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1
     }
@@ -8322,12 +8322,12 @@ function MisHorarios({
       fontSize: 11,
       color: C.oro
     }
-  }, etiqPdf(ultimo), " \xB7 \xFAltimo")), /*#__PURE__*/React.createElement("span", {
+  }, etiqPdf(ultimo), " · último")), /*#__PURE__*/React.createElement("span", {
     style: {
       color: C.oro,
       fontSize: 18
     }
-  }, "\u203A")), items === null ? /*#__PURE__*/React.createElement("div", {
+  }, "›")), items === null ? /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: 'center',
       padding: 30
@@ -8341,7 +8341,7 @@ function MisHorarios({
       color: C.tx2,
       padding: 26
     }
-  }, _nAntMH > 0 && !verAntMH ? /*#__PURE__*/React.createElement("span", null, "No ten\xE9s horarios de esta semana en adelante.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("button", {
+  }, _nAntMH > 0 && !verAntMH ? /*#__PURE__*/React.createElement("span", null, "No tenés horarios de esta semana en adelante.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("button", {
     onClick: () => setVerAntMH(true),
     style: {
       ...S.btn,
@@ -8349,7 +8349,7 @@ function MisHorarios({
       marginTop: 10,
       fontSize: 13
     }
-  }, "\uD83D\uDCCB Ver semana anterior (", _nAntMH, ")")) : /*#__PURE__*/React.createElement("span", null, "No ten\xE9s horarios cargados por ahora.")) : /*#__PURE__*/React.createElement(React.Fragment, null, _nAntMH > 0 && /*#__PURE__*/React.createElement("button", {
+  }, "📋 Ver semana anterior (", _nAntMH, ")")) : /*#__PURE__*/React.createElement("span", null, "No tenés horarios cargados por ahora.")) : /*#__PURE__*/React.createElement(React.Fragment, null, _nAntMH > 0 && /*#__PURE__*/React.createElement("button", {
     onClick: () => setVerAntMH(v => !v),
     style: {
       ...S.btn,
@@ -8378,7 +8378,7 @@ function MisHorarios({
         padding: '7px 11px',
         marginBottom: 8
       }
-    }, "\uD83D\uDCC5 Semana del ", _fdmMH(sem.lunes), " al ", _fdmMH(sem.domingo)), pas.length > 0 && /*#__PURE__*/React.createElement("div", {
+    }, "📅 Semana del ", _fdmMH(sem.lunes), " al ", _fdmMH(sem.domingo)), pas.length > 0 && /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 8
       }
@@ -8395,7 +8395,7 @@ function MisHorarios({
         display: 'flex',
         justifyContent: 'space-between'
       }
-    }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDD58 Eventos pasados de esta semana (", pas.length, ")"), /*#__PURE__*/React.createElement("span", null, verPasW ? '▲' : '▼')), verPasW && pas.map(_diaMH)), resto.map(_diaMH));
+    }, /*#__PURE__*/React.createElement("span", null, "🕘 Eventos pasados de esta semana (", pas.length, ")"), /*#__PURE__*/React.createElement("span", null, verPasW ? '▲' : '▼')), verPasW && pas.map(_diaMH)), resto.map(_diaMH));
   })));
 }
 
@@ -8451,13 +8451,13 @@ function MisEncuestas({
       fontSize: 20,
       marginBottom: 4
     }
-  }, "\uD83D\uDCAC Encuestas"), /*#__PURE__*/React.createElement("p", {
+  }, "💬 Encuestas"), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 12,
       color: C.tx2,
       marginBottom: 12
     }
-  }, "Lo que opinaron las familias de tus eventos (\xFAltimas 2 semanas). Solo se muestra lo que hay que mejorar y el mensajito."), encs === null ? /*#__PURE__*/React.createElement("div", {
+  }, "Lo que opinaron las familias de tus eventos (últimas 2 semanas). Solo se muestra lo que hay que mejorar y el mensajito."), encs === null ? /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: 'center',
       padding: 30
@@ -8471,7 +8471,7 @@ function MisEncuestas({
       color: C.tx2,
       padding: 26
     }
-  }, "Todav\xEDa no hay encuestas de tus eventos.") : list.map(e => {
+  }, "Todavía no hay encuestas de tus eventos.") : list.map(e => {
     const negs = encuestaNegativos(e.encuesta);
     const hayMsg = e.encuesta && (e.encuesta.agradecimientoAudio || e.encuesta.agradecimiento && String(e.encuesta.agradecimiento).trim());
     return /*#__PURE__*/React.createElement("button", {
@@ -8508,7 +8508,7 @@ function MisEncuestas({
         color: C.tx2,
         fontSize: 18
       }
-    }, "\u203A"));
+    }, "›"));
   }), ver && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
@@ -8838,17 +8838,17 @@ function MiPlanilla({
       fontSize: 20,
       marginBottom: 4
     }
-  }, "\uD83D\uDCC5 Planilla"), /*#__PURE__*/React.createElement("p", {
+  }, "📅 Planilla"), /*#__PURE__*/React.createElement("p", {
     style: {
       fontSize: 12,
       color: C.tx2,
       marginBottom: 12
     }
-  }, "Marc\xE1 los d\xEDas que trabajaste y qu\xE9 hiciste. Es tu registro (despu\xE9s se compara con el del sal\xF3n). Pod\xE9s ver/cargar los ", /*#__PURE__*/React.createElement("b", {
+  }, "Marcá los días que trabajaste y qué hiciste. Es tu registro (después se compara con el del salón). Podés ver/cargar los ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.tx
     }
-  }, "\xFAltimos 15 d\xEDas"), "."), /*#__PURE__*/React.createElement("div", {
+  }, "últimos 15 días"), "."), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 12
@@ -8868,7 +8868,7 @@ function MiPlanilla({
       padding: '6px 12px',
       minHeight: 0
     }
-  }, "\u2039"), /*#__PURE__*/React.createElement("div", {
+  }, "‹"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 700,
       fontFamily: 'Arial, Helvetica, sans-serif'
@@ -8881,7 +8881,7 @@ function MiPlanilla({
       padding: '6px 12px',
       minHeight: 0
     }
-  }, "\u203A")), /*#__PURE__*/React.createElement("div", {
+  }, "›")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: 'repeat(7,1fr)',
@@ -8962,9 +8962,9 @@ function MiPlanilla({
       fontSize: 13,
       padding: '10px'
     }
-  }, "\uD83D\uDDBC\uFE0F Ver la encuesta que puso el pap\xE1"), /*#__PURE__*/React.createElement("label", {
+  }, "🖼️ Ver la encuesta que puso el papá"), /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "\xBFQu\xE9 trabajaste?"), /*#__PURE__*/React.createElement("div", {
+  }, "¿Qué trabajaste?"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -8993,7 +8993,7 @@ function MiPlanilla({
     }
   }, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "\xBFCu\xE1ntos fueron Deluxe? (+", PL.deluxe || 1, "h cada uno)"), /*#__PURE__*/React.createElement("div", {
+  }, "¿Cuántos fueron Deluxe? (+", PL.deluxe || 1, "h cada uno)"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6
@@ -9016,7 +9016,7 @@ function MiPlanilla({
     }
   }, /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "\xBFEntraste al 1\xB0 o 2\xB0 turno?"), /*#__PURE__*/React.createElement("div", {
+  }, "¿Entraste al 1° o 2° turno?"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -9043,9 +9043,9 @@ function MiPlanilla({
       color: C.tx2,
       marginBottom: 10
     }
-  }, "\uD83D\uDD52 Triple: entra siempre al 1\xB0 turno (+", PL.entrada1 || 0, "h antes)."), /*#__PURE__*/React.createElement("label", {
+  }, "🕒 Triple: entra siempre al 1° turno (+", PL.entrada1 || 0, "h antes)."), /*#__PURE__*/React.createElement("label", {
     style: S.label
-  }, "\xBFCu\xE1ntas encuestas salieron bien (Excelente)?"), /*#__PURE__*/React.createElement("div", {
+  }, "¿Cuántas encuestas salieron bien (Excelente)?"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6,
@@ -9075,7 +9075,7 @@ function MiPlanilla({
       fontSize: 12,
       color: C.tx2
     }
-  }, "Ese d\xEDa deber\xEDas cobrar"), /*#__PURE__*/React.createElement("span", {
+  }, "Ese día deberías cobrar"), /*#__PURE__*/React.createElement("span", {
     className: "num",
     style: {
       color: C.verde,
@@ -9095,7 +9095,7 @@ function MiPlanilla({
       fontSize: 13,
       padding: '9px'
     }
-  }, "Borrar este d\xEDa"))), /*#__PURE__*/React.createElement("div", {
+  }, "Borrar este día"))), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       display: 'flex',
@@ -9107,7 +9107,7 @@ function MiPlanilla({
       fontSize: 12,
       color: C.tx2
     }
-  }, "Tu estimaci\xF3n de ", MESES[m]), /*#__PURE__*/React.createElement("div", {
+  }, "Tu estimación de ", MESES[m]), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 10,
       color: C.tx2
@@ -9129,13 +9129,13 @@ function MiPlanilla({
       fontSize: 14,
       marginBottom: 6
     }
-  }, "\u2B07 Descargar mi registro"), /*#__PURE__*/React.createElement("div", {
+  }, "⬇ Descargar mi registro"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: C.tx2,
       marginBottom: 10
     }
-  }, "Eleg\xED un rango y baj\xE1 un PDF con lo que anotaste (para tenerlo y comparar si hay alguna duda)."), /*#__PURE__*/React.createElement("div", {
+  }, "Elegí un rango y bajá un PDF con lo que anotaste (para tenerlo y comparar si hay alguna duda)."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
@@ -9174,7 +9174,7 @@ function MiPlanilla({
       ...S.btnGhost,
       width: '100%'
     }
-  }, "\u2B07 Descargar PDF")), verEnc && /*#__PURE__*/React.createElement("div", {
+  }, "⬇ Descargar PDF")), verEnc && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'fixed',
       inset: 0,
@@ -9257,7 +9257,7 @@ function Configuracion({
   useEffect(() => {
     const o = {};
     (empleados || []).forEach(e => {
-      o[e.id] = e.valor_hora ?? '';
+      o[e.id] = e.valor_hora == null ? '' : e.valor_hora;
     });
     setVh(o);
   }, [empleados]);
@@ -9365,7 +9365,7 @@ function Configuracion({
       fontSize: 20,
       marginBottom: 12
     }
-  }, "\u2699\uFE0F Configuraci\xF3n"), /*#__PURE__*/React.createElement("div", {
+  }, "⚙️ Configuración"), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 12
@@ -9376,13 +9376,13 @@ function Configuracion({
       fontSize: 14,
       marginBottom: 4
     }
-  }, "\uD83D\uDC9C Bonus de encuesta \"Excelente\""), /*#__PURE__*/React.createElement("div", {
+  }, "💜 Bonus de encuesta \"Excelente\""), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.tx2,
       marginBottom: 10
     }
-  }, "Lo que cobra cada empleado cuando el pap\xE1 califica el evento como Excelente."), /*#__PURE__*/React.createElement("label", {
+  }, "Lo que cobra cada empleado cuando el papá califica el evento como Excelente."), /*#__PURE__*/React.createElement("label", {
     style: S.label
   }, "Monto del bonus ($)"), /*#__PURE__*/React.createElement("input", {
     style: S.input,
@@ -9404,7 +9404,7 @@ function Configuracion({
       fontSize: 14,
       marginBottom: 4
     }
-  }, "\uD83D\uDD50 Horas de eventos (planilla y sueldos)"), /*#__PURE__*/React.createElement("div", {
+  }, "🕐 Horas de eventos (planilla y sueldos)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.tx2,
@@ -9414,11 +9414,11 @@ function Configuracion({
     style: {
       color: C.tx
     }
-  }, "entrada + (eventos \xD7 duraci\xF3n) + (horas entre eventos) + salida"), ". Se usa ", /*#__PURE__*/React.createElement("b", {
+  }, "entrada + (eventos × duración) + (horas entre eventos) + salida"), ". Se usa ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.tx
     }
-  }, "igual"), " en la planilla del empleado y en la liquidaci\xF3n de sueldos. El monto = estas horas \xD7 el valor hora."), /*#__PURE__*/React.createElement("div", {
+  }, "igual"), " en la planilla del empleado y en la liquidación de sueldos. El monto = estas horas × el valor hora."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
@@ -9441,7 +9441,7 @@ function Configuracion({
       color: C.tx2,
       marginTop: 6
     }
-  }, "Hueco: en sueldos, si entre dos eventos pasan ese tiempo o m\xE1s, cuentan como turnos separados."), (() => {
+  }, "Hueco: en sueldos, si entre dos eventos pasan ese tiempo o más, cuentan como turnos separados."), (() => {
     const P = cfg.planilla || {};
     const e = +P.evento || 0,
       en = +P.entre || 0,
@@ -9465,7 +9465,7 @@ function Configuracion({
         color: C.oro,
         marginBottom: 5
       }
-    }, "\uD83D\uDC41\uFE0F Vista previa (horas que cobra)"), rows.map(([l, v]) => /*#__PURE__*/React.createElement("div", {
+    }, "👁️ Vista previa (horas que cobra)"), rows.map(([l, v]) => /*#__PURE__*/React.createElement("div", {
       key: l,
       style: {
         display: 'flex',
@@ -9490,13 +9490,13 @@ function Configuracion({
       fontSize: 14,
       marginBottom: 8
     }
-  }, "\u23F1\uFE0F Minutos de ingreso antes del evento"), /*#__PURE__*/React.createElement("div", {
+  }, "⏱️ Minutos de ingreso antes del evento"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.tx2,
       marginBottom: 10
     }
-  }, "Cu\xE1nto antes entra el personal seg\xFAn sea el 1\xB0, 2\xB0 o 3\xB0 evento del d\xEDa."), /*#__PURE__*/React.createElement("div", {
+  }, "Cuánto antes entra el personal según sea el 1°, 2° o 3° evento del día."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8
@@ -9512,13 +9512,13 @@ function Configuracion({
       fontSize: 14,
       marginBottom: 4
     }
-  }, "\u2795 Figuras por hora (extra)"), /*#__PURE__*/React.createElement("div", {
+  }, "➕ Figuras por hora (extra)"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.tx2,
       marginBottom: 10
     }
-  }, "Personas que se suman a un evento y se pagan ", /*#__PURE__*/React.createElement("b", null, "por hora"), " (aparte del cocinero/mozo). Marc\xE1 si a cada una le suma el bonus de encuesta."), (cfg.figuras_hora || []).map((f, i) => /*#__PURE__*/React.createElement("div", {
+  }, "Personas que se suman a un evento y se pagan ", /*#__PURE__*/React.createElement("b", null, "por hora"), " (aparte del cocinero/mozo). Marcá si a cada una le suma el bonus de encuesta."), (cfg.figuras_hora || []).map((f, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
       background: C.surf2,
@@ -9559,7 +9559,7 @@ function Configuracion({
       padding: '0 12px',
       minHeight: 0
     }
-  }, "\uD83D\uDDD1")), /*#__PURE__*/React.createElement("label", {
+  }, "🗑")), /*#__PURE__*/React.createElement("label", {
     style: {
       display: 'flex',
       alignItems: 'center',
@@ -9571,7 +9571,7 @@ function Configuracion({
     type: "checkbox",
     checked: !!f.bonus,
     onChange: e => setFig(i, 'bonus', e.target.checked)
-  }), " \xBFLe suma el bonus de encuesta?"))), /*#__PURE__*/React.createElement("button", {
+  }), " ¿Le suma el bonus de encuesta?"))), /*#__PURE__*/React.createElement("button", {
     onClick: addFig,
     style: {
       ...S.btn,
@@ -9591,7 +9591,7 @@ function Configuracion({
       fontSize: 14,
       marginBottom: 8
     }
-  }, "\u23F0 Llegadas tarde y encuestas"), /*#__PURE__*/React.createElement("div", {
+  }, "⏰ Llegadas tarde y encuestas"), /*#__PURE__*/React.createElement("div", {
     style: {
       background: C.surf2,
       borderRadius: 10,
@@ -9601,11 +9601,11 @@ function Configuracion({
       color: C.tx2,
       marginBottom: 12
     }
-  }, /*#__PURE__*/React.createElement("div", null, "\u2022 Se considera ", /*#__PURE__*/React.createElement("b", {
+  }, /*#__PURE__*/React.createElement("div", null, "• Se considera ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.tx
     }
-  }, "tarde"), " si llega m\xE1s de ", /*#__PURE__*/React.createElement("input", {
+  }, "tarde"), " si llega más de ", /*#__PURE__*/React.createElement("input", {
     type: "number",
     value: cfg.tarde_tolerancia_min,
     onChange: e => setCfg({
@@ -9620,15 +9620,15 @@ function Configuracion({
       marginBottom: 0,
       textAlign: 'center'
     }
-  }), " min tarde."), /*#__PURE__*/React.createElement("div", null, "\u2022 ", /*#__PURE__*/React.createElement("b", {
+  }), " min tarde."), /*#__PURE__*/React.createElement("div", null, "• ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.tx
     }
-  }, "Cada d\xEDa"), " que llega tarde \u2192 ese d\xEDa ", /*#__PURE__*/React.createElement("b", {
+  }, "Cada día"), " que llega tarde → ese día ", /*#__PURE__*/React.createElement("b", {
     style: {
       color: C.tx
     }
-  }, "no cobra"), " el bonus de encuesta."), /*#__PURE__*/React.createElement("div", null, "\u2022 Al llegar a ", /*#__PURE__*/React.createElement("input", {
+  }, "no cobra"), " el bonus de encuesta."), /*#__PURE__*/React.createElement("div", null, "• Al llegar a ", /*#__PURE__*/React.createElement("input", {
     type: "number",
     value: cfg.tarde_max_mes,
     onChange: e => setCfg({
@@ -9643,7 +9643,7 @@ function Configuracion({
       marginBottom: 0,
       textAlign: 'center'
     }
-  }), " llegadas tarde en el mes \u2192 no cobra encuestas por ", /*#__PURE__*/React.createElement("input", {
+  }), " llegadas tarde en el mes → no cobra encuestas por ", /*#__PURE__*/React.createElement("input", {
     type: "number",
     value: cfg.tarde_suspension_dias,
     onChange: e => setCfg({
@@ -9658,7 +9658,7 @@ function Configuracion({
       marginBottom: 0,
       textAlign: 'center'
     }
-  }), " d\xEDas."), /*#__PURE__*/React.createElement("div", null, "\u2022 En la ante\xFAltima (", (+cfg.tarde_max_mes || 5) - 1, "\xAA) se le avisa al empleado al fichar."))), /*#__PURE__*/React.createElement("div", {
+  }), " días."), /*#__PURE__*/React.createElement("div", null, "• En la anteúltima (", (+cfg.tarde_max_mes || 5) - 1, "ª) se le avisa al empleado al fichar."))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
@@ -9689,7 +9689,7 @@ function Configuracion({
       fontSize: 14,
       marginBottom: 4
     }
-  }, "\uD83D\uDCB5 Valor hora por empleado"), /*#__PURE__*/React.createElement("div", {
+  }, "💵 Valor hora por empleado"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
       color: C.tx2,
@@ -9700,7 +9700,7 @@ function Configuracion({
       color: C.tx2,
       fontSize: 13
     }
-  }, "Todav\xEDa no hay empleados cargados.") : orden.map(em => /*#__PURE__*/React.createElement("div", {
+  }, "Todavía no hay empleados cargados.") : orden.map(em => /*#__PURE__*/React.createElement("div", {
     key: em.id,
     style: {
       display: 'flex',
@@ -9756,7 +9756,7 @@ function Configuracion({
       fontSize: 13,
       flexShrink: 0
     }
-  }, "\uD83D\uDDD1")))));
+  }, "🗑")))));
 }
 
 /* ════════════════════════ CHAT (tipo WhatsApp) ════════════════════════ */
@@ -9885,7 +9885,7 @@ function AvisoChat({
     style: {
       fontSize: 20
     }
-  }, "\uD83D\uDCAC"), /*#__PURE__*/React.createElement("div", {
+  }, "💬"), /*#__PURE__*/React.createElement("div", {
     style: {
       flex: 1,
       minWidth: 0
@@ -10105,7 +10105,7 @@ function ChatVista({
       color: C.tx2,
       marginBottom: 6
     }
-  }, "\xBFQui\xE9nes participan? (destild\xE1 \"habla\" = solo lectura)"), /*#__PURE__*/React.createElement("div", {
+  }, "¿Quiénes participan? (destildá \"habla\" = solo lectura)"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',
@@ -10385,7 +10385,7 @@ function ChatConversacion({
       lineHeight: 1,
       width: 28
     }
-  }, "\u2039"), /*#__PURE__*/React.createElement("div", {
+  }, "‹"), /*#__PURE__*/React.createElement("div", {
     style: {
       width: 36,
       height: 36,
@@ -10410,7 +10410,7 @@ function ChatConversacion({
       color: '#1A1A1A',
       cursor: 'pointer'
     }
-  }, "\u2699")), /*#__PURE__*/React.createElement("div", {
+  }, "⚙")), /*#__PURE__*/React.createElement("div", {
     ref: listaRef,
     style: {
       flex: 1,
@@ -10426,7 +10426,7 @@ function ChatConversacion({
       color: '#777',
       marginTop: 20
     }
-  }, "Escrib\xED el primer mensaje \uD83D\uDC4B") : msgs.map(m => {
+  }, "Escribí el primer mensaje 👋") : msgs.map(m => {
     const mio = m.empleado_id === sesion.id;
     return /*#__PURE__*/React.createElement("div", {
       key: m.id,
@@ -10495,7 +10495,7 @@ function ChatConversacion({
       borderTop: '1px solid ' + CH.bd,
       paddingBottom: 'calc(12px + env(safe-area-inset-bottom))'
     }
-  }, "\uD83D\uDD12 Solo lectura") : /*#__PURE__*/React.createElement("form", {
+  }, "🔒 Solo lectura") : /*#__PURE__*/React.createElement("form", {
     onSubmit: enviarTexto,
     style: {
       display: 'flex',
@@ -10520,7 +10520,7 @@ function ChatConversacion({
     onClick: () => fileRef.current && fileRef.current.click(),
     disabled: subiendo || grabando,
     style: chatIcon
-  }, "\uD83D\uDCF7"), /*#__PURE__*/React.createElement("button", {
+  }, "📷"), /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: toggleGrabar,
     disabled: subiendo,
@@ -10559,7 +10559,7 @@ function ChatConversacion({
       cursor: 'pointer',
       flexShrink: 0
     }
-  }, "\u27A4")), fotoPrev && /*#__PURE__*/React.createElement("div", {
+  }, "➤")), fotoPrev && /*#__PURE__*/React.createElement("div", {
     style: modalBg,
     onClick: () => {
       URL.revokeObjectURL(fotoPrev.url);
@@ -10675,7 +10675,7 @@ function AdminMiembros({
       color: C.tx2,
       marginBottom: 8
     }
-  }, "Tild\xE1 qui\xE9n est\xE1 y si puede hablar."), /*#__PURE__*/React.createElement("div", {
+  }, "Tildá quién está y si puede hablar."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       flexDirection: 'column',

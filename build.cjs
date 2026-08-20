@@ -29,6 +29,44 @@ function build(srcFile, outFile) {
     comments: true,
   }).code;
 
+  // ── CANDADO: NADA QUE DEJE LA PANTALLA EN NEGRO ───────────────────────────
+  // Este compilador SOLO convierte el JSX: todo lo demás sale tal cual. Si en
+  // el código entra "?." o "??", el navegador de un celular viejo no puede LEER
+  // el bloque entero: no muestra ningún error, muestra NEGRO. Pasó de verdad
+  // (Lili 20/08: "no abre la tarjeta, le aparece la pantalla en negro, pero
+  // cuando yo la abro sí me aparece"). Eso corta el compilado acá.
+  const CORTAN = [
+    // El "?." seguido de un NÚMERO no es código moderno: es un "si sí / si no"
+    // con decimal (opacity: cargando?.6:1), y lo entienden todos. No cuenta.
+    [/[\w)\]]\?\.(?![0-9])/, '?.  (encadenamiento opcional)'],
+    [/\?\?[^=]/, '??  (fusion nula)'],
+    [/(\?\?|\|\||&&)=/, '??= ||= &&=  (asignacion logica)'],
+  ];
+  for (const par of CORTAN) {
+    const hit = out.match(par[0]);
+    if (hit) {
+      const linea = out.slice(0, hit.index).split('\n').length;
+      throw new Error(
+        'NO SE PUBLICA: en ' + path.basename(srcFile) + ' hay "' + par[1] + '" (linea ' + linea + ' del compilado).\n' +
+        '  Eso deja la PANTALLA NEGRA en celulares viejos: no se puede leer NADA del codigo.\n' +
+        '  Escribilo a la antigua:  a?.b  ->  (a || {}).b     a ?? b  ->  (a == null ? b : a)'
+      );
+    }
+  }
+  // Estas NO cortan: no impiden leer el codigo, solo fallan si esa linea llega
+  // a ejecutarse en un celular muy viejo. Se avisan para tenerlas vistas.
+  const AVISAN = [
+    [/\.replaceAll\(/, '.replaceAll()'],
+    [/\.flatMap\(|\.flat\(/, '.flat() / .flatMap()'],
+    [/Object\.fromEntries/, 'Object.fromEntries()'],
+    [/structuredClone/, 'structuredClone()'],
+    [/crypto\.randomUUID/, 'crypto.randomUUID()'],
+    [/Promise\.allSettled/, 'Promise.allSettled()'],
+  ];
+  AVISAN.forEach(function (par) {
+    if (par[0].test(out)) console.log('  ! ' + path.basename(srcFile) + ' usa ' + par[1] + ' - anda en casi todos, pero no en los muy viejos');
+  });
+
   // OJO: usar función de reemplazo. Un reemplazo de tipo string interpreta $&, $', $1…
   // y el código compilado contiene '$' (peso), lo que truncaría el archivo.
   html = html.replace(m[0], () => '<script>\n' + out + '\n</script>');

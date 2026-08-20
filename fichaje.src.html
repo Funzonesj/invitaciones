@@ -635,7 +635,7 @@ function Sucursales({sucursales,recargar}){
   const vacio={nombre:'',direccion:'',lat:'',lng:'',radio_metros:80,activa:true};
   const [form,setForm]=useState(vacio); const [editId,setEditId]=useState(null);
   const [geoMsg,setGeoMsg]=useState('');
-  function editar(s){ setEditId(s.id); setForm({nombre:s.nombre||'',direccion:s.direccion||'',lat:s.lat??'',lng:s.lng??'',radio_metros:s.radio_metros||80,activa:s.activa!==false}); window.scrollTo(0,0); }
+  function editar(s){ setEditId(s.id); setForm({nombre:s.nombre||'',direccion:s.direccion||'',lat:(s.lat == null ? '' : s.lat),lng:(s.lng == null ? '' : s.lng),radio_metros:s.radio_metros||80,activa:s.activa!==false}); window.scrollTo(0,0); }
   function limpiar(){ setEditId(null); setForm(vacio); setGeoMsg(''); }
   function usarUbicacion(){
     if(!navigator.geolocation){ setGeoMsg('Este dispositivo no tiene GPS.'); return; }
@@ -699,7 +699,7 @@ function Empleados({empleados,sucursales,recargar}){
   const parseRoles=v=>Array.isArray(v)?v:(v?String(v).split(',').map(s=>s.trim()).filter(Boolean):[]);
   function proximoLegajo(){ const usados=new Set((empleados||[]).map(e=>e.legajo).filter(x=>x!=null)); let n=1; while(usados.has(n))n++; return n; }
   useEffect(()=>{ if(editId===null && (form.legajo===''||form.legajo==null)) setForm(f=>({...f,legajo:proximoLegajo()})); },[empleados]);
-  function editar(em){ setEditId(em.id); setForm({legajo:em.legajo??'',nombre:em.nombre||'',nombre_pila:em.nombre_pila||'',rol_habitual:parseRoles(em.rol_habitual),valor_hora:em.valor_hora??'',sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||'',horario_fijo:em.horario_fijo||[],vista_simple:!!em.vista_simple}); window.scrollTo(0,0); }
+  function editar(em){ setEditId(em.id); setForm({legajo:(em.legajo == null ? '' : em.legajo),nombre:em.nombre||'',nombre_pila:em.nombre_pila||'',rol_habitual:parseRoles(em.rol_habitual),valor_hora:(em.valor_hora == null ? '' : em.valor_hora),sucursales:em.sucursales||[],foto_url:em.foto_url||'',usuario:em.usuario||'',clave:em.clave||'',rol_sistema:em.rol_sistema||'empleado',sucursal_encargada:em.sucursal_encargada||'',horario_fijo:em.horario_fijo||[],vista_simple:!!em.vista_simple}); window.scrollTo(0,0); }
   function limpiar(){ setEditId(null); setForm({...vacio,legajo:''}); }
   function toggleSuc(id){ setForm(f=>({...f,sucursales:(f.sucursales||[]).includes(id)?f.sucursales.filter(x=>x!==id):[...(f.sucursales||[]),id]})); }
   function toggleRol(r){ setForm(f=>({...f,rol_habitual:(f.rol_habitual||[]).includes(r)?f.rol_habitual.filter(x=>x!==r):[...(f.rol_habitual||[]),r]})); }
@@ -2484,7 +2484,7 @@ function Configuracion({sucursales,empleados,recargar}){
   const [cfg,setCfg]=useState({horas_simple:4.5,horas_doble:8,horas_triple:12,gap_horas:2,horas_extra_deluxe:1,bonus_excelente:7000,prep_1:90,prep_2:30,prep_3:30,figuras_hora:[],planilla:PL_DEF,tarde_tolerancia_min:5,tarde_max_mes:5,tarde_suspension_dias:30});
   const [vh,setVh]=useState({}); const [msg,setMsg]=useState(''); const [guardando,setGuardando]=useState(false); const [vhOk,setVhOk]=useState(null);
   useEffect(()=>{(async()=>{const c=await dbAll('fichaje_config');const g=c.find(x=>x.id==='general');if(g&&g.data)setCfg(v=>({...v,...g.data,figuras_hora:g.data.figuras_hora||[],planilla:{...PL_DEF,...(g.data.planilla||{})}}));})();},[]);
-  useEffect(()=>{const o={};(empleados||[]).forEach(e=>{o[e.id]=e.valor_hora??'';});setVh(o);},[empleados]);
+  useEffect(()=>{const o={};(empleados||[]).forEach(e=>{o[e.id]=(e.valor_hora == null ? '' : e.valor_hora);});setVh(o);},[empleados]);
   async function guardarCfg(){ setGuardando(true); const ok=await dbUpsert('fichaje_config',{id:'general',data:cfg}); if(ok){ setMsg('✓ Configuración guardada'); setTimeout(()=>setMsg(''),2200);}else{alert('No se pudo guardar la configuración.');} setGuardando(false); }
   async function guardarValor(em){ const v=vh[em.id]; const ok=await dbUpdate('fichaje_empleados',em.id,{valor_hora:v===''?0:+v}); if(ok){setVhOk(em.id);setTimeout(()=>setVhOk(p=>p===em.id?null:p),1800);} if(recargar)recargar(); }
   async function borrarEmpleado(em){
