@@ -900,7 +900,7 @@ function App() {
         let _cfgs = {};
         if (await gwPing()) {
           const _rr = await gwCall('config', {
-            ids: ['__config_suc__', '__config_ia__']
+            ids: ['__config_suc__', '__config_ia__', '__config_tematicas__']
           });
           _cfgs = _rr && _rr.configs || {};
         }
@@ -919,6 +919,13 @@ function App() {
           if (!m.fraseVideo) m.fraseVideo = FRASE_VIDEO_DEF;
           return m;
         });
+        // Las TEMATICAS tambien van frescas y para TODOS. El invitado que abria
+        // el link por primera vez no las tenia (solo estaban en el localStorage
+        // de quien ya uso la app, o el catalogo de emergencia): la tarjeta no
+        // encontraba su tematica y quedaba la pantalla pelada con el globito
+        // (le paso a la mama del cumple del 05/09 21hs, 26/08).
+        const ct = _f('__config_tematicas__');
+        if (Array.isArray(ct) && ct.length) setTematicas(ct);
       } catch (e) {}
       // 1) Links de invitación/papá: traer SOLO ese evento primero (rápido) y mostrar ya
       const quickId = _INV_PARAM || _PAPA_PARAM || _REC_PARAM;
