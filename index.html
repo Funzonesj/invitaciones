@@ -4348,10 +4348,16 @@ function AdminEventos({
       } : x));
       setEditId(null);
     } else {
+      // El id lleva un sufijo AL AZAR: con el milisegundo a secas, dos tarjetas
+      // creadas en el mismo instante compartian id y el guardado (que es un
+      // upsert) hacia que la segunda PISARA a la primera sin avisar - la
+      // familia perdia su tarjeta entera. Es el mismo bug que ya se arreglo en
+      // el software del salon (26/08).
+      const _rid = 'ev-' + Date.now().toString(16) + Math.random().toString(16).slice(2, 10);
       setEventos(prev => [...prev, {
         ...f2,
         ...fmt,
-        id: 'ev-' + Date.now().toString(16),
+        id: _rid,
         sucId: sucAct.id,
         creado: Date.now()
       }]);
