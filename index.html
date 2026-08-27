@@ -25686,7 +25686,9 @@ function InvWeb({
   }, "LLEGAR")), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       if (suc.web) {
-        window.open(suc.web, '_blank');
+        var _w = String(suc.web).trim();
+        if (!/^https?:\/\//i.test(_w)) _w = 'https://' + _w.replace(/^\/+/, '');
+        window.open(_w, '_blank');
       } else {
         alert(suc.nombre + '\n' + suc.direccion + (suc.tel ? '\nTel: ' + suc.tel : ''));
       }
