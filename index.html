@@ -1185,6 +1185,43 @@ function App() {
       if (vista && vista.indexOf('admin') === 0) localStorage.setItem('fz_ultimo_modo', 'admin');else if (vista && vista.indexOf('papa') === 0) localStorage.setItem('fz_ultimo_modo', 'papa');
     } catch (e) {}
   }, [vista]);
+  // 🔇 Cuando el invitado sale de la tarjeta (toca CUALQUIER botón que abre otra
+  // pantalla: Info del salón, Cómo llegar, WhatsApp, un mapa…), la pestaña queda
+  // oculta y la música seguía sonando de fondo, encimándose con lo que abrió
+  // (Lili 26/08: "que cuando toque cualquier botón se mude el sonido"). Se
+  // pausan todos los audios/videos al ocultarse, y se reanudan solos al volver
+  // los que estaban sonando. Va a nivel global: cubre todos los botones sin
+  // tener que tocar cada uno.
+  React.useEffect(() => {
+    var pausados = [];
+    function onVis() {
+      if (document.hidden) {
+        pausados = [];
+        try {
+          document.querySelectorAll('audio,video').forEach(function (m) {
+            if (!m.paused) {
+              try {
+                m.pause();
+              } catch (e) {}
+              pausados.push(m);
+            }
+          });
+        } catch (e) {}
+      } else {
+        pausados.forEach(function (m) {
+          try {
+            var p = m.play();
+            if (p && p.catch) p.catch(function () {});
+          } catch (e) {}
+        });
+        pausados = [];
+      }
+    }
+    document.addEventListener('visibilitychange', onVis);
+    return function () {
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, []);
   const sucAct = sucursales.find(s => s.id === sucActId) || sucursales[0] || {};
   const esSA = (adminSesion || {}).rol === 'superadmin';
   const evsLocal = eventos.filter(e => e.sucId === sucActId);
