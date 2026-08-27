@@ -18484,17 +18484,23 @@ function PapaCreador({
   const _hayReglas = !!(suc && suc.reglas && String(suc.reglas).trim());
   const reglasOk = !!(papaSesion && papaSesion.reglasOk);
   function aceptarReglas() {
-    setPapaSesion(ps => {
-      const n = {
-        ...ps,
-        reglasOk: true
-      };
-      setEventos(evs => evs.map(e => e.id === n.id ? {
-        ...e,
-        reglasOk: true
-      } : e));
-      return n;
-    });
+    // Se GUARDA en la base al instante (sbUpsertEvento), no solo en memoria.
+    // Antes solo tocaba el estado de React y confiaba en el autoguardado, que
+    // en la sesión del papá no siempre corre: al volver a entrar, el evento
+    // venía de la base SIN reglasOk y le pedía aceptar de nuevo cada vez
+    // (Lili 26/08: "se debe aceptar una sola vez").
+    const n = {
+      ...papaSesion,
+      reglasOk: true
+    };
+    setPapaSesion(n);
+    setEventos(evs => evs.map(e => e.id === n.id ? {
+      ...e,
+      reglasOk: true
+    } : e));
+    try {
+      sbUpsertEvento(n);
+    } catch (e) {}
     flashOk('✓ ¡Condiciones aceptadas! Ya podés enviar tu invitación.');
     setSeccion('home');
   }
