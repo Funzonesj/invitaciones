@@ -482,8 +482,40 @@ let _ULTIMO_MODO = null;
 try {
   _ULTIMO_MODO = localStorage.getItem('fz_ultimo_modo');
 } catch (e) {}
-// Auto-restaurar: respeta el último panel usado si hay dos sesiones guardadas
-const _AUTO_VISTA = _ULTIMO_MODO === 'admin' && _ADMIN_SAVED ? 'admin-dashboard' : _ULTIMO_MODO === 'papa' && _PAPA_SAVED ? 'papa-creador' : _PAPA_SAVED ? 'papa-creador' : _ADMIN_SAVED ? 'admin-dashboard' : 'admin-login';
+// ¿Volviendo de pagar en Mercado Pago? MP nos devuelve con parámetros en la URL que
+// SOBREVIVEN aunque el pago haya abierto otro navegador y se pierda el localStorage
+// (caso típico: el papá abre la invitación desde el navegador de WhatsApp). Los usamos
+// para (1) NUNCA mandar al papá al login de admin, sino al de papás, y (2) reponer el
+// "pago pendiente" para que el video/imagen se destrabe solo al reingresar a su evento.
+let _VOLVIENDO_PAGO = false,
+  _PAGO_EVID = '';
+try {
+  const _sp = new URLSearchParams(_SEARCH);
+  _PAGO_EVID = _sp.get('pvev') || '';
+  const _pvref = _sp.get('pvref') || '',
+    _pvmo = _sp.get('pvmo') || '';
+  if (_sp.get('payment_id') || _sp.get('collection_id') || _sp.get('status') || _PAGO_EVID) _VOLVIENDO_PAGO = true;
+  if (_PAGO_EVID && _pvref) {
+    let _pend = null;
+    try {
+      _pend = JSON.parse(localStorage.getItem('fz_mp_pend') || 'null');
+    } catch (e) {}
+    if (!_pend || _pend.ref !== _pvref) {
+      try {
+        localStorage.setItem('fz_mp_pend', JSON.stringify({
+          modo: _pvmo || 'video',
+          eventId: _PAGO_EVID,
+          ref: _pvref,
+          t: Date.now()
+        }));
+      } catch (e) {}
+    }
+  }
+} catch (e) {}
+// Auto-restaurar: respeta el último panel usado si hay dos sesiones guardadas.
+// Si NO hay sesión guardada pero volvés de un pago (o el último modo del dispositivo
+// fue "papá"), abrimos el login de PAPÁS — nunca el de admin (eso confundía al papá).
+const _AUTO_VISTA = _ULTIMO_MODO === 'admin' && _ADMIN_SAVED ? 'admin-dashboard' : _ULTIMO_MODO === 'papa' && _PAPA_SAVED ? 'papa-creador' : _PAPA_SAVED ? 'papa-creador' : _ADMIN_SAVED ? 'admin-dashboard' : _VOLVIENDO_PAGO || _ULTIMO_MODO === 'papa' ? 'papa-login' : 'admin-login';
 const INIT_VISTA = _REC_PARAM ? 'recuerdos' : _INV_PARAM ? 'invitado-portada' : _PAPA_DATA ? 'papa-creador' : _PAPA_PARAM ? 'papa-login' : _AUTO_VISTA;
 
 // Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
@@ -16268,7 +16300,10 @@ function PagoMP({
     (async () => {
       try {
         const ref = 'fz-' + (modo || tipo) + '-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
-        const backUrl = window.location.href.split('?')[0];
+        // La URL de vuelta lleva evento+pago+modo: así, aunque el pago abra otro navegador
+        // y se pierda el localStorage, al volver sabemos que es un papá (no lo mandamos al
+        // login de admin) y podemos destrabar lo pagado cuando reingresa a su evento.
+        const backUrl = window.location.href.split('?')[0] + '?pvev=' + encodeURIComponent(eventId || '') + '&pvref=' + encodeURIComponent(ref) + '&pvmo=' + encodeURIComponent(modo || tipo);
         // El PRECIO ya no se manda desde acá: lo pone el servidor según el panel de
         // administración. Antes se mandaba y el papá podía pagar $1 por el pack.
         const r = await fetch('/api/mp', {
@@ -17433,7 +17468,7 @@ function PapaCreador({
       pend = JSON.parse(localStorage.getItem('fz_mp_pend') || 'null');
     } catch (e) {}
     const sp = new URLSearchParams(window.location.search);
-    const tieneRet = sp.get('payment_id') || sp.get('collection_id') || sp.get('status');
+    const tieneRet = sp.get('payment_id') || sp.get('collection_id') || sp.get('status') || sp.get('pvev');
     if (pend && pend.eventId === papaSesion.id && pend.ref && Date.now() - (pend.t || 0) < 2 * 3600 * 1000) {
       // Con evId, el servidor NO solo mira "aprobado": comprueba que el monto cubra
       // el precio del panel y deja el pago anotado (eso es lo que después habilita a generar).
