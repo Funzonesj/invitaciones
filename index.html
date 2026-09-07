@@ -24905,6 +24905,7 @@ function InvWeb({
   const [vidMuted, setVidMuted] = useState(true); // el video de portada arranca mudo (los celus no dejan audio automático)
   const [vidPlay, setVidPlay] = useState(true); // el video arranca SOLO al abrir la invitación (mudo; se toca para escuchar)
   const [vidPausado, setVidPausado] = useState(false); // el invitado pausó el video manualmente
+  const [vidReady, setVidReady] = useState(false); // el video ya mostró su primer cuadro (para tapar el negro con la foto)
   // Música de fondo: la del personaje, o una genérica que rota. En video suena bajita; en foto, normal.
   const _musGenF = (suc && suc.musicaGen && suc.musicaGen.length ? suc.musicaGen : iaConfig && iaConfig.musicaGen || []).filter(Boolean);
   const musTrack = ev && ev.albumMusica || tem && tem.musica || (_musGenF.length ? _musGenF[(parseInt(String(ev && ev.id || '0').replace(/[^0-9]/g, '')) || 0) % _musGenF.length] : '');
@@ -25203,6 +25204,7 @@ function InvWeb({
     src: ev.videoUrl,
     poster: portada || tem && tem.img || '',
     playsInline: true,
+    onPlaying: () => setVidReady(true),
     onEnded: () => {
       setVideoFin(true);
       setVidPausado(false);
@@ -25236,6 +25238,22 @@ function InvWeb({
       objectPosition: 'center ' + (ev && typeof ev.videoPos === 'number' ? ev.videoPos : 8) + '%',
       display: 'block',
       cursor: 'pointer'
+    }
+  }), /*#__PURE__*/React.createElement("img", {
+    src: portada || tem && tem.img || '',
+    alt: "",
+    "aria-hidden": "true",
+    style: {
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      objectPosition: 'center ' + (ev && typeof ev.videoPos === 'number' ? ev.videoPos : 8) + '%',
+      opacity: vidReady ? 0 : 1,
+      transition: 'opacity .35s ease',
+      pointerEvents: 'none',
+      zIndex: 2
     }
   }), !videoFin && /*#__PURE__*/React.createElement("button", {
     onClick: e => {
