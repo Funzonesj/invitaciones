@@ -24903,7 +24903,7 @@ function InvWeb({
     if (_portCalc) setPortadaSticky(_portCalc);
   }, [_portCalc]);
   const [vidMuted, setVidMuted] = useState(true); // el video de portada arranca mudo (los celus no dejan audio automático)
-  const [vidPlay, setVidPlay] = useState(false); // arranca mostrando la IMAGEN; el video se enciende al tocar (evita la pantalla negra mientras carga)
+  const [vidPlay, setVidPlay] = useState(true); // el video arranca SOLO al abrir la invitación (mudo; se toca para escuchar)
   const [vidPausado, setVidPausado] = useState(false); // el invitado pausó el video manualmente
   // Música de fondo: la del personaje, o una genérica que rota. En video suena bajita; en foto, normal.
   const _musGenF = (suc && suc.musicaGen && suc.musicaGen.length ? suc.musicaGen : iaConfig && iaConfig.musicaGen || []).filter(Boolean);
@@ -24978,25 +24978,17 @@ function InvWeb({
     });
     return cleanup;
   }, [musTrack]);
-  // Al tocar "ver el video": lo monta y lo reproduce con sonido (gesto del usuario), y baja la música.
+  // Al abrir la invitación el video de portada arranca SOLO, mudo (es lo único que
+  // los celulares permiten en automático). El invitado toca el video para escucharlo.
   React.useEffect(() => {
-    if (!vidPlay) return;
+    if (!esVideoPortada) return;
     const v = vidRef.current;
-    if (v) {
-      v.muted = false;
-      try {
-        v.currentTime = 0;
-      } catch (_) {}
-      const p = v.play();
-      if (p && p.catch) p.catch(function () {});
-    }
-    const m = musRef.current;
-    if (m && !m.paused) {
-      try {
-        m.volume = 0.12;
-      } catch (_) {}
-    }
-  }, [vidPlay]);
+    if (!v) return;
+    v.muted = true;
+    setVidMuted(true);
+    const p = v.play();
+    if (p && p.catch) p.catch(function () {});
+  }, []);
   const col = suc.color || '#f97316';
   // Formato según tipo de evento (viaja guardado en el evento)
   const fEdad = ev && ev.fmtEdad !== undefined ? ev.fmtEdad : true;
@@ -25199,9 +25191,11 @@ function InvWeb({
     src: ev.videoUrl,
     poster: portada || tem && tem.img || '',
     autoPlay: true,
+    muted: vidMuted,
     playsInline: true,
     onEnded: () => {
       setVideoFin(true);
+      setVidPausado(false);
       const el = musRef.current;
       if (el && musTrack) {
         el.volume = 0.4;
@@ -25215,6 +25209,7 @@ function InvWeb({
       e.preventDefault();
       const v = e.currentTarget;
       v.muted = false;
+      setVidMuted(false);
       try {
         v.currentTime = 0;
       } catch (_) {}
@@ -25232,7 +25227,7 @@ function InvWeb({
       display: 'block',
       cursor: 'pointer'
     }
-  }), /*#__PURE__*/React.createElement("button", {
+  }), !videoFin && /*#__PURE__*/React.createElement("button", {
     onClick: e => {
       e.stopPropagation();
       const v = vidRef.current;
@@ -25265,12 +25260,12 @@ function InvWeb({
       alignItems: 'center',
       justifyContent: 'center'
     }
-  }, vidPausado ? '▶️' : '⏸️'), /*#__PURE__*/React.createElement("div", {
+  }, vidPausado ? '▶️' : '⏸️'), !videoFin && vidMuted && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
       bottom: 12,
       left: 12,
-      background: 'rgba(0,0,0,.5)',
+      background: 'rgba(0,0,0,.55)',
       color: 'white',
       borderRadius: 99,
       padding: '5px 12px',
@@ -25279,7 +25274,39 @@ function InvWeb({
       zIndex: 3,
       pointerEvents: 'none'
     }
-  }, "🔁 Tocá para repetir")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("img", {
+  }, "🔊 Tocá para escuchar"), videoFin && /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
+      const v = vidRef.current;
+      if (!v) return;
+      setVideoFin(false);
+      try {
+        v.currentTime = 0;
+      } catch (_) {}
+      v.muted = false;
+      setVidMuted(false);
+      var p = v.play();
+      if (p && p.catch) p.catch(function () {});
+      const m = musRef.current;
+      if (m && !m.paused) m.volume = 0.12;
+    },
+    style: {
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%,-50%)',
+      background: 'rgba(0,0,0,.72)',
+      color: 'white',
+      border: 'none',
+      borderRadius: 99,
+      padding: '13px 24px',
+      fontSize: 15,
+      fontWeight: 900,
+      cursor: 'pointer',
+      zIndex: 4,
+      boxShadow: '0 6px 20px rgba(0,0,0,.45)'
+    }
+  }, "🔁 Reproducir nuevamente")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("img", {
     src: portada || tem && tem.img || '',
     alt: tem.nombre,
     style: {
