@@ -1462,8 +1462,8 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     setMsgOk('✅ Se guardó correctamente');flashOk('✓ ¡Guardado!');setTimeout(()=>setMsgOk(''),3500);
     window.scrollTo(0,0);
   }
-  function copiarLink(id){navigator.clipboard && navigator.clipboard.writeText(window.location.href.split('?')[0]+'?inv='+id);alert('¡Enlace copiado!');}
-  function compartirLinkInv(ev){const link=window.location.href.split('?')[0]+'?inv='+ev.id;const txt='¡Te invito al '+(ev.tipo||'cumpleaños')+' de '+ev.nombre+'! Abrí la tarjeta acá: '+link;abrirWA('', txt);}
+  function copiarLink(id){navigator.clipboard && navigator.clipboard.writeText(window.location.href.split('?')[0]+'?inv='+id+'&p=2');alert('¡Enlace copiado!');}
+  function compartirLinkInv(ev){const link=window.location.href.split('?')[0]+'?inv='+ev.id+'&p=2';const txt='¡Te invito al '+(ev.tipo||'cumpleaños')+' de '+ev.nombre+'! Abrí la tarjeta acá: '+link;abrirWA('', txt);}
 
   // ¿Cuándo se creó la tarjeta? (marca 'creado' o la fecha codificada en el id)
   const evCreadoMs=ev=>{ if(ev&&ev.creado) return ev.creado; const m=String((ev&&ev.id)||'').match(/^ev-([0-9a-f]+)$/); return m?parseInt(m[1],16):0; };
@@ -4873,12 +4873,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const fecha=papaSesion.dia+' de '+(meses[(+papaSesion.mes)-1]||'')+' de '+papaSesion.anio;
     const baseUrl=window.location.href.split('?')[0];
-    const longUrl=baseUrl+'?inv='+papaSesion.id;
+    const longUrl=baseUrl+'?inv='+papaSesion.id+'&p=2';
     acortarYCompartir(longUrl,(form.nombre||papaSesion.nombre),fecha,suc.nombre);
   }
   // Recordatorio para enviar a los invitados el DÍA del cumple
   function compartirRecordatorio(){
-    const link=window.location.href.split('?')[0]+'?inv='+papaSesion.id;
+    const link=window.location.href.split('?')[0]+'?inv='+papaSesion.id+'&p=2';
     const nom=form.nombre||papaSesion.nombre;
     const msg='🎉🎂 ¡HOY es el cumple de '+nom+'! 🎂🎉\nTe esperamos hoy de '+papaSesion.hIni+' a '+papaSesion.hFin+' hs en '+suc.nombre+'.\n¡No faltes! 👉 '+link;
     abrirWA('', msg);
@@ -6596,7 +6596,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         <button onClick={()=>{
           const baseUrl2=(window.location.href.split('?')[0]);
           const evData2={id:ev.id,sucId:ev.sucId,nombre:ev.nombre,tipo:ev.tipo||'Cumpleanos',edad:ev.edad,dia:ev.dia,mes:ev.mes,anio:ev.anio,hIni:ev.hIni,hFin:ev.hFin,celPapa:ev.celPapa,nomPapa:ev.nomPapa,temId:ev.temId};
-          const link=baseUrl2+'?inv='+ev.id;
+          const link=baseUrl2+'?inv='+ev.id+'&p=2';
           const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
           const fecha=ev.dia+' de '+(meses[(+ev.mes)-1]||'')+' de '+ev.anio;
           const lineas=[ev.nombre+' te invita a su '+ev.tipo,'El dia '+fecha,'en '+suc.nombre,'','Abri la invitacion:',link];

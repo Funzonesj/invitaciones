@@ -4440,11 +4440,11 @@ function AdminEventos({
     window.scrollTo(0, 0);
   }
   function copiarLink(id) {
-    navigator.clipboard && navigator.clipboard.writeText(window.location.href.split('?')[0] + '?inv=' + id);
+    navigator.clipboard && navigator.clipboard.writeText(window.location.href.split('?')[0] + '?inv=' + id + '&p=2');
     alert('¡Enlace copiado!');
   }
   function compartirLinkInv(ev) {
-    const link = window.location.href.split('?')[0] + '?inv=' + ev.id;
+    const link = window.location.href.split('?')[0] + '?inv=' + ev.id + '&p=2';
     const txt = '¡Te invito al ' + (ev.tipo || 'cumpleaños') + ' de ' + ev.nombre + '! Abrí la tarjeta acá: ' + link;
     abrirWA('', txt);
   }
@@ -18644,12 +18644,12 @@ function PapaCreador({
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const fecha = papaSesion.dia + ' de ' + (meses[+papaSesion.mes - 1] || '') + ' de ' + papaSesion.anio;
     const baseUrl = window.location.href.split('?')[0];
-    const longUrl = baseUrl + '?inv=' + papaSesion.id;
+    const longUrl = baseUrl + '?inv=' + papaSesion.id + '&p=2';
     acortarYCompartir(longUrl, form.nombre || papaSesion.nombre, fecha, suc.nombre);
   }
   // Recordatorio para enviar a los invitados el DÍA del cumple
   function compartirRecordatorio() {
-    const link = window.location.href.split('?')[0] + '?inv=' + papaSesion.id;
+    const link = window.location.href.split('?')[0] + '?inv=' + papaSesion.id + '&p=2';
     const nom = form.nombre || papaSesion.nombre;
     const msg = '🎉🎂 ¡HOY es el cumple de ' + nom + '! 🎂🎉\nTe esperamos hoy de ' + papaSesion.hIni + ' a ' + papaSesion.hFin + ' hs en ' + suc.nombre + '.\n¡No faltes! 👉 ' + link;
     abrirWA('', msg);
@@ -26072,7 +26072,7 @@ function InvWeb({
         nomPapa: ev.nomPapa,
         temId: ev.temId
       };
-      const link = baseUrl2 + '?inv=' + ev.id;
+      const link = baseUrl2 + '?inv=' + ev.id + '&p=2';
       const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
       const fecha = ev.dia + ' de ' + (meses[+ev.mes - 1] || '') + ' de ' + ev.anio;
       const lineas = [ev.nombre + ' te invita a su ' + ev.tipo, 'El dia ' + fecha, 'en ' + suc.nombre, '', 'Abri la invitacion:', link];
