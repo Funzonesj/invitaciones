@@ -25263,18 +25263,43 @@ function InvWeb({
   }, vidPausado ? '▶️' : '⏸️'), !videoFin && vidMuted && /*#__PURE__*/React.createElement("div", {
     style: {
       position: 'absolute',
-      bottom: 12,
-      left: 12,
-      background: 'rgba(0,0,0,.55)',
-      color: 'white',
-      borderRadius: 99,
-      padding: '5px 12px',
-      fontSize: 11,
-      fontWeight: 700,
-      zIndex: 3,
-      pointerEvents: 'none'
+      left: '50%',
+      bottom: 18,
+      transform: 'translateX(-50%)',
+      zIndex: 4
     }
-  }, "🔊 Tocá para escuchar"), videoFin && /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: e => {
+      e.stopPropagation();
+      const v = vidRef.current;
+      if (!v) return;
+      v.muted = false;
+      setVidMuted(false);
+      try {
+        v.currentTime = 0;
+      } catch (_) {}
+      var p = v.play();
+      if (p && p.catch) p.catch(function () {});
+      const m = musRef.current;
+      if (m && !m.paused) m.volume = 0.12;
+    },
+    style: {
+      background: '#e11d48',
+      color: 'white',
+      border: 'none',
+      borderRadius: 99,
+      padding: '13px 26px',
+      fontSize: 15,
+      fontWeight: 900,
+      cursor: 'pointer',
+      boxShadow: '0 6px 22px rgba(225,29,72,.55)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      whiteSpace: 'nowrap',
+      animation: 'pulse 0.9s ease-in-out infinite alternate'
+    }
+  }, "🔊 Tocá para escuchar")), videoFin && /*#__PURE__*/React.createElement("button", {
     onClick: e => {
       e.stopPropagation();
       const v = vidRef.current;
