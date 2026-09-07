@@ -24978,16 +24978,27 @@ function InvWeb({
     });
     return cleanup;
   }, [musTrack]);
-  // Al abrir la invitación el video de portada arranca SOLO, mudo (es lo único que
-  // los celulares permiten en automático). El invitado toca el video para escucharlo.
+  // Al abrir la invitación el video de portada arranca SOLO. Como el invitado ACABA de
+  // tocar "Abrir Invitación" (gesto), intentamos CON SONIDO directo. Si el navegador lo
+  // bloquea igual, cae a mudo + botón "Tocá para escuchar" (regla de autoplay del celu).
   React.useEffect(() => {
     if (!esVideoPortada) return;
     const v = vidRef.current;
     if (!v) return;
-    v.muted = true;
-    setVidMuted(true);
+    v.muted = false;
     const p = v.play();
-    if (p && p.catch) p.catch(function () {});
+    if (p && p.then) {
+      p.then(() => {
+        setVidMuted(false);
+      }).catch(() => {
+        try {
+          v.muted = true;
+        } catch (_) {}
+        setVidMuted(true);
+        var p2 = v.play();
+        if (p2 && p2.catch) p2.catch(function () {});
+      });
+    }
   }, []);
   const col = suc.color || '#f97316';
   // Formato según tipo de evento (viaja guardado en el evento)
@@ -25190,8 +25201,6 @@ function InvWeb({
     ref: vidRef,
     src: ev.videoUrl,
     poster: portada || tem && tem.img || '',
-    autoPlay: true,
-    muted: vidMuted,
     playsInline: true,
     onEnded: () => {
       setVideoFin(true);
