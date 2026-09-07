@@ -25062,33 +25062,33 @@ function InvWeb({
       alert('Indicá al menos 1 invitado (niños o adultos).');
       return;
     }
+    const nueva = {
+      id: 'c-' + Date.now(),
+      evId: ev.id,
+      invitado: nom,
+      adultos: nAd,
+      ninos: nNi,
+      cel
+    };
+    // Guarda YA en la app: estado + localStorage + servidor (para que el salón la vea).
     setConfs(prev => {
-      const updated = [...prev, {
-        id: 'c-' + Date.now(),
-        evId: ev.id,
-        invitado: nom,
-        adultos: nAd,
-        ninos: nNi,
-        cel
-      }];
+      const updated = [...prev, nueva];
       try {
         localStorage.setItem('fz_confs', JSON.stringify(updated));
       } catch (err) {}
       return updated;
     });
-    setOk(true);
+    try {
+      sbUpsertConf(nueva);
+    } catch (err) {}
+    setOk(true); // muestra el cartel de "registrada" (NO se borra ni salta solo a WhatsApp)
+  }
+  // Aviso OPCIONAL por WhatsApp a la familia (se abre pre-escrito; el invitado toca Enviar).
+  function avisarConfWA() {
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const fecha = ev.dia + ' de ' + (meses[+ev.mes - 1] || '') + ' de ' + ev.anio;
-    const link = window.location.href;
-    const lineas = ['Hola ' + ev.nomPapa + '!', '', nom + ' confirma asistencia al ' + ev.tipo + ' de ' + ev.nombre, 'Fecha: ' + fecha, '', 'Asistimos: ' + nNi + ' ninos y ' + nAd + ' adultos', '', 'Invitacion: ' + link];
-    setTimeout(() => {
-      abrirWA(waNum(ev.celPapa), lineas.join('\n'));
-      setNom('');
-      setCel('');
-      setAd('');
-      setNi('');
-      setOk(false);
-    }, 1800);
+    const lineas = ['Hola ' + (ev.nomPapa || '') + '!', '', (nom || '') + ' confirma asistencia al ' + ev.tipo + ' de ' + ev.nombre, 'Fecha: ' + fecha, '', 'Asistimos: ' + (+ni || 0) + ' ninos y ' + (+ad || 0) + ' adultos', '', 'Invitacion: ' + window.location.href];
+    abrirWA(waNum(ev.celPapa), lineas.join('\n'));
   }
   const diaStr = ev ? ev.dia + '/' + ev.mes + '/' + ev.anio : '';
   const horario = ev ? 'de ' + ev.hIni + ' a ' + ev.hFin + 'hs' : '';
@@ -25925,14 +25925,48 @@ function InvWeb({
   }, "Registra tu Asistencia"), ok ? /*#__PURE__*/React.createElement("div", {
     style: {
       background: '#f0fdf4',
-      color: '#166534',
-      padding: 12,
-      borderRadius: 12,
-      textAlign: 'center',
-      fontSize: 13,
-      fontWeight: 700
+      border: '1px solid #86efac',
+      padding: 16,
+      borderRadius: 14,
+      textAlign: 'center'
     }
-  }, "Asistencia registrada! Gracias!") : /*#__PURE__*/React.createElement("form", {
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 42,
+      marginBottom: 6
+    }
+  }, "✅"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#166534',
+      fontSize: 16,
+      fontWeight: 900,
+      marginBottom: 4
+    }
+  }, "¡Asistencia registrada! 🎉"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: '#15803d',
+      fontSize: 12.5,
+      marginBottom: 14
+    }
+  }, "Ya quedó confirmada en la invitación", nom ? ', ¡gracias ' + nom + '!' : '. ¡Gracias!'), /*#__PURE__*/React.createElement("button", {
+    onClick: avisarConfWA,
+    style: {
+      ...S.btn,
+      width: '100%',
+      background: '#25d366',
+      color: 'white',
+      padding: 12,
+      fontSize: 14,
+      fontWeight: 800
+    }
+  }, "📲 Avisarle a la familia por WhatsApp"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#94a3b8',
+      marginTop: 8,
+      lineHeight: 1.4
+    }
+  }, "Se abre WhatsApp con el mensaje listo — solo tenés que tocar ", /*#__PURE__*/React.createElement("b", null, "Enviar"), " (opcional).")) : /*#__PURE__*/React.createElement("form", {
     onSubmit: conf,
     style: {
       display: 'flex',
