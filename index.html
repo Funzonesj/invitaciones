@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Fun Zone"/>
 <link rel="apple-touch-icon" href="/icon-salon.png"/>
 <link rel="manifest" href="/manifest-salon.json"/>
-<title>Fun Zone & Play Point</title>
+<title>Fun Zone Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1950,7 +1950,7 @@ function App() {
       fontSize: 11,
       borderTop: '1px solid #1e293b'
     }
-  }, "© 2026 Fun Zone & Play Point · Sistema de Invitaciones Digitales"));
+  }, "© 2026 Fun Zone Pro · Sistema de Invitaciones Digitales"));
 }
 
 /* ── ADMIN LOGIN ─────────────────────────────────────────── */
@@ -17160,7 +17160,7 @@ function PapaCreador({
     });
   }
   // Posición vertical del VIDEO en la tarjeta (independiente de la foto)
-  const videoPos = papaSesion && typeof papaSesion.videoPos === 'number' ? papaSesion.videoPos : 50;
+  const videoPos = papaSesion && typeof papaSesion.videoPos === 'number' ? papaSesion.videoPos : 8;
   function setVideoPos(v) {
     setPapaSesion(ps => {
       const n = {
@@ -25228,7 +25228,7 @@ function InvWeb({
       width: '100%',
       height: '100%',
       objectFit: 'cover',
-      objectPosition: 'center ' + (ev && typeof ev.videoPos === 'number' ? ev.videoPos : 50) + '%',
+      objectPosition: 'center ' + (ev && typeof ev.videoPos === 'number' ? ev.videoPos : 8) + '%',
       display: 'block',
       cursor: 'pointer'
     }
@@ -25286,7 +25286,7 @@ function InvWeb({
       width: '100%',
       height: '100%',
       objectFit: 'cover',
-      objectPosition: 'center ' + (ev && typeof ev.videoPos === 'number' ? ev.videoPos : 50) + '%',
+      objectPosition: 'center ' + (ev && typeof ev.videoPos === 'number' ? ev.videoPos : 8) + '%',
       display: 'block'
     }
   }), /*#__PURE__*/React.createElement("button", {

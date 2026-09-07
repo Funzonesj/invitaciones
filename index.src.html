@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-title" content="Fun Zone"/>
 <link rel="apple-touch-icon" href="/icon-salon.png"/>
 <link rel="manifest" href="/manifest-salon.json"/>
-<title>Fun Zone & Play Point</title>
+<title>Fun Zone Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
@@ -807,7 +807,7 @@ function App() {
 
       {vista!=='invitado-portada'&&vista!=='invitado-web'&&vista!=='recuerdos'&&(
         <footer style={{background:'#0f172a',color:'#475569',textAlign:'center',padding:'10px',fontSize:11,borderTop:'1px solid #1e293b'}}>
-          © 2026 Fun Zone & Play Point · Sistema de Invitaciones Digitales
+          © 2026 Fun Zone Pro · Sistema de Invitaciones Digitales
         </footer>
       )}
     </div>
@@ -4326,7 +4326,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const portadaPos=(papaSesion&&typeof papaSesion.portadaPos==='number')?papaSesion.portadaPos:50;
   function setPortadaPos(v){setPapaSesion(ps=>{const n={...ps,portadaPos:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,portadaPos:v}:e));return n;});}
   // Posición vertical del VIDEO en la tarjeta (independiente de la foto)
-  const videoPos=(papaSesion&&typeof papaSesion.videoPos==='number')?papaSesion.videoPos:50;
+  const videoPos=(papaSesion&&typeof papaSesion.videoPos==='number')?papaSesion.videoPos:8;
   function setVideoPos(v){setPapaSesion(ps=>{const n={...ps,videoPos:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoPos:v}:e));return n;});}
   const [regaloVideo,setRegaloVideo]=useState(false); // cartel "te regalamos un video" tras generar las imágenes
   const [verEjemploVid,setVerEjemploVid]=useState(false); // reproductor del video de ejemplo
@@ -6377,13 +6377,13 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         {ev&&ev.videoUrl&&(ev.usarVideo!==false)?(
           vidPlay?(
             <React.Fragment>
-              <video ref={vidRef} src={ev.videoUrl} poster={portada||(tem&&tem.img)||''} autoPlay playsInline onEnded={()=>{setVideoFin(true);const el=musRef.current;if(el&&musTrack){el.volume=0.4;var pr=el.play();if(pr&&pr.catch)pr.catch(function(){});setMusOn(true);}}} onClick={(e)=>{e.stopPropagation();e.preventDefault();const v=e.currentTarget;v.muted=false;try{v.currentTime=0;}catch(_){}const p=v.play();if(p&&p.catch)p.catch(function(){});setVidPausado(false);const m=musRef.current;if(m&&!m.paused)m.volume=0.12;}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:50)+'%',display:'block',cursor:'pointer'}}></video>
+              <video ref={vidRef} src={ev.videoUrl} poster={portada||(tem&&tem.img)||''} autoPlay playsInline onEnded={()=>{setVideoFin(true);const el=musRef.current;if(el&&musTrack){el.volume=0.4;var pr=el.play();if(pr&&pr.catch)pr.catch(function(){});setMusOn(true);}}} onClick={(e)=>{e.stopPropagation();e.preventDefault();const v=e.currentTarget;v.muted=false;try{v.currentTime=0;}catch(_){}const p=v.play();if(p&&p.catch)p.catch(function(){});setVidPausado(false);const m=musRef.current;if(m&&!m.paused)m.volume=0.12;}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:8)+'%',display:'block',cursor:'pointer'}}></video>
               <button onClick={(e)=>{e.stopPropagation();const v=vidRef.current;if(!v)return;if(v.paused){var p=v.play();if(p&&p.catch)p.catch(function(){});setVidPausado(false);}else{v.pause();setVidPausado(true);}}} title={vidPausado?'Reanudar':'Pausar'} style={{position:'absolute',bottom:10,right:12,background:'rgba(0,0,0,.62)',color:'white',border:'none',borderRadius:99,width:42,height:42,fontSize:18,cursor:'pointer',zIndex:4,boxShadow:'0 3px 10px rgba(0,0,0,.4)',display:'flex',alignItems:'center',justifyContent:'center'}}>{vidPausado?'▶️':'⏸️'}</button>
               <div style={{position:'absolute',bottom:12,left:12,background:'rgba(0,0,0,.5)',color:'white',borderRadius:99,padding:'5px 12px',fontSize:11,fontWeight:700,zIndex:3,pointerEvents:'none'}}>🔁 Tocá para repetir</div>
             </React.Fragment>
           ):(
             <React.Fragment>
-              <img src={portada||(tem&&tem.img)||''} alt={tem.nombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:50)+'%',display:'block'}}/>
+              <img src={portada||(tem&&tem.img)||''} alt={tem.nombre} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:8)+'%',display:'block'}}/>
               <button onClick={()=>{setVidPlay(true);setVidMuted(false);}} style={{position:'absolute',bottom:76,left:'50%',transform:'translateX(-50%)',background:'rgba(0,0,0,.72)',color:'white',border:'none',borderRadius:99,padding:'12px 22px',fontSize:15,fontWeight:900,cursor:'pointer',zIndex:3,boxShadow:'0 6px 20px rgba(0,0,0,.45)'}}>▶️ Tocá para ver el video 🔊</button>
             </React.Fragment>
           )

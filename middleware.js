@@ -59,7 +59,7 @@ export default async function middleware(req) {
     const fecha = (ev.dia && ev.mes)
       ? (ev.dia + ' de ' + (MESES[(+ev.mes) - 1] || '') + (ev.anio ? (' de ' + ev.anio) : ''))
       : '';
-    const titulo = nombre ? (nombre + ' te invita 🎉') : 'Fun Zone & Play Point';
+    const titulo = nombre ? (nombre + ' te invita 🎉') : 'Fun Zone Pro';
     const desc = fecha ? ('¡Te esperamos el ' + fecha + '! Tocá para ver la invitación.') : 'Tocá para ver la invitación.';
 
     // Traemos la página base (sin re-disparar el middleware) y le inyectamos las etiquetas.
@@ -69,7 +69,7 @@ export default async function middleware(req) {
 
     const tags =
       '<meta property="og:type" content="website"/>' +
-      '<meta property="og:site_name" content="Fun Zone &amp; Play Point"/>' +
+      '<meta property="og:site_name" content="Fun Zone Pro"/>' +
       '<meta property="og:title" content="' + esc(titulo) + '"/>' +
       '<meta property="og:description" content="' + esc(desc) + '"/>' +
       '<meta property="og:image" content="' + esc(img) + '"/>' +
