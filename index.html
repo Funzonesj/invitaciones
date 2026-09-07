@@ -25087,7 +25087,8 @@ function InvWeb({
   function avisarConfWA() {
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const fecha = ev.dia + ' de ' + (meses[+ev.mes - 1] || '') + ' de ' + ev.anio;
-    const lineas = ['Hola ' + (ev.nomPapa || '') + '!', '', (nom || '') + ' confirma asistencia al ' + ev.tipo + ' de ' + ev.nombre, 'Fecha: ' + fecha, '', 'Asistimos: ' + (+ni || 0) + ' ninos y ' + (+ad || 0) + ' adultos', '', 'Invitacion: ' + window.location.href];
+    const priNom = String(ev.nomPapa || '').trim().split(/\s+/)[0] || ''; // solo el primer nombre
+    const lineas = ['Hola ' + priNom + '!', '', (nom || '') + ' confirma asistencia al ' + ev.tipo + ' de ' + ev.nombre, 'Fecha: ' + fecha, '', 'Asistimos: ' + (+ni || 0) + ' ninos y ' + (+ad || 0) + ' adultos'];
     abrirWA(waNum(ev.celPapa), lineas.join('\n'));
   }
   const diaStr = ev ? ev.dia + '/' + ev.mes + '/' + ev.anio : '';

@@ -6346,12 +6346,12 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   function avisarConfWA(){
     const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const fecha=ev.dia+' de '+(meses[(+ev.mes)-1]||'')+' de '+ev.anio;
+    const priNom=String(ev.nomPapa||'').trim().split(/\s+/)[0]||''; // solo el primer nombre
     const lineas=[
-      'Hola '+(ev.nomPapa||'')+'!','',
+      'Hola '+priNom+'!','',
       (nom||'')+' confirma asistencia al '+ev.tipo+' de '+ev.nombre,
       'Fecha: '+fecha,'',
-      'Asistimos: '+(+ni||0)+' ninos y '+(+ad||0)+' adultos','',
-      'Invitacion: '+window.location.href,
+      'Asistimos: '+(+ni||0)+' ninos y '+(+ad||0)+' adultos',
     ];
     abrirWA(waNum(ev.celPapa), lineas.join('\n'));
   }
