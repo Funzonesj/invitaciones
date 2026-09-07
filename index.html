@@ -25326,21 +25326,24 @@ function InvWeb({
     },
     style: {
       position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%,-50%)',
-      background: 'rgba(0,0,0,.72)',
+      bottom: 10,
+      right: 12,
+      background: 'rgba(0,0,0,.7)',
       color: 'white',
       border: 'none',
       borderRadius: 99,
-      padding: '13px 24px',
-      fontSize: 15,
+      padding: '9px 15px',
+      fontSize: 12.5,
       fontWeight: 900,
       cursor: 'pointer',
       zIndex: 4,
-      boxShadow: '0 6px 20px rgba(0,0,0,.45)'
+      boxShadow: '0 4px 14px rgba(0,0,0,.45)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 5,
+      whiteSpace: 'nowrap'
     }
-  }, "🔁 Reproducir nuevamente")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("img", {
+  }, "🔁 Reproducir")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("img", {
     src: portada || tem && tem.img || '',
     alt: tem.nombre,
     style: {
