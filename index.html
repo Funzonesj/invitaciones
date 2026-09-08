@@ -4445,7 +4445,7 @@ function AdminEventos({
   }
   function compartirLinkInv(ev) {
     const link = window.location.href.split('?')[0] + '?inv=' + ev.id + '&p=2';
-    const txt = '¡Te invito al ' + (ev.tipo || 'cumpleaños') + ' de ' + ev.nombre + '! Abrí la tarjeta acá: ' + link;
+    const txt = 'Tenés una invitación de ' + ev.nombre + ' 🎉\n\nAbrí la invitación:\n' + link;
     abrirWA('', txt);
   }
 
@@ -17531,7 +17531,7 @@ function PapaCreador({
   const [kidActivo, setKidActivo] = useState(1);
   const [shortLinkLoading, setShortLinkLoading] = useState(false);
   function acortarYCompartir(longUrl, nombre, fecha, salon) {
-    const lineas = ['*' + nombre + ' te invita!*', 'El dia ' + fecha + ' en ' + salon, '', 'Abri la invitacion:', longUrl];
+    const lineas = ['Tenés una invitación de ' + nombre + ' 🎉', '', 'Abrí la invitación:', longUrl];
     abrirWA('', lineas.join('\n'));
   }
   // Menu IA
@@ -26094,7 +26094,7 @@ function InvWeb({
       const link = baseUrl2 + '?inv=' + ev.id + '&p=2';
       const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
       const fecha = ev.dia + ' de ' + (meses[+ev.mes - 1] || '') + ' de ' + ev.anio;
-      const lineas = [ev.nombre + ' te invita a su ' + ev.tipo, 'El dia ' + fecha, 'en ' + suc.nombre, '', 'Abri la invitacion:', link];
+      const lineas = ['Tenés una invitación de ' + ev.nombre + ' 🎉', '', 'Abrí la invitación:', link];
       abrirWA('', lineas.join('\n'));
     },
     style: {
