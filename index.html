@@ -15195,7 +15195,8 @@ function IAUploadSection({
   iaVideos = [],
   onUsarVideo,
   onPedir,
-  onVolverPanel
+  onVolverPanel,
+  packIA = 6
 }) {
   const fotoRef = useRef();
   const persRef = useRef();
@@ -15314,7 +15315,7 @@ function IAUploadSection({
       lineHeight: 1.6,
       marginBottom: 20
     }
-  }, "La inteligencia artificial es genial, pero a veces puede cometer pequeños errores (en las manos, la cara o el fondo). ", /*#__PURE__*/React.createElement("b", null, "Por eso te damos 6 imágenes"), ", así elegís la que mejor quedó. 😊"), /*#__PURE__*/React.createElement("button", {
+  }, "La inteligencia artificial es genial, pero a veces puede cometer pequeños errores (en las manos, la cara o el fondo). ", /*#__PURE__*/React.createElement("b", null, "Por eso te damos ", packIA, " imágenes"), ", así elegís la que mejor quedó. 😊"), /*#__PURE__*/React.createElement("button", {
     onClick: () => setAviso(false),
     style: {
       ...S.btn,
@@ -15356,7 +15357,7 @@ function IAUploadSection({
       fontSize: 11.5,
       color: '#94a3b8'
     }
-  }, tipo === 'imagen' ? 'Cargá las fotos y generamos 6 imágenes para que elijas' : 'Cargá las fotos y generamos tu video con IA'))), /*#__PURE__*/React.createElement("div", {
+  }, tipo === 'imagen' ? 'Cargá las fotos y generamos ' + packIA + ' imágenes para que elijas' : 'Cargá las fotos y generamos tu video con IA'))), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11.5,
       color: '#475569',
@@ -15728,12 +15729,12 @@ function IAUploadSection({
       fontSize: 11,
       color: '#64748b'
     }
-  }, tipo === 'imagen' ? 'Pack de 6 imágenes con IA' : 'Precio por generación'), /*#__PURE__*/React.createElement("div", {
+  }, tipo === 'imagen' ? 'Pack de ' + packIA + ' imágenes con IA' : 'Precio por generación'), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#94a3b8'
     }
-  }, tipo === 'imagen' ? 'Pagás una vez, generás 6' : '(a elección)')), /*#__PURE__*/React.createElement("div", {
+  }, tipo === 'imagen' ? 'Pagás una vez, generás ' + packIA : '(a elección)')), /*#__PURE__*/React.createElement("div", {
     style: {
       fontWeight: 900,
       fontSize: 20,
@@ -20274,6 +20275,7 @@ function PapaCreador({
     }
   }, "Ver ejemplo de", /*#__PURE__*/React.createElement("br", null), "video con IA")))), modoPortada === 'ia-imagen' && /*#__PURE__*/React.createElement(IAUploadSection, {
     tipo: "imagen",
+    packIA: PACK_IA,
     precio: iaConfig.precioImagen,
     resultados: form.iaImagenes || [],
     onPagar: () => pedirGenerar('imagen'),
