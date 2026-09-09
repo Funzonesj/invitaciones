@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
         return;
       }
       // Si Kling falló (ERROR/FAILED), traemos el detalle y avisamos en vez de esperar para siempre.
-      if (sd && (sd.status === 'ERROR' || sd.status === 'FAILED')) {
+      if (sd && (sd.status === 'ERROR' || sd.status === 'FAILED' || sd.status === 'CANCELLED' || sd.status === 'EXPIRED')) {
         let detalle = '';
         try { const rr = await fetch(responseUrl, { headers: { Authorization: 'Key ' + key } }); const rd = await rr.json().catch(() => ({})); detalle = (rd && (rd.detail || rd.error || rd.message)) || ''; if (typeof detalle !== 'string') detalle = JSON.stringify(detalle).slice(0, 200); } catch (e) {}
         const low = String(detalle).toLowerCase();

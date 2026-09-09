@@ -133,6 +133,16 @@ function _gwHeaders() {
   return h;
 }
 async function gwCall(action, payload) {
+  // La sesión de la dueña se RENUEVA sola antes de cada llamada: una pestaña abierta
+  // hace horas guardaba con el token vencido → 401 silencioso y el cambio se perdía
+  // (le pasó a Lili editando el precio, 9/9). getSession() refresca el token si venció.
+  try {
+    if (_GWAUTH.jwt && typeof SB !== 'undefined' && SB && SB.auth && SB.auth.getSession) {
+      const s = await SB.auth.getSession();
+      const t = s && s.data && s.data.session && s.data.session.access_token;
+      if (t) _GWAUTH.jwt = t;
+    }
+  } catch (e) {}
   const r = await fetch('/api/db', {
     method: 'POST',
     headers: _gwHeaders(),
@@ -142,6 +152,26 @@ async function gwCall(action, payload) {
   });
   if (!r.ok) throw new Error('gw ' + r.status);
   return r.json();
+}
+// Cartel ROJO cuando un guardado NO llegó a la base (antes fallaba en silencio y la
+// pantalla igual decía "guardado"). Vanilla DOM porque corre fuera de React.
+let _gfUlt = 0;
+function _guardadoFallo(e) {
+  const ahora = Date.now();
+  if (ahora - _gfUlt < 8000) return;
+  _gfUlt = ahora; // no spamear
+  try {
+    const sesion = /gw 401/.test(String(e && e.message || ''));
+    const d = document.createElement('div');
+    d.textContent = sesion ? '⚠️ NO se guardó el último cambio: la sesión venció. Cerrá sesión, volvé a entrar y hacé el cambio de nuevo.' : '⚠️ NO se guardó el último cambio (' + String(e && e.message || 'error de conexión') + '). Revisá internet y probá de nuevo.';
+    d.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:18px;z-index:99999;background:#dc2626;color:#fff;font-weight:800;font-size:13px;padding:12px 18px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.35);max-width:92vw;text-align:center';
+    document.body.appendChild(d);
+    setTimeout(function () {
+      try {
+        d.remove();
+      } catch (e2) {}
+    }, 9000);
+  } catch (e2) {}
 }
 // Todas las escrituras van SOLO por el portero (llave secreta del server). Sin
 // el fallback directo: con el candado de la base puesto, la clave pública ya no
@@ -153,7 +183,9 @@ async function sbUpsertEvento(ev) {
       await gwCall('upsertEvento', {
         ev: ev
       });
-    } catch (e) {}
+    } catch (e) {
+      _guardadoFallo(e);
+    }
   }
 }
 async function sbDeleteEvento(id) {
@@ -163,7 +195,9 @@ async function sbDeleteEvento(id) {
       await gwCall('deleteEvento', {
         id: id
       });
-    } catch (e) {}
+    } catch (e) {
+      _guardadoFallo(e);
+    }
   }
 }
 async function sbUpsertConf(c) {
@@ -174,7 +208,9 @@ async function sbUpsertConf(c) {
       await gwCall(_GWAUTH.jwt || _GWAUTH.enc ? 'upsertConf' : 'addConf', {
         c: c
       });
-    } catch (e) {}
+    } catch (e) {
+      _guardadoFallo(e);
+    }
   }
 }
 async function sbUpsertConfig(key, data) {
@@ -185,7 +221,9 @@ async function sbUpsertConfig(key, data) {
         id: key,
         data: data
       });
-    } catch (e) {}
+    } catch (e) {
+      _guardadoFallo(e);
+    }
   }
 }
 
