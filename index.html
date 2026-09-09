@@ -17350,8 +17350,12 @@ function PapaCreador({
       usarFoto: uf,
       portadaSrc: src
     }));
+    // La opción del selector dice "Generado por IA (imagen O VIDEO)": si hay un video,
+    // elegirla lo PRENDE. Antes conservaba un `usarVideo:false` viejo (de haber pasado
+    // por foto/temática) y el papá "elegía el video" sin efecto — bug del 9/9. El que
+    // no quiere el video lo apaga con el tilde "usar video" debajo del reproductor.
     setPapaSesion(ps => {
-      const uv = tipo === 'ia' ? ps.usarVideo !== false : false;
+      const uv = tipo === 'ia' ? ps.videoUrl ? true : ps.usarVideo !== false : false;
       const n = {
         ...ps,
         portadaSrc: src,
@@ -20473,11 +20477,13 @@ function PapaCreador({
       setPapaSesion(ps => {
         const n = {
           ...ps,
-          videoUrl: v
+          videoUrl: v,
+          usarVideo: true
         };
         setEventos(evs => evs.map(e => e.id === n.id ? {
           ...e,
-          videoUrl: v
+          videoUrl: v,
+          usarVideo: true
         } : e));
         return n;
       });
