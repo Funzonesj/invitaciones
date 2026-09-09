@@ -350,12 +350,13 @@ module.exports = async (req, res) => {
       if (!ev.id) { res.status(400).json({ error: 'falta id' }); return; }
       const esPapaDeEste = papaOk && String(ev.id) === String(evIdHdr);
       if (!duena && !encargadaId && !esPapaDeEste) { res.status(401).json({ error: 'no autorizado' }); return; }
-      // El papá NUNCA edita sus credenciales: si su copia local (vieja) no las trae,
-      // se conservan las de la base. Sin esto, un celular con estado desactualizado
-      // pisaba user/pass al sincronizar y el login del evento moría (pasó el 9/9).
+      // Guardado del papá = FUSIÓN, nunca reemplazo: lo que su copia trae pisa lo viejo,
+      // pero los campos que NO trae se conservan de la base. Un celular con estado
+      // parcial/desactualizado ya no puede borrar nombre, fecha, credenciales ni nada
+      // al sincronizar (el 9/9 uno pisó user/pass y el login del evento murió).
+      // La dueña/encargada siguen reemplazando entero (su formulario maneja todo).
       if (esPapaDeEste && evPapaActual) {
-        if (!ev.user) ev.user = evPapaActual.user;
-        if (!ev.pass) ev.pass = evPapaActual.pass;
+        ev = Object.assign({}, evPapaActual, ev);
       }
       // Las fotos pegadas se van al depósito ANTES de guardar: la base queda
       // liviana para siempre, y si la subida falla el base64 se guarda igual.
