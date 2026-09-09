@@ -293,6 +293,27 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // ── Pack de IA del evento (dueña, encargada o papá dueño): recupera el pago ──
+    // El celular pierde el estado del pack (recarga, pestaña cerrada, volver de MP)
+    // y la app pedía PAGAR DE NUEVO aunque el pack estuviera pago con cupos.
+    // Devuelve la referencia aprobada más nueva y cuántas imágenes van usadas.
+    if (action === 'miPagoIA') {
+      const id = String(b.evId || evIdHdr || '');
+      if (!duena && !encargadaId && !(papaOk && id === String(evIdHdr))) { res.status(401).json({ error: 'no autorizado' }); return; }
+      const r = await sbRest('eventos?id=eq.' + encodeURIComponent('__pago_' + id + '__') + '&select=data');
+      const est = (Array.isArray(r.data) && r.data[0] && r.data[0].data) || {};
+      const refs = est.refs || {};
+      let mejor = null;
+      for (const k of Object.keys(refs)) {
+        const p = refs[k];
+        if (!p || !p.pagado || p.tipo !== 'imagen') continue;
+        if (!mejor || (p.ts || 0) > (mejor.ts || 0)) mejor = Object.assign({ ref: k }, p);
+      }
+      if (!mejor) { res.status(200).json({ ok: false }); return; }
+      res.status(200).json({ ok: true, ref: mejor.ref, total: mejor.total || 0, usados: mejor.usados || 0, videoRegaloUsado: !!est.videoRegaloUsado });
+      return;
+    }
+
     // ── Guardar evento (dueña, encargada, o papá SOLO su propio evento) ──
     if (action === 'upsertEvento') {
       let ev = b.ev || {};

@@ -1096,12 +1096,17 @@ function App() {
   // eso era lo que volteaba la base a cada rato. React reemplaza el objeto del
   // evento tocado y deja los demás idénticos, así que se comparan por identidad.
   const _evPrevRef = React.useRef(null);
+  // OJO: el PAPÁ nunca tiene fullLoaded (sbLoadAll solo carga con sesión de dueña/encargada
+  // desde la auditoría 18/08) → sin el "||papaSesion" sus cambios (foto, pack de IA, imágenes
+  // generadas, encuesta) quedaban SOLO en el celular y se perdían al recargar (visto 9/9 con
+  // la tarjeta de prueba: pagó el pack y al volver a entrar la app le pedía pagar de nuevo).
+  // El portero igual solo le deja escribir SU evento, así que no puede pisar nada ajeno.
   React.useEffect(() => {
     try {
       localStorage.setItem('fz_eventos', JSON.stringify(eventos));
     } catch (e) {}
     ;
-    if (fullLoaded && _puedeEscribir) {
+    if ((fullLoaded || !!papaSesion) && _puedeEscribir) {
       const prev = _evPrevRef.current;
       if (prev === null) {
         _evPrevRef.current = eventos;
@@ -17492,6 +17497,44 @@ function PapaCreador({
       } catch (e) {}
     }
   }, []);
+  // Recuperar el PACK DE IA pagado si el celular lo perdió (recarga, pestaña cerrada,
+  // vuelta de Mercado Pago sin el pendiente): el portero (miPagoIA) devuelve la referencia
+  // aprobada y cuántas imágenes van usadas. Sin esto, la app pedía PAGAR DE NUEVO un pack
+  // que ya estaba pago con cupos disponibles (pasó el 9/9 con la tarjeta de prueba).
+  React.useEffect(() => {
+    if (!papaSesion || !papaSesion.id) return;
+    if (papaSesion.iaRef && (papaSesion.iaPagadas || 0) > (papaSesion.iaGenCount || 0)) return; // ya tiene su pack a mano
+    let vivo = true;
+    (async () => {
+      try {
+        if (!(await gwPing())) return;
+        const d = await gwCall('miPagoIA', {
+          evId: papaSesion.id
+        });
+        if (!vivo || !d || !d.ok || !d.ref) return;
+        setPapaSesion(ps => {
+          const n = {
+            ...ps,
+            iaRef: d.ref,
+            iaPagadas: Math.max(ps && ps.iaPagadas || 0, d.total || 0),
+            iaGenCount: Math.max(ps && ps.iaGenCount || 0, d.usados || 0),
+            videoFreeDisponible: ps && ps.videoFreeDisponible || !d.videoRegaloUsado
+          };
+          setEventos(evs => evs.map(e => e.id === n.id ? {
+            ...e,
+            iaRef: n.iaRef,
+            iaPagadas: n.iaPagadas,
+            iaGenCount: n.iaGenCount,
+            videoFreeDisponible: n.videoFreeDisponible
+          } : e));
+          return n;
+        });
+      } catch (e) {}
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [papaSesion && papaSesion.id]);
   const [seccion, setSeccion] = useState(_PAPA_NAV.seccion || 'home');
   // Marca: solo después de entrar a "Editar Tarjeta" aparece el selector "¿qué va en tu tarjeta?" en el inicio.
   const [editoTarjeta, setEditoTarjeta] = useState(false);

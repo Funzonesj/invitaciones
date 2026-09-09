@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "api/generar-catalogo.js": { "maxDuration": 60 }
+  },
   "redirects": [
     {
       "source": "/",
