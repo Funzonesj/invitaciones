@@ -258,11 +258,11 @@ module.exports = async (req, res) => {
     // ── ¿Quién es? ──
     const duena = await verificarDuena(jwt); // dueña logueada (Supabase Auth)
     const encargadaId = verifyEncargada(req.headers['x-encargada-token']); // encargada (token firmado)
-    let papaOk = false;
+    let papaOk = false, evPapaActual = null;
     if (!duena && evIdHdr) {
       const r = await sbRest('eventos?id=eq.' + encodeURIComponent(evIdHdr) + '&select=data');
-      const ev = (r.data && r.data[0] && r.data[0].data) || null;
-      papaOk = !!(ev && ev.pass && String(ev.pass) === String(evPassHdr));
+      evPapaActual = (r.data && r.data[0] && r.data[0].data) || null;
+      papaOk = !!(evPapaActual && evPapaActual.pass && String(evPapaActual.pass) === String(evPassHdr));
     }
 
     // ── Cargar TODO (dueña o encargada) ──
@@ -320,6 +320,13 @@ module.exports = async (req, res) => {
       if (!ev.id) { res.status(400).json({ error: 'falta id' }); return; }
       const esPapaDeEste = papaOk && String(ev.id) === String(evIdHdr);
       if (!duena && !encargadaId && !esPapaDeEste) { res.status(401).json({ error: 'no autorizado' }); return; }
+      // El papá NUNCA edita sus credenciales: si su copia local (vieja) no las trae,
+      // se conservan las de la base. Sin esto, un celular con estado desactualizado
+      // pisaba user/pass al sincronizar y el login del evento moría (pasó el 9/9).
+      if (esPapaDeEste && evPapaActual) {
+        if (!ev.user) ev.user = evPapaActual.user;
+        if (!ev.pass) ev.pass = evPapaActual.pass;
+      }
       // Las fotos pegadas se van al depósito ANTES de guardar: la base queda
       // liviana para siempre, y si la subida falla el base64 se guarda igual.
       try { ev = (await aligerar(ev, _prefijoDe(ev.id))).v; } catch (e) {}
