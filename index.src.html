@@ -2346,6 +2346,12 @@ function AdminIA({setVista,iaConfig,setIaConfig}){
           <span style={{fontSize:10,color:'#16a34a',fontWeight:700}}>💾 El precio se guarda solo al cambiarlo (sin botón).</span>
         </label>
         {kPrecio==='precioImagen'&&(
+          <label style={{display:'block',maxWidth:220,flex:'1 1 180px'}}><span style={S.label}>🏷️ Precio tachado (promo)</span>
+            <input type="number" value={cfg.precioImagenAntes==null?'':cfg.precioImagenAntes} onChange={e=>{const v=e.target.value===''?'':+e.target.value;set('precioImagenAntes',v);setIaConfig(c=>({...c,precioImagenAntes:v}));}} style={S.input} placeholder="vacío = sin promo"/>
+            <span style={{fontSize:10,color:'#16a34a',fontWeight:700}}>El papá lo ve tachado con el % OFF calculado solo. Vacío = sin promo. Se guarda al cambiarlo.</span>
+          </label>
+        )}
+        {kPrecio==='precioImagen'&&(
           <label style={{display:'block',maxWidth:220,flex:'1 1 180px'}}><span style={S.label}>🖼️ Imágenes del pack</span>
             <input type="number" min="1" max="20" value={cfg.packImagenes==null?'':cfg.packImagenes} onChange={e=>{const v=e.target.value===''?'':Math.max(1,Math.min(20,+e.target.value));set('packImagenes',v);setIaConfig(c=>({...c,packImagenes:v}));}} style={S.input} placeholder="2"/>
             <span style={{fontSize:10,color:'#16a34a',fontWeight:700}}>Cuántas recibe el papá por ese precio. El video va de regalo.</span>
@@ -3745,7 +3751,25 @@ function PapaLogin({setVista,eventos,setPapaSesion,setInvEvId,setConfs,aviso,adm
 }
 
 /* ── IA UPLOAD SECTION ───────────────────────────────────── */
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta,onBorrar,videoUrl='',usarVideo=true,setUsarVideo,onGenerarVideo,videoFreeOk=false,iaVideos=[],onUsarVideo,onPedir,onVolverPanel,packIA=6}){
+/* Precio con promo: si en IA & Precios hay un "precio tachado" mayor al real,
+   el papá ve "$antes tachado / AHORA $real / X% OFF" (el % se calcula solo).
+   Sin precio tachado, muestra el precio de siempre. Se usa en los 3 lugares
+   donde el papá ve el precio del pack: botón Premium, footer de pago y modal MP. */
+function PrecioConPromo({precio,antes,fontSize,color,prefijo,align}){
+  const p=+precio||0, a=+antes||0;
+  if(!(a>p&&p>0)) return <span style={{fontWeight:900,fontSize:fontSize,color:color}}>{(prefijo||'')+'$'+p.toLocaleString('es-AR')}</span>;
+  const off=Math.round((1-p/a)*100);
+  return(
+    <span style={{display:'inline-block',textAlign:align||'left',lineHeight:1.25}}>
+      <span style={{color:'#94a3b8',textDecoration:'line-through',fontWeight:700,fontSize:Math.max(10,fontSize-5)}}>${a.toLocaleString('es-AR')}</span>
+      <span style={{display:'block'}}>
+        <span style={{fontWeight:900,fontSize:fontSize,color:color}}>AHORA ${p.toLocaleString('es-AR')}</span>
+        <span style={{background:'#dcfce7',color:'#16a34a',borderRadius:8,padding:'1px 7px',marginLeft:6,fontWeight:900,fontSize:Math.max(10,fontSize-7),whiteSpace:'nowrap'}}>{off}% OFF</span>
+      </span>
+    </span>
+  );
+}
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta,onBorrar,videoUrl='',usarVideo=true,setUsarVideo,onGenerarVideo,videoFreeOk=false,iaVideos=[],onUsarVideo,onPedir,onVolverPanel,packIA=6,precioAntes=0}){
   const fotoRef=useRef();
   const persRef=useRef();
   function guardarFoto(src){
@@ -3919,7 +3943,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
               <div style={{fontSize:11,color:'#64748b'}}>{tipo==='imagen'?'Pack de '+packIA+' imágenes con IA':'Precio por generación'}</div>
               <div style={{fontSize:11,color:'#94a3b8'}}>{tipo==='imagen'?'Pagás una vez, generás '+packIA:'(a elección)'}</div>
             </div>
-            <div style={{fontWeight:900,fontSize:20,color:'#1e293b'}}>${precio.toLocaleString('es-AR')}</div>
+            <div style={{textAlign:'right'}}><PrecioConPromo precio={precio} antes={tipo==='imagen'?precioAntes:0} fontSize={20} color="#1e293b" align="right"/></div>
           </div>
         )}
         <button
@@ -4057,7 +4081,7 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
 }
 
 /* ── PAGO MERCADOPAGO (simulado) ─────────────────────────── */
-function PagoMP({tipo, precio, nombre, tematica, modo, eventId, onPagado, onCancelar}){
+function PagoMP({tipo, precio, precioAntes, nombre, tematica, modo, eventId, onPagado, onCancelar}){
   const [estado,setEstado]=useState('cargando'); // cargando | listo | error
   const [err,setErr]=useState('');
   const [prefId,setPrefId]=useState('');
@@ -4126,7 +4150,7 @@ function PagoMP({tipo, precio, nombre, tematica, modo, eventId, onPagado, onCanc
         <div style={{background:'#f8fafc',borderRadius:14,padding:16,marginBottom:16,border:'1px solid #e2e8f0'}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <span style={{fontSize:13,color:'#64748b'}}>Generación IA {tipo==='imagen'?'imagen':'video'}</span>
-            <span style={{fontSize:18,fontWeight:900,color:'#1e293b'}}>${precio.toLocaleString('es-AR')}</span>
+            <PrecioConPromo precio={precio} antes={tipo==='imagen'?precioAntes:0} fontSize={18} color="#1e293b" align="right"/>
           </div>
         </div>
         {estado==='cargando'
@@ -5038,7 +5062,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                 <div style={{flex:1}}>
                   <div style={{fontWeight:900,fontSize:16,color:'#0369a1'}}>✨ Editar con IA (Premium)</div>
                   <div style={{fontSize:11,color:'#64748b',lineHeight:1.35,marginTop:2}}>La foto de tu hijo/a con su personaje + video del personaje hablando 🎬</div>
-                  <div style={{fontSize:12,fontWeight:900,color:'#0ea5e9',marginTop:4}}>Con costo: ${(iaConfig.precioImagen||0).toLocaleString('es-AR')}</div>
+                  <div style={{marginTop:4}}><PrecioConPromo precio={iaConfig.precioImagen||0} antes={iaConfig.precioImagenAntes} fontSize={12} color="#0ea5e9" prefijo="Con costo: "/></div>
                 </div>
               </button>
               <button onClick={()=>{const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setEditoTarjeta(true);setSeccion('home');}} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'16px',fontSize:16,fontWeight:900,marginTop:18,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Listo, enviar tu tarjeta</button>
@@ -5202,7 +5226,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" packIA={PACK_IA} precio={iaConfig.precioImagen} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v}:e));return n;});}} onVolverPanel={()=>{guardarYVolver();setModoPortada('tematica');}} onPedir={()=>setPedirOpen(true)} onGenerarVideo={()=>{if(!form.personajeIA){alert('Primero elegí el personaje.');return;}genVideoPagadoRef.current=true;setVideoStartImg((form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc);setGenActivo('video');}}/>
+              <IAUploadSection tipo="imagen" packIA={PACK_IA} precio={iaConfig.precioImagen} precioAntes={iaConfig.precioImagenAntes} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v}:e));return n;});}} onVolverPanel={()=>{guardarYVolver();setModoPortada('tematica');}} onPedir={()=>setPedirOpen(true)} onGenerarVideo={()=>{if(!form.personajeIA){alert('Primero elegí el personaje.');return;}genVideoPagadoRef.current=true;setVideoStartImg((form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc);setGenActivo('video');}}/>
             )}
           </div>
         </div>
@@ -5812,7 +5836,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       )}
 
       {/* Modales */}
-      {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} nombre={form.nombre} tematica={temA.nombre} modo={pagoActivo==='imagen'?'imagen':'video-genpay'} eventId={papaSesion.id} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA,videoFreeDisponible:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas,videoFreeDisponible:true}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
+      {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} precioAntes={pagoActivo==='imagen'?iaConfig.precioImagenAntes:0} nombre={form.nombre} tematica={temA.nombre} modo={pagoActivo==='imagen'?'imagen':'video-genpay'} eventId={papaSesion.id} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA,videoFreeDisponible:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas,videoFreeDisponible:true}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
       {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.vozNombre||suc.nombre} startImage={genActivo==='video'?videoStartImg:null} evId={papaSesion.id} pagoRef={pagoRef} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));return n;});/* Las imágenes ya están listas: cerramos el generador y volvemos a la galería (el video se ofrece como cartel debajo, al elegir la imagen) */setGenActivo(null);}else{const vu=imgs[0]||'';genVideoPagadoRef.current=false;setVideoStartImg(null);setVideoDiag(diag||'');setPapaSesion(ps=>{const prevV=((ps&&ps.iaVideos&&ps.iaVideos.length)?ps.iaVideos:((ps&&ps.videoUrl)?[ps.videoUrl]:[]));const vids=[vu,...prevV.filter(x=>x&&x!==vu)].filter(Boolean);const n={...ps,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true}:e));return n;});setGenActivo(null);}}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
 
       {/* Cartel "¡Te regalamos un video!" — aparece RECIÉN cuando ya se generaron las imágenes */}

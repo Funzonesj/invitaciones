@@ -8332,6 +8332,33 @@ function AdminIA({
     }
   }, /*#__PURE__*/React.createElement("span", {
     style: S.label
+  }, "🏷️ Precio tachado (promo)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: cfg.precioImagenAntes == null ? '' : cfg.precioImagenAntes,
+    onChange: e => {
+      const v = e.target.value === '' ? '' : +e.target.value;
+      set('precioImagenAntes', v);
+      setIaConfig(c => ({
+        ...c,
+        precioImagenAntes: v
+      }));
+    },
+    style: S.input,
+    placeholder: "vacío = sin promo"
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: '#16a34a',
+      fontWeight: 700
+    }
+  }, "El papá lo ve tachado con el % OFF calculado solo. Vacío = sin promo. Se guarda al cambiarlo.")), kPrecio === 'precioImagen' && /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'block',
+      maxWidth: 220,
+      flex: '1 1 180px'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: S.label
   }, "🖼️ Imágenes del pack"), /*#__PURE__*/React.createElement("input", {
     type: "number",
     min: "1",
@@ -15168,6 +15195,64 @@ function PapaLogin({
 }
 
 /* ── IA UPLOAD SECTION ───────────────────────────────────── */
+/* Precio con promo: si en IA & Precios hay un "precio tachado" mayor al real,
+   el papá ve "$antes tachado / AHORA $real / X% OFF" (el % se calcula solo).
+   Sin precio tachado, muestra el precio de siempre. Se usa en los 3 lugares
+   donde el papá ve el precio del pack: botón Premium, footer de pago y modal MP. */
+function PrecioConPromo({
+  precio,
+  antes,
+  fontSize,
+  color,
+  prefijo,
+  align
+}) {
+  const p = +precio || 0,
+    a = +antes || 0;
+  if (!(a > p && p > 0)) return /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 900,
+      fontSize: fontSize,
+      color: color
+    }
+  }, (prefijo || '') + '$' + p.toLocaleString('es-AR'));
+  const off = Math.round((1 - p / a) * 100);
+  return /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'inline-block',
+      textAlign: align || 'left',
+      lineHeight: 1.25
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#94a3b8',
+      textDecoration: 'line-through',
+      fontWeight: 700,
+      fontSize: Math.max(10, fontSize - 5)
+    }
+  }, "$", a.toLocaleString('es-AR')), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'block'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 900,
+      fontSize: fontSize,
+      color: color
+    }
+  }, "AHORA $", p.toLocaleString('es-AR')), /*#__PURE__*/React.createElement("span", {
+    style: {
+      background: '#dcfce7',
+      color: '#16a34a',
+      borderRadius: 8,
+      padding: '1px 7px',
+      marginLeft: 6,
+      fontWeight: 900,
+      fontSize: Math.max(10, fontSize - 7),
+      whiteSpace: 'nowrap'
+    }
+  }, off, "% OFF")));
+}
 function IAUploadSection({
   tipo,
   precio,
@@ -15196,7 +15281,8 @@ function IAUploadSection({
   onUsarVideo,
   onPedir,
   onVolverPanel,
-  packIA = 6
+  packIA = 6,
+  precioAntes = 0
 }) {
   const fotoRef = useRef();
   const persRef = useRef();
@@ -15736,11 +15822,15 @@ function IAUploadSection({
     }
   }, tipo === 'imagen' ? 'Pagás una vez, generás ' + packIA : '(a elección)')), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontWeight: 900,
-      fontSize: 20,
-      color: '#1e293b'
+      textAlign: 'right'
     }
-  }, "$", precio.toLocaleString('es-AR'))), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement(PrecioConPromo, {
+    precio: precio,
+    antes: tipo === 'imagen' ? precioAntes : 0,
+    fontSize: 20,
+    color: "#1e293b",
+    align: "right"
+  }))), /*#__PURE__*/React.createElement("button", {
     onClick: onPagar,
     disabled: !listo,
     style: {
@@ -16288,6 +16378,7 @@ function IAUploadSection({
 function PagoMP({
   tipo,
   precio,
+  precioAntes,
   nombre,
   tematica,
   modo,
@@ -16489,13 +16580,13 @@ function PagoMP({
       fontSize: 13,
       color: '#64748b'
     }
-  }, "Generación IA ", tipo === 'imagen' ? 'imagen' : 'video'), /*#__PURE__*/React.createElement("span", {
-    style: {
-      fontSize: 18,
-      fontWeight: 900,
-      color: '#1e293b'
-    }
-  }, "$", precio.toLocaleString('es-AR')))), estado === 'cargando' ? /*#__PURE__*/React.createElement("div", {
+  }, "Generación IA ", tipo === 'imagen' ? 'imagen' : 'video'), /*#__PURE__*/React.createElement(PrecioConPromo, {
+    precio: precio,
+    antes: tipo === 'imagen' ? precioAntes : 0,
+    fontSize: 18,
+    color: "#1e293b",
+    align: "right"
+  }))), estado === 'cargando' ? /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: 'center',
       padding: '10px 0'
@@ -19330,12 +19421,15 @@ function PapaCreador({
     }
   }, "La foto de tu hijo/a con su personaje + video del personaje hablando 🎬"), /*#__PURE__*/React.createElement("div", {
     style: {
-      fontSize: 12,
-      fontWeight: 900,
-      color: '#0ea5e9',
       marginTop: 4
     }
-  }, "Con costo: $", (iaConfig.precioImagen || 0).toLocaleString('es-AR')))), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement(PrecioConPromo, {
+    precio: iaConfig.precioImagen || 0,
+    antes: iaConfig.precioImagenAntes,
+    fontSize: 12,
+    color: "#0ea5e9",
+    prefijo: "Con costo: "
+  })))), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       const fmt = fmtTipo(form.tipo, iaConfig);
       setEventos(eventos.map(x => x.id === papaSesion.id ? {
@@ -20277,6 +20371,7 @@ function PapaCreador({
     tipo: "imagen",
     packIA: PACK_IA,
     precio: iaConfig.precioImagen,
+    precioAntes: iaConfig.precioImagenAntes,
     resultados: form.iaImagenes || [],
     onPagar: () => pedirGenerar('imagen'),
     onDescartar: () => {
@@ -22644,6 +22739,7 @@ function PapaCreador({
   })()), pagoActivo && /*#__PURE__*/React.createElement(PagoMP, {
     tipo: pagoActivo,
     precio: pagoActivo === 'imagen' ? iaConfig.precioImagen : iaConfig.precioVideo,
+    precioAntes: pagoActivo === 'imagen' ? iaConfig.precioImagenAntes : 0,
     nombre: form.nombre,
     tematica: temA.nombre,
     modo: pagoActivo === 'imagen' ? 'imagen' : 'video-genpay',
