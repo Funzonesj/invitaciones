@@ -4516,6 +4516,23 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     return()=>{vivo=false;};
   },[papaSesion&&papaSesion.id]);
   const [seccion,setSeccion]=useState(_PAPA_NAV.seccion||'home');
+  // Confirmaciones FRESCAS del servidor al entrar al panel y al abrir 👥 Confirmados:
+  // antes solo llegaban con el login, así que un papá que volvía con la sesión guardada
+  // veía la lista vieja del aparato y las confirmaciones hechas desde otros celulares
+  // no aparecían nunca (reporte de Lili 9/9).
+  React.useEffect(()=>{
+    if(!papaSesion||!papaSesion.id||!setConfs) return;
+    let vivo=true;
+    (async()=>{
+      try{
+        if(!(await gwPing())) return;
+        const d=await gwCall('confsEvento',{evId:papaSesion.id});
+        if(!vivo||!d||!Array.isArray(d.confs)) return;
+        setConfs(prev=>{const otras=(prev||[]).filter(c=>c&&c.evId!==papaSesion.id);return [...otras,...d.confs];});
+      }catch(e){}
+    })();
+    return()=>{vivo=false;};
+  },[seccion==='confirmaciones']);
   // Marca: el selector "¿qué va en tu tarjeta?" aparece tras entrar a "Editar Tarjeta"…
   // …o DE ENTRADA si la tarjeta YA tiene contenido cargado (foto/IA/video). Antes arrancaba
   // siempre en false y al reabrir la app el selector "desaparecía" aunque hubiera opciones

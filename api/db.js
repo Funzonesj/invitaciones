@@ -314,6 +314,19 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // ── Confirmaciones de UN evento (dueña, encargada o papá dueño) ──
+    // El panel del papá las pide FRESCAS al entrar: antes solo llegaban con el login,
+    // y un papá que volvía con la sesión guardada veía la lista vieja del aparato
+    // (las confirmaciones hechas desde otros celulares no aparecían).
+    if (action === 'confsEvento') {
+      const id = String(b.evId || evIdHdr || '');
+      if (!duena && !encargadaId && !(papaOk && id === String(evIdHdr))) { res.status(401).json({ error: 'no autorizado' }); return; }
+      const cf = await sbRest('confs?select=data&data->>evId=eq.' + encodeURIComponent(id));
+      const confs = Array.isArray(cf.data) ? cf.data.map(x => x.data).filter(c => c && c.evId === id) : [];
+      res.status(200).json({ confs: confs });
+      return;
+    }
+
     // ── Guardar evento (dueña, encargada, o papá SOLO su propio evento) ──
     if (action === 'upsertEvento') {
       let ev = b.ev || {};
