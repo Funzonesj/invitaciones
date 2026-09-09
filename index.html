@@ -17923,6 +17923,19 @@ function PapaCreador({
   const portadaImg = form.portadaSrc || temA.img || '';
   const esDoble = papaSesion.doble && papaSesion.nombre2;
   const confsEv = (confs || []).filter(c => c.evId === papaSesion.id);
+  // Borrar una confirmación desde la lista del papá (🗑 al lado de cada renglón).
+  // Borra en la base vía el portero; si falla, sale el cartel rojo y el refresco la vuelve a traer.
+  async function borrarConf(c) {
+    if (!window.confirm('¿Borrar la confirmación de "' + (c && c.invitado || 'esta familia') + '"?')) return;
+    setConfs(prev => (prev || []).filter(x => x && x.id !== c.id));
+    try {
+      if (await gwPing()) await gwCall('deleteConf', {
+        id: c.id
+      });
+    } catch (e) {
+      _guardadoFallo(e);
+    }
+  }
   function onFotoNino(e) {
     const f = e.target.files[0];
     if (!f) return;
@@ -20607,8 +20620,8 @@ function PapaCreador({
     style: {
       background: '#f8fafc'
     }
-  }, ['Nombre', '👶 Niños', '👨 Adultos', '📱 Cel'].map(h => /*#__PURE__*/React.createElement("th", {
-    key: h,
+  }, ['Nombre', '👶 Niños', '👨 Adultos', '📱 Cel', ''].map((h, i) => /*#__PURE__*/React.createElement("th", {
+    key: i,
     style: {
       padding: '10px 14px',
       textAlign: 'left',
@@ -20641,7 +20654,22 @@ function PapaCreador({
       fontFamily: 'monospace',
       fontSize: 11
     }
-  }, c.cel)))))))), seccion === 'menu' && /*#__PURE__*/React.createElement(MenuGView, {
+  }, c.cel), /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: '6px 8px',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => borrarConf(c),
+    title: "Borrar esta confirmación",
+    style: {
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: 16,
+      padding: 4
+    }
+  }, "🗑️"))))))))), seccion === 'menu' && /*#__PURE__*/React.createElement(MenuGView, {
     iaConfig: iaConfig,
     papaSesion: papaSesion
   }), false && seccion === 'menu' && /*#__PURE__*/React.createElement("div", {

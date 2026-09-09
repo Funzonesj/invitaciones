@@ -327,6 +327,23 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // ── Borrar UNA confirmación (dueña, encargada, o papá SOLO de su evento) ──
+    // El papá tiene el 🗑 al lado de cada confirmado en su lista (pedido de Lili 9/9).
+    if (action === 'deleteConf') {
+      const id = String(b.id || '');
+      if (!id) { res.status(400).json({ error: 'falta id' }); return; }
+      if (!duena && !encargadaId) {
+        if (!papaOk) { res.status(401).json({ error: 'no autorizado' }); return; }
+        // Verificar que la confirmación sea de SU evento antes de borrar
+        const r0 = await sbRest('confs?id=eq.' + encodeURIComponent(id) + '&select=data');
+        const c0 = (Array.isArray(r0.data) && r0.data[0] && r0.data[0].data) || null;
+        if (!c0 || String(c0.evId) !== String(evIdHdr)) { res.status(401).json({ error: 'no autorizado' }); return; }
+      }
+      const r = await sbRest('confs?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
+      res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
+      return;
+    }
+
     // ── Guardar evento (dueña, encargada, o papá SOLO su propio evento) ──
     if (action === 'upsertEvento') {
       let ev = b.ev || {};
