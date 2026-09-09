@@ -4516,8 +4516,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     return()=>{vivo=false;};
   },[papaSesion&&papaSesion.id]);
   const [seccion,setSeccion]=useState(_PAPA_NAV.seccion||'home');
-  // Marca: solo después de entrar a "Editar Tarjeta" aparece el selector "¿qué va en tu tarjeta?" en el inicio.
-  const [editoTarjeta,setEditoTarjeta]=useState(false);
+  // Marca: el selector "¿qué va en tu tarjeta?" aparece tras entrar a "Editar Tarjeta"…
+  // …o DE ENTRADA si la tarjeta YA tiene contenido cargado (foto/IA/video). Antes arrancaba
+  // siempre en false y al reabrir la app el selector "desaparecía" aunque hubiera opciones
+  // para elegir (le pasó a Lili el 9/9); la idea original era solo no mostrárselo a un papá
+  // que todavía no personalizó nada.
+  const [editoTarjeta,setEditoTarjeta]=useState(()=>!!(papaSesion&&(papaSesion.fotoNino||((papaSesion.iaImagenes||[]).length>0)||papaSesion.videoUrl)));
   // Navegación desde el menú de las rayitas (☰): permite ir directo a cada sector del papá.
   React.useEffect(()=>{
     window.__papaNav=(t)=>{
