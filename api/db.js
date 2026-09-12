@@ -123,6 +123,32 @@ function _prefijoDe(id){
   return (String(id).indexOf('__') === 0 ? 'config/' : 'ev/') + String(id).replace(/[^a-zA-Z0-9_-]/g, '');
 }
 
+// ── PASES DE INGRESO: número por familia dentro de cada evento ──────────
+// Cada confirmación recibe un número correlativo (#1, #2, …) dentro de SU
+// evento: es lo que la encargada busca en la puerta cuando el QR no se puede
+// leer. Se asigna ACÁ (server) para que dos celulares que confirman a la vez
+// no saquen el mismo número. Las confirmaciones viejas (sin número) se numeran
+// en orden de llegada la primera vez que hace falta (nueva confirmación, pase
+// o lista del papá). Una que ya tiene número no se toca nunca.
+function _msDeConf(c){ const m = String((c && c.id) || '').match(/^c-(\d+)/); return m ? +m[1] : 0; }
+async function numerarConfsEvento(evId){
+  const cf = await sbRest('confs?select=id,data&data->>evId=eq.' + encodeURIComponent(evId));
+  const filas = (Array.isArray(cf.data) ? cf.data : []).filter((x) => x && x.data && String(x.data.evId) === String(evId));
+  let max = 0;
+  filas.forEach((x) => { const n = +x.data.nro; if (n > max) max = n; });
+  const sinNro = filas.filter((x) => !(+x.data.nro > 0)).sort((a, b) => _msDeConf(a.data) - _msDeConf(b.data));
+  for (const x of sinNro) {
+    const data = Object.assign({}, x.data, { nro: max + 1, paseEn: new Date().toISOString() });
+    const r = await sbRest('confs?id=eq.' + encodeURIComponent(x.id), { method: 'PATCH', body: JSON.stringify({ data: data }) });
+    if (r.ok) { x.data = data; max += 1; } // si falló, ese número queda libre para el siguiente
+  }
+  return { max: max, confs: filas.map((x) => x.data) };
+}
+// Lo que va impreso en el pase (sin celular ni nada privado).
+function datosPase(c){
+  return { id: c.id, evId: c.evId, invitado: c.invitado, nombre: c.nombre, apellido: c.apellido, adultos: c.adultos, ninos: c.ninos, nro: (+c.nro > 0) ? +c.nro : null };
+}
+
 // Verifica el token de Supabase Auth (dueña). Devuelve el user o null.
 async function verificarDuena(jwt){
   if (!jwt) return null;
@@ -250,8 +276,37 @@ module.exports = async (req, res) => {
     if (action === 'addConf') {
       const c = b.c || {};
       if (!c || !c.id) { res.status(400).json({ error: 'falta id' }); return; }
+      // Número de pase (correlativo dentro del evento, ver numerarConfsEvento).
+      // Si la numeración falla, la confirmación se guarda igual sin número:
+      // nunca se pierde un invitado por el pase. Si es un reintento de una
+      // confirmación que ya está guardada, conserva el número que ya tenía.
+      delete c.nro;
+      if (c.evId) {
+        try {
+          const num = await numerarConfsEvento(c.evId);
+          const ya = num.confs.find((k) => k && String(k.id) === String(c.id));
+          c.nro = (ya && +ya.nro > 0) ? +ya.nro : (num.max + 1);
+          c.paseEn = (ya && ya.paseEn) || new Date().toISOString();
+        } catch (e) { delete c.nro; }
+      }
       const r = await sbRest('confs', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ id: c.id, data: c }) });
-      res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
+      res.status(r.ok ? 200 : r.status).json({ ok: r.ok, nro: (+c.nro > 0) ? +c.nro : null });
+      return;
+    }
+
+    // ── Pase de ingreso — PÚBLICO: el invitado vuelve a ver su pase con el link del QR ──
+    // El QR/link lleva el id de la confirmación (?inv=<evento>&pase=<id>). Devuelve
+    // SOLO lo impreso en el pase (nombre, cantidades, número), sin el celular.
+    if (action === 'miPase') {
+      const id = String(b.id || '');
+      if (!/^c-\d+/.test(id)) { res.status(400).json({ error: 'falta id' }); return; }
+      const r0 = await sbRest('confs?id=eq.' + encodeURIComponent(id) + '&select=data');
+      let c = (Array.isArray(r0.data) && r0.data[0] && r0.data[0].data) || null;
+      if (!c) { res.status(404).json({ error: 'no existe' }); return; }
+      if (!(+c.nro > 0) && c.evId) {
+        try { const num = await numerarConfsEvento(c.evId); const k = num.confs.find((x) => x && String(x.id) === id); if (k) c = k; } catch (e) {}
+      }
+      res.status(200).json({ pase: datosPase(c) });
       return;
     }
 
@@ -321,8 +376,14 @@ module.exports = async (req, res) => {
     if (action === 'confsEvento') {
       const id = String(b.evId || evIdHdr || '');
       if (!duena && !encargadaId && !(papaOk && id === String(evIdHdr))) { res.status(401).json({ error: 'no autorizado' }); return; }
-      const cf = await sbRest('confs?select=data&data->>evId=eq.' + encodeURIComponent(id));
-      const confs = Array.isArray(cf.data) ? cf.data.map(x => x.data).filter(c => c && c.evId === id) : [];
+      // De paso numera las confirmaciones que todavía no tienen pase (las de
+      // antes del 12/9/2026), así el papá ve el número de cada familia.
+      let confs = null;
+      try { confs = (await numerarConfsEvento(id)).confs; } catch (e) { confs = null; }
+      if (!confs) {
+        const cf = await sbRest('confs?select=data&data->>evId=eq.' + encodeURIComponent(id));
+        confs = Array.isArray(cf.data) ? cf.data.map(x => x.data).filter(c => c && c.evId === id) : [];
+      }
       res.status(200).json({ confs: confs });
       return;
     }
@@ -408,10 +469,18 @@ module.exports = async (req, res) => {
       const id = String(b.id || (b.c && b.c.id) || '');
       let data = (action === 'upsertConf') ? b.c : b.data;
       if (!id) { res.status(400).json({ error: 'falta id' }); return; }
+      // Una confirmación cargada por la dueña/encargada también lleva número de pase.
+      if (action === 'upsertConf' && data && data.evId && !(+data.nro > 0)) {
+        try {
+          const num = await numerarConfsEvento(data.evId);
+          const ya = num.confs.find((k) => k && String(k.id) === id);
+          data = Object.assign({}, data, { nro: (ya && +ya.nro > 0) ? +ya.nro : (num.max + 1), paseEn: (ya && ya.paseEn) || new Date().toISOString() });
+        } catch (e) {}
+      }
       // La config también llevaba imágenes pegadas (temáticas, logos): al depósito.
       if (action === 'upsertConfig') { try { data = (await aligerar(data, _prefijoDe(id))).v; } catch (e) {} }
       const r = await sbRest(tabla, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates' }, body: JSON.stringify({ id: id, data: data }) });
-      res.status(r.ok ? 200 : r.status).json({ ok: r.ok });
+      res.status(r.ok ? 200 : r.status).json({ ok: r.ok, nro: (action === 'upsertConf' && data && +data.nro > 0) ? +data.nro : undefined });
       return;
     }
 

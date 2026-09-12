@@ -13,6 +13,8 @@
 <title>Fun Zone Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<!-- QR del pase de ingreso (qrcode-generator; deja el global "qrcode") -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -271,6 +273,25 @@ function estaVencido(ev) {
   hoy.setHours(0, 0, 0, 0);
   return hoy >= fV;
 }
+// ── PASE DE INGRESO (QR) ──────────────────────────────────────
+// Desde esta fecha de CUMPLE, la familia que confirma asistencia recibe un pase
+// con número y QR para mostrar en la puerta del salón (pedido de Lili, 12/9/2026).
+// Los cumples anteriores siguen exactamente igual que siempre. La fecha se cambia
+// sin tocar código desde Admin → IA & Precios → "Pases de ingreso".
+const PASE_DESDE_DEF = '2026-09-20';
+function fechaISOEv(ev) {
+  if (!ev || !ev.anio || !ev.mes || !ev.dia) return '';
+  const p2 = function (n) {
+    return ('0' + String(n).replace(/\D/g, '')).slice(-2);
+  };
+  return String(ev.anio).replace(/\D/g, '') + '-' + p2(ev.mes) + '-' + p2(ev.dia);
+}
+function tienePase(ev, iaConfig) {
+  const f = fechaISOEv(ev);
+  if (!f) return false;
+  const desde = String(iaConfig && iaConfig.paseDesde || '').trim() || PASE_DESDE_DEF;
+  return f >= desde;
+}
 // Normaliza un celular argentino al formato internacional que necesita WhatsApp (54 9 + area + numero)
 function waNum(n) {
   let d = (n || '').toString().replace(/\D/g, ''); // dejar solo dígitos
@@ -494,6 +515,9 @@ if (_INV_PARAM && !_INV_PARAM.match(/^ev-/)) {
   } catch (e) {}
 }
 const _PAPA_PARAM = new URLSearchParams(_SEARCH).get('papa');
+// Link del QR del pase de ingreso: ?inv=<evento>&pase=<confirmación>. Abre directo
+// el pase (sin video ni música): es lo que se muestra en la puerta del salón.
+const _PASE_PARAM = new URLSearchParams(_SEARCH).get('pase');
 let _PAPA_DATA = null;
 if (_PAPA_PARAM) {
   try {
@@ -554,7 +578,7 @@ try {
 // Si NO hay sesión guardada pero volvés de un pago (o el último modo del dispositivo
 // fue "papá"), abrimos el login de PAPÁS — nunca el de admin (eso confundía al papá).
 const _AUTO_VISTA = _ULTIMO_MODO === 'admin' && _ADMIN_SAVED ? 'admin-dashboard' : _ULTIMO_MODO === 'papa' && _PAPA_SAVED ? 'papa-creador' : _PAPA_SAVED ? 'papa-creador' : _ADMIN_SAVED ? 'admin-dashboard' : _VOLVIENDO_PAGO || _ULTIMO_MODO === 'papa' ? 'papa-login' : 'admin-login';
-const INIT_VISTA = _REC_PARAM ? 'recuerdos' : _INV_PARAM ? 'invitado-portada' : _PAPA_DATA ? 'papa-creador' : _PAPA_PARAM ? 'papa-login' : _AUTO_VISTA;
+const INIT_VISTA = _REC_PARAM ? 'recuerdos' : _INV_PARAM ? _PASE_PARAM ? 'pase' : 'invitado-portada' : _PAPA_DATA ? 'papa-creador' : _PAPA_PARAM ? 'papa-login' : _AUTO_VISTA;
 
 // Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
 let _PAPA_NAV = {};
@@ -922,7 +946,7 @@ function App() {
       setVista('recuerdos');
     } else if (inv) {
       setInvEvId(inv);
-      setVista('invitado-portada');
+      setVista(sp.get('pase') ? 'pase' : 'invitado-portada');
     }
   }, []);
   // Restaurar credenciales del PORTERO al recargar (dueña por sesión de Supabase, encargada por token guardado)
@@ -1428,7 +1452,7 @@ function App() {
       fontWeight: 700,
       fontSize: 13
     }
-  }, migrando === 'listo' ? '✅ Fotos mudadas al depósito. La base quedó liviana: el panel va a cargar mucho más rápido.' : '🧳 Mudando las fotos al depósito… ' + migrando.hechos + ' de ' + migrando.total + ' tarjetas revisadas. Podés seguir usando todo normalmente.'), vista !== 'invitado-portada' && vista !== 'invitado-web' && vista !== 'recuerdos' && /*#__PURE__*/React.createElement("header", {
+  }, migrando === 'listo' ? '✅ Fotos mudadas al depósito. La base quedó liviana: el panel va a cargar mucho más rápido.' : '🧳 Mudando las fotos al depósito… ' + migrando.hechos + ' de ' + migrando.total + ' tarjetas revisadas. Podés seguir usando todo normalmente.'), vista !== 'invitado-portada' && vista !== 'invitado-web' && vista !== 'recuerdos' && vista !== 'pase' && /*#__PURE__*/React.createElement("header", {
     style: {
       background: '#ffffff',
       color: '#1e293b',
@@ -1853,7 +1877,8 @@ function App() {
   }), vista === 'admin-asistencias' && /*#__PURE__*/React.createElement(AdminAsistencias, {
     setVista: setVista,
     evsLocal: evsLocal,
-    confs: confs
+    confs: confs,
+    iaConfig: iaConfig
   }), vista === 'admin-remarketing' && /*#__PURE__*/React.createElement(AdminRemarketing, {
     setVista: setVista,
     evsLocal: evsLocal,
@@ -1977,6 +2002,15 @@ function App() {
     setConfs: setConfs,
     iaConfig: iaConfig,
     volverInv: _INV_PARAM ? null : adminSesion ? 'admin-eventos' : papaSesion ? 'papa-creador' : null
+  }), vista === 'pase' && /*#__PURE__*/React.createElement(PaseView, {
+    setVista: setVista,
+    eventos: eventos,
+    invEvId: invEvId,
+    sucursales: sucursales,
+    iaConfig: iaConfig,
+    confs: confs,
+    setConfs: setConfs,
+    paseId: _PASE_PARAM
   }), vista === 'recuerdos' && /*#__PURE__*/React.createElement(InvRecuerdos, {
     setVista: setVista,
     eventos: eventos,
@@ -1984,7 +2018,7 @@ function App() {
     sucursales: sucursales,
     tematicas: tematicas,
     volverInv: _REC_PARAM ? null : papaSesion ? 'papa-creador' : adminSesion ? 'admin-eventos' : null
-  })), vista !== 'invitado-portada' && vista !== 'invitado-web' && vista !== 'recuerdos' && /*#__PURE__*/React.createElement("footer", {
+  })), vista !== 'invitado-portada' && vista !== 'invitado-web' && vista !== 'recuerdos' && vista !== 'pase' && /*#__PURE__*/React.createElement("footer", {
     style: {
       background: '#0f172a',
       color: '#475569',
@@ -6707,7 +6741,8 @@ function AdminExcel({
 function AdminAsistencias({
   setVista,
   evsLocal,
-  confs
+  confs,
+  iaConfig
 }) {
   const [selId, setSelId] = useState((evsLocal[0] || {}).id || '');
   const [fMes, setFMes] = useState('');
@@ -6716,6 +6751,9 @@ function AdminAsistencias({
   const cSel = confs.filter(c => c.evId === selId);
   const totN = cSel.reduce((a, c) => a + (+c.ninos || 0), 0);
   const totA = cSel.reduce((a, c) => a + (+c.adultos || 0), 0);
+  // Columna 🎟️ (número de pase): solo en cumples con pase de ingreso (ver tienePase).
+  const evSel = evsLocal.find(e => e.id === selId) || null;
+  const conPaseAdm = !!(evSel && tienePase(evSel, iaConfig) && cSel.some(c => +c.nro > 0));
   return /*#__PURE__*/React.createElement("div", {
     className: "fade-in",
     style: {
@@ -6900,7 +6938,7 @@ function AdminAsistencias({
       background: '#f8fafc',
       borderBottom: '1px solid #e2e8f0'
     }
-  }, ['Nombre', 'Adultos', 'Niños', 'Celular'].map(h => /*#__PURE__*/React.createElement("th", {
+  }, (conPaseAdm ? ['🎟️ Pase'] : []).concat(['Nombre', 'Adultos', 'Niños', 'Celular']).map(h => /*#__PURE__*/React.createElement("th", {
     key: h,
     style: {
       padding: '10px 14px',
@@ -6909,7 +6947,7 @@ function AdminAsistencias({
       color: '#64748b'
     }
   }, h)))), /*#__PURE__*/React.createElement("tbody", null, cSel.length === 0 ? /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
-    colSpan: 4,
+    colSpan: conPaseAdm ? 5 : 4,
     style: {
       padding: 24,
       textAlign: 'center',
@@ -6920,7 +6958,14 @@ function AdminAsistencias({
     style: {
       borderBottom: '1px solid #f1f5f9'
     }
-  }, /*#__PURE__*/React.createElement("td", {
+  }, conPaseAdm && /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: '9px 14px',
+      fontWeight: 900,
+      color: '#0891b2',
+      whiteSpace: 'nowrap'
+    }
+  }, +c.nro > 0 ? '#' + c.nro : '—'), /*#__PURE__*/React.createElement("td", {
     style: {
       padding: '9px 14px',
       fontWeight: 700
@@ -8441,7 +8486,49 @@ function AdminIA({
       color: '#64748b',
       marginBottom: 18
     }
-  }, "Prompts, API keys y precios de los servicios de IA"), (() => {
+  }, "Prompts, API keys y precios de los servicios de IA"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    style: {
+      fontWeight: 900,
+      fontSize: 15,
+      marginBottom: 6
+    }
+  }, "🎟️ Pases de ingreso (QR en la puerta)"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 11,
+      color: '#64748b',
+      marginBottom: 10
+    }
+  }, "Los invitados de los cumples desde esta fecha reciben, al confirmar asistencia, un pase con número y QR para mostrar en la puerta. Los cumples anteriores siguen igual que siempre."), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'block',
+      maxWidth: 220
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: S.label
+  }, "📅 Cumples desde"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: cfg.paseDesde || '',
+    onChange: e => {
+      const v = e.target.value;
+      set('paseDesde', v);
+      setIaConfig(c => ({
+        ...c,
+        paseDesde: v
+      }));
+    },
+    style: S.input
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      color: '#16a34a',
+      fontWeight: 700
+    }
+  }, "Vacío = 20/09/2026. Se guarda solo al cambiarlo."))), (() => {
     const bal = saldo && saldo.balance;
     const bajo = typeof bal === 'number' && bal < 20;
     const col = bajo ? '#dc2626' : '#16a34a';
@@ -17923,6 +18010,7 @@ function PapaCreador({
   const portadaImg = form.portadaSrc || temA.img || '';
   const esDoble = papaSesion.doble && papaSesion.nombre2;
   const confsEv = (confs || []).filter(c => c.evId === papaSesion.id);
+  const conPaseLista = !!(tienePase(papaSesion, iaConfig) && confsEv.some(c => +c.nro > 0)); // columna 🎟️ solo en cumples con pase
   // Borrar una confirmación desde la lista del papá (🗑 al lado de cada renglón).
   // Borra en la base vía el portero; si falla, sale el cartel rojo y el refresco la vuelve a traer.
   async function borrarConf(c) {
@@ -20620,7 +20708,7 @@ function PapaCreador({
     style: {
       background: '#f8fafc'
     }
-  }, ['Nombre', '👶 Niños', '👨 Adultos', '📱 Cel', ''].map((h, i) => /*#__PURE__*/React.createElement("th", {
+  }, (conPaseLista ? ['🎟️ Pase'] : []).concat(['Nombre', '👶 Niños', '👨 Adultos', '📱 Cel', '']).map((h, i) => /*#__PURE__*/React.createElement("th", {
     key: i,
     style: {
       padding: '10px 14px',
@@ -20633,7 +20721,14 @@ function PapaCreador({
     style: {
       borderTop: '1px solid #f1f5f9'
     }
-  }, /*#__PURE__*/React.createElement("td", {
+  }, conPaseLista && /*#__PURE__*/React.createElement("td", {
+    style: {
+      padding: '9px 14px',
+      fontWeight: 900,
+      color: '#0891b2',
+      whiteSpace: 'nowrap'
+    }
+  }, +c.nro > 0 ? '#' + c.nro : '—'), /*#__PURE__*/React.createElement("td", {
     style: {
       padding: '9px 14px',
       fontWeight: 700
@@ -24859,6 +24954,262 @@ function InvRecuerdos({
 }
 
 /* ── INVITADO PORTADA ────────────────────────────────────── */
+/* ── PASE DE INGRESO (QR) ─────────────────────────────────────
+   Al confirmar asistencia, la familia recibe un pase con número y QR para
+   mostrar en la puerta del salón (cumples desde PASE_DESDE_DEF, ver tienePase).
+   El QR es un link a la misma invitación con &pase=<id>: abre PaseView, la
+   pantalla pelada del pase (sin video ni música), y sirve para recuperarlo en
+   otro celular. La encargada lo lee desde el software del salón. */
+function paseLink(ev, conf) {
+  const base = String(window.location.href).split('#')[0].split('?')[0];
+  return base + '?inv=' + encodeURIComponent(ev.id) + '&pase=' + encodeURIComponent(conf.id);
+}
+function PaseCard({
+  ev,
+  suc,
+  col,
+  conf
+}) {
+  const link = paseLink(ev, conf);
+  const [qrSrc, setQrSrc] = useState('');
+  React.useEffect(() => {
+    // qrcode-generator (global "qrcode"). Si no cargó, queda el número grande y listo.
+    try {
+      if (typeof qrcode !== 'function') {
+        setQrSrc('');
+        return;
+      }
+      const q = qrcode(0, 'M');
+      q.addData(link);
+      q.make();
+      setQrSrc(q.createDataURL(4, 4));
+    } catch (e) {
+      setQrSrc('');
+    }
+  }, [link]);
+  const nombre = String(conf.invitado || ((conf.nombre || '') + ' ' + (conf.apellido || '')).trim() || '').trim();
+  const nA = +conf.adultos || 0,
+    nN = +conf.ninos || 0;
+  const tipo = ev && ev.tipo || 'Cumple';
+  function compartir() {
+    const txt = 'Mi pase de ingreso al ' + tipo + ' de ' + ev.nombre + (+conf.nro > 0 ? ' (#' + conf.nro + ')' : '');
+    if (navigator.share) {
+      try {
+        navigator.share({
+          title: 'Pase de ingreso',
+          text: txt,
+          url: link
+        }).catch(function () {});
+        return;
+      } catch (e) {}
+    }
+    abrirWA('', txt + '\n' + link);
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    id: "pase-ingreso",
+    style: {
+      background: '#fff',
+      border: '2px solid ' + col,
+      borderRadius: 18,
+      padding: '14px 14px 12px',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 900,
+      letterSpacing: 1,
+      color: col,
+      textTransform: 'uppercase'
+    }
+  }, "🎟️ Pase de ingreso"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#64748b',
+      marginTop: 2
+    }
+  }, tipo, " de ", /*#__PURE__*/React.createElement("b", null, ev.nombre), " · ", ev.dia, "/", ev.mes, "/", ev.anio, suc && suc.nombre ? ' · ' + suc.nombre : ''), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 44,
+      fontWeight: 900,
+      color: '#1e293b',
+      lineHeight: 1.1,
+      marginTop: 8
+    }
+  }, +conf.nro > 0 ? '#' + conf.nro : '…'), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 17,
+      fontWeight: 900,
+      color: '#1e293b',
+      marginTop: 4
+    }
+  }, nombre), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#475569',
+      marginTop: 2
+    }
+  }, nA, " ", nA === 1 ? 'adulto' : 'adultos', " · ", nN, " ", nN === 1 ? 'niño' : 'niños'), qrSrc ? /*#__PURE__*/React.createElement("img", {
+    src: qrSrc,
+    alt: "QR del pase",
+    style: {
+      width: 200,
+      height: 200,
+      margin: '10px auto 0',
+      display: 'block'
+    }
+  }) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#94a3b8',
+      margin: '12px 0 4px'
+    }
+  }, "Mostrá este número en la puerta."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#475569',
+      marginTop: 8,
+      lineHeight: 1.45
+    }
+  }, "Mostralo en la puerta del salón. Vale para toda tu familia.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("b", null, "Sacale una captura"), " 📸 para tenerlo a mano."), /*#__PURE__*/React.createElement("button", {
+    onClick: compartir,
+    style: {
+      ...S.btn,
+      marginTop: 10,
+      background: col,
+      color: 'white',
+      padding: '10px 16px',
+      fontSize: 13,
+      width: '100%'
+    }
+  }, "📲 Guardar / enviar mi pase"));
+}
+function PaseView({
+  setVista,
+  eventos,
+  invEvId,
+  sucursales,
+  iaConfig,
+  confs,
+  setConfs,
+  paseId
+}) {
+  const ev = eventos.find(e => e.id === invEvId) || null;
+  const suc = ev && sucursales.find(s => s.id === ev.sucId) || sucursales[0] || {};
+  const col = suc && suc.color || '#f97316';
+  const local = (confs || []).find(c => c && c.id === paseId) || null;
+  const [conf, setConf] = useState(local);
+  const [estado, setEstado] = useState(local ? 'ok' : 'cargando');
+  React.useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        if (!(await gwPing())) {
+          if (vivo) setEstado(local ? 'ok' : 'error');
+          return;
+        }
+        const r = await gwCall('miPase', {
+          id: paseId
+        });
+        const p = r && r.pase;
+        if (!vivo) return;
+        if (p && p.id) {
+          setConf(p);
+          setEstado('ok');
+          try {
+            const mp = JSON.parse(localStorage.getItem('fz_mi_pase') || '{}');
+            mp[p.evId] = p.id;
+            localStorage.setItem('fz_mi_pase', JSON.stringify(mp));
+          } catch (e) {}
+          if (setConfs) setConfs(prev => {
+            const l = prev || [];
+            return l.some(c => c && c.id === p.id) ? l.map(c => c && c.id === p.id ? Object.assign({}, c, p) : c) : l.concat([p]);
+          });
+        } else setEstado(local ? 'ok' : 'error');
+      } catch (e) {
+        if (vivo) setEstado(local ? 'ok' : 'error');
+      }
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [paseId]);
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: '100vh',
+      background: 'linear-gradient(160deg,' + col + '22,#ffffff)',
+      fontFamily: 'Arial,sans-serif',
+      padding: '24px 16px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: '100%',
+      maxWidth: 360
+    }
+  }, estado === 'cargando' && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'center',
+      color: '#64748b',
+      fontSize: 14,
+      padding: '40px 0'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bounce",
+    style: {
+      fontSize: 40
+    }
+  }, "🎟️"), "Buscando tu pase…"), estado === 'error' && /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 40,
+      marginBottom: 6
+    }
+  }, "🤔"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 900,
+      fontSize: 16,
+      color: '#1e293b',
+      marginBottom: 6
+    }
+  }, "No encontramos este pase"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#64748b',
+      lineHeight: 1.5
+    }
+  }, "Abrí la invitación y confirmá tu asistencia: ahí te damos el pase.")), estado === 'ok' && conf && ev && /*#__PURE__*/React.createElement(PaseCard, {
+    ev: ev,
+    suc: suc,
+    col: col,
+    conf: conf
+  }), estado === 'ok' && conf && !ev && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'center',
+      color: '#64748b',
+      fontSize: 14,
+      padding: '40px 0'
+    }
+  }, "Cargando la invitación…"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setVista('invitado-portada'),
+    style: {
+      ...S.btn,
+      marginTop: 14,
+      width: '100%',
+      background: '#fff',
+      color: col,
+      border: '2px solid ' + col,
+      padding: 12,
+      fontSize: 14
+    }
+  }, "🎁 Ver la invitación")));
+}
 function InvPortada({
   setVista,
   eventos,
@@ -25257,6 +25608,46 @@ function InvWeb({
   const [ni, setNi] = useState('');
   const [cel, setCel] = useState('');
   const [ok, setOk] = useState(false);
+  const [ape, setApe] = useState(''); // apellido: se pide solo en cumples con pase de ingreso
+  // ── PASE DE INGRESO ──
+  // En los cumples desde PASE_DESDE_DEF, al confirmar la familia recibe un pase con
+  // número y QR. Este celular recuerda cuál es SU pase (fz_mi_pase) para volver a
+  // mostrarlo al reabrir la invitación; el número lo pone el portero (miPase/addConf).
+  const conPase = tienePase(ev, iaConfig);
+  const [miConf, setMiConf] = useState(null);
+  async function refrescarPase(id) {
+    try {
+      if (!(await gwPing())) return;
+      const r = await gwCall('miPase', {
+        id: id
+      });
+      const p = r && r.pase;
+      if (!(p && p.id)) return;
+      setMiConf(prev => Object.assign({}, prev || {}, p));
+      if (setConfs) setConfs(prev => (prev || []).map(c => c && c.id === p.id ? Object.assign({}, c, p) : c));
+    } catch (e) {}
+  }
+  React.useEffect(() => {
+    if (!conPase || !ev || !ev.id) return;
+    let mio = null;
+    try {
+      const mp = JSON.parse(localStorage.getItem('fz_mi_pase') || '{}');
+      const id = mp[ev.id];
+      if (id) mio = (confs || []).find(c => c && c.id === id) || {
+        id: id,
+        evId: ev.id
+      };
+    } catch (e) {}
+    // Confirmó antes de que existieran los pases: si en este celular hay UNA sola
+    // confirmación de este cumple (y no es el celular de la dueña ni del papá), es la suya.
+    if (!mio && !_ADMIN_SAVED && !_PAPA_SAVED) {
+      const mias = (confs || []).filter(c => c && c.evId === ev.id);
+      if (mias.length === 1) mio = mias[0];
+    }
+    if (!mio) return;
+    setMiConf(mio);
+    if (!(+mio.nro > 0)) refrescarPase(mio.id);
+  }, [conPase, ev && ev.id]);
   const [countdown, setCountdown] = useState({
     dias: 0,
     horas: 0,
@@ -25304,14 +25695,21 @@ function InvWeb({
       alert('Indicá al menos 1 invitado (niños o adultos).');
       return;
     }
+    // Con pase de ingreso se piden nombre Y apellido (la encargada busca por apellido
+    // en la puerta). "invitado" sigue siendo el nombre completo, como siempre.
+    const nomFull = conPase ? ((nom || '').trim() + ' ' + (ape || '').trim()).trim() : nom;
     const nueva = {
       id: 'c-' + Date.now(),
       evId: ev.id,
-      invitado: nom,
+      invitado: nomFull,
       adultos: nAd,
       ninos: nNi,
       cel
     };
+    if (conPase) {
+      nueva.nombre = (nom || '').trim();
+      nueva.apellido = (ape || '').trim();
+    }
     // Guarda YA en la app: estado + localStorage + servidor (para que el salón la vea).
     setConfs(prev => {
       const updated = [...prev, nueva];
@@ -25320,9 +25718,34 @@ function InvWeb({
       } catch (err) {}
       return updated;
     });
-    try {
-      sbUpsertConf(nueva);
-    } catch (err) {}
+    if (conPase) {
+      // Este celular recuerda cuál es SU pase para este cumple (para reabrir la invitación).
+      try {
+        const mp = JSON.parse(localStorage.getItem('fz_mi_pase') || '{}');
+        mp[ev.id] = nueva.id;
+        localStorage.setItem('fz_mi_pase', JSON.stringify(mp));
+      } catch (err) {}
+      setMiConf(nueva);
+    }
+    // Al servidor (igual que sbUpsertConf, pero leyendo la respuesta): el portero
+    // numera el pase (#1, #2, …) y lo devuelve; recién ahí se muestra el número.
+    (async () => {
+      try {
+        if (!(await gwPing())) return;
+        const r = await gwCall(_GWAUTH.jwt || _GWAUTH.enc ? 'upsertConf' : 'addConf', {
+          c: nueva
+        });
+        if (r && +r.nro > 0) {
+          const con = Object.assign({}, nueva, {
+            nro: +r.nro
+          });
+          setMiConf(prev => prev && prev.id === nueva.id ? con : prev);
+          setConfs(prev => (prev || []).map(c => c && c.id === nueva.id ? con : c));
+        }
+      } catch (err) {
+        _guardadoFallo(err);
+      }
+    })();
     setOk(true); // muestra el cartel de "registrada" (NO se borra ni salta solo a WhatsApp)
   }
   // Aviso OPCIONAL por WhatsApp a la familia (se abre pre-escrito; el invitado toca Enviar).
@@ -25330,7 +25753,8 @@ function InvWeb({
     const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     const fecha = ev.dia + ' de ' + (meses[+ev.mes - 1] || '') + ' de ' + ev.anio;
     const priNom = String(ev.nomPapa || '').trim().split(/\s+/)[0] || ''; // solo el primer nombre
-    const lineas = ['Hola ' + priNom + '!', '', (nom || '') + ' confirma asistencia al ' + ev.tipo + ' de ' + ev.nombre, 'Fecha: ' + fecha, '', 'Asistimos: ' + (+ni || 0) + ' ninos y ' + (+ad || 0) + ' adultos'];
+    const lineas = ['Hola ' + priNom + '!', '', (miConf && miConf.invitado || nom || '') + ' confirma asistencia al ' + ev.tipo + ' de ' + ev.nombre, 'Fecha: ' + fecha, '', 'Asistimos: ' + (+ni || 0) + ' ninos y ' + (+ad || 0) + ' adultos'];
+    if (conPase && miConf && +miConf.nro > 0) lineas.push('Pase de ingreso #' + miConf.nro);
     abrirWA(waNum(ev.celPapa), lineas.join('\n'));
   }
   const diaStr = ev ? ev.dia + '/' + ev.mes + '/' + ev.anio : '';
@@ -26167,7 +26591,14 @@ function InvWeb({
       color: '#888',
       margin: 0
     }
-  }, T.confSub || 'es muy importante. ¡Muchas gracias!')), /*#__PURE__*/React.createElement("div", {
+  }, T.confSub || 'es muy importante. ¡Muchas gracias!'), conPase && /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 12,
+      color: col,
+      fontWeight: 800,
+      margin: '8px 0 0'
+    }
+  }, "🎟️ Al confirmar recibís tu pase de ingreso (número y QR) para mostrar en la puerta.")), /*#__PURE__*/React.createElement("div", {
     id: 'conf-form-' + ev.id,
     style: {
       margin: '0 16px 16px',
@@ -26185,7 +26616,7 @@ function InvWeb({
       textTransform: 'uppercase',
       color: col
     }
-  }, "Registra tu Asistencia"), ok ? /*#__PURE__*/React.createElement("div", {
+  }, "Registra tu Asistencia"), ok || conPase && miConf ? /*#__PURE__*/React.createElement("div", null, ok && /*#__PURE__*/React.createElement("div", {
     style: {
       background: '#f0fdf4',
       border: '1px solid #86efac',
@@ -26229,14 +26660,63 @@ function InvWeb({
       marginTop: 8,
       lineHeight: 1.4
     }
-  }, "Se abre WhatsApp con el mensaje listo — solo tenés que tocar ", /*#__PURE__*/React.createElement("b", null, "Enviar"), " (opcional).")) : /*#__PURE__*/React.createElement("form", {
+  }, "Se abre WhatsApp con el mensaje listo — solo tenés que tocar ", /*#__PURE__*/React.createElement("b", null, "Enviar"), " (opcional).")), conPase && miConf && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: ok ? 12 : 0
+    }
+  }, /*#__PURE__*/React.createElement(PaseCard, {
+    ev: ev,
+    suc: suc,
+    col: col,
+    conf: miConf
+  })), conPase && miConf && !ok && /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setMiConf(null);
+      setOk(false);
+    },
+    style: {
+      background: 'none',
+      border: 'none',
+      color: '#94a3b8',
+      fontSize: 11,
+      marginTop: 8,
+      cursor: 'pointer',
+      textDecoration: 'underline'
+    }
+  }, "¿Sos otra familia? Confirmar asistencia")) : /*#__PURE__*/React.createElement("form", {
     onSubmit: conf,
     style: {
       display: 'flex',
       flexDirection: 'column',
       gap: 8
     }
+  }, conPase ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 8
+    }
   }, /*#__PURE__*/React.createElement("input", {
+    value: nom,
+    onChange: e => setNom(e.target.value),
+    placeholder: "Tu nombre",
+    required: true,
+    style: {
+      ...S.input,
+      border: '1px solid ' + col + '66',
+      fontSize: 14
+    }
+  }), /*#__PURE__*/React.createElement("input", {
+    value: ape,
+    onChange: e => setApe(e.target.value),
+    placeholder: "Tu apellido",
+    required: true,
+    style: {
+      ...S.input,
+      border: '1px solid ' + col + '66',
+      fontSize: 14
+    }
+  })) : /*#__PURE__*/React.createElement("input", {
     value: nom,
     onChange: e => setNom(e.target.value),
     placeholder: "Tu nombre",
