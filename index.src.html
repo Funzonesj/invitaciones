@@ -558,7 +558,13 @@ function App() {
         try{
           let ev=null;
           if(await gwPing()){ const r=await gwCall('invitacion',{id:quickId}); ev=(r&&r.data)||null; }
-          if(ev){ setEventos(prev=>prev.some(e=>e.id===ev.id)?prev:[ev,...prev]); setDbReady(true); }
+          // La FRESCA pisa a la copia local. Antes, si este celular ya había
+          // abierto la tarjeta, se quedaba con la vieja de localStorage para
+          // siempre: Lili veía "10/9 20:30" en su iPhone cuando la base ya
+          // decía 19/9 21:30 (Paulina, 15/09). Lo público viene sanitizado
+          // (sin clave ni teléfonos), así que se mezcla sobre la local para
+          // no perder esos campos si los tenía.
+          if(ev){ setEventos(prev=>prev.some(e=>e.id===ev.id)?prev.map(e=>e.id===ev.id?Object.assign({},e,ev):e):[ev,...prev]); setDbReady(true); }
         }catch(e){}
       }
       // 2) Cargar el resto (puede tardar por imágenes guardadas) sin bloquear la pantalla
