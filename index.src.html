@@ -176,6 +176,15 @@ function genCreds(nombre, edad, dia, mes, eventos, idActual) {
 // ¿El acceso del evento está vencido?
 // La tarjeta sigue viva el día del cumple + 1 semana completa después (para subir
 // las fotos del cumple y que los invitados las vean). Recién al 8º día se cierra.
+// Sello con la fecha y la hora del evento para el link que se comparte
+// (&f=20260919-1530). La app lo ignora; WhatsApp arma la vista previa por URL
+// y la guarda: si el salón mueve el cumple, el link cambia y la vista previa se
+// rehace con el día nuevo en vez de repetir la vieja (Paulina, 15/09).
+function _selloFecha(ev){
+  ev=ev||{}; if(!(ev.anio&&ev.mes&&ev.dia)) return '';
+  const p2=function(n){return String(n||'').padStart(2,'0');};
+  return '&f='+ev.anio+p2(ev.mes)+p2(ev.dia)+(ev.hIni?('-'+String(ev.hIni).replace(/[^0-9]/g,'')):'');
+}
 function estaVencido(ev){
   if(!ev||!ev.anio||!ev.mes||!ev.dia) return false;
   const fF=new Date(+ev.anio,+ev.mes-1,+ev.dia);
@@ -494,6 +503,27 @@ function App() {
   },[]);
   // El papá puede escribir SOLO su evento: el portero lo valida con la clave de su tarjeta
   React.useEffect(()=>{ if(papaSesion){ _GWAUTH.evId=papaSesion.id; _GWAUTH.evPass=papaSesion.pass||''; } },[papaSesion]);
+  // La sesión del papá que el celular recuerda (24 h) tenía la tarjeta como
+  // estaba la ÚLTIMA vez que entró. Si el salón le cambió el día o el horario
+  // en el medio (Paulina #1363, 15/09: la reserva pasó al sábado 19 y la mamá
+  // seguía viendo —y compartiendo— jueves 10, 20:30), mandaba la copia vieja.
+  // Al abrir, se pide la tarjeta fresca por el portero y se pisa la copia local.
+  React.useEffect(()=>{
+    if(!papaSesion||!_PAPA_SAVED||papaSesion.id!==_PAPA_SAVED.id) return;
+    let vivo=true;
+    (async()=>{
+      try{
+        if(!(await gwPing())) return;
+        const d=await gwCall('evento',{id:papaSesion.id});
+        const fresh=d&&d.row&&d.row.data;
+        if(!vivo||!fresh||typeof fresh!=='object'||(fresh.id&&fresh.id!==papaSesion.id)) return;
+        if(fresh.pass) _GWAUTH.evPass=fresh.pass;
+        setPapaSesion(ps=>Object.assign({},ps,fresh));
+        setEventos(evs=>evs.some(e=>e&&e.id===papaSesion.id)?evs.map(e=>(e&&e.id===papaSesion.id)?Object.assign({},e,fresh):e):[Object.assign({},fresh,{id:papaSesion.id})].concat(evs));
+      }catch(e){}
+    })();
+    return ()=>{vivo=false;};
+  },[]);
   // Cargar eventos y confirmaciones desde la base de datos central (Supabase)
   React.useEffect(()=>{
     if(!SB){return;}
@@ -1509,8 +1539,8 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     setMsgOk('✅ Se guardó correctamente');flashOk('✓ ¡Guardado!');setTimeout(()=>setMsgOk(''),3500);
     window.scrollTo(0,0);
   }
-  function copiarLink(id){navigator.clipboard && navigator.clipboard.writeText(window.location.href.split('?')[0]+'?inv='+id+'&p=2');alert('¡Enlace copiado!');}
-  function compartirLinkInv(ev){const link=window.location.href.split('?')[0]+'?inv='+ev.id+'&p=2';const txt='Tenés una invitación de '+ev.nombre+' 🎉\n\nAbrí la invitación:\n'+link;abrirWA('', txt);}
+  function copiarLink(id){const ev=(eventos||[]).find(e=>e&&e.id===id)||{};navigator.clipboard && navigator.clipboard.writeText(window.location.href.split('?')[0]+'?inv='+id+'&p=2'+_selloFecha(ev));alert('¡Enlace copiado!');}
+  function compartirLinkInv(ev){const link=window.location.href.split('?')[0]+'?inv='+ev.id+'&p=2'+_selloFecha(ev);const txt='Tenés una invitación de '+ev.nombre+' 🎉\n\nAbrí la invitación:\n'+link;abrirWA('', txt);}
 
   // ¿Cuándo se creó la tarjeta? (marca 'creado' o la fecha codificada en el id)
   const evCreadoMs=ev=>{ if(ev&&ev.creado) return ev.creado; const m=String((ev&&ev.id)||'').match(/^ev-([0-9a-f]+)$/); return m?parseInt(m[1],16):0; };
@@ -5008,12 +5038,12 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const fecha=papaSesion.dia+' de '+(meses[(+papaSesion.mes)-1]||'')+' de '+papaSesion.anio;
     const baseUrl=window.location.href.split('?')[0];
-    const longUrl=baseUrl+'?inv='+papaSesion.id+'&p=2';
+    const longUrl=baseUrl+'?inv='+papaSesion.id+'&p=2'+_selloFecha(papaSesion);
     acortarYCompartir(longUrl,(form.nombre||papaSesion.nombre),fecha,suc.nombre);
   }
   // Recordatorio para enviar a los invitados el DÍA del cumple
   function compartirRecordatorio(){
-    const link=window.location.href.split('?')[0]+'?inv='+papaSesion.id+'&p=2';
+    const link=window.location.href.split('?')[0]+'?inv='+papaSesion.id+'&p=2'+_selloFecha(papaSesion);
     const nom=form.nombre||papaSesion.nombre;
     const msg='🎉🎂 ¡HOY es el cumple de '+nom+'! 🎂🎉\nTe esperamos hoy de '+papaSesion.hIni+' a '+papaSesion.hFin+' hs en '+suc.nombre+'.\n¡No faltes! 👉 '+link;
     abrirWA('', msg);

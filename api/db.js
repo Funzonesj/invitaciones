@@ -418,6 +418,15 @@ module.exports = async (req, res) => {
       // La dueña/encargada siguen reemplazando entero (su formulario maneja todo).
       if (esPapaDeEste && evPapaActual) {
         ev = Object.assign({}, evPapaActual, ev);
+        // Lo que es del SALÓN (día, horario, sede, credenciales, enganche con la
+        // reserva) lo manda la base, nunca la copia del celular: el papá no lo
+        // edita en su panel, y una copia vieja (24 h en localStorage) le devolvía
+        // a la tarjeta el día que la dueña ya había cambiado en el software
+        // (Paulina #1363, 15/09: la reserva pasó al sábado 19 y la tarjeta
+        // volvía a decir jueves 10, 20:30).
+        ['dia', 'mes', 'anio', 'hIni', 'hFin', 'sucId', 'user', 'pass', 'reservaId', 'origen', 'creado'].forEach(function (k) {
+          if (evPapaActual[k] !== undefined) ev[k] = evPapaActual[k];
+        });
       }
       // Las fotos pegadas se van al depósito ANTES de guardar: la base queda
       // liviana para siempre, y si la subida falla el base64 se guarda igual.
