@@ -990,6 +990,7 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
   const [err,setErr]=useState('');
   const [resultUrl,setResultUrl]=useState('');
   const [prompt,setPrompt]=useState('');
+  const [promptUser,setPromptUser]=useState(''); // texto libre de la dueña para guiar la generación
   const [copiado,setCopiado]=useState(false);
   const [msg,setMsg]=useState('');
   const [guardarOpen,setGuardarOpen]=useState(false);
@@ -1028,14 +1029,25 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
     setErr('');setMsg('');
     if(!img){setErr('Subí una imagen primero');return;}
     const esTresD=opt==='3d';
-    const p=esTresD?prompt3D:promptEnhance;
-    setPrompt(p);setCargando(true);setResultUrl('');
+    const userTxt=(promptUser||'').trim();
+    setCargando(true);setResultUrl('');
     try{
       const size=ratio==='9:16'?{width:768,height:1366}:ratio==='1:1'?{width:1024,height:1024}:{width:1024,height:768};
-      // 3D: describir la imagen + flux text-to-image (esquiva restricciones). Mejorar: flux imagen→imagen.
-      const body=esTresD
-        ?{prompt:p,image:img,model:'fal-ai/flux-pro/kontext/text-to-image',size,describir:true,isI2I:false}
-        :{prompt:p,image:img,model:'fal-ai/flux-pro/kontext',size,isI2I:true};
+      let body;
+      if(userTxt){
+        // Tu texto manda + la foto como referencia. Nano-Banana usa la imagen directo (no necesita OpenAI).
+        const estilo=esTresD?prompt3D:(opt==='enhance'?promptEnhance:'');
+        const p=userTxt+(estilo?('\n\n'+estilo):'');
+        setPrompt(p);
+        body={prompt:p,images:[img],model:'fal-ai/nano-banana/edit',aspect_ratio:ratio};
+      } else {
+        const p=esTresD?prompt3D:promptEnhance;
+        setPrompt(p);
+        // 3D: describir la imagen + flux text-to-image (esquiva restricciones). Mejorar: flux imagen→imagen.
+        body=esTresD
+          ?{prompt:p,image:img,model:'fal-ai/flux-pro/kontext/text-to-image',size,describir:true,isI2I:false}
+          :{prompt:p,image:img,model:'fal-ai/flux-pro/kontext',size,isI2I:true};
+      }
       // _gwHeaders manda el token de la dueña/encargada: así el panel genera sin
       // pasar por la puerta del pago (que es solo para el papá).
       const resp=await fetch('/api/generar-catalogo',{method:'POST',headers:_gwHeaders(),body:JSON.stringify(body)});
@@ -1090,6 +1102,11 @@ function AdminCatalogo({setVista,tematicas,setTematicas,modo}){
         {optBtn('3d','🧊','Crear en 3D','Estilo Pixar HD')}
         {optBtn('enhance','✨','Mejorar calidad','Mantiene el estilo')}
       </div>
+
+      <label style={{display:'block',marginBottom:6}}><span style={S.label}>Describí lo que querés (opcional)</span>
+        <textarea value={promptUser} onChange={e=>setPromptUser(e.target.value)} rows={3} placeholder="Ej: una sirenita con corona dorada, en un fondo de burbujas y peces de colores, sonriendo" style={{...S.input,resize:'vertical',minHeight:72,lineHeight:1.4}}/>
+      </label>
+      <div style={{fontSize:11,color:'#94a3b8',marginBottom:14,lineHeight:1.4}}>Si escribís acá, la IA genera con <b>tu texto + la foto de referencia</b> que subiste arriba. Si lo dejás vacío, hace la versión 3D o la mejora automática.</div>
 
       <label style={{display:'block',marginBottom:14}}><span style={S.label}>Formato</span>
         <select value={ratio} onChange={e=>setRatio(e.target.value)} style={S.input}>
