@@ -4640,7 +4640,7 @@ function AdminEventos({
   };
   // El historial va por FECHA DEL CUMPLE (el más próximo primero), no por
   // cuándo se creó la tarjeta: así se busca como se piensa, por el día del evento.
-  const historial = evsLocal.filter(e => (!fMes || e.mes === fMes) && (!fAnio || String(e.anio) === String(fAnio)) && (!fDia || String(e.dia) === String(fDia))).sort((a, b) => {
+  const historial = evsLocal.filter(e => (!fMes || Number(e.mes) === Number(fMes)) && (!fAnio || String(e.anio) === String(fAnio)) && (!fDia || Number(e.dia) === Number(fDia))).sort((a, b) => {
     const fa = evFechaNum(a),
       fb = evFechaNum(b);
     if (fa !== fb) return fb - fa; // primero las de fecha más nueva
