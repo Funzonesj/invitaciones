@@ -9601,13 +9601,25 @@ function AdminFormatos({
       dirigido: ''
     }]);
   }
-  function guardar() {
-    setIaConfig(c => ({
-      ...c,
+  async function guardar() {
+    const nuevo = {
+      ...iaConfig,
       tiposEvento: tipos
-    }));
-    setMsg('✓ Formatos guardados');
-    setTimeout(() => setMsg(''), 2500);
+    };
+    setMsg('Guardando…');
+    try {
+      // Espera el guardado REAL en el servidor (antes el cartel decía "guardado"
+      // aunque fallara en silencio, y al recargar no estaba — por eso "no se guardaba").
+      await gwCall('upsertConfig', {
+        id: '__config_ia__',
+        data: nuevo
+      });
+      setIaConfig(nuevo);
+      setMsg('✓ Formatos guardados');
+      setTimeout(() => setMsg(''), 3000);
+    } catch (e) {
+      setMsg('⚠️ No se pudo guardar. Revisá tu conexión e intentá de nuevo (no cierres la pestaña).');
+    }
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "fade-in",
