@@ -808,6 +808,7 @@ function App() {
         edad: false,
         mostrarNombre: false,
         tituloDestacado: true,
+        escuela: true,
         titulo: '¡Festejemos juntos el Día del Niño!',
         dirigido: 'Estimada maestra'
       }],
@@ -9685,6 +9686,40 @@ function AdminFormatos({
     style: S.input,
     placeholder: "Ej: Bautismo"
   })), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 4,
+      cursor: 'pointer',
+      background: t.escuela ? '#eff6ff' : '#f8fafc',
+      border: '1px solid ' + (t.escuela ? '#93c5fd' : '#e2e8f0'),
+      borderRadius: 10,
+      padding: '10px 12px'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: !!t.escuela,
+    onChange: e => upd(i, 'escuela', e.target.checked),
+    style: {
+      width: 18,
+      height: 18,
+      accentColor: '#2563eb'
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 13,
+      fontWeight: 800,
+      color: t.escuela ? '#1e40af' : '#334155'
+    }
+  }, "🏫 Es un evento de ESCUELA")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: '#94a3b8',
+      marginBottom: 12,
+      marginLeft: 2
+    }
+  }, "Marcá esto para las fiestas de escuela (Día del Niño, Fin de curso…). Así el software las reconoce como sub-tipos de escuela."), /*#__PURE__*/React.createElement("label", {
     style: {
       display: 'flex',
       alignItems: 'center',
