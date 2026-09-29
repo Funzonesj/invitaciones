@@ -10152,6 +10152,86 @@ function AdminMusica({
   }, "Música de fondo de la invitación. Las ", /*#__PURE__*/React.createElement("b", null, "genéricas"), " rotan; a un personaje le podés asignar la suya. Usá música ", /*#__PURE__*/React.createElement("b", null, "libre de derechos"), " o generada por IA (Suno / Udio). En video suena bajita; en foto, normal."), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
+      marginBottom: 14,
+      border: '2px solid #db2777'
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    style: {
+      fontWeight: 900,
+      fontSize: 14,
+      marginBottom: 4,
+      color: '#db2777'
+    }
+  }, "🎧 Cómo suena cada tarjeta"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#94a3b8',
+      marginBottom: 12
+    }
+  }, "Escuchá acá la música que va a sonar en cada tipo de tarjeta, por salón. Tocá ▶️ en cada una. ", /*#__PURE__*/React.createElement("i", null, "(Si un personaje tiene su música propia, esa manda en su tarjeta.)")), (sucursales || []).map(s => {
+    const _gen0 = (s.musicaGen || []).filter(Boolean)[0] || '';
+    return /*#__PURE__*/React.createElement("div", {
+      key: s.id,
+      style: {
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        fontWeight: 900,
+        color: '#1e293b',
+        marginBottom: 6
+      }
+    }, s.emoji || '🎪', " ", s.nombre), (iaConfig && iaConfig.tiposEvento || []).map(t => {
+      const _mt = (s.musicaTipo || {})[t.nombre] || '';
+      const _url = _mt || _gen0;
+      const _fuente = _mt ? 'música del tipo' : _gen0 ? 'genérica de la sede' : '';
+      return /*#__PURE__*/React.createElement("div", {
+        key: t.id || t.nombre,
+        style: {
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          flexWrap: 'wrap',
+          marginBottom: 6,
+          paddingLeft: 6
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 12,
+          fontWeight: 700,
+          minWidth: 150,
+          color: t.escuela ? '#1e40af' : '#334155'
+        }
+      }, t.escuela ? '🏫 ' : '', t.nombre), _url ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("audio", {
+        src: _url,
+        controls: true,
+        preload: "none",
+        style: {
+          height: 30,
+          maxWidth: 190
+        }
+      }), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 10,
+          color: '#94a3b8'
+        }
+      }, "(", _fuente, ")")) : /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          color: '#f97316',
+          fontWeight: 700
+        }
+      }, "sin música — cargale una abajo"));
+    }));
+  }), (iaConfig && iaConfig.tiposEvento || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#94a3b8'
+    }
+  }, "No hay tipos de evento cargados. Creálos en 🎟️ Formatos de Tarjeta.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
       marginBottom: 14
     }
   }, /*#__PURE__*/React.createElement("h3", {

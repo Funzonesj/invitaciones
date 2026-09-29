@@ -2809,6 +2809,34 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
       <h1 style={{fontWeight:900,fontSize:22,marginBottom:4}}>🎵 Música de tarjetas</h1>
       <p style={{fontSize:11,color:'#64748b',marginBottom:16}}>Música de fondo de la invitación. Las <b>genéricas</b> rotan; a un personaje le podés asignar la suya. Usá música <b>libre de derechos</b> o generada por IA (Suno / Udio). En video suena bajita; en foto, normal.</p>
 
+      {/* ── ESCUCHAR CÓMO QUEDÓ CADA TARJETA (por salón y tipo) ── */}
+      <div style={{...S.card,marginBottom:14,border:'2px solid #db2777'}}>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:4,color:'#db2777'}}>🎧 Cómo suena cada tarjeta</h3>
+        <div style={{fontSize:11,color:'#94a3b8',marginBottom:12}}>Escuchá acá la música que va a sonar en cada tipo de tarjeta, por salón. Tocá ▶️ en cada una. <i>(Si un personaje tiene su música propia, esa manda en su tarjeta.)</i></div>
+        {(sucursales||[]).map(s=>{
+          const _gen0=((s.musicaGen||[]).filter(Boolean)[0])||'';
+          return(
+            <div key={s.id} style={{marginBottom:14}}>
+              <div style={{fontSize:13,fontWeight:900,color:'#1e293b',marginBottom:6}}>{s.emoji||'🎪'} {s.nombre}</div>
+              {((iaConfig&&iaConfig.tiposEvento)||[]).map(t=>{
+                const _mt=((s.musicaTipo||{})[t.nombre])||'';
+                const _url=_mt||_gen0;
+                const _fuente=_mt?'música del tipo':(_gen0?'genérica de la sede':'');
+                return(
+                  <div key={t.id||t.nombre} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',marginBottom:6,paddingLeft:6}}>
+                    <span style={{fontSize:12,fontWeight:700,minWidth:150,color:t.escuela?'#1e40af':'#334155'}}>{t.escuela?'🏫 ':''}{t.nombre}</span>
+                    {_url
+                      ?<React.Fragment><audio src={_url} controls preload="none" style={{height:30,maxWidth:190}}></audio><span style={{fontSize:10,color:'#94a3b8'}}>({_fuente})</span></React.Fragment>
+                      :<span style={{fontSize:11,color:'#f97316',fontWeight:700}}>sin música — cargale una abajo</span>}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+        {(((iaConfig&&iaConfig.tiposEvento)||[]).length===0)&&<div style={{fontSize:12,color:'#94a3b8'}}>No hay tipos de evento cargados. Creálos en 🎟️ Formatos de Tarjeta.</div>}
+      </div>
+
       <div style={{...S.card,marginBottom:14}}>
         <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🔁 Genéricas por sucursal (rotan en las tarjetas sin música propia)</h3>
         <label style={{display:'block',marginBottom:10}}><span style={S.label}>Sucursal</span>
