@@ -2748,11 +2748,15 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
   const [busq,setBusq]=useState('');
   const [selSuc,setSelSuc]=useState((sucAct&&sucAct.id)||(sucursales&&sucursales[0]&&sucursales[0].id)||'');
   const sucSel=(sucursales||[]).find(s=>s.id===selSuc)||{};
+  // Selector propio para la música POR TIPO (para que se pueda poner distinta en cada salón).
+  const [selSucT,setSelSucT]=useState((sucAct&&sucAct.id)||(sucursales&&sucursales[0]&&sucursales[0].id)||'');
+  const sucSelT=(sucursales||[]).find(s=>s.id===selSucT)||{};
   const gen=(sucSel.musicaGen&&sucSel.musicaGen.length)?sucSel.musicaGen:['',''];
   function setGen(i,url){setSucursales(p=>p.map(s=>{if(s.id!==selSuc)return s;const g=((s.musicaGen&&s.musicaGen.length)?s.musicaGen:['','']).slice();g[i]=url;return {...s,musicaGen:g};}));}
   function setTemMus(id,url){setTematicas(p=>p.map(t=>t.id===id?{...t,musica:url}:t));flashOk('✓ Guardado');}
-  // Música por TIPO de evento (escuela, cumpleaños, comunión…): se guarda en el tipo.
-  function setTipoMus(nombre,url){setIaConfig(c=>({...c,tiposEvento:((c.tiposEvento)||[]).map(t=>t.nombre===nombre?{...t,musica:url}:t)}));flashOk('✓ Guardado');}
+  // Música por TIPO de evento (escuela, cumpleaños…) POR SUCURSAL: cada salón la suya.
+  // Se guarda en la sucursal, en musicaTipo['<nombre del tipo>'].
+  function setTipoMus(nombre,url){setSucursales(p=>p.map(s=>{if(s.id!==selSucT)return s;const mt=Object.assign({},s.musicaTipo||{});if(url)mt[nombre]=url;else delete mt[nombre];return {...s,musicaTipo:mt};}));flashOk('✓ Guardado');}
   // Biblioteca de música para el PASE DE FOTOS — POR SUCURSAL (cada salón la suya)
   const pase=(sucSel.musicaPase&&sucSel.musicaPase.length)?sucSel.musicaPase:[];
   function setSucPase(updater){setSucursales(p=>p.map(s=>{if(s.id!==selSuc)return s;return {...s,musicaPase:updater(s.musicaPase||[])};}));}
@@ -2826,16 +2830,22 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
 
       <div style={{...S.card,marginBottom:14}}>
         <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🎪 Música por tipo de evento</h3>
-        <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Una música para cada tipo (escuela, cumpleaños, comunión…). Si el evento es de ese tipo, suena esta música en vez de las genéricas. Así las <b>escuelas</b> suenan distinto a los cumpleaños.</div>
+        <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Una música para cada tipo (escuela, cumpleaños…), <b>por salón</b>. Si el evento es de ese tipo, suena esta música en vez de las genéricas. Así las <b>escuelas</b> suenan distinto a los cumpleaños.</div>
+        <label style={{display:'block',marginBottom:8}}><span style={S.label}>Sucursal</span>
+          <select value={selSucT} onChange={e=>setSelSucT(e.target.value)} style={{...S.input,fontWeight:700}}>
+            {(sucursales||[]).map(s=><option key={s.id} value={s.id}>{s.emoji||'🎪'} {s.nombre}</option>)}
+          </select>
+        </label>
+        <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Estás cargando la música de <b>{sucSelT.nombre||'esta sucursal'}</b>.</div>
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {((iaConfig&&iaConfig.tiposEvento)||[]).map(t=>(
+          {((iaConfig&&iaConfig.tiposEvento)||[]).map(t=>{const _mt=(sucSelT.musicaTipo||{})[t.nombre]||'';return(
             <div key={t.id||t.nombre} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',borderBottom:'1px solid #f1f5f9',paddingBottom:8}}>
               <span style={{fontSize:12,fontWeight:800,color:t.escuela?'#1e40af':'#1e293b',minWidth:130}}>{t.escuela?'🏫 ':''}{t.nombre}</span>
-              {t.musica&&<audio src={t.musica} controls style={{height:30,maxWidth:170}}></audio>}
-              <label style={{...S.btn,background:'#db2777',color:'white',padding:'6px 10px',fontSize:11,cursor:'pointer'}}>🎵 {t.musica?'Cambiar':'Subir'}<input type="file" accept="audio/*" style={{display:'none'}} onChange={e=>subirAudio(e.target.files[0],u=>setTipoMus(t.nombre,u))}/></label>
-              {t.musica&&<button onClick={()=>setTipoMus(t.nombre,'')} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900}}>✕</button>}
+              {_mt&&<audio src={_mt} controls style={{height:30,maxWidth:170}}></audio>}
+              <label style={{...S.btn,background:'#db2777',color:'white',padding:'6px 10px',fontSize:11,cursor:'pointer'}}>🎵 {_mt?'Cambiar':'Subir'}<input type="file" accept="audio/*" style={{display:'none'}} onChange={e=>subirAudio(e.target.files[0],u=>setTipoMus(t.nombre,u))}/></label>
+              {_mt&&<button onClick={()=>setTipoMus(t.nombre,'')} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900}}>✕</button>}
             </div>
-          ))}
+          );})}
           {(((iaConfig&&iaConfig.tiposEvento)||[]).length===0)&&<div style={{fontSize:12,color:'#94a3b8'}}>No hay tipos de evento cargados. Creálos en 🎟️ Formatos de Tarjeta.</div>}
         </div>
       </div>
@@ -6568,7 +6578,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   // distinto al cumple); en un cumple manda la del personaje si tiene. En video suena bajita.
   const _musGenF=(((suc&&suc.musicaGen&&suc.musicaGen.length)?suc.musicaGen:((iaConfig&&iaConfig.musicaGen)||[]))).filter(Boolean);
   const _tipoEv=(((iaConfig&&iaConfig.tiposEvento)||[]).find(t=>t&&t.nombre===(ev&&ev.tipo))||{});
-  const _tipoMus=_tipoEv.musica||'';
+  const _tipoMus=((suc&&suc.musicaTipo)||{})[(ev&&ev.tipo)||'']||'';
   const _genMus=(_musGenF.length?_musGenF[(parseInt(String((ev&&ev.id)||'0').replace(/[^0-9]/g,''))||0)%_musGenF.length]:'');
   const musTrack=_tipoEv.escuela
     ? ((ev&&ev.albumMusica)||_tipoMus||(tem&&tem.musica)||_genMus)
