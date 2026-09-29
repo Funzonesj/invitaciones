@@ -9885,6 +9885,17 @@ function AdminMusica({
     } : t));
     flashOk('✓ Guardado');
   }
+  // Música por TIPO de evento (escuela, cumpleaños, comunión…): se guarda en el tipo.
+  function setTipoMus(nombre, url) {
+    setIaConfig(c => ({
+      ...c,
+      tiposEvento: (c.tiposEvento || []).map(t => t.nombre === nombre ? {
+        ...t,
+        musica: url
+      } : t)
+    }));
+    flashOk('✓ Guardado');
+  }
   // Biblioteca de música para el PASE DE FOTOS — POR SUCURSAL (cada salón la suya)
   const pase = sucSel.musicaPase && sucSel.musicaPase.length ? sucSel.musicaPase : [];
   function setSucPase(updater) {
@@ -10225,6 +10236,84 @@ function AdminMusica({
       fontWeight: 900
     }
   }, "✕")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    style: {
+      fontWeight: 900,
+      fontSize: 14,
+      marginBottom: 8
+    }
+  }, "🎪 Música por tipo de evento"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#94a3b8',
+      marginBottom: 10
+    }
+  }, "Una música para cada tipo (escuela, cumpleaños, comunión…). Si el evento es de ese tipo, suena esta música en vez de las genéricas. Así las ", /*#__PURE__*/React.createElement("b", null, "escuelas"), " suenan distinto a los cumpleaños."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 8
+    }
+  }, (iaConfig && iaConfig.tiposEvento || []).map(t => /*#__PURE__*/React.createElement("div", {
+    key: t.id || t.nombre,
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      flexWrap: 'wrap',
+      borderBottom: '1px solid #f1f5f9',
+      paddingBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      fontWeight: 800,
+      color: t.escuela ? '#1e40af' : '#1e293b',
+      minWidth: 130
+    }
+  }, t.escuela ? '🏫 ' : '', t.nombre), t.musica && /*#__PURE__*/React.createElement("audio", {
+    src: t.musica,
+    controls: true,
+    style: {
+      height: 30,
+      maxWidth: 170
+    }
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      ...S.btn,
+      background: '#db2777',
+      color: 'white',
+      padding: '6px 10px',
+      fontSize: 11,
+      cursor: 'pointer'
+    }
+  }, "🎵 ", t.musica ? 'Cambiar' : 'Subir', /*#__PURE__*/React.createElement("input", {
+    type: "file",
+    accept: "audio/*",
+    style: {
+      display: 'none'
+    },
+    onChange: e => subirAudio(e.target.files[0], u => setTipoMus(t.nombre, u))
+  })), t.musica && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setTipoMus(t.nombre, ''),
+    style: {
+      background: 'none',
+      border: 'none',
+      color: '#ef4444',
+      cursor: 'pointer',
+      fontSize: 14,
+      fontWeight: 900
+    }
+  }, "✕"))), (iaConfig && iaConfig.tiposEvento || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#94a3b8'
+    }
+  }, "No hay tipos de evento cargados. Creálos en 🎟️ Formatos de Tarjeta."))), /*#__PURE__*/React.createElement("div", {
     style: {
       ...S.card,
       marginBottom: 14
@@ -25632,9 +25721,14 @@ function InvWeb({
   const [vidPlay, setVidPlay] = useState(true); // el video arranca SOLO al abrir la invitación (mudo; se toca para escuchar)
   const [vidPausado, setVidPausado] = useState(false); // el invitado pausó el video manualmente
   const [vidReady, setVidReady] = useState(false); // el video ya mostró su primer cuadro (para tapar el negro con la foto)
-  // Música de fondo: la del personaje, o una genérica que rota. En video suena bajita; en foto, normal.
+  // Música de fondo: por TIPO de evento (escuela/cumple/…), o la del personaje, o
+  // una genérica que rota. En una ESCUELA manda la música del tipo (para que suene
+  // distinto al cumple); en un cumple manda la del personaje si tiene. En video suena bajita.
   const _musGenF = (suc && suc.musicaGen && suc.musicaGen.length ? suc.musicaGen : iaConfig && iaConfig.musicaGen || []).filter(Boolean);
-  const musTrack = ev && ev.albumMusica || tem && tem.musica || (_musGenF.length ? _musGenF[(parseInt(String(ev && ev.id || '0').replace(/[^0-9]/g, '')) || 0) % _musGenF.length] : '');
+  const _tipoEv = (iaConfig && iaConfig.tiposEvento || []).find(t => t && t.nombre === (ev && ev.tipo)) || {};
+  const _tipoMus = _tipoEv.musica || '';
+  const _genMus = _musGenF.length ? _musGenF[(parseInt(String(ev && ev.id || '0').replace(/[^0-9]/g, '')) || 0) % _musGenF.length] : '';
+  const musTrack = _tipoEv.escuela ? ev && ev.albumMusica || _tipoMus || tem && tem.musica || _genMus : ev && ev.albumMusica || tem && tem.musica || _tipoMus || _genMus;
   const esVideoPortada = !!(ev && ev.videoUrl && ev.usarVideo !== false);
   const [musOn, setMusOn] = useState(false);
   const [videoFin, setVideoFin] = useState(false); // el video de portada terminó
