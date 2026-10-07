@@ -5691,19 +5691,10 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       )}
 
       {/* ══ PASE DE FOTOS (álbum) ══ */}
-      {seccion==='album'&&encuestaVencida&&(
-        <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
-          <div style={S.card}>
-            <h2 style={{fontWeight:900,fontSize:18,marginBottom:8}}>🎞️ Generador de Recuerdos</h2>
-            <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:14,padding:'18px',textAlign:'center'}}>
-              <div style={{fontSize:38,marginBottom:8}}>⛔</div>
-              <p style={{fontWeight:800,fontSize:14,color:'#9a3412',marginBottom:4}}>El plazo para subir las fotos se cerró el {_venceTxt}.</p>
-              <p style={{fontSize:12,color:'#9a3412',lineHeight:1.4}}>Si necesitás más tiempo, comunicate con el salón para que te habiliten unos días más.</p>
-            </div>
-          </div>
-        </div>
-      )}
-      {seccion==='album'&&!encuestaVencida&&(
+      {/* 🎞️ Los Recuerdos ya NO se cierran con el plazo de la encuesta (Lili
+          6/10): las encuestas no se hacen más por acá, y el papá se quedaba
+          sin poder armar el recuerdo de su cumple. */}
+      {seccion==='album'&&(
         <div className="fade-in" style={{maxWidth:520,margin:'0 auto'}}>
           <div style={S.card}>
             <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>🎞️ Generador de Recuerdos</h2>
@@ -5944,7 +5935,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
           <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>{EC.titulo}</h2>
           <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>{EC.subtitulo}</p>
           {eventoPaso&&!encuestaVencida&&!encuestaHecha&&_venceTxt&&(
-            <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:12,padding:'10px 12px',marginBottom:14,fontSize:12,color:'#9a3412',lineHeight:1.5}}>⏳ <b>Importante:</b> tenés tiempo <b>hasta el {_venceTxt}</b> para completar la encuesta y subir las fotos de los Recuerdos. Después de esa fecha se cierra. ¡No lo dejes pasar! 🙏</div>
+            <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:12,padding:'10px 12px',marginBottom:14,fontSize:12,color:'#9a3412',lineHeight:1.5}}>⏳ <b>Importante:</b> tenés tiempo <b>hasta el {_venceTxt}</b> para completar la encuesta. ¡No lo dejes pasar! 🙏</div>
           )}
           {!eventoPaso?(
             <div style={{textAlign:'center',padding:'28px 16px',color:'#94a3b8',background:'#fafafa',borderRadius:14,border:'1px dashed #e2e8f0'}}>
