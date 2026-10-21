@@ -6805,8 +6805,11 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
         <span style={{position:'absolute',top:14,left:14,background:'#f43f5e',color:'white',fontSize:12,padding:'5px 16px',borderRadius:99,fontWeight:900,letterSpacing:1,zIndex:2}}>TE INVITO!</span>
       </div>
 
+      {/* Lomita redondeada: el blanco del texto sube sobre la imagen/video con una curva suave (media elipse). */}
+      <div style={{height:46,background:'#fff',marginTop:-44,borderTopLeftRadius:'50% 100%',borderTopRightRadius:'50% 100%',position:'relative',zIndex:1}}></div>
+
       {/* 2. LOGO centrado sobre la imagen */}
-      <div style={{display:'flex',justifyContent:'center',marginTop:-60,marginBottom:8,position:'relative',zIndex:2}}>
+      <div style={{display:'flex',justifyContent:'center',marginTop:-70,marginBottom:8,position:'relative',zIndex:2}}>
         {musTrack&&(
           <button onClick={toggleMus} className={(musOn||!vidMuted)?'':'pulse-soft'} title="Sonido" style={{position:'fixed',right:14,bottom:18,zIndex:40,background:col,color:'white',border:'3px solid white',borderRadius:99,width:60,height:60,fontSize:28,cursor:'pointer',boxShadow:'0 8px 22px rgba(0,0,0,.45)'}}>{(musOn||!vidMuted)?'🔊':'🎵'}</button>
         )}
