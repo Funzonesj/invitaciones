@@ -320,6 +320,33 @@ module.exports = async (req, res) => {
       papaOk = !!(evPapaActual && evPapaActual.pass && String(evPapaActual.pass) === String(evPassHdr));
     }
 
+    // ── Estado del CONTRATO de la reserva de esta tarjeta (candado del papá) ──
+    //   Le pregunta al software del salón (por el reservaId de la tarjeta) si el
+    //   contrato está firmado y trae el link para firmar. El token del software
+    //   NUNCA sale al navegador: lo agrega el servidor. Chequeo EN VIVO.
+    //   A PRUEBA DE FALLOS: ante cualquier problema (sin config, software caído,
+    //   sin reservaId) devuelve firmado:true → NO bloquea. El candado solo actúa
+    //   cuando el software confirma que NO está firmado.
+    if (action === 'contratoEstado') {
+      if (!papaOk && !duena && !encargadaId) { res.status(401).json({ error: 'no autorizado' }); return; }
+      const rid = Number(b.rid);
+      if (!rid) { res.status(200).json({ ok: true, firmado: true }); return; }
+      const base = process.env.SALONES_HORARIOS_URL || '';
+      const tok = process.env.SALONES_HORARIOS_TOKEN || '';
+      if (!base) { res.status(200).json({ ok: false, reason: 'sin-config', firmado: true }); return; }
+      const b2 = base.replace(/\/horarios\b/, '/contrato-estado');
+      const url = b2 + (b2.indexOf('?') >= 0 ? '&' : '?') + 'rid=' + encodeURIComponent(rid);
+      try {
+        const r = await fetch(url, { headers: tok ? { 'x-api-token': tok } : {} });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { res.status(200).json({ ok: false, reason: 'salones', firmado: true, error: (d && d.error) || ('HTTP ' + r.status) }); return; }
+        res.status(200).json({ ok: true, firmado: !!d.firmado, link: d.link || '' });
+      } catch (e) {
+        res.status(200).json({ ok: false, reason: 'red', firmado: true, error: String((e && e.message) || e) });
+      }
+      return;
+    }
+
     // ── Cargar TODO (dueña o encargada) ──
     // De a TANDAS chicas: un solo pedido con 150 eventos y las fotos adentro
     // (~25 MB) volteaba la base ("statement timeout" → 522 → el panel mostraba

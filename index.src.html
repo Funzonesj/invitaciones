@@ -4511,6 +4511,21 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
 function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,tematicas,sucursales,setInvEvId,iaConfig,confs,setConfs,pedidos,setPedidos}){
   const [form,setForm]=useState({nombre:papaSesion.nombre,tipo:papaSesion.tipo||'Cumpleaños',edad:papaSesion.edad,celPapa:papaSesion.celPapa,temId:papaSesion.temId||'t-3',fotoNino:papaSesion.fotoNino||'',fotoMejorada:papaSesion.fotoMejorada||'',usarMejorada:papaSesion.usarMejorada!==false,usarFoto:!!papaSesion.usarFoto,portadaSrc:papaSesion.portadaSrc||'',iaImagenes:papaSesion.iaImagenes||[],iaImagenSel:(papaSesion.iaImagenSel!=null?papaSesion.iaImagenSel:null),fotoNinoIA:papaSesion.fotoNinoIA||'',personajeIA:papaSesion.personajeIA||'',iaVideos:[],iaVideoSel:null,fotoNinoIAV:'',personajeIAV:'',album:papaSesion.album||[],albumFraseIni:papaSesion.albumFraseIni||'',albumFraseFin:papaSesion.albumFraseFin||'',albumMusica:papaSesion.albumMusica||'',albumPortada:papaSesion.albumPortada||'',albumFinal:papaSesion.albumFinal||'',albumPortadaColor:papaSesion.albumPortadaColor||'',albumFinalColor:papaSesion.albumFinalColor||''});
   const [ftxt,setFtxt]=useState('');const [fcat,setFcat]=useState('TODOS');
+  // 🔒 Candado del CONTRATO: al entrar, le pregunta EN VIVO al software si el
+  // contrato de esta reserva está firmado. Si NO, tapa toda la app hasta que firme.
+  // A prueba de fallos: ante cualquier problema queda firmado:true (no bloquea).
+  const [contratoGate,setContratoGate]=useState({checking:true,firmado:true,link:''});
+  const [reglasLeido,setReglasLeido]=useState(false); // se habilita "aceptar" solo tras deslizar el reglamento hasta el final
+  React.useEffect(()=>{
+    let vivo=true;
+    const rid=papaSesion&&papaSesion.reservaId;
+    if(!rid){ setContratoGate({checking:false,firmado:true,link:''}); return; }
+    (async()=>{
+      try{ const r=await gwCall('contratoEstado',{rid:rid}); if(!vivo)return; setContratoGate({checking:false,firmado:!!(r&&r.firmado),link:(r&&r.link)||''}); }
+      catch(e){ if(vivo) setContratoGate({checking:false,firmado:true,link:''}); }
+    })();
+    return ()=>{vivo=false;};
+  },[]);
   const [modoPortada,setModoPortada]=useState(_PAPA_NAV.modo||'tematica');
   const [vistoTarjeta,setVistoTarjeta]=useState(!!_PAPA_NAV.visto); // ya vio la tarjeta → habilita el paso del video
   const _navGenVideo=!!_PAPA_NAV.genVideo;
@@ -5131,7 +5146,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     setSeccion('home');
   }
   function compartirInvitacionWA(){
-    if(_hayReglas&&!reglasOk){alert('Antes de enviar tu invitación, leé y aceptá las condiciones en "Reglas del salón".');setSeccion('reglas');return;}
+    if(_hayReglas&&!reglasOk){alert('¿Leíste lo que tenés que llevar el día del evento? Es muy importante. Por favor, leé el reglamento del salón hasta el final y aceptalo para poder enviar tu invitación.');setSeccion('reglas');return;}
     const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const fecha=papaSesion.dia+' de '+(meses[(+papaSesion.mes)-1]||'')+' de '+papaSesion.anio;
     const baseUrl=window.location.href.split('?')[0];
@@ -5144,6 +5159,27 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     const nom=form.nombre||papaSesion.nombre;
     const msg='🎉🎂 ¡HOY es el cumple de '+nom+'! 🎂🎉\nTe esperamos hoy de '+papaSesion.hIni+' a '+papaSesion.hFin+' hs en '+suc.nombre+'.\n¡No faltes! 👉 '+link;
     abrirWA('', msg);
+  }
+
+  // 🔒 CANDADO DEL CONTRATO (primera pantalla). Si el contrato de la reserva NO está
+  // firmado, tapa TODA la app hasta que firme por el link (el mismo de las chicas).
+  // Si ya firmó (o la tarjeta no tiene reserva / el software no responde) NO aparece.
+  if(!contratoGate.checking && !contratoGate.firmado){
+    const _colC=(suc&&suc.color)||'#7c3aed';
+    return(
+      <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',textAlign:'center',padding:'28px 22px',background:'linear-gradient(160deg,'+_colC+'14,#ffffff)'}}>
+        <div style={{...S.card,maxWidth:420,width:'100%',padding:30}}>
+          <div style={{fontSize:56,marginBottom:10}}>📝</div>
+          <h2 style={{fontWeight:900,fontSize:21,color:'#1e293b',margin:'0 0 8px'}}>Falta firmar el contrato</h2>
+          <p style={{fontSize:14,color:'#475569',lineHeight:1.55,margin:'0 0 20px'}}>Para armar y usar tu invitación, primero <b>firmá el contrato del salón</b>. Entrá al link, leelo con atención, firmá y volvé a esta pantalla.</p>
+          {contratoGate.link
+            ?<a href={contratoGate.link} target="_blank" rel="noopener" style={{...S.btn,display:'block',width:'100%',background:'linear-gradient(135deg,#16a34a,#15803d)',color:'white',padding:'15px',fontSize:15,fontWeight:900,textDecoration:'none',marginBottom:12,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✍️ Ir a firmar el contrato</a>
+            :<div style={{fontSize:13,color:'#9a3412',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'10px 12px',marginBottom:12}}>El contrato todavía no está disponible. En un momento te lo mandan por WhatsApp.</div>}
+          <button onClick={()=>{ const rid=papaSesion&&papaSesion.reservaId; if(!rid){setContratoGate({checking:false,firmado:true,link:''});return;} setContratoGate(g=>({...g,checking:true})); gwCall('contratoEstado',{rid:rid}).then(r=>setContratoGate({checking:false,firmado:!!(r&&r.firmado),link:(r&&r.link)||''})).catch(()=>setContratoGate({checking:false,firmado:true,link:''})); }} style={{...S.btn,width:'100%',background:'#f1f5f9',color:'#334155',padding:'13px',fontSize:14,fontWeight:800}}>🔄 Ya lo firmé — reintentar</button>
+          <button onClick={()=>{setPapaSesion(null);setVista('papa-login');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12,marginTop:14}}>Salir</button>
+        </div>
+      </div>
+    );
   }
 
   // Autorización OBLIGATORIA (DESACTIVADA por ahora — para reactivarla, cambiar "false &&" por nada).
@@ -5911,17 +5947,21 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
         <div className="fade-in" style={S.card}>
           <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>📋 Reglas e info del salón</h2>
           <p style={{fontSize:12,color:'#64748b',marginBottom:14}}>{suc.nombre}</p>
+          {_hayReglas&&!reglasOk&&<div style={{background:'#fff7ed',border:'1px solid #fed7aa',color:'#9a3412',borderRadius:12,padding:'12px 14px',fontSize:13,fontWeight:700,lineHeight:1.5,marginBottom:12}}>¿Leíste lo que tenés que llevar el día del evento? Es muy importante. Por favor, leé el reglamento completo y aceptalo para continuar.</div>}
           <div style={{background:'#f0f9ff',border:'1px solid #bae6fd',borderRadius:14,padding:16}}>
             <div style={{fontWeight:900,fontSize:14,color:'#0369a1',marginBottom:8}}>📖 Reglas del salón</div>
             {_hayReglas?(
-              <div style={{fontSize:13,color:'#334155',lineHeight:1.7,whiteSpace:'pre-wrap'}}>{suc.reglas}</div>
+              <React.Fragment>
+                <div ref={el=>{ if(el&&!reglasLeido&&el.scrollHeight<=el.clientHeight+8) setReglasLeido(true); }} onScroll={e=>{const el=e.currentTarget; if(el.scrollTop+el.clientHeight>=el.scrollHeight-24) setReglasLeido(true);}} style={{fontSize:13,color:'#334155',lineHeight:1.7,whiteSpace:'pre-wrap',maxHeight:280,overflowY:'auto',paddingRight:8,border:'1px solid #e0f2fe',borderRadius:10,background:'#fff'}}>{suc.reglas}</div>
+                {!reglasLeido&&!reglasOk&&<div style={{fontSize:11.5,color:'#0369a1',marginTop:8,fontWeight:800,textAlign:'center'}}>⬇️ Deslizá hasta el final del reglamento para poder aceptar.</div>}
+              </React.Fragment>
             ):(
               <div style={{fontSize:13,color:'#64748b',lineHeight:1.6}}>El salón todavía no cargó las reglas. Para conocer las normas (horarios, cantidad de invitados, alimentos, etc.) comunicate directamente con <b>{suc.nombre}</b>.</div>
             )}
           </div>
           {_hayReglas&&(reglasOk
             ? <div style={{display:'flex',alignItems:'center',gap:8,marginTop:14,background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',borderRadius:12,padding:'12px 14px',fontSize:13,fontWeight:800}}>✓ Aceptaste las condiciones del salón</div>
-            : <button onClick={aceptarReglas} style={{...S.btn,width:'100%',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',padding:'15px',fontSize:15,fontWeight:900,marginTop:14,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Leí y acepto las condiciones del salón</button>
+            : <button onClick={aceptarReglas} disabled={!reglasLeido} style={{...S.btn,width:'100%',background:reglasLeido?'linear-gradient(135deg,#16a34a,#22c55e)':'#cbd5e1',color:'white',padding:'15px',fontSize:15,fontWeight:900,marginTop:14,boxShadow:reglasLeido?'0 4px 14px rgba(22,163,74,.35)':'none',cursor:reglasLeido?'pointer':'not-allowed'}}>✓ {reglasLeido?'Leí y acepto las condiciones del salón':'Leé el reglamento hasta el final…'}</button>
           )}
           {_hayReglas&&!reglasOk&&<div style={{fontSize:11,color:'#9a3412',background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:10,padding:'8px 10px',marginTop:8,fontWeight:600}}>⚠️ Tenés que aceptar las condiciones para poder enviar tu invitación.</div>}
           <div style={{display:'flex',gap:8,marginTop:14,flexWrap:'wrap'}}>
