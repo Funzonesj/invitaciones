@@ -2138,7 +2138,7 @@ function AdminAsistencias({setVista,evsLocal,confs,iaConfig}){
                 {cSel.length===0?<tr><td colSpan={conPaseAdm?5:4} style={{padding:24,textAlign:'center',color:'#94a3b8'}}>Sin confirmaciones aún.</td></tr>
                   :cSel.map(c=><tr key={c.id} style={{borderBottom:'1px solid #f1f5f9'}}>
                     {conPaseAdm&&<td style={{padding:'9px 14px',fontWeight:900,color:'#0891b2',whiteSpace:'nowrap'}}>{(+c.nro>0)?('#'+c.nro):'—'}</td>}
-                    <td style={{padding:'9px 14px',fontWeight:700}}>{c.invitado}</td>
+                    <td style={{padding:'9px 14px',fontWeight:700}}>{c.invitado}{c.dieta?<div style={{marginTop:4,fontWeight:700,fontSize:11,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'4px 8px',display:'inline-block',whiteSpace:'normal'}}>🍽️ {c.dieta}</div>:null}</td>
                     <td style={{padding:'9px 14px',textAlign:'center'}}>{c.adultos}</td>
                     <td style={{padding:'9px 14px',textAlign:'center'}}>{c.ninos}</td>
                     <td style={{padding:'9px 14px',fontFamily:'monospace'}}>{c.cel}</td>
@@ -5513,7 +5513,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   <tbody>
                     {confsEv.map(c=><tr key={c.id} style={{borderTop:'1px solid #f1f5f9'}}>
                       {conPaseLista&&<td style={{padding:'9px 14px',fontWeight:900,color:'#0891b2',whiteSpace:'nowrap'}}>{(+c.nro>0)?('#'+c.nro):'—'}</td>}
-                      <td style={{padding:'9px 14px',fontWeight:700}}>{c.invitado}</td>
+                      <td style={{padding:'9px 14px',fontWeight:700}}>{c.invitado}{c.dieta?<div style={{marginTop:4,fontWeight:700,fontSize:11,color:'#b91c1c',background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'4px 8px',display:'inline-block',whiteSpace:'normal'}}>🍽️ {c.dieta}</div>:null}</td>
                       <td style={{padding:'9px 14px',textAlign:'center'}}>{c.ninos}</td>
                       <td style={{padding:'9px 14px',textAlign:'center'}}>{c.adultos}</td>
                       <td style={{padding:'9px 14px',fontFamily:'monospace',fontSize:11}}>{c.cel}</td>
@@ -6695,6 +6695,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const [cel,setCel]=useState('');
   const [ok,setOk]=useState(false);
   const [ape,setApe]=useState(''); // apellido: se pide solo en cumples con pase de ingreso
+  const [dieta,setDieta]=useState(''); // alergia / problema alimentario (opcional) para que el salón prepare el menú
   // ── PASE DE INGRESO ──
   // En los cumples desde PASE_DESDE_DEF, al confirmar la familia recibe un pase con
   // número y QR. Este celular recuerda cuál es SU pase (fz_mi_pase) para volver a
@@ -6749,6 +6750,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
     // en la puerta). "invitado" sigue siendo el nombre completo, como siempre.
     const nomFull=conPase?((nom||'').trim()+' '+(ape||'').trim()).trim():nom;
     const nueva={id:'c-'+Date.now(),evId:ev.id,invitado:nomFull,adultos:nAd,ninos:nNi,cel};
+    if((dieta||'').trim()) nueva.dieta=dieta.trim(); // alergia / problema alimentario (opcional)
     if(conPase){ nueva.nombre=(nom||'').trim(); nueva.apellido=(ape||'').trim(); }
     // Guarda YA en la app: estado + localStorage + servidor (para que el salón la vea).
     setConfs(prev=>{
@@ -7040,6 +7042,11 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
                 <input type="number" value={ad} onChange={e=>setAd(e.target.value)} min={0} placeholder="0" style={{...S.input,border:'1px solid '+col+'66',textAlign:'center',fontSize:14}}/></div>
             </div>
             <input value={cel} onChange={e=>setCel(e.target.value)} placeholder="Tu celular" required style={{...S.input,border:'1px solid '+col+'66',fontSize:14}}/>
+            <div style={{textAlign:'left'}}>
+              <label style={{fontSize:11,color:'#888',display:'block',marginBottom:3}}>🍽️ ¿Alguna alergia o problema alimentario? <span style={{color:'#bbb'}}>(opcional)</span></label>
+              <textarea value={dieta} onChange={e=>setDieta(e.target.value)} rows={2} placeholder="Ej: mi hijo es celíaco, o alergia a los frutos secos…" style={{...S.input,border:'1px solid '+col+'66',fontSize:13,resize:'vertical',fontFamily:'inherit'}}/>
+              <p style={{fontSize:10,color:'#94a3b8',margin:'3px 0 0'}}>Contanos para tenerlo en cuenta al preparar el menú. 🙌</p>
+            </div>
             <button type="submit" style={{...S.btn,background:col,color:'white',padding:12,fontSize:14,width:'100%'}}>Confirmar Asistencia</button>
           </form>
         )}

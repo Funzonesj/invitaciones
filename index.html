@@ -7058,7 +7058,20 @@ function AdminAsistencias({
       padding: '9px 14px',
       fontWeight: 700
     }
-  }, c.invitado), /*#__PURE__*/React.createElement("td", {
+  }, c.invitado, c.dieta ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 4,
+      fontWeight: 700,
+      fontSize: 11,
+      color: '#b91c1c',
+      background: '#fef2f2',
+      border: '1px solid #fecaca',
+      borderRadius: 8,
+      padding: '4px 8px',
+      display: 'inline-block',
+      whiteSpace: 'normal'
+    }
+  }, "🍽️ ", c.dieta) : null), /*#__PURE__*/React.createElement("td", {
     style: {
       padding: '9px 14px',
       textAlign: 'center'
@@ -21232,7 +21245,20 @@ function PapaCreador({
       padding: '9px 14px',
       fontWeight: 700
     }
-  }, c.invitado), /*#__PURE__*/React.createElement("td", {
+  }, c.invitado, c.dieta ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 4,
+      fontWeight: 700,
+      fontSize: 11,
+      color: '#b91c1c',
+      background: '#fef2f2',
+      border: '1px solid #fecaca',
+      borderRadius: 8,
+      padding: '4px 8px',
+      display: 'inline-block',
+      whiteSpace: 'normal'
+    }
+  }, "🍽️ ", c.dieta) : null), /*#__PURE__*/React.createElement("td", {
     style: {
       padding: '9px 14px',
       textAlign: 'center'
@@ -26108,6 +26134,7 @@ function InvWeb({
   const [cel, setCel] = useState('');
   const [ok, setOk] = useState(false);
   const [ape, setApe] = useState(''); // apellido: se pide solo en cumples con pase de ingreso
+  const [dieta, setDieta] = useState(''); // alergia / problema alimentario (opcional) para que el salón prepare el menú
   // ── PASE DE INGRESO ──
   // En los cumples desde PASE_DESDE_DEF, al confirmar la familia recibe un pase con
   // número y QR. Este celular recuerda cuál es SU pase (fz_mi_pase) para volver a
@@ -26205,6 +26232,7 @@ function InvWeb({
       ninos: nNi,
       cel
     };
+    if ((dieta || '').trim()) nueva.dieta = dieta.trim(); // alergia / problema alimentario (opcional)
     if (conPase) {
       nueva.nombre = (nom || '').trim();
       nueva.apellido = (ape || '').trim();
@@ -27289,7 +27317,40 @@ function InvWeb({
       border: '1px solid ' + col + '66',
       fontSize: 14
     }
-  }), /*#__PURE__*/React.createElement("button", {
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'left'
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 11,
+      color: '#888',
+      display: 'block',
+      marginBottom: 3
+    }
+  }, "🍽️ ¿Alguna alergia o problema alimentario? ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#bbb'
+    }
+  }, "(opcional)")), /*#__PURE__*/React.createElement("textarea", {
+    value: dieta,
+    onChange: e => setDieta(e.target.value),
+    rows: 2,
+    placeholder: "Ej: mi hijo es celíaco, o alergia a los frutos secos…",
+    style: {
+      ...S.input,
+      border: '1px solid ' + col + '66',
+      fontSize: 13,
+      resize: 'vertical',
+      fontFamily: 'inherit'
+    }
+  }), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 10,
+      color: '#94a3b8',
+      margin: '3px 0 0'
+    }
+  }, "Contanos para tenerlo en cuenta al preparar el menú. 🙌")), /*#__PURE__*/React.createElement("button", {
     type: "submit",
     style: {
       ...S.btn,
