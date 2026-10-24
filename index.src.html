@@ -6789,6 +6789,8 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
       'Fecha: '+fecha,'',
       'Asistimos: '+(+ni||0)+' ninos y '+(+ad||0)+' adultos',
     ];
+    const _dieta=(((miConf&&miConf.dieta)||dieta)||'').trim();
+    if(_dieta) lineas.push('','Alergia / problema alimentario: '+_dieta);
     if(conPase&&miConf&&+miConf.nro>0) lineas.push('Pase de ingreso #'+miConf.nro);
     abrirWA(waNum(ev.celPapa), lineas.join('\n'));
   }

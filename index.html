@@ -26281,6 +26281,8 @@ function InvWeb({
     const fecha = ev.dia + ' de ' + (meses[+ev.mes - 1] || '') + ' de ' + ev.anio;
     const priNom = String(ev.nomPapa || '').trim().split(/\s+/)[0] || ''; // solo el primer nombre
     const lineas = ['Hola ' + priNom + '!', '', (miConf && miConf.invitado || nom || '') + ' confirma asistencia al ' + ev.tipo + ' de ' + ev.nombre, 'Fecha: ' + fecha, '', 'Asistimos: ' + (+ni || 0) + ' ninos y ' + (+ad || 0) + ' adultos'];
+    const _dieta = (miConf && miConf.dieta || dieta || '').trim();
+    if (_dieta) lineas.push('', 'Alergia / problema alimentario: ' + _dieta);
     if (conPase && miConf && +miConf.nro > 0) lineas.push('Pase de ingreso #' + miConf.nro);
     abrirWA(waNum(ev.celPapa), lineas.join('\n'));
   }
