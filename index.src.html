@@ -5488,7 +5488,10 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
       {seccion==='confirmaciones'&&(
         <div className="fade-in" style={S.card}>
           <h2 style={{fontWeight:900,fontSize:18,marginBottom:4}}>👥 Lista de Confirmados</h2>
-          <p style={{fontSize:12,color:'#64748b',marginBottom:16}}>{papaSesion.tipo} de <b>{papaSesion.nombre}</b> · {papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio}</p>
+          <p style={{fontSize:12,color:'#64748b',marginBottom:12}}>{papaSesion.tipo} de <b>{papaSesion.nombre}</b> · {papaSesion.dia}/{papaSesion.mes}/{papaSesion.anio}</p>
+          <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:12,padding:'11px 13px',marginBottom:16,fontSize:12,color:'#1e3a8a',lineHeight:1.5}}>
+            ℹ️ Esta lista es <b>solo para tu control</b>: para que veas cuántos vienen y organices el menú o las bolsitas de los chicos. <b>El salón no la toma en cuenta</b> para la contratación.
+          </div>
           {confsEv.length===0?(
             <div style={{textAlign:'center',padding:'32px 16px',color:'#94a3b8'}}>
               <div style={{fontSize:40,marginBottom:8}}>👀</div>
