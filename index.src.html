@@ -6972,7 +6972,10 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
       </div>
 
       {/* 11. BOTONES */}
-      <div style={{padding:'16px',display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10}}>
+      {/* Con el recorrido son CUATRO botones: van 2 y 2. Dejándolos sueltos
+          quedaban 3 arriba y 1 solo abajo, que se ve desprolijo. Sin
+          recorrido siguen siendo los 3 de siempre, en una fila. */}
+      <div style={{padding:'16px',display:'grid',gridTemplateColumns:suc.recorrido?'repeat(2,1fr)':'repeat(3,1fr)',gap:10}}>
         <button onClick={()=>document.getElementById('conf-form-'+ev.id)&&document.getElementById('conf-form-'+ev.id).scrollIntoView({behavior:'smooth'})}
           style={{border:'2px solid '+col,borderRadius:14,padding:'14px 4px',display:'flex',flexDirection:'column',alignItems:'center',gap:4,cursor:'pointer',background:col+'0d'}}>
           <span style={{fontSize:22}}>{'👥'}</span>
@@ -6993,6 +6996,19 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
           <span style={{fontSize:9,fontWeight:900,color:'#1e293b',textAlign:'center'}}>INFO DEL</span>
           <span style={{fontSize:9,fontWeight:900,color:'#1e293b',textAlign:'center'}}>SALON</span>
         </button>
+        {/* 🕹 RECORRIDO 360 — el invitado entra al salón en 3D y lo camina
+            antes de venir (Lili 01/11). El link se carga por sede desde el
+            programa (Invitaciones → Datos de las sedes). Si esa sede no tiene
+            recorrido, el botón NO aparece: nunca mostrarle al invitado un
+            botón que no abre nada. */}
+        {suc.recorrido&&(
+          <a href={(function(){var r=String(suc.recorrido).trim();if(!/^https?:\/\//i.test(r))r='https://'+r.replace(/^\/+/,'');return r;})()} target="_blank" rel="noopener"
+            style={{border:'2px solid '+col,borderRadius:14,padding:'14px 4px',display:'flex',flexDirection:'column',alignItems:'center',gap:4,textDecoration:'none',background:col+'0d'}}>
+            <span style={{fontSize:22}}>{'🕹️'}</span>
+            <span style={{fontSize:9,fontWeight:900,color:'#1e293b',textAlign:'center'}}>RECORRIDO</span>
+            <span style={{fontSize:9,fontWeight:900,color:'#1e293b',textAlign:'center'}}>360</span>
+          </a>
+        )}
       </div>
 
       {/* 11b. RECIBIR NOVEDADES (opt-in: el papá nos escribe primero → permiso válido para promos) */}

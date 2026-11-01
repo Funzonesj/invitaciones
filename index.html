@@ -26985,7 +26985,7 @@ function InvWeb({
     style: {
       padding: '16px',
       display: 'grid',
-      gridTemplateColumns: 'repeat(3,1fr)',
+      gridTemplateColumns: suc.recorrido ? 'repeat(2,1fr)' : 'repeat(3,1fr)',
       gap: 10
     }
   }, /*#__PURE__*/React.createElement("button", {
@@ -27092,7 +27092,44 @@ function InvWeb({
       color: '#1e293b',
       textAlign: 'center'
     }
-  }, "SALON"))), suc.tel && /*#__PURE__*/React.createElement("div", {
+  }, "SALON")), suc.recorrido && /*#__PURE__*/React.createElement("a", {
+    href: function () {
+      var r = String(suc.recorrido).trim();
+      if (!/^https?:\/\//i.test(r)) r = 'https://' + r.replace(/^\/+/, '');
+      return r;
+    }(),
+    target: "_blank",
+    rel: "noopener",
+    style: {
+      border: '2px solid ' + col,
+      borderRadius: 14,
+      padding: '14px 4px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      gap: 4,
+      textDecoration: 'none',
+      background: col + '0d'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 22
+    }
+  }, '🕹️'), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9,
+      fontWeight: 900,
+      color: '#1e293b',
+      textAlign: 'center'
+    }
+  }, "RECORRIDO"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 9,
+      fontWeight: 900,
+      color: '#1e293b',
+      textAlign: 'center'
+    }
+  }, "360"))), suc.tel && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '0 16px 16px'
     }
