@@ -2326,7 +2326,7 @@ function AdminUsuarios({setVista,usuarios,setUsuarios,sucursales,setSucursales})
                     {/* Datos generales */}
                     <div style={{background:'white',borderRadius:10,padding:12,marginBottom:12,border:'1px solid #e2e8f0'}}>
                       <div style={{fontWeight:800,fontSize:11,color:'#64748b',marginBottom:10,textTransform:'uppercase'}}>Datos del salon</div>
-                      {[['Nombre','nombre'],['Direccion','direccion'],['Sitio web','web'],['Instagram (link o @usuario)','instagram'],['Telefono WhatsApp','tel']].map(([l,k])=>(
+                      {[['Nombre','nombre'],['Direccion','direccion'],['Sitio web','web'],['Recorrido 360 (link; vacio = sin boton)','recorrido'],['Instagram (link o @usuario)','instagram'],['Telefono WhatsApp','tel']].map(([l,k])=>(
                         <label key={k} style={{display:'block',marginBottom:6}}><span style={S.label}>{l}</span><input value={ed[k]||''} onChange={e=>setEd({...ed,[k]:e.target.value})} style={S.input}/></label>
                       ))}
                       <label style={{display:'block',marginBottom:6}}><span style={S.label}>Nombre para la VOZ del video (cómo se pronuncia)</span><input value={ed.vozNombre||''} onChange={e=>setEd({...ed,vozNombre:e.target.value})} style={S.input} placeholder="Ej: pleypoint, fanzon"/><span style={{fontSize:10,color:'#94a3b8'}}>Así lo dice el personaje en el video. Si lo dejás vacío, usa el nombre normal.</span></label>
