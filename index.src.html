@@ -6642,8 +6642,15 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const _tipoEv=(((iaConfig&&iaConfig.tiposEvento)||[]).find(t=>t&&t.nombre===(ev&&ev.tipo))||{});
   const _tipoMus=((suc&&suc.musicaTipo)||{})[(ev&&ev.tipo)||'']||'';
   const _genMus=(_musGenF.length?_musGenF[(parseInt(String((ev&&ev.id)||'0').replace(/[^0-9]/g,''))||0)%_musGenF.length]:'');
-  const musTrack=_tipoEv.escuela
-    ? ((ev&&ev.albumMusica)||_tipoMus||(tem&&tem.musica)||_genMus)
+  // ¿El evento es de ESCUELA? Por el flag del tipo, o por el nombre del tipo (la tarjeta
+  // automática usa "Escuela / Jardín" cuando no se eligió sub-tipo, y ese nombre puede
+  // no estar en la lista de tipos). Así la música de escuela suena aunque el nombre no
+  // coincida exacto con el tipo donde Lili cargó la música (ej.: cargó "Fin de año").
+  const _esEscuelaEv=!!_tipoEv.escuela || /escuela|jard[ií]n|fin de (a[ñn]o|curso)|d[ií]a del ni/i.test((ev&&ev.tipo)||'');
+  // Música de cualquier tipo-escuela de esta sucursal (fallback si el tipo exacto no tiene).
+  const _musEscFallback=(((iaConfig&&iaConfig.tiposEvento)||[]).filter(t=>t&&t.escuela).map(t=>((suc&&suc.musicaTipo)||{})[t.nombre]).filter(Boolean))[0]||'';
+  const musTrack=_esEscuelaEv
+    ? ((ev&&ev.albumMusica)||_tipoMus||_musEscFallback||(tem&&tem.musica)||_genMus)
     : ((ev&&ev.albumMusica)||(tem&&tem.musica)||_tipoMus||_genMus);
   const esVideoPortada=!!(ev&&ev.videoUrl&&ev.usarVideo!==false);
   const [musOn,setMusOn]=useState(false);
