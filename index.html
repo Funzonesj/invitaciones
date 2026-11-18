@@ -9614,6 +9614,60 @@ function AdminFormatos({
       dirigido: ''
     }]);
   }
+  // 🖼️ Imagen predeterminada de la tarjeta para ESTE tipo. Se comprime y se sube; en el
+  // tipo queda la URL (t.imagen). Se guarda con el resto al tocar "Guardar formatos".
+  async function subirImg(i, file) {
+    if (!file) return;
+    setMsg('Subiendo imagen…');
+    try {
+      const du = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = ev => {
+          const img = new Image();
+          img.onload = () => {
+            const M = 1200;
+            let w = img.width,
+              h = img.height;
+            if (w > h && w > M) {
+              h = Math.round(h * M / w);
+              w = M;
+            } else if (h >= w && h > M) {
+              w = Math.round(w * M / h);
+              h = M;
+            }
+            const c = document.createElement('canvas');
+            c.width = w;
+            c.height = h;
+            c.getContext('2d').drawImage(img, 0, 0, w, h);
+            res(c.toDataURL('image/jpeg', 0.85));
+          };
+          img.onerror = rej;
+          img.src = ev.target.result;
+        };
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+      let u = du;
+      try {
+        const r = await fetch('/api/subir', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            image: du
+          })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.url) u = d.url;
+      } catch (e) {}
+      upd(i, 'imagen', u);
+      setMsg('✓ Imagen cargada — acordate de tocar “Guardar formatos”');
+      setTimeout(() => setMsg(''), 4000);
+    } catch (e) {
+      setMsg('⚠️ No se pudo subir la imagen.');
+    }
+  }
   async function guardar() {
     const nuevo = {
       ...iaConfig,
@@ -9841,7 +9895,72 @@ function AdminFormatos({
     onChange: e => upd(i, 'dirigido', e.target.value),
     style: S.input,
     placeholder: "Ej: Estimada maestra"
-  })))), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12,
+      paddingTop: 12,
+      borderTop: '1px dashed #f3d6e6'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: S.label
+  }, "🖼️ Imagen predeterminada de la tarjeta (opcional)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: '#94a3b8',
+      margin: '2px 0 8px'
+    }
+  }, "Si la cargás, cada tarjeta de este tipo sale con esta imagen de portada (salvo que esa tarjeta ya tenga su propia foto). Ideal para escuelas: Fin de curso, Día del Niño…"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      flexWrap: 'wrap'
+    }
+  }, t.imagen && /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 54,
+      height: 68,
+      borderRadius: 8,
+      overflow: 'hidden',
+      background: '#0f172a',
+      flexShrink: 0,
+      border: '1px solid #e2e8f0'
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: t.imagen,
+    alt: "",
+    style: {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover'
+    }
+  })), /*#__PURE__*/React.createElement("label", {
+    style: {
+      ...S.btn,
+      background: '#2563eb',
+      color: 'white',
+      padding: '8px 14px',
+      fontSize: 12,
+      cursor: 'pointer'
+    }
+  }, "🖼️ ", t.imagen ? 'Cambiar imagen' : 'Subir imagen', /*#__PURE__*/React.createElement("input", {
+    type: "file",
+    accept: "image/*",
+    style: {
+      display: 'none'
+    },
+    onChange: e => subirImg(i, e.target.files[0])
+  })), t.imagen && /*#__PURE__*/React.createElement("button", {
+    onClick: () => upd(i, 'imagen', ''),
+    style: {
+      background: 'none',
+      border: 'none',
+      color: '#ef4444',
+      cursor: 'pointer',
+      fontSize: 12,
+      fontWeight: 700
+    }
+  }, "✕ Quitar"))))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 10,
@@ -9914,45 +10033,6 @@ function AdminMusica({
       };
     }));
     flashOk('✓ Guardado');
-  }
-  // Imagen PREDETERMINADA por TIPO de evento POR SUCURSAL: se guarda en imagenTipo['<tipo>'].
-  // Cuando el evento es de ese tipo, la tarjeta usa esta imagen de portada (ej. "Fin de curso").
-  function setTipoImg(nombre, url) {
-    setSucursales(p => p.map(s => {
-      if (s.id !== selSucT) return s;
-      const it = Object.assign({}, s.imagenTipo || {});
-      if (url) it[nombre] = url;else delete it[nombre];
-      return {
-        ...s,
-        imagenTipo: it
-      };
-    }));
-    flashOk('✓ Guardado');
-  }
-  async function subirImagenCb(file, cb) {
-    if (!file) return;
-    flashOk('Subiendo imagen…');
-    try {
-      const du = await comprimirAdmin(file);
-      let u = du;
-      try {
-        const r = await fetch('/api/subir', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            image: du
-          })
-        });
-        const d = await r.json().catch(() => ({}));
-        if (r.ok && d.url) u = d.url;
-      } catch (e) {}
-      cb(u);
-      flashOk('✓ Imagen subida');
-    } catch (e) {
-      alert('No se pudo subir la imagen.');
-    }
   }
   // Biblioteca de música para el PASE DE FOTOS — POR SUCURSAL (cada salón la suya)
   const pase = sucSel.musicaPase && sucSel.musicaPase.length ? sucSel.musicaPase : [];
@@ -10384,13 +10464,18 @@ function AdminMusica({
       fontSize: 14,
       marginBottom: 8
     }
-  }, "🎪 Música e imagen por tipo de evento"), /*#__PURE__*/React.createElement("div", {
+  }, "🎪 Música por tipo de evento"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
       color: '#94a3b8',
       marginBottom: 10
     }
-  }, "Una música y una ", /*#__PURE__*/React.createElement("b", null, "imagen predeterminada"), " para cada tipo (escuela, cumpleaños…), ", /*#__PURE__*/React.createElement("b", null, "por salón"), ". Si el evento es de ese tipo, la tarjeta usa esta música e imagen. Así, cada vez que una reserva sea de ese festejo (ej. ", /*#__PURE__*/React.createElement("b", null, "Fin de curso"), "), la tarjeta sale sola con la imagen que subas acá."), /*#__PURE__*/React.createElement("label", {
+  }, "Una música para cada tipo (escuela, cumpleaños…), ", /*#__PURE__*/React.createElement("b", null, "por salón"), ". Si el evento es de ese tipo, suena esta música en vez de las genéricas. Así las ", /*#__PURE__*/React.createElement("b", null, "escuelas"), " suenan distinto a los cumpleaños. ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#2563eb',
+      fontWeight: 700
+    }
+  }, "La imagen predeterminada por tipo se carga en 🎟️ Formatos de Tarjeta.")), /*#__PURE__*/React.createElement("label", {
     style: {
       display: 'block',
       marginBottom: 8
@@ -10421,7 +10506,6 @@ function AdminMusica({
     }
   }, (iaConfig && iaConfig.tiposEvento || []).map(t => {
     const _mt = (sucSelT.musicaTipo || {})[t.nombre] || '';
-    const _it = (sucSelT.imagenTipo || {})[t.nombre] || '';
     return /*#__PURE__*/React.createElement("div", {
       key: t.id || t.nombre,
       style: {
@@ -10444,7 +10528,7 @@ function AdminMusica({
       controls: true,
       style: {
         height: 30,
-        maxWidth: 150
+        maxWidth: 170
       }
     }), /*#__PURE__*/React.createElement("label", {
       style: {
@@ -10464,57 +10548,6 @@ function AdminMusica({
       onChange: e => subirAudio(e.target.files[0], u => setTipoMus(t.nombre, u))
     })), _mt && /*#__PURE__*/React.createElement("button", {
       onClick: () => setTipoMus(t.nombre, ''),
-      title: "Quitar música",
-      style: {
-        background: 'none',
-        border: 'none',
-        color: '#ef4444',
-        cursor: 'pointer',
-        fontSize: 14,
-        fontWeight: 900
-      }
-    }, "✕"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        width: 1,
-        height: 24,
-        background: '#e2e8f0'
-      }
-    }), _it && /*#__PURE__*/React.createElement("div", {
-      style: {
-        width: 30,
-        height: 38,
-        borderRadius: 6,
-        overflow: 'hidden',
-        background: '#0f172a',
-        flexShrink: 0
-      }
-    }, /*#__PURE__*/React.createElement("img", {
-      src: _it,
-      alt: "",
-      style: {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover'
-      }
-    })), /*#__PURE__*/React.createElement("label", {
-      style: {
-        ...S.btn,
-        background: '#2563eb',
-        color: 'white',
-        padding: '6px 10px',
-        fontSize: 11,
-        cursor: 'pointer'
-      }
-    }, "🖼️ ", _it ? 'Cambiar imagen' : 'Subir imagen', /*#__PURE__*/React.createElement("input", {
-      type: "file",
-      accept: "image/*",
-      style: {
-        display: 'none'
-      },
-      onChange: e => subirImagenCb(e.target.files[0], u => setTipoImg(t.nombre, u))
-    })), _it && /*#__PURE__*/React.createElement("button", {
-      onClick: () => setTipoImg(t.nombre, ''),
-      title: "Quitar imagen",
       style: {
         background: 'none',
         border: 'none',
@@ -26114,9 +26147,10 @@ function InvWeb({
   // 🖼️ Imagen PREDETERMINADA por tipo de evento (la que Lili sube en "Música e imagen
   // por tipo"). Si la tarjeta no tiene su propia foto, usa esta. Para escuelas, si el
   // nombre del tipo no coincide exacto, usa la de cualquier tipo-escuela de la sucursal.
-  const _tipoImgExact = (suc && suc.imagenTipo || {})[ev && ev.tipo || ''] || '';
-  const _esEscuelaEvP = !!((iaConfig && iaConfig.tiposEvento || []).find(t => t && t.nombre === (ev && ev.tipo)) || {}).escuela || /escuela|jard[ií]n|fin de (a[ñn]o|curso)|d[ií]a del ni/i.test(ev && ev.tipo || '');
-  const _imgEscFallback = (iaConfig && iaConfig.tiposEvento || []).filter(t => t && t.escuela).map(t => (suc && suc.imagenTipo || {})[t.nombre]).filter(Boolean)[0] || '';
+  const _tipoCfgP = (iaConfig && iaConfig.tiposEvento || []).find(t => t && t.nombre === (ev && ev.tipo)) || {};
+  const _tipoImgExact = _tipoCfgP.imagen || '';
+  const _esEscuelaEvP = !!_tipoCfgP.escuela || /escuela|jard[ií]n|fin de (a[ñn]o|curso)|d[ií]a del ni/i.test(ev && ev.tipo || '');
+  const _imgEscFallback = (iaConfig && iaConfig.tiposEvento || []).filter(t => t && t.escuela).map(t => t.imagen).filter(Boolean)[0] || '';
   const _tipoImg = _tipoImgExact || (_esEscuelaEvP ? _imgEscFallback : '');
   const _portCalc = ev && ev.portadaSrc || _tipoImg || _temMatch && _temMatch.img || '';
   const [portada, setPortadaSticky] = useState(_portCalc);
