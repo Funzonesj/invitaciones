@@ -2757,6 +2757,13 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
   // Música por TIPO de evento (escuela, cumpleaños…) POR SUCURSAL: cada salón la suya.
   // Se guarda en la sucursal, en musicaTipo['<nombre del tipo>'].
   function setTipoMus(nombre,url){setSucursales(p=>p.map(s=>{if(s.id!==selSucT)return s;const mt=Object.assign({},s.musicaTipo||{});if(url)mt[nombre]=url;else delete mt[nombre];return {...s,musicaTipo:mt};}));flashOk('✓ Guardado');}
+  // Imagen PREDETERMINADA por TIPO de evento POR SUCURSAL: se guarda en imagenTipo['<tipo>'].
+  // Cuando el evento es de ese tipo, la tarjeta usa esta imagen de portada (ej. "Fin de curso").
+  function setTipoImg(nombre,url){setSucursales(p=>p.map(s=>{if(s.id!==selSucT)return s;const it=Object.assign({},s.imagenTipo||{});if(url)it[nombre]=url;else delete it[nombre];return {...s,imagenTipo:it};}));flashOk('✓ Guardado');}
+  async function subirImagenCb(file,cb){ if(!file)return; flashOk('Subiendo imagen…');
+    try{const du=await comprimirAdmin(file);let u=du;try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:du})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(e){}cb(u);flashOk('✓ Imagen subida');}
+    catch(e){alert('No se pudo subir la imagen.');}
+  }
   // Biblioteca de música para el PASE DE FOTOS — POR SUCURSAL (cada salón la suya)
   const pase=(sucSel.musicaPase&&sucSel.musicaPase.length)?sucSel.musicaPase:[];
   function setSucPase(updater){setSucursales(p=>p.map(s=>{if(s.id!==selSuc)return s;return {...s,musicaPase:updater(s.musicaPase||[])};}));}
@@ -2857,8 +2864,8 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
       </div>
 
       <div style={{...S.card,marginBottom:14}}>
-        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🎪 Música por tipo de evento</h3>
-        <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Una música para cada tipo (escuela, cumpleaños…), <b>por salón</b>. Si el evento es de ese tipo, suena esta música en vez de las genéricas. Así las <b>escuelas</b> suenan distinto a los cumpleaños.</div>
+        <h3 style={{fontWeight:900,fontSize:14,marginBottom:8}}>🎪 Música e imagen por tipo de evento</h3>
+        <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Una música y una <b>imagen predeterminada</b> para cada tipo (escuela, cumpleaños…), <b>por salón</b>. Si el evento es de ese tipo, la tarjeta usa esta música e imagen. Así, cada vez que una reserva sea de ese festejo (ej. <b>Fin de curso</b>), la tarjeta sale sola con la imagen que subas acá.</div>
         <label style={{display:'block',marginBottom:8}}><span style={S.label}>Sucursal</span>
           <select value={selSucT} onChange={e=>setSelSucT(e.target.value)} style={{...S.input,fontWeight:700}}>
             {(sucursales||[]).map(s=><option key={s.id} value={s.id}>{s.emoji||'🎪'} {s.nombre}</option>)}
@@ -2866,12 +2873,16 @@ function AdminMusica({setVista,tematicas,setTematicas,iaConfig,setIaConfig,sucur
         </label>
         <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Estás cargando la música de <b>{sucSelT.nombre||'esta sucursal'}</b>.</div>
         <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {((iaConfig&&iaConfig.tiposEvento)||[]).map(t=>{const _mt=(sucSelT.musicaTipo||{})[t.nombre]||'';return(
+          {((iaConfig&&iaConfig.tiposEvento)||[]).map(t=>{const _mt=(sucSelT.musicaTipo||{})[t.nombre]||'';const _it=(sucSelT.imagenTipo||{})[t.nombre]||'';return(
             <div key={t.id||t.nombre} style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',borderBottom:'1px solid #f1f5f9',paddingBottom:8}}>
               <span style={{fontSize:12,fontWeight:800,color:t.escuela?'#1e40af':'#1e293b',minWidth:130}}>{t.escuela?'🏫 ':''}{t.nombre}</span>
-              {_mt&&<audio src={_mt} controls style={{height:30,maxWidth:170}}></audio>}
+              {_mt&&<audio src={_mt} controls style={{height:30,maxWidth:150}}></audio>}
               <label style={{...S.btn,background:'#db2777',color:'white',padding:'6px 10px',fontSize:11,cursor:'pointer'}}>🎵 {_mt?'Cambiar':'Subir'}<input type="file" accept="audio/*" style={{display:'none'}} onChange={e=>subirAudio(e.target.files[0],u=>setTipoMus(t.nombre,u))}/></label>
-              {_mt&&<button onClick={()=>setTipoMus(t.nombre,'')} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900}}>✕</button>}
+              {_mt&&<button onClick={()=>setTipoMus(t.nombre,'')} title="Quitar música" style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900}}>✕</button>}
+              <span style={{width:1,height:24,background:'#e2e8f0'}}></span>
+              {_it&&<div style={{width:30,height:38,borderRadius:6,overflow:'hidden',background:'#0f172a',flexShrink:0}}><img src={_it} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></div>}
+              <label style={{...S.btn,background:'#2563eb',color:'white',padding:'6px 10px',fontSize:11,cursor:'pointer'}}>🖼️ {_it?'Cambiar imagen':'Subir imagen'}<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>subirImagenCb(e.target.files[0],u=>setTipoImg(t.nombre,u))}/></label>
+              {_it&&<button onClick={()=>setTipoImg(t.nombre,'')} title="Quitar imagen" style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:14,fontWeight:900}}>✕</button>}
             </div>
           );})}
           {(((iaConfig&&iaConfig.tiposEvento)||[]).length===0)&&<div style={{fontSize:12,color:'#94a3b8'}}>No hay tipos de evento cargados. Creálos en 🎟️ Formatos de Tarjeta.</div>}
@@ -6628,7 +6639,14 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const suc=sucursales.find(s=>s.id===(ev||{}).sucId)||sucursales[0]||{};
   const _temMatch=tematicas.find(t=>t.id===(ev||{}).temId);
   const tem=_temMatch||(tematicas||[])[0]||{};
-  const _portCalc=(ev&&ev.portadaSrc)||(_temMatch&&_temMatch.img)||'';
+  // 🖼️ Imagen PREDETERMINADA por tipo de evento (la que Lili sube en "Música e imagen
+  // por tipo"). Si la tarjeta no tiene su propia foto, usa esta. Para escuelas, si el
+  // nombre del tipo no coincide exacto, usa la de cualquier tipo-escuela de la sucursal.
+  const _tipoImgExact=((suc&&suc.imagenTipo)||{})[(ev&&ev.tipo)||'']||'';
+  const _esEscuelaEvP=!!(((iaConfig&&iaConfig.tiposEvento)||[]).find(t=>t&&t.nombre===(ev&&ev.tipo))||{}).escuela || /escuela|jard[ií]n|fin de (a[ñn]o|curso)|d[ií]a del ni/i.test((ev&&ev.tipo)||'');
+  const _imgEscFallback=(((iaConfig&&iaConfig.tiposEvento)||[]).filter(t=>t&&t.escuela).map(t=>((suc&&suc.imagenTipo)||{})[t.nombre]).filter(Boolean))[0]||'';
+  const _tipoImg=_tipoImgExact||(_esEscuelaEvP?_imgEscFallback:'');
+  const _portCalc=(ev&&ev.portadaSrc)||_tipoImg||(_temMatch&&_temMatch.img)||'';
   const [portada,setPortadaSticky]=useState(_portCalc);
   React.useEffect(()=>{ if(_portCalc) setPortadaSticky(_portCalc); },[_portCalc]);
   const [vidMuted,setVidMuted]=useState(true); // el video de portada arranca mudo (los celus no dejan audio automático)
