@@ -860,7 +860,7 @@ function App() {
       <main style={{flex:1}}>
         {vista==='admin-login'       && <AdminLogin     onLogin={loginAdmin}/>}
         {vista==='admin-dashboard'   && <AdminDashboard setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} sucursales={sucursales} tematicas={tematicas} esSA={esSA} iaConfig={iaConfig} setIaConfig={setIaConfig} pedidos={pedidos} setPedidos={setPedidos} refrescarPedidos={refrescarPedidos}/>}
-        {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig} setIaConfig={setIaConfig} setPapaSesion={setPapaSesion} esSA={esSA}/>}
+        {vista==='admin-eventos'     && <AdminEventos   setVista={setVista} sucAct={sucAct} evsLocal={evsLocal} eventos={eventos} setEventos={setEventos} tematicas={tematicas} setInvEvId={setInvEvId} confs={confs} iaConfig={iaConfig} setIaConfig={setIaConfig} setPapaSesion={setPapaSesion} esSA={esSA} sucursales={sucursales}/>}
         {vista==='admin-tematicas'   && <AdminTematicas setVista={setVista} tematicas={tematicas} setTematicas={setTematicas}/>}
         {vista==='admin-excel'       && <AdminExcel     setVista={setVista} sucActId={sucActId} eventos={eventos} setEventos={setEventos}/>}
         {vista==='admin-asistencias' && <AdminAsistencias setVista={setVista} evsLocal={evsLocal} confs={confs} iaConfig={iaConfig}/>}
@@ -1445,7 +1445,9 @@ function AdminDashboard({setVista,sucAct,evsLocal,eventos=[],sucursales=[],temat
 }
 
 /* ── ADMIN EVENTOS ───────────────────────────────────────── */
-function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,setInvEvId,confs,iaConfig,setIaConfig,setPapaSesion,esSA}){
+function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,setInvEvId,confs,iaConfig,setIaConfig,setPapaSesion,esSA,sucursales}){
+  // Nombre del salón de una tarjeta (para el historial, que busca en TODAS las sedes).
+  const _sucDe=(id)=>{const s=(sucursales||[]).find(x=>x&&x.id===id);return s?((s.emoji?s.emoji+' ':'')+s.nombre):'';};
   function enviarCredsWA(ev){
     const salon=sucAct.nombre;
     const base=window.location.href.split('?')[0];
@@ -1579,7 +1581,10 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
   };
   // El historial va por FECHA DEL CUMPLE (el más próximo primero), no por
   // cuándo se creó la tarjeta: así se busca como se piensa, por el día del evento.
-  const historial=evsLocal.filter(e=>(!fMes||Number(e.mes)===Number(fMes))&&(!fAnio||String(e.anio)===String(fAnio))&&(!fDia||Number(e.dia)===Number(fDia)))
+  // Busca en TODAS las sedes (no solo la elegida): si una tarjeta quedó con la sede
+  // en blanco o cruzada, igual aparece (Lili 19/11: "cuando filtro no me aparecen
+  // todas"). Cada tarjetita del historial muestra de qué salón es.
+  const historial=eventos.filter(e=>(!fMes||Number(e.mes)===Number(fMes))&&(!fAnio||String(e.anio)===String(fAnio))&&(!fDia||Number(e.dia)===Number(fDia)))
     .sort((a,b)=>{
       const fa=evFechaNum(a), fb=evFechaNum(b);
       if(fa!==fb) return fb-fa;                 // primero las de fecha más nueva
@@ -1606,6 +1611,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
           </div>
           <div style={{fontWeight:900,fontSize:small?14:20,marginTop:4,paddingRight:small?34:46,lineHeight:1.1}}>{ev.nombre}{ev.doble&&ev.nombre2?<span style={{fontSize:small?10:13,fontWeight:600,opacity:.85}}> & {ev.nombre2}</span>:''}</div>
           <div style={{fontSize:small?9:11,opacity:.85}}>{ev.hIni} a {ev.hFin} hs</div>
+          {small&&<div style={{fontSize:8.5,opacity:.9,marginTop:1,fontWeight:700}}>{_sucDe(ev.sucId)||'⚠️ sin salón'}</div>}
         </div>
         <div style={{height:small?60:90,background:'#0f172a',position:'relative',overflow:'hidden'}}>
           <img src={tem.img} alt="" style={{width:'100%',height:'100%',objectFit:'cover',opacity:.85}}/>
@@ -1849,7 +1855,7 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
       {/* ── HISTORIAL POR MES / AÑO ── */}
       <div style={{...S.card,marginBottom:14,padding:'14px 16px'}}>
         <div style={{fontSize:14,fontWeight:900,color:'#0ea5e9',letterSpacing:.3,marginBottom:4}}>🔎 HISTORIAL DE TARJETAS</div>
-        <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Buscá por mes y/o año. Aparecen como tarjetitas más chicas.</div>
+        <div style={{fontSize:11,color:'#94a3b8',marginBottom:10}}>Buscá por mes, año y/o día. Busca en <b>TODAS las sucursales</b> y cada tarjetita dice de qué salón es (así no se te escapa ninguna).</div>
         <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
           <select value={fMes} onChange={e=>setFMes(e.target.value)} style={{...S.input,width:'auto',fontWeight:700,fontSize:12,padding:'8px 10px'}}>
             <option value=''>📅 Todos los meses</option>
@@ -2678,13 +2684,23 @@ function AdminFormatos({setVista,iaConfig,setIaConfig}){
   function upd(i,k,v){setTipos(ts=>ts.map((t,idx)=>idx===i?{...t,[k]:v}:t));}
   function quitar(i){setTipos(ts=>ts.filter((_,idx)=>idx!==i));}
   function agregar(){setTipos(ts=>[...ts,{id:'tipo-'+Math.floor(Math.random()*1e6),nombre:'Nuevo evento',edad:false,titulo:'¡Te esperamos!',dirigido:''}]);}
-  // 🖼️ Imagen predeterminada de la tarjeta para ESTE tipo. Se comprime y se sube; en el
-  // tipo queda la URL (t.imagen). Se guarda con el resto al tocar "Guardar formatos".
+  // 🖼️ Imagen predeterminada de la tarjeta para ESTE tipo. Guarda la URL en t.imagen
+  // y PERSISTE sola (sin tener que acordarse de "Guardar formatos"). Nunca guarda la
+  // imagen pesada (data URL) en la config: si la subida falla, avisa y no guarda nada.
+  async function setImg(i,u){
+    const nt=tipos.map((t,idx)=>idx===i?{...t,imagen:u}:t);
+    setTipos(nt);
+    try{ await gwCall('upsertConfig',{id:'__config_ia__',data:{...iaConfig,tiposEvento:nt}}); setIaConfig({...iaConfig,tiposEvento:nt}); return true; }
+    catch(e){ return false; }
+  }
   async function subirImg(i,file){ if(!file)return; setMsg('Subiendo imagen…');
     try{
       const du=await new Promise((res,rej)=>{const r=new FileReader();r.onload=ev=>{const img=new Image();img.onload=()=>{const M=1200;let w=img.width,h=img.height;if(w>h&&w>M){h=Math.round(h*M/w);w=M;}else if(h>=w&&h>M){w=Math.round(w*M/h);h=M;}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);res(c.toDataURL('image/jpeg',0.85));};img.onerror=rej;img.src=ev.target.result;};r.onerror=rej;r.readAsDataURL(file);});
-      let u=du;try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:du})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(e){}
-      upd(i,'imagen',u); setMsg('✓ Imagen cargada — acordate de tocar “Guardar formatos”'); setTimeout(()=>setMsg(''),4000);
+      let u='';try{const r=await fetch('/api/subir',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:du})});const d=await r.json().catch(()=>({}));if(r.ok&&d.url)u=d.url;}catch(e){}
+      if(!u){ setMsg('⚠️ No se pudo subir la imagen. Probá de nuevo o con una más liviana.'); return; }
+      const ok=await setImg(i,u);
+      setMsg(ok?'✓ Imagen guardada':'⚠️ Imagen subida pero no se pudo guardar. Tocá “Guardar formatos”.');
+      setTimeout(()=>setMsg(''),ok?2800:5000);
     }catch(e){setMsg('⚠️ No se pudo subir la imagen.');}
   }
   async function guardar(){
@@ -2748,7 +2764,7 @@ function AdminFormatos({setVista,iaConfig,setIaConfig}){
             <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
               {t.imagen&&<div style={{width:54,height:68,borderRadius:8,overflow:'hidden',background:'#0f172a',flexShrink:0,border:'1px solid #e2e8f0'}}><img src={t.imagen} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/></div>}
               <label style={{...S.btn,background:'#2563eb',color:'white',padding:'8px 14px',fontSize:12,cursor:'pointer'}}>🖼️ {t.imagen?'Cambiar imagen':'Subir imagen'}<input type="file" accept="image/*" style={{display:'none'}} onChange={e=>subirImg(i,e.target.files[0])}/></label>
-              {t.imagen&&<button onClick={()=>upd(i,'imagen','')} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:12,fontWeight:700}}>✕ Quitar</button>}
+              {t.imagen&&<button onClick={()=>setImg(i,'')} style={{background:'none',border:'none',color:'#ef4444',cursor:'pointer',fontSize:12,fontWeight:700}}>✕ Quitar</button>}
             </div>
           </div>
         </div>

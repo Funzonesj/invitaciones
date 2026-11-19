@@ -1910,7 +1910,8 @@ function App() {
     iaConfig: iaConfig,
     setIaConfig: setIaConfig,
     setPapaSesion: setPapaSesion,
-    esSA: esSA
+    esSA: esSA,
+    sucursales: sucursales
   }), vista === 'admin-tematicas' && /*#__PURE__*/React.createElement(AdminTematicas, {
     setVista: setVista,
     tematicas: tematicas,
@@ -4358,8 +4359,14 @@ function AdminEventos({
   iaConfig,
   setIaConfig,
   setPapaSesion,
-  esSA
+  esSA,
+  sucursales
 }) {
+  // Nombre del salón de una tarjeta (para el historial, que busca en TODAS las sedes).
+  const _sucDe = id => {
+    const s = (sucursales || []).find(x => x && x.id === id);
+    return s ? (s.emoji ? s.emoji + ' ' : '') + s.nombre : '';
+  };
   function enviarCredsWA(ev) {
     const salon = sucAct.nombre;
     const base = window.location.href.split('?')[0];
@@ -4640,7 +4647,10 @@ function AdminEventos({
   };
   // El historial va por FECHA DEL CUMPLE (el más próximo primero), no por
   // cuándo se creó la tarjeta: así se busca como se piensa, por el día del evento.
-  const historial = evsLocal.filter(e => (!fMes || Number(e.mes) === Number(fMes)) && (!fAnio || String(e.anio) === String(fAnio)) && (!fDia || Number(e.dia) === Number(fDia))).sort((a, b) => {
+  // Busca en TODAS las sedes (no solo la elegida): si una tarjeta quedó con la sede
+  // en blanco o cruzada, igual aparece (Lili 19/11: "cuando filtro no me aparecen
+  // todas"). Cada tarjetita del historial muestra de qué salón es.
+  const historial = eventos.filter(e => (!fMes || Number(e.mes) === Number(fMes)) && (!fAnio || String(e.anio) === String(fAnio)) && (!fDia || Number(e.dia) === Number(fDia))).sort((a, b) => {
     const fa = evFechaNum(a),
       fb = evFechaNum(b);
     if (fa !== fb) return fb - fa; // primero las de fecha más nueva
@@ -4742,7 +4752,14 @@ function AdminEventos({
         fontSize: small ? 9 : 11,
         opacity: .85
       }
-    }, ev.hIni, " a ", ev.hFin, " hs")), /*#__PURE__*/React.createElement("div", {
+    }, ev.hIni, " a ", ev.hFin, " hs"), small && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 8.5,
+        opacity: .9,
+        marginTop: 1,
+        fontWeight: 700
+      }
+    }, _sucDe(ev.sucId) || '⚠️ sin salón')), /*#__PURE__*/React.createElement("div", {
       style: {
         height: small ? 60 : 90,
         background: '#0f172a',
@@ -5964,7 +5981,7 @@ function AdminEventos({
       color: '#94a3b8',
       marginBottom: 10
     }
-  }, "Buscá por mes y/o año. Aparecen como tarjetitas más chicas."), /*#__PURE__*/React.createElement("div", {
+  }, "Buscá por mes, año y/o día. Busca en ", /*#__PURE__*/React.createElement("b", null, "TODAS las sucursales"), " y cada tarjetita dice de qué salón es (así no se te escapa ninguna)."), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 8,
@@ -9614,8 +9631,32 @@ function AdminFormatos({
       dirigido: ''
     }]);
   }
-  // 🖼️ Imagen predeterminada de la tarjeta para ESTE tipo. Se comprime y se sube; en el
-  // tipo queda la URL (t.imagen). Se guarda con el resto al tocar "Guardar formatos".
+  // 🖼️ Imagen predeterminada de la tarjeta para ESTE tipo. Guarda la URL en t.imagen
+  // y PERSISTE sola (sin tener que acordarse de "Guardar formatos"). Nunca guarda la
+  // imagen pesada (data URL) en la config: si la subida falla, avisa y no guarda nada.
+  async function setImg(i, u) {
+    const nt = tipos.map((t, idx) => idx === i ? {
+      ...t,
+      imagen: u
+    } : t);
+    setTipos(nt);
+    try {
+      await gwCall('upsertConfig', {
+        id: '__config_ia__',
+        data: {
+          ...iaConfig,
+          tiposEvento: nt
+        }
+      });
+      setIaConfig({
+        ...iaConfig,
+        tiposEvento: nt
+      });
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
   async function subirImg(i, file) {
     if (!file) return;
     setMsg('Subiendo imagen…');
@@ -9647,7 +9688,7 @@ function AdminFormatos({
         r.onerror = rej;
         r.readAsDataURL(file);
       });
-      let u = du;
+      let u = '';
       try {
         const r = await fetch('/api/subir', {
           method: 'POST',
@@ -9661,9 +9702,13 @@ function AdminFormatos({
         const d = await r.json().catch(() => ({}));
         if (r.ok && d.url) u = d.url;
       } catch (e) {}
-      upd(i, 'imagen', u);
-      setMsg('✓ Imagen cargada — acordate de tocar “Guardar formatos”');
-      setTimeout(() => setMsg(''), 4000);
+      if (!u) {
+        setMsg('⚠️ No se pudo subir la imagen. Probá de nuevo o con una más liviana.');
+        return;
+      }
+      const ok = await setImg(i, u);
+      setMsg(ok ? '✓ Imagen guardada' : '⚠️ Imagen subida pero no se pudo guardar. Tocá “Guardar formatos”.');
+      setTimeout(() => setMsg(''), ok ? 2800 : 5000);
     } catch (e) {
       setMsg('⚠️ No se pudo subir la imagen.');
     }
@@ -9951,7 +9996,7 @@ function AdminFormatos({
     },
     onChange: e => subirImg(i, e.target.files[0])
   })), t.imagen && /*#__PURE__*/React.createElement("button", {
-    onClick: () => upd(i, 'imagen', ''),
+    onClick: () => setImg(i, ''),
     style: {
       background: 'none',
       border: 'none',
