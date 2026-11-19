@@ -349,6 +349,19 @@ function abrirWA(phone, text) {
     window.open('https://wa.me/' + p + (t ? '?text=' + t : ''), '_blank');
   }
 }
+// 🖼️ LA PORTADA QUE REALMENTE SALE EN LA TARJETA, en un solo lugar: la que se
+// eligió → la PREDETERMINADA del tipo de festejo → la de la temática.
+// Estaba escrita en tres lados y en dos faltaba la predeterminada del tipo, así
+// que la vista previa del panel del papá y el JPG que se comparte mostraban otra
+// imagen distinta a la de la tarjeta: en las escuelas, que no tienen foto propia,
+// se veía la temática en vez de la de fin de curso (Lili 19/11/2026).
+function portadaDe(ev, tematicas, iaConfig) {
+  if (!ev) return '';
+  if (ev.portadaSrc) return ev.portadaSrc;
+  const t = (iaConfig && iaConfig.tiposEvento || []).find(x => x && x.nombre === (ev.tipo || '')) || {};
+  if (t.imagen) return t.imagen;
+  return ((tematicas || []).find(x => x && x.id === ev.temId) || {}).img || '';
+}
 // Devuelve el formato de tarjeta (mostrar edad, título, dirigido) según el tipo de evento
 function fmtTipo(tipo, iaConfig) {
   const t = (iaConfig && iaConfig.tiposEvento || []).find(x => x.nombre === tipo);
@@ -566,6 +579,13 @@ try {
     if (o && o.ev && o.t && Date.now() - o.t < 24 * 3600 * 1000 && !estaVencido(o.ev)) _PAPA_SAVED = o.ev;
   }
 } catch (e) {}
+// ¿La sesión guardada en ESTE aparato es la de ESTE link del papá? Entonces se sigue
+// adentro y no hay que poner la clave otra vez (Lili 19/11/2026: "cada vez que
+// actualizo se sale y debo volver a ingresar datos"). Antes, con ?papa=<evento> en la
+// dirección, la sesión guardada se descartaba SIEMPRE y cada recarga era un login nuevo;
+// sin ese parámetro, en cambio, sí se restauraba. Se restaura solo si es el MISMO evento:
+// el link por sí solo nunca abre sesión (eso sigue pidiendo la clave).
+const _PAPA_SAVED_OK = !!(_PAPA_SAVED && (!_PAPA_PARAM || String(_PAPA_SAVED.id) === String(_PAPA_PARAM) || _PAPA_DATA && String(_PAPA_SAVED.id) === String(_PAPA_DATA.id)));
 // Último panel en el que estuvo (admin o papa) para volver al mismo al recargar
 let _ULTIMO_MODO = null;
 try {
@@ -605,7 +625,7 @@ try {
 // Si NO hay sesión guardada pero volvés de un pago (o el último modo del dispositivo
 // fue "papá"), abrimos el login de PAPÁS — nunca el de admin (eso confundía al papá).
 const _AUTO_VISTA = _ULTIMO_MODO === 'admin' && _ADMIN_SAVED ? 'admin-dashboard' : _ULTIMO_MODO === 'papa' && _PAPA_SAVED ? 'papa-creador' : _PAPA_SAVED ? 'papa-creador' : _ADMIN_SAVED ? 'admin-dashboard' : _VOLVIENDO_PAGO || _ULTIMO_MODO === 'papa' ? 'papa-login' : 'admin-login';
-const INIT_VISTA = _REC_PARAM ? 'recuerdos' : _INV_PARAM ? _PASE_PARAM ? 'pase' : 'invitado-portada' : _PAPA_DATA ? 'papa-creador' : _PAPA_PARAM ? 'papa-login' : _AUTO_VISTA;
+const INIT_VISTA = _REC_PARAM ? 'recuerdos' : _INV_PARAM ? _PASE_PARAM ? 'pase' : 'invitado-portada' : _PAPA_DATA ? 'papa-creador' : _PAPA_PARAM ? _PAPA_SAVED_OK ? 'papa-creador' : 'papa-login' : _AUTO_VISTA;
 
 // Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
 let _PAPA_NAV = {};
@@ -654,7 +674,7 @@ function generarTarjetaImagen(ev, suc, tematicas, iaConfig, accion) {
   const nombre = ev.nombre || '';
   const col = suc && suc.color || '#7c3aed';
   const F = fmtTipo(ev.tipo, iaConfig);
-  const portadaImg = ev.portadaSrc || ((tematicas || []).find(t => t.id === ev.temId) || {}).img || '';
+  const portadaImg = portadaDe(ev, tematicas, iaConfig);
   function dibujar(imgEl) {
     const canvas = document.createElement('canvas');
     canvas.width = W;
@@ -951,7 +971,7 @@ function App() {
   });
   const [adminSesion, setAdminSesion] = useState(_ADMIN_SAVED);
   const [sucActId, setSucActId] = useState('sz-1');
-  const [papaSesion, setPapaSesion] = useState(_PAPA_DATA || (!_PAPA_PARAM ? _PAPA_SAVED : null));
+  const [papaSesion, setPapaSesion] = useState(_PAPA_DATA || (_PAPA_SAVED_OK ? _PAPA_SAVED : null));
   const [papaAviso, setPapaAviso] = useState('');
   const [invEvId, setInvEvId] = useState(INIT_INV_ID);
   const [vista, setVista] = useState(INIT_VISTA);
@@ -1078,8 +1098,11 @@ function App() {
       } catch (e) {}
       // 1) Links de invitación/papá: traer SOLO ese evento primero (rápido) y mostrar ya
       const quickId = _INV_PARAM || _PAPA_PARAM || _REC_PARAM;
-      if (_PAPA_PARAM && !_PAPA_DATA) {
+      if (_PAPA_PARAM && !_PAPA_DATA && !_PAPA_SAVED_OK) {
         // Papá por link: ahora entra con su contraseña (la base ya no es pública). Lo mandamos al login.
+        // PERO si en ESTE aparato ya hay sesión abierta de ESTE mismo evento (puso la clave
+        // hace menos de 24 h), no se lo echa: recargar la página dejaba de servir y había que
+        // poner todo de nuevo (Lili 19/11/2026).
         setVista('papa-login');
         setDbReady(true);
       } else if (quickId) {
@@ -1099,6 +1122,7 @@ function App() {
           // (sin clave ni teléfonos), así que se mezcla sobre la local para
           // no perder esos campos si los tenía.
           if (ev) {
+            _marcarDeLaBase([ev]);
             setEventos(prev => prev.some(e => e.id === ev.id) ? prev.map(e => e.id === ev.id ? Object.assign({}, e, ev) : e) : [ev, ...prev]);
             setDbReady(true);
           }
@@ -1107,6 +1131,7 @@ function App() {
       // 2) Cargar el resto (puede tardar por imágenes guardadas) sin bloquear la pantalla
       const d = await sbLoadAll();
       if (d) {
+        _marcarDeLaBase(d.eventos);
         setEventos(prev => {
           const ids = new Set(d.eventos.map(e => e.id));
           const extra = prev.filter(e => !ids.has(e.id) && (_INV_EV_DATA && e.id === _INV_EV_DATA.id || _PAPA_DATA && e.id === _PAPA_DATA.id || e.id === quickId));
@@ -1193,6 +1218,7 @@ function App() {
     const t = setTimeout(async () => {
       const d = await sbLoadAll();
       if (d) {
+        _marcarDeLaBase(d.eventos);
         setEventos(prev => {
           const ids = new Set(d.eventos.map(e => e.id));
           const extra = prev.filter(e => !ids.has(e.id));
@@ -1219,6 +1245,25 @@ function App() {
   // eso era lo que volteaba la base a cada rato. React reemplaza el objeto del
   // evento tocado y deja los demás idénticos, así que se comparan por identidad.
   const _evPrevRef = React.useRef(null);
+  // 🚫 LO QUE ACABA DE BAJAR DE LA BASE NO SE VUELVE A SUBIR (Lili 19/11/2026:
+  // "me sale un cartel rojo que me dice que no se actualizó cuando abro la
+  // tarjeta"). Al abrir un link de tarjeta estando con sesión de dueña, primero
+  // se carga ESE evento y después la tabla entera; como la carga completa
+  // reemplaza TODOS los objetos, la comparación por identidad los veía a los 512
+  // como "cambiados" y los re-subía de a uno. Eran ~512 escrituras por cada vez
+  // que abría una tarjeta, y bastaba que una fallara para el cartel rojo.
+  // Acá se anota la referencia de cada evento tal como vino de la base: si es
+  // esa misma, no se sube. Apenas ella lo edita, React crea un objeto nuevo y
+  // vuelve a guardarse normalmente.
+  const _evBaseRef = React.useRef({});
+  function _marcarDeLaBase(arr) {
+    try {
+      const m = _evBaseRef.current;
+      (arr || []).forEach(function (e) {
+        if (e && e.id) m[e.id] = e;
+      });
+    } catch (e) {}
+  }
   // OJO: el PAPÁ nunca tiene fullLoaded (sbLoadAll solo carga con sesión de dueña/encargada
   // desde la auditoría 18/08) → sin el "||papaSesion" sus cambios (foto, pack de IA, imágenes
   // generadas, encuesta) quedaban SOLO en el celular y se perdían al recargar (visto 9/9 con
@@ -1239,8 +1284,12 @@ function App() {
       prev.forEach(function (e) {
         if (e && e.id) prevById[e.id] = e;
       });
+      const _base = _evBaseRef.current;
       const cambiados = eventos.filter(function (e) {
-        return e && e.id && prevById[e.id] !== e;
+        if (!(e && e.id)) return false;
+        if (_base[e.id] === e) return false; // tal cual bajó de la base: no se re-sube
+        if (_base[e.id]) delete _base[e.id]; // ya se tocó: la copia vieja no sirve más
+        return prevById[e.id] !== e;
       });
       cambiados.forEach(sbUpsertEvento);
       _evPrevRef.current = eventos;
@@ -1331,12 +1380,38 @@ function App() {
     } catch (e) {}
   }, [adminSesion]);
   // Recordar sesión del papá por 24hs
+  // La sesión del papá se guarda en el aparato. Si no entra (una foto pegada en
+  // base64 llena el cajón del navegador), se vuelve a intentar SIN las fotos: lo
+  // pesado se baja de la base igual al entrar. Antes fallaba en silencio y la
+  // próxima recarga lo echaba al login.
   React.useEffect(() => {
     try {
-      if (papaSesion) localStorage.setItem('fz_papa_sesion', JSON.stringify({
-        ev: papaSesion,
-        t: Date.now()
-      }));else localStorage.removeItem('fz_papa_sesion');
+      if (!papaSesion) {
+        localStorage.removeItem('fz_papa_sesion');
+        return;
+      }
+      try {
+        localStorage.setItem('fz_papa_sesion', JSON.stringify({
+          ev: papaSesion,
+          t: Date.now()
+        }));
+      } catch (e) {
+        const liv = {};
+        Object.keys(papaSesion).forEach(function (k) {
+          const v = papaSesion[k];
+          if (typeof v === 'string' && v.length > 1500) return; // foto/video pegado
+          if (Array.isArray(v) && v.some(function (x) {
+            return typeof x === 'string' && x.length > 1500;
+          })) return;
+          liv[k] = v;
+        });
+        try {
+          localStorage.setItem('fz_papa_sesion', JSON.stringify({
+            ev: liv,
+            t: Date.now()
+          }));
+        } catch (e2) {}
+      }
     } catch (e) {}
   }, [papaSesion]);
   // Recordar el último panel usado (admin/papa) para volver al mismo al recargar
@@ -2044,6 +2119,7 @@ function App() {
     pedidos: pedidos,
     setPedidos: setPedidos
   }), vista === 'invitado-portada' && /*#__PURE__*/React.createElement(InvPortada, {
+    dbFresco: dbReady,
     setVista: setVista,
     eventos: eventos,
     invEvId: invEvId,
@@ -2054,6 +2130,7 @@ function App() {
     volverInv: _INV_PARAM ? null : adminSesion ? 'admin-eventos' : papaSesion ? 'papa-creador' : null,
     esInvPortada: true
   }), vista === 'invitado-web' && /*#__PURE__*/React.createElement(InvWeb, {
+    dbFresco: dbReady,
     setVista: setVista,
     eventos: eventos,
     invEvId: invEvId,
@@ -4630,10 +4707,16 @@ function AdminEventos({
     navigator.clipboard && navigator.clipboard.writeText(window.location.href.split('?')[0] + '?inv=' + id + '&p=2' + _selloFecha(ev));
     alert('¡Enlace copiado!');
   }
+  // 📲 MANDAR LA TARJETA POR WHATSAPP, AL NÚMERO QUE YA TIENE LA TARJETA.
+  // Antes abría WhatsApp SIN destinatario y había que copiar el link y pegarlo a
+  // mano (Lili 19/11/2026, mandando las tarjetas de fin de curso a las maestras).
+  // Si la tarjeta tiene cargado el celular de la mamá/maestra, va derecho a ella.
   function compartirLinkInv(ev) {
     const link = window.location.href.split('?')[0] + '?inv=' + ev.id + '&p=2' + _selloFecha(ev);
-    const txt = 'Tenés una invitación de ' + ev.nombre + ' 🎉\n\nAbrí la invitación:\n' + link;
-    abrirWA('', txt);
+    const tel = waNum(ev.celPapa || '');
+    const quien = String(ev.nomPapa || '').trim().split(/\s+/)[0] || '';
+    const txt = tel ? (quien ? '¡Hola ' + quien + '! 👋\n\n' : '') + 'Acá está la tarjeta de invitación de ' + ev.nombre + ' 🎉\n\nAbrila y compartila con quien quieras:\n' + link : 'Tenés una invitación de ' + ev.nombre + ' 🎉\n\nAbrí la invitación:\n' + link;
+    abrirWA(tel, txt);
   }
 
   // ¿Cuándo se creó la tarjeta? (marca 'creado' o la fecha codificada en el id)
@@ -4976,7 +5059,7 @@ function AdminEventos({
         cursor: 'pointer',
         borderTop: '1px solid #1ebe57'
       }
-    }, "🔗 Compartir link (abre solo la tarjeta)"), !small && /*#__PURE__*/React.createElement("button", {
+    }, ev.celPapa ? '📲 Mandarle la tarjeta a ' + (String(ev.nomPapa || '').trim().split(/\s+/)[0] || 'su WhatsApp') : '🔗 Compartir link (abre solo la tarjeta)'), !small && /*#__PURE__*/React.createElement("button", {
       onClick: () => generarTarjetaImagen(ev, sucAct, tematicas, iaConfig, 'compartir'),
       style: {
         background: '#0ea5e9',
@@ -4989,6 +5072,17 @@ function AdminEventos({
         borderTop: '1px solid #0284c7'
       }
     }, "📷 Compartir tarjeta (imagen, sin link)"), small && /*#__PURE__*/React.createElement("button", {
+      onClick: () => compartirLinkInv(ev),
+      style: {
+        background: '#25d366',
+        color: 'white',
+        border: 'none',
+        padding: 7,
+        fontWeight: 700,
+        fontSize: 10,
+        cursor: 'pointer'
+      }
+    }, ev.celPapa ? '📲 Mandar la tarjeta' : '🔗 Compartir link'), small && /*#__PURE__*/React.createElement("button", {
       onClick: () => {
         setInvEvId(ev.id);
         setVista('invitado-portada');
@@ -9669,16 +9763,28 @@ function AdminFormatos({
 }) {
   const [tipos, setTipos] = useState(() => iaConfig.tiposEvento && iaConfig.tiposEvento.length ? iaConfig.tiposEvento : []);
   const [msg, setMsg] = useState('');
+  // Si la config termina de bajar de la base DESPUÉS de abrir esta pantalla, la
+  // lista de acá se quedaba con la vieja; y al tocar "Guardar formatos" escribía
+  // esa vieja encima de la buena. Mientras no se haya tocado nada, se pone al día.
+  const tocado = React.useRef(false);
+  React.useEffect(() => {
+    if (tocado.current) return;
+    const t = iaConfig && iaConfig.tiposEvento || [];
+    if (t.length) setTipos(t);
+  }, [iaConfig && iaConfig.tiposEvento]);
   function upd(i, k, v) {
+    tocado.current = true;
     setTipos(ts => ts.map((t, idx) => idx === i ? {
       ...t,
       [k]: v
     } : t));
   }
   function quitar(i) {
+    tocado.current = true;
     setTipos(ts => ts.filter((_, idx) => idx !== i));
   }
   function agregar() {
+    tocado.current = true;
     setTipos(ts => [...ts, {
       id: 'tipo-' + Math.floor(Math.random() * 1e6),
       nombre: 'Nuevo evento',
@@ -9691,6 +9797,7 @@ function AdminFormatos({
   // y PERSISTE sola (sin tener que acordarse de "Guardar formatos"). Nunca guarda la
   // imagen pesada (data URL) en la config: si la subida falla, avisa y no guarda nada.
   async function setImg(i, u) {
+    tocado.current = true;
     const nt = tipos.map((t, idx) => idx === i ? {
       ...t,
       imagen: u
@@ -9764,9 +9871,11 @@ function AdminFormatos({
       }
       const ok = await setImg(i, u);
       setMsg(ok ? '✓ Imagen guardada' : '⚠️ Imagen subida pero no se pudo guardar. Tocá “Guardar formatos”.');
+      if (ok) flashOk('✓ Imagen predeterminada guardada');else alert('⚠️ La imagen se subió pero no se pudo guardar. Tocá “Guardar formatos”.');
       setTimeout(() => setMsg(''), ok ? 2800 : 5000);
     } catch (e) {
       setMsg('⚠️ No se pudo subir la imagen.');
+      alert('⚠️ No se pudo subir la imagen.');
     }
   }
   async function guardar() {
@@ -9784,9 +9893,14 @@ function AdminFormatos({
       });
       setIaConfig(nuevo);
       setMsg('✓ Formatos guardados');
+      // El cartel de arriba queda fuera de la pantalla: el botón está al final de
+      // la lista. Por eso el aviso va TAMBIÉN flotando, que se ve siempre
+      // (Lili 19/11/2026: "no funciona el botón de guardar" — sí guardaba).
+      flashOk('✓ Formatos guardados');
       setTimeout(() => setMsg(''), 3000);
     } catch (e) {
       setMsg('⚠️ No se pudo guardar. Revisá tu conexión e intentá de nuevo (no cierres la pestaña).');
+      alert('⚠️ No se pudo guardar. Revisá tu conexión e intentá de nuevo (no cierres la pestaña).');
     }
   }
   return /*#__PURE__*/React.createElement("div", {
@@ -10061,7 +10175,18 @@ function AdminFormatos({
       fontSize: 12,
       fontWeight: 700
     }
-  }, "✕ Quitar"))))), /*#__PURE__*/React.createElement("div", {
+  }, "✕ Quitar"))))), msg && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: msg[0] === '✓' ? '#f0fdf4' : '#fef2f2',
+      border: '1px solid ' + (msg[0] === '✓' ? '#bbf7d0' : '#fecaca'),
+      color: msg[0] === '✓' ? '#166534' : '#b91c1c',
+      padding: '10px 14px',
+      borderRadius: 12,
+      fontSize: 13,
+      marginBottom: 12,
+      fontWeight: 700
+    }
+  }, msg), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 10,
@@ -18063,6 +18188,12 @@ function PapaCreador({
   pedidos,
   setPedidos
 }) {
+  // 🎬 OJO: acá NO van iaVideos / iaVideoSel / fotoNinoIAV / personajeIAV. El form
+  // se vuelca entero sobre el evento ({...papaSesion,...form}) cada vez que se
+  // guarda o se mira la tarjeta, así que arrancarlos vacíos BORRABA la lista de
+  // videos recién generados: la galería se quedaba con uno solo y el video nuevo
+  // no se podía elegir (Lili 19/11/2026: "seleccionó el nuevo video y no se
+  // actualiza, sigue el mismo"). Ningún lado los lee desde el form.
   const [form, setForm] = useState({
     nombre: papaSesion.nombre,
     tipo: papaSesion.tipo || 'Cumpleaños',
@@ -18078,10 +18209,6 @@ function PapaCreador({
     iaImagenSel: papaSesion.iaImagenSel != null ? papaSesion.iaImagenSel : null,
     fotoNinoIA: papaSesion.fotoNinoIA || '',
     personajeIA: papaSesion.personajeIA || '',
-    iaVideos: [],
-    iaVideoSel: null,
-    fotoNinoIAV: '',
-    personajeIAV: '',
     album: papaSesion.album || [],
     albumFraseIni: papaSesion.albumFraseIni || '',
     albumFraseFin: papaSesion.albumFraseFin || '',
@@ -18207,18 +18334,20 @@ function PapaCreador({
   const [editPanel, setEditPanel] = useState(_PAPA_NAV.editPanel || null); // null=inicio (cuadraditos) | 'datos' | 'tematica' | 'foto'
   function guardarYVolver() {
     const fmt = fmtTipo(form.tipo, iaConfig);
-    const n = {
-      ...papaSesion,
-      ...form,
-      ...fmt
-    };
-    setEventos(eventos.map(x => x.id === papaSesion.id ? {
+    setEventos(evs => evs.map(x => x.id === papaSesion.id ? {
       ...x,
       ...form,
       ...fmt
     } : x));
-    setPapaSesion(n);
-    _guardarPapaYa(n);
+    setPapaSesion(ps => {
+      const n = {
+        ...ps,
+        ...form,
+        ...fmt
+      };
+      _guardarPapaYa(n);
+      return n;
+    });
     setEditPanel(null);
     flashOk('✓ ¡Guardado!');
   }
@@ -18835,7 +18964,11 @@ function PapaCreador({
   const tFilt = ordenarRecientes(tematicas.filter(t => t.nombre.toLowerCase().includes(ftxt.toLowerCase()) && (fcat === 'TODOS' || t.cats.includes(fcat))));
   const cssFilter = `brightness(${mejora.brillo}%) contrast(${mejora.contraste}%) saturate(${mejora.saturacion}%) sepia(${mejora.calidez}%)`;
   const fotoElegida = form.usarMejorada && form.fotoMejorada ? form.fotoMejorada : form.fotoNino;
-  const portadaImg = form.portadaSrc || temA.img || '';
+  const portadaImg = portadaDe({
+    portadaSrc: form.portadaSrc,
+    tipo: form.tipo,
+    temId: form.temId
+  }, tematicas, iaConfig) || temA.img || '';
   const esDoble = papaSesion.doble && papaSesion.nombre2;
   const confsEv = (confs || []).filter(c => c.evId === papaSesion.id);
   const conPaseLista = !!(tienePase(papaSesion, iaConfig) && confsEv.some(c => +c.nro > 0)); // columna 🎟️ solo en cumples con pase
@@ -19003,16 +19136,16 @@ function PapaCreador({
   }
   function guardarAlbum() {
     const fmt = fmtTipo(form.tipo, iaConfig);
-    setEventos(eventos.map(x => x.id === papaSesion.id ? {
+    setEventos(evs => evs.map(x => x.id === papaSesion.id ? {
       ...x,
       ...form,
       ...fmt
     } : x));
-    setPapaSesion({
-      ...papaSesion,
+    setPapaSesion(ps => ({
+      ...ps,
       ...form,
       ...fmt
-    });
+    }));
     flashOk('✓ ¡Recuerdo guardado!');
   }
   // Ver el recuerdo (página propia) — guarda primero
@@ -19021,32 +19154,32 @@ function PapaCreador({
       seccion: 'album'
     };
     const fmt = fmtTipo(form.tipo, iaConfig);
-    setEventos(eventos.map(x => x.id === papaSesion.id ? {
+    setEventos(evs => evs.map(x => x.id === papaSesion.id ? {
       ...x,
       ...form,
       ...fmt
     } : x));
-    setPapaSesion({
-      ...papaSesion,
+    setPapaSesion(ps => ({
+      ...ps,
       ...form,
       ...fmt
-    });
+    }));
     setInvEvId(papaSesion.id);
     setVista('recuerdos');
   }
   // Compartir el recuerdo por WhatsApp (link propio ?rec=, aparte de la invitación)
   function compartirRecuerdo() {
     const fmt = fmtTipo(form.tipo, iaConfig);
-    setEventos(eventos.map(x => x.id === papaSesion.id ? {
+    setEventos(evs => evs.map(x => x.id === papaSesion.id ? {
       ...x,
       ...form,
       ...fmt
     } : x));
-    setPapaSesion({
-      ...papaSesion,
+    setPapaSesion(ps => ({
+      ...ps,
       ...form,
       ...fmt
-    });
+    }));
     const link = window.location.href.split('?')[0] + '?rec=' + papaSesion.id;
     const nom = form.nombre || papaSesion.nombre;
     const msg = '📸✨ ¡Te comparto los recuerdos del cumple de ' + nom + '! Mirá las fotos 👉 ' + link;
@@ -19173,16 +19306,16 @@ function PapaCreador({
   function guardar(e) {
     e.preventDefault();
     const fmt = fmtTipo(form.tipo, iaConfig);
-    setEventos(eventos.map(x => x.id === papaSesion.id ? {
+    setEventos(evs => evs.map(x => x.id === papaSesion.id ? {
       ...x,
       ...form,
       ...fmt
     } : x));
-    setPapaSesion({
-      ...papaSesion,
+    setPapaSesion(ps => ({
+      ...ps,
       ...form,
       ...fmt
-    });
+    }));
     setInvGuardada(true);
     alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');
   }
@@ -19191,16 +19324,16 @@ function PapaCreador({
       seccion: 'home'
     };
     const fmt = fmtTipo(form.tipo, iaConfig);
-    setEventos(eventos.map(x => x.id === papaSesion.id ? {
+    setEventos(evs => evs.map(x => x.id === papaSesion.id ? {
       ...x,
       ...form,
       ...fmt
     } : x));
-    setPapaSesion({
-      ...papaSesion,
+    setPapaSesion(ps => ({
+      ...ps,
       ...form,
       ...fmt
-    });
+    }));
     setInvEvId(papaSesion.id);
     setVista('invitado-portada');
   }
@@ -20552,16 +20685,16 @@ function PapaCreador({
   })))), /*#__PURE__*/React.createElement("button", {
     onClick: () => {
       const fmt = fmtTipo(form.tipo, iaConfig);
-      setEventos(eventos.map(x => x.id === papaSesion.id ? {
+      setEventos(evs => evs.map(x => x.id === papaSesion.id ? {
         ...x,
         ...form,
         ...fmt
       } : x));
-      setPapaSesion({
-        ...papaSesion,
+      setPapaSesion(ps => ({
+        ...ps,
         ...form,
         ...fmt
-      });
+      }));
       setEditoTarjeta(true);
       setSeccion('home');
     },
@@ -26220,7 +26353,8 @@ function InvPortada({
   sucursales,
   tematicas,
   iaConfig,
-  volverInv
+  volverInv,
+  dbFresco = true
 }) {
   const ev = eventos.find(e => e.id === invEvId) || eventos[0] || {};
   const suc = sucursales.find(s => s.id === (ev || {}).sucId) || sucursales[0] || {};
@@ -26346,7 +26480,7 @@ function InvPortada({
       fontWeight: 800,
       cursor: 'pointer'
     }
-  }, "✕ Cerrar"), ev && ev.videoUrl && ev.usarVideo !== false && /*#__PURE__*/React.createElement("video", {
+  }, "✕ Cerrar"), dbFresco && ev && ev.videoUrl && ev.usarVideo !== false && /*#__PURE__*/React.createElement("video", {
     src: ev.videoUrl,
     preload: "auto",
     muted: true,
@@ -26485,7 +26619,8 @@ function InvWeb({
   confs,
   setConfs,
   iaConfig,
-  volverInv
+  volverInv,
+  dbFresco = true
 }) {
   const T = iaConfig && iaConfig.txtTarjeta || {};
   const ev = eventos.find(e => e.id === invEvId) || eventos[0] || {};
@@ -26504,7 +26639,7 @@ function InvWeb({
   // cada tipo usa SU imagen y nada más. La que ella sube en "Festejo fin de
   // curso" sale únicamente en las tarjetas de ese tipo.
   const _tipoImg = _tipoCfgP.imagen || '';
-  const _portCalc = ev && ev.portadaSrc || _tipoImg || _temMatch && _temMatch.img || '';
+  const _portCalc = portadaDe(ev, tematicas, iaConfig); // mismo criterio en toda la app (ver portadaDe)
   const [portada, setPortadaSticky] = useState(_portCalc);
   React.useEffect(() => {
     if (_portCalc) setPortadaSticky(_portCalc);
@@ -26528,7 +26663,13 @@ function InvWeb({
   // Música de cualquier tipo-escuela de esta sucursal (fallback si el tipo exacto no tiene).
   const _musEscFallback = (iaConfig && iaConfig.tiposEvento || []).filter(t => t && t.escuela).map(t => (suc && suc.musicaTipo || {})[t.nombre]).filter(Boolean)[0] || '';
   const musTrack = _esEscuelaEv ? ev && ev.albumMusica || _tipoMus || _musEscFallback || tem && tem.musica || _genMus : ev && ev.albumMusica || tem && tem.musica || _tipoMus || _genMus;
-  const esVideoPortada = !!(ev && ev.videoUrl && ev.usarVideo !== false);
+  // 🎬 EL VIDEO ESPERA AL DATO DE LA BASE. La tarjeta se dibuja al toque con la
+  // copia guardada en el celular (para que abra rápido) y recién después llega la
+  // fresca. Con el video eso se notaba feo: arrancaba el VIEJO y a los segundos
+  // saltaba al nuevo, como si el teléfono lo tuviera en memoria (Lili 19/11/2026).
+  // Hasta que llega el dato bueno se muestra la foto de portada, y el video
+  // aparece ya con el que corresponde.
+  const esVideoPortada = !!(dbFresco && ev && ev.videoUrl && ev.usarVideo !== false);
   const [musOn, setMusOn] = useState(false);
   const [videoFin, setVideoFin] = useState(false); // el video de portada terminó
   const musRef = React.useRef(null);
@@ -26895,7 +27036,8 @@ function InvWeb({
       overflow: 'hidden',
       background: '#0f172a'
     }
-  }, ev && ev.videoUrl && ev.usarVideo !== false ? vidPlay ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("video", {
+  }, dbFresco && ev && ev.videoUrl && ev.usarVideo !== false ? vidPlay ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("video", {
+    key: ev.videoUrl,
     ref: vidRef,
     src: ev.videoUrl,
     poster: portada || tem && tem.img || '',
@@ -27343,7 +27485,7 @@ function InvWeb({
       color: '#888',
       marginTop: 2
     }
-  }, lbl)))))), ev && ev.videoUrl && ev.usarVideo !== false && portada && /*#__PURE__*/React.createElement("div", {
+  }, lbl)))))), dbFresco && ev && ev.videoUrl && ev.usarVideo !== false && portada && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '14px 16px',
       borderTop: '1px solid #f0f0f0'

@@ -243,6 +243,19 @@ function abrirWA(phone, text){
     window.open('https://wa.me/'+p+(t?('?text='+t):''),'_blank');
   }
 }
+// 🖼️ LA PORTADA QUE REALMENTE SALE EN LA TARJETA, en un solo lugar: la que se
+// eligió → la PREDETERMINADA del tipo de festejo → la de la temática.
+// Estaba escrita en tres lados y en dos faltaba la predeterminada del tipo, así
+// que la vista previa del panel del papá y el JPG que se comparte mostraban otra
+// imagen distinta a la de la tarjeta: en las escuelas, que no tienen foto propia,
+// se veía la temática en vez de la de fin de curso (Lili 19/11/2026).
+function portadaDe(ev, tematicas, iaConfig){
+  if(!ev) return '';
+  if(ev.portadaSrc) return ev.portadaSrc;
+  const t=(((iaConfig&&iaConfig.tiposEvento)||[]).find(x=>x&&x.nombre===(ev.tipo||''))||{});
+  if(t.imagen) return t.imagen;
+  return ((((tematicas||[]).find(x=>x&&x.id===ev.temId))||{}).img)||'';
+}
 // Devuelve el formato de tarjeta (mostrar edad, título, dirigido) según el tipo de evento
 function fmtTipo(tipo, iaConfig){
   const t=((iaConfig&&iaConfig.tiposEvento)||[]).find(x=>x.nombre===tipo);
@@ -322,6 +335,15 @@ let _ADMIN_SAVED=null;
 try{const s=localStorage.getItem('fz_admin_sesion');if(s)_ADMIN_SAVED=JSON.parse(s);}catch(e){}
 let _PAPA_SAVED=null;
 try{const raw=localStorage.getItem('fz_papa_sesion');if(raw){const o=JSON.parse(raw);if(o&&o.ev&&o.t&&(Date.now()-o.t<24*3600*1000)&&!estaVencido(o.ev))_PAPA_SAVED=o.ev;}}catch(e){}
+// ¿La sesión guardada en ESTE aparato es la de ESTE link del papá? Entonces se sigue
+// adentro y no hay que poner la clave otra vez (Lili 19/11/2026: "cada vez que
+// actualizo se sale y debo volver a ingresar datos"). Antes, con ?papa=<evento> en la
+// dirección, la sesión guardada se descartaba SIEMPRE y cada recarga era un login nuevo;
+// sin ese parámetro, en cambio, sí se restauraba. Se restaura solo si es el MISMO evento:
+// el link por sí solo nunca abre sesión (eso sigue pidiendo la clave).
+const _PAPA_SAVED_OK = !!(_PAPA_SAVED && (!_PAPA_PARAM
+  || String(_PAPA_SAVED.id) === String(_PAPA_PARAM)
+  || (_PAPA_DATA && String(_PAPA_SAVED.id) === String(_PAPA_DATA.id))));
 // Último panel en el que estuvo (admin o papa) para volver al mismo al recargar
 let _ULTIMO_MODO=null;
 try{_ULTIMO_MODO=localStorage.getItem('fz_ultimo_modo');}catch(e){}
@@ -352,7 +374,7 @@ const _AUTO_VISTA = (_ULTIMO_MODO==='admin'&&_ADMIN_SAVED) ? 'admin-dashboard'
 const INIT_VISTA = _REC_PARAM ? 'recuerdos'
   : (_INV_PARAM ? (_PASE_PARAM ? 'pase' : 'invitado-portada')
   : (_PAPA_DATA ? 'papa-creador'
-  : (_PAPA_PARAM ? 'papa-login'
+  : (_PAPA_PARAM ? (_PAPA_SAVED_OK ? 'papa-creador' : 'papa-login')
   : _AUTO_VISTA)));
 
 // Recuerda a qué sección del panel del papá volver al cerrar la tarjeta (y si ya vio la tarjeta)
@@ -389,7 +411,7 @@ function generarTarjetaImagen(ev, suc, tematicas, iaConfig, accion){
   const nombre=ev.nombre||'';
   const col=(suc&&suc.color)||'#7c3aed';
   const F=fmtTipo(ev.tipo,iaConfig);
-  const portadaImg=ev.portadaSrc||((((tematicas||[]).find(t=>t.id===ev.temId))||{}).img)||'';
+  const portadaImg=portadaDe(ev,tematicas,iaConfig);
   function dibujar(imgEl){
     const canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;const ctx=canvas.getContext('2d');
     ctx.fillStyle='#0f172a';ctx.fillRect(0,0,W,H);
@@ -486,7 +508,7 @@ function App() {
 
   const [adminSesion, setAdminSesion] = useState(_ADMIN_SAVED);
   const [sucActId,    setSucActId]    = useState('sz-1');
-  const [papaSesion,  setPapaSesion]  = useState(_PAPA_DATA || (!_PAPA_PARAM ? _PAPA_SAVED : null));
+  const [papaSesion,  setPapaSesion]  = useState(_PAPA_DATA || (_PAPA_SAVED_OK ? _PAPA_SAVED : null));
   const [papaAviso,   setPapaAviso]   = useState('');
 
   const [invEvId,     setInvEvId]     = useState(INIT_INV_ID);
@@ -561,8 +583,11 @@ function App() {
       }catch(e){}
       // 1) Links de invitación/papá: traer SOLO ese evento primero (rápido) y mostrar ya
       const quickId=_INV_PARAM||_PAPA_PARAM||_REC_PARAM;
-      if(_PAPA_PARAM && !_PAPA_DATA){
+      if(_PAPA_PARAM && !_PAPA_DATA && !_PAPA_SAVED_OK){
         // Papá por link: ahora entra con su contraseña (la base ya no es pública). Lo mandamos al login.
+        // PERO si en ESTE aparato ya hay sesión abierta de ESTE mismo evento (puso la clave
+        // hace menos de 24 h), no se lo echa: recargar la página dejaba de servir y había que
+        // poner todo de nuevo (Lili 19/11/2026).
         setVista('papa-login'); setDbReady(true);
       } else if(quickId){
         // Invitado / Recuerdos: leer SOLO lo público (sin datos personales) por el portero
@@ -575,12 +600,13 @@ function App() {
           // decía 19/9 21:30 (Paulina, 15/09). Lo público viene sanitizado
           // (sin clave ni teléfonos), así que se mezcla sobre la local para
           // no perder esos campos si los tenía.
-          if(ev){ setEventos(prev=>prev.some(e=>e.id===ev.id)?prev.map(e=>e.id===ev.id?Object.assign({},e,ev):e):[ev,...prev]); setDbReady(true); }
+          if(ev){ _marcarDeLaBase([ev]); setEventos(prev=>prev.some(e=>e.id===ev.id)?prev.map(e=>e.id===ev.id?Object.assign({},e,ev):e):[ev,...prev]); setDbReady(true); }
         }catch(e){}
       }
       // 2) Cargar el resto (puede tardar por imágenes guardadas) sin bloquear la pantalla
       const d=await sbLoadAll();
       if(d){
+        _marcarDeLaBase(d.eventos);
         setEventos(prev=>{
           const ids=new Set(d.eventos.map(e=>e.id));
           const extra=prev.filter(e=>!ids.has(e.id) && ((_INV_EV_DATA&&e.id===_INV_EV_DATA.id)||(_PAPA_DATA&&e.id===_PAPA_DATA.id)||e.id===quickId));
@@ -641,6 +667,7 @@ function App() {
     const t=setTimeout(async()=>{
       const d=await sbLoadAll();
       if(d){
+        _marcarDeLaBase(d.eventos);
         setEventos(prev=>{ const ids=new Set(d.eventos.map(e=>e.id)); const extra=prev.filter(e=>!ids.has(e.id)); return [...d.eventos,...extra]; });
         setConfs(d.confs);
         setFullLoaded(true); setCargaFallo(false);
@@ -659,6 +686,18 @@ function App() {
   // eso era lo que volteaba la base a cada rato. React reemplaza el objeto del
   // evento tocado y deja los demás idénticos, así que se comparan por identidad.
   const _evPrevRef = React.useRef(null);
+  // 🚫 LO QUE ACABA DE BAJAR DE LA BASE NO SE VUELVE A SUBIR (Lili 19/11/2026:
+  // "me sale un cartel rojo que me dice que no se actualizó cuando abro la
+  // tarjeta"). Al abrir un link de tarjeta estando con sesión de dueña, primero
+  // se carga ESE evento y después la tabla entera; como la carga completa
+  // reemplaza TODOS los objetos, la comparación por identidad los veía a los 512
+  // como "cambiados" y los re-subía de a uno. Eran ~512 escrituras por cada vez
+  // que abría una tarjeta, y bastaba que una fallara para el cartel rojo.
+  // Acá se anota la referencia de cada evento tal como vino de la base: si es
+  // esa misma, no se sube. Apenas ella lo edita, React crea un objeto nuevo y
+  // vuelve a guardarse normalmente.
+  const _evBaseRef = React.useRef({});
+  function _marcarDeLaBase(arr){ try{ const m=_evBaseRef.current; (arr||[]).forEach(function(e){ if(e&&e.id) m[e.id]=e; }); }catch(e){} }
   // OJO: el PAPÁ nunca tiene fullLoaded (sbLoadAll solo carga con sesión de dueña/encargada
   // desde la auditoría 18/08) → sin el "||papaSesion" sus cambios (foto, pack de IA, imágenes
   // generadas, encuesta) quedaban SOLO en el celular y se perdían al recargar (visto 9/9 con
@@ -669,7 +708,13 @@ function App() {
       const prev=_evPrevRef.current;
       if(prev===null){ _evPrevRef.current=eventos; return; } // la carga inicial no se re-sube
       const prevById={}; prev.forEach(function(e){ if(e&&e.id) prevById[e.id]=e; });
-      const cambiados=eventos.filter(function(e){ return e&&e.id&&prevById[e.id]!==e; });
+      const _base=_evBaseRef.current;
+      const cambiados=eventos.filter(function(e){
+        if(!(e&&e.id)) return false;
+        if(_base[e.id]===e) return false;            // tal cual bajó de la base: no se re-sube
+        if(_base[e.id]) delete _base[e.id];          // ya se tocó: la copia vieja no sirve más
+        return prevById[e.id]!==e;
+      });
       cambiados.forEach(sbUpsertEvento);
       _evPrevRef.current=eventos;
     }
@@ -694,7 +739,23 @@ function App() {
   // Recordar sesión del admin/encargada en este dispositivo (no pedir contraseña cada vez)
   React.useEffect(()=>{try{if(adminSesion)localStorage.setItem('fz_admin_sesion',JSON.stringify(adminSesion));else localStorage.removeItem('fz_admin_sesion');}catch(e){}},[adminSesion]);
   // Recordar sesión del papá por 24hs
-  React.useEffect(()=>{try{if(papaSesion)localStorage.setItem('fz_papa_sesion',JSON.stringify({ev:papaSesion,t:Date.now()}));else localStorage.removeItem('fz_papa_sesion');}catch(e){}},[papaSesion]);
+  // La sesión del papá se guarda en el aparato. Si no entra (una foto pegada en
+  // base64 llena el cajón del navegador), se vuelve a intentar SIN las fotos: lo
+  // pesado se baja de la base igual al entrar. Antes fallaba en silencio y la
+  // próxima recarga lo echaba al login.
+  React.useEffect(()=>{
+    try{
+      if(!papaSesion){ localStorage.removeItem('fz_papa_sesion'); return; }
+      try{ localStorage.setItem('fz_papa_sesion',JSON.stringify({ev:papaSesion,t:Date.now()})); }
+      catch(e){
+        const liv={}; Object.keys(papaSesion).forEach(function(k){ const v=papaSesion[k];
+          if(typeof v==='string'&&v.length>1500) return;                                  // foto/video pegado
+          if(Array.isArray(v)&&v.some(function(x){return typeof x==='string'&&x.length>1500;})) return;
+          liv[k]=v; });
+        try{ localStorage.setItem('fz_papa_sesion',JSON.stringify({ev:liv,t:Date.now()})); }catch(e2){}
+      }
+    }catch(e){}
+  },[papaSesion]);
   // Recordar el último panel usado (admin/papa) para volver al mismo al recargar
   React.useEffect(()=>{try{if(vista&&vista.indexOf('admin')===0)localStorage.setItem('fz_ultimo_modo','admin');else if(vista&&vista.indexOf('papa')===0)localStorage.setItem('fz_ultimo_modo','papa');}catch(e){}},[vista]);
   // 🔇 Cuando el invitado sale de la tarjeta (toca CUALQUIER botón que abre otra
@@ -893,8 +954,8 @@ function App() {
         {vista==='admin-descargables'&& esSA && <AdminDescargables setVista={setVista} iaConfig={iaConfig} setIaConfig={setIaConfig}/>}
         {vista==='papa-login'        && <PapaLogin      setVista={setVista} eventos={eventos} setPapaSesion={setPapaSesion} setInvEvId={setInvEvId} setConfs={setConfs} aviso={papaAviso} adminSesion={adminSesion} sucAct={sucAct}/>}
         {vista==='papa-creador'      && papaSesion&&<PapaCreador key={papaSesion.id} setVista={setVista} papaSesion={papaSesion} setPapaSesion={setPapaSesion} eventos={eventos} setEventos={setEventos} tematicas={tematicas} sucursales={sucursales} setInvEvId={setInvEvId} iaConfig={iaConfig} confs={confs} setConfs={setConfs} pedidos={pedidos} setPedidos={setPedidos}/>}
-        {vista==='invitado-portada'  && <InvPortada    setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))} esInvPortada={true}/>}
-        {vista==='invitado-web'      && <InvWeb        setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))}/>}
+        {vista==='invitado-portada'  && <InvPortada    dbFresco={dbReady} setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))} esInvPortada={true}/>}
+        {vista==='invitado-web'      && <InvWeb        dbFresco={dbReady} setVista={setVista} eventos={eventos} invEvId={invEvId} setInvEvId={setInvEvId} sucursales={sucursales} tematicas={tematicas} confs={confs} setConfs={setConfs} iaConfig={iaConfig} volverInv={_INV_PARAM?null:(adminSesion?'admin-eventos':(papaSesion?'papa-creador':null))}/>}
         {vista==='pase'              && <PaseView      setVista={setVista} eventos={eventos} invEvId={invEvId} sucursales={sucursales} iaConfig={iaConfig} confs={confs} setConfs={setConfs} paseId={_PASE_PARAM}/>}
         {vista==='recuerdos'         && <InvRecuerdos  setVista={setVista} eventos={eventos} invEvId={invEvId} sucursales={sucursales} tematicas={tematicas} volverInv={(_REC_PARAM)?null:(papaSesion?'papa-creador':(adminSesion?'admin-eventos':null))}/>}
       </main>
@@ -1576,7 +1637,19 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
     window.scrollTo(0,0);
   }
   function copiarLink(id){const ev=(eventos||[]).find(e=>e&&e.id===id)||{};navigator.clipboard && navigator.clipboard.writeText(window.location.href.split('?')[0]+'?inv='+id+'&p=2'+_selloFecha(ev));alert('¡Enlace copiado!');}
-  function compartirLinkInv(ev){const link=window.location.href.split('?')[0]+'?inv='+ev.id+'&p=2'+_selloFecha(ev);const txt='Tenés una invitación de '+ev.nombre+' 🎉\n\nAbrí la invitación:\n'+link;abrirWA('', txt);}
+  // 📲 MANDAR LA TARJETA POR WHATSAPP, AL NÚMERO QUE YA TIENE LA TARJETA.
+  // Antes abría WhatsApp SIN destinatario y había que copiar el link y pegarlo a
+  // mano (Lili 19/11/2026, mandando las tarjetas de fin de curso a las maestras).
+  // Si la tarjeta tiene cargado el celular de la mamá/maestra, va derecho a ella.
+  function compartirLinkInv(ev){
+    const link=window.location.href.split('?')[0]+'?inv='+ev.id+'&p=2'+_selloFecha(ev);
+    const tel=waNum(ev.celPapa||'');
+    const quien=String(ev.nomPapa||'').trim().split(/\s+/)[0]||'';
+    const txt = tel
+      ? ((quien?('¡Hola '+quien+'! 👋\n\n'):'')+'Acá está la tarjeta de invitación de '+ev.nombre+' 🎉\n\nAbrila y compartila con quien quieras:\n'+link)
+      : ('Tenés una invitación de '+ev.nombre+' 🎉\n\nAbrí la invitación:\n'+link);
+    abrirWA(tel, txt);
+  }
 
   // ¿Cuándo se creó la tarjeta? (marca 'creado' o la fecha codificada en el id)
   const evCreadoMs=ev=>{ if(ev&&ev.creado) return ev.creado; const m=String((ev&&ev.id)||'').match(/^ev-([0-9a-f]+)$/); return m?parseInt(m[1],16):0; };
@@ -1646,8 +1719,9 @@ function AdminEventos({setVista,sucAct,evsLocal,eventos,setEventos,tematicas,set
         {!small&&<button onClick={()=>enviarCredsWA(ev)} style={{background:'#16a34a',color:'white',border:'none',padding:'7px',fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #15803d'}}>🔑 Enviar acceso a papá</button>}
         {!small&&<button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>🎁 Ver Invitación</button>}
         {!small&&esSA&&setPapaSesion&&<button onClick={()=>{setPapaSesion({...ev,optinWA:true});setVista('papa-creador');}} style={{background:'#0f172a',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer'}}>👨‍👦 Entrar como papá (sin contraseña)</button>}
-        {!small&&<button onClick={()=>compartirLinkInv(ev)} style={{background:'#25d366',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #1ebe57'}}>🔗 Compartir link (abre solo la tarjeta)</button>}
+        {!small&&<button onClick={()=>compartirLinkInv(ev)} style={{background:'#25d366',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #1ebe57'}}>{ev.celPapa?('📲 Mandarle la tarjeta a '+(String(ev.nomPapa||'').trim().split(/\s+/)[0]||'su WhatsApp')):'🔗 Compartir link (abre solo la tarjeta)'}</button>}
         {!small&&<button onClick={()=>generarTarjetaImagen(ev,sucAct,tematicas,iaConfig,'compartir')} style={{background:'#0ea5e9',color:'white',border:'none',padding:9,fontWeight:700,fontSize:11,cursor:'pointer',borderTop:'1px solid #0284c7'}}>📷 Compartir tarjeta (imagen, sin link)</button>}
+        {small&&<button onClick={()=>compartirLinkInv(ev)} style={{background:'#25d366',color:'white',border:'none',padding:7,fontWeight:700,fontSize:10,cursor:'pointer'}}>{ev.celPapa?'📲 Mandar la tarjeta':'🔗 Compartir link'}</button>}
         {small&&<button onClick={()=>{setInvEvId(ev.id);setVista('invitado-portada');}} style={{background:'#7c3aed',color:'white',border:'none',padding:7,fontWeight:700,fontSize:10,cursor:'pointer'}}>🎁 Ver invitación</button>}
       </div>
     );
@@ -2702,13 +2776,23 @@ function AdminDescargables({setVista,iaConfig,setIaConfig}){
 function AdminFormatos({setVista,iaConfig,setIaConfig}){
   const [tipos,setTipos]=useState(()=>(iaConfig.tiposEvento&&iaConfig.tiposEvento.length)?iaConfig.tiposEvento:[]);
   const [msg,setMsg]=useState('');
-  function upd(i,k,v){setTipos(ts=>ts.map((t,idx)=>idx===i?{...t,[k]:v}:t));}
-  function quitar(i){setTipos(ts=>ts.filter((_,idx)=>idx!==i));}
-  function agregar(){setTipos(ts=>[...ts,{id:'tipo-'+Math.floor(Math.random()*1e6),nombre:'Nuevo evento',edad:false,titulo:'¡Te esperamos!',dirigido:''}]);}
+  // Si la config termina de bajar de la base DESPUÉS de abrir esta pantalla, la
+  // lista de acá se quedaba con la vieja; y al tocar "Guardar formatos" escribía
+  // esa vieja encima de la buena. Mientras no se haya tocado nada, se pone al día.
+  const tocado=React.useRef(false);
+  React.useEffect(()=>{
+    if(tocado.current) return;
+    const t=(iaConfig&&iaConfig.tiposEvento)||[];
+    if(t.length) setTipos(t);
+  },[iaConfig&&iaConfig.tiposEvento]);
+  function upd(i,k,v){tocado.current=true;setTipos(ts=>ts.map((t,idx)=>idx===i?{...t,[k]:v}:t));}
+  function quitar(i){tocado.current=true;setTipos(ts=>ts.filter((_,idx)=>idx!==i));}
+  function agregar(){tocado.current=true;setTipos(ts=>[...ts,{id:'tipo-'+Math.floor(Math.random()*1e6),nombre:'Nuevo evento',edad:false,titulo:'¡Te esperamos!',dirigido:''}]);}
   // 🖼️ Imagen predeterminada de la tarjeta para ESTE tipo. Guarda la URL en t.imagen
   // y PERSISTE sola (sin tener que acordarse de "Guardar formatos"). Nunca guarda la
   // imagen pesada (data URL) en la config: si la subida falla, avisa y no guarda nada.
   async function setImg(i,u){
+    tocado.current=true;
     const nt=tipos.map((t,idx)=>idx===i?{...t,imagen:u}:t);
     setTipos(nt);
     try{ await gwCall('upsertConfig',{id:'__config_ia__',data:{...iaConfig,tiposEvento:nt}}); setIaConfig({...iaConfig,tiposEvento:nt}); return true; }
@@ -2721,8 +2805,10 @@ function AdminFormatos({setVista,iaConfig,setIaConfig}){
       if(!u){ setMsg('⚠️ No se pudo subir la imagen. Probá de nuevo o con una más liviana.'); return; }
       const ok=await setImg(i,u);
       setMsg(ok?'✓ Imagen guardada':'⚠️ Imagen subida pero no se pudo guardar. Tocá “Guardar formatos”.');
+      if(ok) flashOk('✓ Imagen predeterminada guardada');
+      else alert('⚠️ La imagen se subió pero no se pudo guardar. Tocá “Guardar formatos”.');
       setTimeout(()=>setMsg(''),ok?2800:5000);
-    }catch(e){setMsg('⚠️ No se pudo subir la imagen.');}
+    }catch(e){setMsg('⚠️ No se pudo subir la imagen.');alert('⚠️ No se pudo subir la imagen.');}
   }
   async function guardar(){
     const nuevo={...iaConfig,tiposEvento:tipos};
@@ -2733,9 +2819,14 @@ function AdminFormatos({setVista,iaConfig,setIaConfig}){
       await gwCall('upsertConfig',{id:'__config_ia__',data:nuevo});
       setIaConfig(nuevo);
       setMsg('✓ Formatos guardados');
+      // El cartel de arriba queda fuera de la pantalla: el botón está al final de
+      // la lista. Por eso el aviso va TAMBIÉN flotando, que se ve siempre
+      // (Lili 19/11/2026: "no funciona el botón de guardar" — sí guardaba).
+      flashOk('✓ Formatos guardados');
       setTimeout(()=>setMsg(''),3000);
     }catch(e){
       setMsg('⚠️ No se pudo guardar. Revisá tu conexión e intentá de nuevo (no cierres la pestaña).');
+      alert('⚠️ No se pudo guardar. Revisá tu conexión e intentá de nuevo (no cierres la pestaña).');
     }
   }
   return(
@@ -2791,6 +2882,7 @@ function AdminFormatos({setVista,iaConfig,setIaConfig}){
         </div>
       ))}
 
+      {msg&&<div style={{background:msg[0]==='✓'?'#f0fdf4':'#fef2f2',border:'1px solid '+(msg[0]==='✓'?'#bbf7d0':'#fecaca'),color:msg[0]==='✓'?'#166534':'#b91c1c',padding:'10px 14px',borderRadius:12,fontSize:13,marginBottom:12,fontWeight:700}}>{msg}</div>}
       <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
         <button onClick={agregar} style={{...S.btn,background:'#f1f5f9',color:'#1e293b'}}>+ Agregar tipo</button>
         <button onClick={guardar} style={{...S.btn,background:'linear-gradient(135deg,#ec4899,#db2777)',color:'white',padding:'12px 28px'}}>✓ Guardar formatos</button>
@@ -4682,7 +4774,13 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
 
 /* ── PAPA CREADOR ────────────────────────────────────────── */
 function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,tematicas,sucursales,setInvEvId,iaConfig,confs,setConfs,pedidos,setPedidos}){
-  const [form,setForm]=useState({nombre:papaSesion.nombre,tipo:papaSesion.tipo||'Cumpleaños',edad:papaSesion.edad,celPapa:papaSesion.celPapa,temId:papaSesion.temId||'t-3',fotoNino:papaSesion.fotoNino||'',fotoMejorada:papaSesion.fotoMejorada||'',usarMejorada:papaSesion.usarMejorada!==false,usarFoto:!!papaSesion.usarFoto,portadaSrc:papaSesion.portadaSrc||'',iaImagenes:papaSesion.iaImagenes||[],iaImagenSel:(papaSesion.iaImagenSel!=null?papaSesion.iaImagenSel:null),fotoNinoIA:papaSesion.fotoNinoIA||'',personajeIA:papaSesion.personajeIA||'',iaVideos:[],iaVideoSel:null,fotoNinoIAV:'',personajeIAV:'',album:papaSesion.album||[],albumFraseIni:papaSesion.albumFraseIni||'',albumFraseFin:papaSesion.albumFraseFin||'',albumMusica:papaSesion.albumMusica||'',albumPortada:papaSesion.albumPortada||'',albumFinal:papaSesion.albumFinal||'',albumPortadaColor:papaSesion.albumPortadaColor||'',albumFinalColor:papaSesion.albumFinalColor||''});
+  // 🎬 OJO: acá NO van iaVideos / iaVideoSel / fotoNinoIAV / personajeIAV. El form
+  // se vuelca entero sobre el evento ({...papaSesion,...form}) cada vez que se
+  // guarda o se mira la tarjeta, así que arrancarlos vacíos BORRABA la lista de
+  // videos recién generados: la galería se quedaba con uno solo y el video nuevo
+  // no se podía elegir (Lili 19/11/2026: "seleccionó el nuevo video y no se
+  // actualiza, sigue el mismo"). Ningún lado los lee desde el form.
+  const [form,setForm]=useState({nombre:papaSesion.nombre,tipo:papaSesion.tipo||'Cumpleaños',edad:papaSesion.edad,celPapa:papaSesion.celPapa,temId:papaSesion.temId||'t-3',fotoNino:papaSesion.fotoNino||'',fotoMejorada:papaSesion.fotoMejorada||'',usarMejorada:papaSesion.usarMejorada!==false,usarFoto:!!papaSesion.usarFoto,portadaSrc:papaSesion.portadaSrc||'',iaImagenes:papaSesion.iaImagenes||[],iaImagenSel:(papaSesion.iaImagenSel!=null?papaSesion.iaImagenSel:null),fotoNinoIA:papaSesion.fotoNinoIA||'',personajeIA:papaSesion.personajeIA||'',album:papaSesion.album||[],albumFraseIni:papaSesion.albumFraseIni||'',albumFraseFin:papaSesion.albumFraseFin||'',albumMusica:papaSesion.albumMusica||'',albumPortada:papaSesion.albumPortada||'',albumFinal:papaSesion.albumFinal||'',albumPortadaColor:papaSesion.albumPortadaColor||'',albumFinalColor:papaSesion.albumFinalColor||''});
   const [ftxt,setFtxt]=useState('');const [fcat,setFcat]=useState('TODOS');
   // 🔒 Candado del CONTRATO: al entrar, le pregunta EN VIVO al software si el
   // contrato de esta reserva está firmado. Si NO, tapa toda la app hasta que firme.
@@ -4732,7 +4830,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const [verEjemploVid,setVerEjemploVid]=useState(false); // reproductor del video de ejemplo
   const [verEjemploImg,setVerEjemploImg]=useState(false); // visor de la imagen de ejemplo
   const [editPanel,setEditPanel]=useState(_PAPA_NAV.editPanel||null); // null=inicio (cuadraditos) | 'datos' | 'tematica' | 'foto'
-  function guardarYVolver(){const fmt=fmtTipo(form.tipo,iaConfig);const n={...papaSesion,...form,...fmt};setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion(n);_guardarPapaYa(n);setEditPanel(null);flashOk('✓ ¡Guardado!');}
+  function guardarYVolver(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(evs=>evs.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion(ps=>{const n={...ps,...form,...fmt};_guardarPapaYa(n);return n;});setEditPanel(null);flashOk('✓ ¡Guardado!');}
   // Qué versión va en la tarjeta (y se comparte): 'foto' | 'tematica' | 'ia'
   const portadaTipo=(papaSesion&&papaSesion.portadaTipo)||(form.usarFoto?'foto':(((form.iaImagenes||[]).indexOf(form.portadaSrc)>=0)?'ia':'tematica'));
   function elegirPortada(tipo){
@@ -5005,7 +5103,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   const tFilt=ordenarRecientes(tematicas.filter(t=>t.nombre.toLowerCase().includes(ftxt.toLowerCase())&&(fcat==='TODOS'||t.cats.includes(fcat))));
   const cssFilter=`brightness(${mejora.brillo}%) contrast(${mejora.contraste}%) saturate(${mejora.saturacion}%) sepia(${mejora.calidez}%)`;
   const fotoElegida=(form.usarMejorada&&form.fotoMejorada)?form.fotoMejorada:form.fotoNino;
-  const portadaImg=form.portadaSrc||temA.img||'';
+  const portadaImg=portadaDe({portadaSrc:form.portadaSrc,tipo:form.tipo,temId:form.temId},tematicas,iaConfig)||temA.img||'';
   const esDoble=papaSesion.doble&&papaSesion.nombre2;
   const confsEv=(confs||[]).filter(c=>c.evId===papaSesion.id);
   const conPaseLista=!!(tienePase(papaSesion,iaConfig)&&confsEv.some(c=>+c.nro>0)); // columna 🎟️ solo en cumples con pase
@@ -5056,11 +5154,11 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     }catch(e){}
     setSubiendoAlbum(false);
   }
-  function guardarAlbum(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});flashOk('✓ ¡Recuerdo guardado!');}
+  function guardarAlbum(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(evs=>evs.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion(ps=>({...ps,...form,...fmt}));flashOk('✓ ¡Recuerdo guardado!');}
   // Ver el recuerdo (página propia) — guarda primero
-  function verRecuerdo(){_PAPA_NAV={seccion:'album'};const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('recuerdos');}
+  function verRecuerdo(){_PAPA_NAV={seccion:'album'};const fmt=fmtTipo(form.tipo,iaConfig);setEventos(evs=>evs.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion(ps=>({...ps,...form,...fmt}));setInvEvId(papaSesion.id);setVista('recuerdos');}
   // Compartir el recuerdo por WhatsApp (link propio ?rec=, aparte de la invitación)
-  function compartirRecuerdo(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});const link=window.location.href.split('?')[0]+'?rec='+papaSesion.id;const nom=form.nombre||papaSesion.nombre;const msg='📸✨ ¡Te comparto los recuerdos del cumple de '+nom+'! Mirá las fotos 👉 '+link;abrirWA('', msg);}
+  function compartirRecuerdo(){const fmt=fmtTipo(form.tipo,iaConfig);setEventos(evs=>evs.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion(ps=>({...ps,...form,...fmt}));const link=window.location.href.split('?')[0]+'?rec='+papaSesion.id;const nom=form.nombre||papaSesion.nombre;const msg='📸✨ ¡Te comparto los recuerdos del cumple de '+nom+'! Mirá las fotos 👉 '+link;abrirWA('', msg);}
   const [pdfGen,setPdfGen]=useState(false);
   // Descargar las fotos del recuerdo como ÁLBUM PDF (hojas A4 horizontales para imprimir)
   async function descargarAlbumPDF(){
@@ -5105,8 +5203,8 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     setVidGen(false);
   }
   function aplicarMejora(){if(!form.fotoNino)return;const canvas=canvasRef.current;const img=new Image();if(/^https?:/.test(form.fotoNino))img.crossOrigin='anonymous';/* la foto ahora vive en Storage (es un link): sin esto el canvas queda "sucio" y toDataURL explota */img.onload=()=>{canvas.width=img.width;canvas.height=img.height;const ctx=canvas.getContext('2d');ctx.filter=cssFilter;ctx.drawImage(img,0,0);setForm(x=>({...x,fotoMejorada:canvas.toDataURL('image/jpeg',0.95)}));setMejora(m=>({...m,aplicado:true}));};img.src=form.fotoNino;}
-  function guardar(e){e.preventDefault();const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvGuardada(true);alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');}
-  function verTarjeta(opts){_PAPA_NAV=opts||{seccion:'home'};const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setInvEvId(papaSesion.id);setVista('invitado-portada');}
+  function guardar(e){e.preventDefault();const fmt=fmtTipo(form.tipo,iaConfig);setEventos(evs=>evs.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion(ps=>({...ps,...form,...fmt}));setInvGuardada(true);alert('¡Invitación guardada! Los recursos exclusivos ya están disponibles.');}
+  function verTarjeta(opts){_PAPA_NAV=opts||{seccion:'home'};const fmt=fmtTipo(form.tipo,iaConfig);setEventos(evs=>evs.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion(ps=>({...ps,...form,...fmt}));setInvEvId(papaSesion.id);setVista('invitado-portada');}
   function borrarIaImg(i){
     const arr=(form.iaImagenes||[]).filter((_,idx)=>idx!==i);
     let sel=form.iaImagenSel;
@@ -5511,7 +5609,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
                   <div style={{marginTop:4}}><PrecioConPromo precio={iaConfig.precioImagen||0} antes={iaConfig.precioImagenAntes} fontSize={12} color="#0ea5e9" prefijo="Con costo: "/></div>
                 </div>
               </button>
-              <button onClick={()=>{const fmt=fmtTipo(form.tipo,iaConfig);setEventos(eventos.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion({...papaSesion,...form,...fmt});setEditoTarjeta(true);setSeccion('home');}} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'16px',fontSize:16,fontWeight:900,marginTop:18,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Listo, enviar tu tarjeta</button>
+              <button onClick={()=>{const fmt=fmtTipo(form.tipo,iaConfig);setEventos(evs=>evs.map(x=>x.id===papaSesion.id?{...x,...form,...fmt}:x));setPapaSesion(ps=>({...ps,...form,...fmt}));setEditoTarjeta(true);setSeccion('home');}} style={{...S.btn,width:'100%',background:'#16a34a',color:'white',padding:'16px',fontSize:16,fontWeight:900,marginTop:18,boxShadow:'0 4px 14px rgba(22,163,74,.35)'}}>✓ Listo, enviar tu tarjeta</button>
             </div>
           )}
           <div style={{display:editPanel==='datos'?'flex':'none',flexDirection:'column',gap:16}}>
@@ -6743,7 +6841,7 @@ function PaseView({setVista,eventos,invEvId,sucursales,iaConfig,confs,setConfs,p
   );
 }
 
-function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volverInv}){
+function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volverInv,dbFresco=true}){
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0]||{};
   const suc=sucursales.find(s=>s.id===(ev||{}).sucId)||sucursales[0]||{};
   const col=suc.color||'#f97316';
@@ -6795,7 +6893,7 @@ function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volv
   return(
     <div style={{minHeight:'100vh',background:col,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,textAlign:'center',position:'relative',overflow:'hidden'}}>
       {volverInv&&<button onClick={()=>setVista(volverInv)} style={{position:'fixed',top:12,left:12,zIndex:20,background:'rgba(0,0,0,.55)',color:'white',border:'none',borderRadius:99,padding:'8px 14px',fontSize:13,fontWeight:800,cursor:'pointer'}}>✕ Cerrar</button>}
-      {ev&&ev.videoUrl&&(ev.usarVideo!==false)&&<video src={ev.videoUrl} preload="auto" muted playsInline style={{position:'absolute',width:1,height:1,opacity:0,pointerEvents:'none'}}></video>}
+      {dbFresco&&ev&&ev.videoUrl&&(ev.usarVideo!==false)&&<video src={ev.videoUrl} preload="auto" muted playsInline style={{position:'absolute',width:1,height:1,opacity:0,pointerEvents:'none'}}></video>}
       {temImg&&<div style={{position:'absolute',inset:0,backgroundImage:'url('+temImg+')',backgroundSize:'cover',backgroundPosition:'center',filter:'blur(22px)',transform:'scale(1.18)'}}></div>}
       <div style={{position:'absolute',inset:0,background:col,opacity:temImg?0.8:1}}></div>
       <div id="confetti-container" style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:0}}></div>
@@ -6816,7 +6914,7 @@ function InvPortada({setVista,eventos,invEvId,sucursales,tematicas,iaConfig,volv
 }
 
 /* ── INVITADO WEB ─────────────────────────────────────────── */
-function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,iaConfig,volverInv}){
+function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,iaConfig,volverInv,dbFresco=true}){
   const T=(iaConfig&&iaConfig.txtTarjeta)||{};
   const ev=eventos.find(e=>e.id===invEvId)||eventos[0]||{};
   const suc=sucursales.find(s=>s.id===(ev||{}).sucId)||sucursales[0]||{};
@@ -6834,7 +6932,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   // cada tipo usa SU imagen y nada más. La que ella sube en "Festejo fin de
   // curso" sale únicamente en las tarjetas de ese tipo.
   const _tipoImg=_tipoCfgP.imagen||'';
-  const _portCalc=(ev&&ev.portadaSrc)||_tipoImg||(_temMatch&&_temMatch.img)||'';
+  const _portCalc=portadaDe(ev,tematicas,iaConfig);   // mismo criterio en toda la app (ver portadaDe)
   const [portada,setPortadaSticky]=useState(_portCalc);
   React.useEffect(()=>{ if(_portCalc) setPortadaSticky(_portCalc); },[_portCalc]);
   const [vidMuted,setVidMuted]=useState(true); // el video de portada arranca mudo (los celus no dejan audio automático)
@@ -6858,7 +6956,13 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
   const musTrack=_esEscuelaEv
     ? ((ev&&ev.albumMusica)||_tipoMus||_musEscFallback||(tem&&tem.musica)||_genMus)
     : ((ev&&ev.albumMusica)||(tem&&tem.musica)||_tipoMus||_genMus);
-  const esVideoPortada=!!(ev&&ev.videoUrl&&ev.usarVideo!==false);
+  // 🎬 EL VIDEO ESPERA AL DATO DE LA BASE. La tarjeta se dibuja al toque con la
+  // copia guardada en el celular (para que abra rápido) y recién después llega la
+  // fresca. Con el video eso se notaba feo: arrancaba el VIEJO y a los segundos
+  // saltaba al nuevo, como si el teléfono lo tuviera en memoria (Lili 19/11/2026).
+  // Hasta que llega el dato bueno se muestra la foto de portada, y el video
+  // aparece ya con el que corresponde.
+  const esVideoPortada=!!(dbFresco&&ev&&ev.videoUrl&&ev.usarVideo!==false);
   const [musOn,setMusOn]=useState(false);
   const [videoFin,setVideoFin]=useState(false); // el video de portada terminó
   const musRef=React.useRef(null);
@@ -7037,10 +7141,10 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
 
       {/* 1. PORTADA: si hay video del personaje, va el VIDEO (mudo + tocá para escuchar); si no, la imagen */}
       <div style={{position:'relative',width:'100%',aspectRatio:'4/5',maxHeight:'58vh',overflow:'hidden',background:'#0f172a'}}>
-        {ev&&ev.videoUrl&&(ev.usarVideo!==false)?(
+        {dbFresco&&ev&&ev.videoUrl&&(ev.usarVideo!==false)?(
           vidPlay?(
             <React.Fragment>
-              <video ref={vidRef} src={ev.videoUrl} poster={portada||(tem&&tem.img)||''} playsInline onPlaying={()=>setVidReady(true)} onEnded={()=>{setVideoFin(true);setVidPausado(false);const el=musRef.current;if(el&&musTrack){el.volume=0.4;var pr=el.play();if(pr&&pr.catch)pr.catch(function(){});setMusOn(true);}}} onClick={(e)=>{e.stopPropagation();e.preventDefault();const v=e.currentTarget;v.muted=false;setVidMuted(false);try{v.currentTime=0;}catch(_){}const p=v.play();if(p&&p.catch)p.catch(function(){});setVidPausado(false);const m=musRef.current;if(m&&!m.paused)m.volume=0.12;}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:8)+'%',display:'block',cursor:'pointer'}}></video>
+              <video key={ev.videoUrl} ref={vidRef} src={ev.videoUrl} poster={portada||(tem&&tem.img)||''} playsInline onPlaying={()=>setVidReady(true)} onEnded={()=>{setVideoFin(true);setVidPausado(false);const el=musRef.current;if(el&&musTrack){el.volume=0.4;var pr=el.play();if(pr&&pr.catch)pr.catch(function(){});setMusOn(true);}}} onClick={(e)=>{e.stopPropagation();e.preventDefault();const v=e.currentTarget;v.muted=false;setVidMuted(false);try{v.currentTime=0;}catch(_){}const p=v.play();if(p&&p.catch)p.catch(function(){});setVidPausado(false);const m=musRef.current;if(m&&!m.paused)m.volume=0.12;}} style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:8)+'%',display:'block',cursor:'pointer'}}></video>
               <img src={portada||(tem&&tem.img)||''} alt="" aria-hidden="true" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'center '+((ev&&typeof ev.videoPos==='number')?ev.videoPos:8)+'%',opacity:vidReady?0:1,transition:'opacity .35s ease',pointerEvents:'none',zIndex:2}}/>
               {!videoFin&&<button onClick={(e)=>{e.stopPropagation();const v=vidRef.current;if(!v)return;if(v.paused){var p=v.play();if(p&&p.catch)p.catch(function(){});setVidPausado(false);}else{v.pause();setVidPausado(true);}}} title={vidPausado?'Reanudar':'Pausar'} style={{position:'absolute',bottom:10,right:12,background:'rgba(0,0,0,.62)',color:'white',border:'none',borderRadius:99,width:42,height:42,fontSize:18,cursor:'pointer',zIndex:4,boxShadow:'0 3px 10px rgba(0,0,0,.4)',display:'flex',alignItems:'center',justifyContent:'center'}}>{vidPausado?'▶️':'⏸️'}</button>}
               {!videoFin&&vidMuted&&<div style={{position:'absolute',left:'50%',bottom:18,transform:'translateX(-50%)',zIndex:4}}><button onClick={(e)=>{e.stopPropagation();const v=vidRef.current;if(!v)return;v.muted=false;setVidMuted(false);try{v.currentTime=0;}catch(_){}var p=v.play();if(p&&p.catch)p.catch(function(){});const m=musRef.current;if(m&&!m.paused)m.volume=0.12;}} style={{background:'#e11d48',color:'white',border:'none',borderRadius:99,padding:'13px 26px',fontSize:15,fontWeight:900,cursor:'pointer',boxShadow:'0 6px 22px rgba(225,29,72,.55)',display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap',animation:'pulse 0.9s ease-in-out infinite alternate'}}>🔊 Tocá para escuchar</button></div>}
@@ -7126,7 +7230,7 @@ function InvWeb({setVista,eventos,invEvId,sucursales,tematicas,confs,setConfs,ia
       </div>
 
       {/* 7b. FOTO con IA (cuando arriba va el video, la imagen del personaje con el niño aparece acá al desplazar) */}
-      {ev&&ev.videoUrl&&(ev.usarVideo!==false)&&portada&&(
+      {dbFresco&&ev&&ev.videoUrl&&(ev.usarVideo!==false)&&portada&&(
         <div style={{padding:'14px 16px',borderTop:'1px solid #f0f0f0'}}>
           <p style={{color:col,fontSize:16,fontWeight:900,textAlign:'center',margin:'0 0 8px'}}>📸 ¡Mirá la foto!</p>
           <img src={portada} alt="" style={{width:'100%',borderRadius:14,display:'block'}}/>
