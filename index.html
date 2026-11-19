@@ -26369,10 +26369,14 @@ function InvWeb({
   // por tipo"). Si la tarjeta no tiene su propia foto, usa esta. Para escuelas, si el
   // nombre del tipo no coincide exacto, usa la de cualquier tipo-escuela de la sucursal.
   const _tipoCfgP = (iaConfig && iaConfig.tiposEvento || []).find(t => t && t.nombre === (ev && ev.tipo)) || {};
-  const _tipoImgExact = _tipoCfgP.imagen || '';
-  const _esEscuelaEvP = !!_tipoCfgP.escuela || /escuela|jard[ií]n|fin de (a[ñn]o|curso)|d[ií]a del ni/i.test(ev && ev.tipo || '');
-  const _imgEscFallback = (iaConfig && iaConfig.tiposEvento || []).filter(t => t && t.escuela).map(t => t.imagen).filter(Boolean)[0] || '';
-  const _tipoImg = _tipoImgExact || (_esEscuelaEvP ? _imgEscFallback : '');
+  // ⛔ SIN HERENCIA ENTRE TIPOS (Lili 19/11/2026: "fijate que esa imagen que he
+  // puesto como predeterminada sólo esté predeterminada en la parte de escuela,
+  // despedida de fin de año"). Antes, si el tipo del evento no tenía imagen
+  // propia pero el nombre olía a escuela —o el tipo estaba tildado como escuela—
+  // se usaba la imagen de CUALQUIER otro tipo-escuela. Esa herencia se saca:
+  // cada tipo usa SU imagen y nada más. La que ella sube en "Festejo fin de
+  // curso" sale únicamente en las tarjetas de ese tipo.
+  const _tipoImg = _tipoCfgP.imagen || '';
   const _portCalc = ev && ev.portadaSrc || _tipoImg || _temMatch && _temMatch.img || '';
   const [portada, setPortadaSticky] = useState(_portCalc);
   React.useEffect(() => {
