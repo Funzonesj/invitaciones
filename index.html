@@ -190,6 +190,21 @@ async function sbUpsertEvento(ev) {
     }
   }
 }
+// 🔴 EL PAPÁ GUARDA EN LA BASE AL INSTANTE (Lili 19/11/2026: generó las imágenes
+// con IA en la tarjeta de Felicitas y la tarjeta quedó SIN ellas, tres veces
+// seguidas; al compartir seguía saliendo la foto vieja).
+// El autoguardado general mira la tabla `eventos` y sube los que cambiaron,
+// pero en la sesión del PAPÁ esa tabla no siempre tiene su evento (sbLoadAll
+// sólo carga con sesión de dueña/encargada desde la auditoría del 18/08), así
+// que el cambio se quedaba en el celular y se perdía al recargar. Ya había
+// pasado con el "acepté las reglas" (26/08) y se arregló igual: guardar a mano
+// sin confiar en el autoguardado. Si no llega, salta el cartel rojo de
+// _guardadoFallo, que es lo que importa: que no falle en silencio.
+function _guardarPapaYa(ev) {
+  try {
+    sbUpsertEvento(ev);
+  } catch (e) {}
+}
 async function sbDeleteEvento(id) {
   if (!id) return;
   if (await gwPing()) {
@@ -18119,16 +18134,18 @@ function PapaCreador({
   const [editPanel, setEditPanel] = useState(_PAPA_NAV.editPanel || null); // null=inicio (cuadraditos) | 'datos' | 'tematica' | 'foto'
   function guardarYVolver() {
     const fmt = fmtTipo(form.tipo, iaConfig);
+    const n = {
+      ...papaSesion,
+      ...form,
+      ...fmt
+    };
     setEventos(eventos.map(x => x.id === papaSesion.id ? {
       ...x,
       ...form,
       ...fmt
     } : x));
-    setPapaSesion({
-      ...papaSesion,
-      ...form,
-      ...fmt
-    });
+    setPapaSesion(n);
+    _guardarPapaYa(n);
     setEditPanel(null);
     flashOk('✓ ¡Guardado!');
   }
@@ -21423,6 +21440,7 @@ function PapaCreador({
           iaImagenSel: null,
           portadaSrc: ''
         } : e));
+        _guardarPapaYa(n);
         return n;
       });
     },
@@ -21471,6 +21489,7 @@ function PapaCreador({
           videoUrl: v,
           usarVideo: true
         } : e));
+        _guardarPapaYa(n);
         return n;
       });
     },
@@ -23884,6 +23903,7 @@ function PapaCreador({
             portadaSrc: nuevoSrc,
             iaGenCount: n.iaGenCount
           } : e));
+          _guardarPapaYa(n);
           return n;
         }); /* Las imágenes ya están listas: cerramos el generador y volvemos a la galería (el video se ofrece como cartel debajo, al elegir la imagen) */
         setGenActivo(null);
@@ -23911,6 +23931,7 @@ function PapaCreador({
             videoPagado: true,
             usarVideo: true
           } : e));
+          _guardarPapaYa(n);
           return n;
         });
         setGenActivo(null);
