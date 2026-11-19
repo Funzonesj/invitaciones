@@ -4422,16 +4422,34 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
           const mA=modelA||'fal-ai/nano-banana/edit';
           const mB=modelB||'fal-ai/nano-banana/edit';
           const lista=[];for(let i=0;i<n;i++)lista.push(i<nA?{p:composedA,m:mA}:{p:composedB,m:mB});
+          // 🔑 LA REFERENCIA DEL PAGO SE PIDE AL SERVIDOR JUSTO ANTES DE GENERAR.
+          //
+          // `pagoRef` viene de la sesión guardada en el teléfono, y esa copia
+          // puede estar vieja o equivocada: si lo está, las 6 llamadas se
+          // rechazan de una y la mamá ve "No se pudo generar ninguna imagen"
+          // con el pack pago y sin usar (Lili 19/11/2026, la mamá de
+          // Felicitas). Preguntando acá, en el momento, se usa SIEMPRE la
+          // referencia que el servidor tiene como pagada.
+          //
+          // Si la consulta falla (sin internet un segundo), se sigue con la del
+          // teléfono: peor es no intentar.
+          let refUsar=pagoRef;
+          try{ const dref=await gwCall('miPagoIA',{evId:evId}); if(dref&&dref.ok&&dref.ref) refUsar=dref.ref; }catch(e){}
+          // 📣 EL MOTIVO DE VERDAD, EN LA PANTALLA. El cartel decía siempre
+          // "probá de nuevo" y se tragaba lo que contestaba el servidor, así
+          // que ni la mamá ni nosotros sabíamos qué había pasado. Se guarda el
+          // primer error real para mostrarlo abajo.
+          let motivoFalla='';
           // Generar todas en paralelo, tolerando fallos individuales
           const calls=lista.map(it=>fetch('/api/generar-catalogo',{
             method:'POST',headers:{'Content-Type':'application/json'},
-            // evId+pagoRef: el servidor comprueba el pago antes de gastar crédito
-            body:JSON.stringify({prompt:it.p,images:[fotoNino,personaje],model:it.m,aspect_ratio:'9:16',evId:evId,ref:pagoRef})
-          }).then(async r=>{const d=await r.json().catch(()=>({}));if(!cancel){setHechas(h=>h+1);if(r.ok&&d.url)setImgsLive(prev=>[...prev,d.url]);}return (r.ok&&d.url)?d.url:null;}).catch(()=>{if(!cancel)setHechas(h=>h+1);return null;}));
+            // evId+referencia: el servidor comprueba el pago antes de gastar crédito
+            body:JSON.stringify({prompt:it.p,images:[fotoNino,personaje],model:it.m,aspect_ratio:'9:16',evId:evId,ref:refUsar})
+          }).then(async r=>{const d=await r.json().catch(()=>({}));if(!r.ok&&d&&d.error&&!motivoFalla)motivoFalla=String(d.error);if(!cancel){setHechas(h=>h+1);if(r.ok&&d.url)setImgsLive(prev=>[...prev,d.url]);}return (r.ok&&d.url)?d.url:null;}).catch(()=>{if(!cancel)setHechas(h=>h+1);return null;}));
           const settled=await Promise.all(calls);
           if(cancel)return;
           const urls=settled.filter(Boolean);
-          if(!urls.length) throw new Error('No se pudo generar ninguna imagen. Probá de nuevo.');
+          if(!urls.length) throw new Error(motivoFalla?('No se pudo generar ninguna imagen: '+motivoFalla):'No se pudo generar ninguna imagen. Probá de nuevo.');
           // Listo: enviamos las imágenes directo a la galería (sin pantalla intermedia)
           setProgreso(100);onResultado(urls);
         } else {
@@ -4716,14 +4734,33 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   // que ya estaba pago con cupos disponibles (pasó el 9/9 con la tarjeta de prueba).
   React.useEffect(()=>{
     if(!papaSesion||!papaSesion.id) return;
-    if(papaSesion.iaRef&&((papaSesion.iaPagadas||0)>((papaSesion.iaGenCount)||0))) return; // ya tiene su pack a mano
+    // ⚠️ ACÁ HABÍA UN ATAJO QUE ROMPÍA LA GENERACIÓN (Lili 19/11/2026).
+    //
+    // Decía: "si el celular ya tiene una referencia y las cuentas le cierran,
+    // no preguntes nada". El problema es que una referencia GUARDADA puede
+    // estar equivocada —quedó de un intento de pago que no llegó a Mercado
+    // Pago, o de otra tarjeta—, y entonces la app no preguntaba NUNCA y seguía
+    // mandando esa referencia mala para siempre. El servidor no la reconocía
+    // como pagada y contestaba "primero hay que abonar", que en la pantalla de
+    // la mamá se ve como "No se pudo generar ninguna imagen".
+    //
+    // Le pasó a la mamá de Felicitas (27/11, Fun Zone): tenía el pack de 6
+    // pagado y sin usar, el servidor generaba perfecto, y ella no podía.
+    // Además el celular mostraba "te quedan 6" cuando el servidor decía 5.
+    //
+    // Ahora se pregunta SIEMPRE y manda el servidor, que es el único que sabe
+    // qué se pagó y cuánto se usó. Es una consulta chica y una sola vez al
+    // entrar.
     let vivo=true;
     (async()=>{
       try{
         if(!(await gwPing())) return;
         const d=await gwCall('miPagoIA',{evId:papaSesion.id});
         if(!vivo||!d||!d.ok||!d.ref) return;
-        setPapaSesion(ps=>{const n={...ps,iaRef:d.ref,iaPagadas:Math.max((ps&&ps.iaPagadas)||0,d.total||0),iaGenCount:Math.max((ps&&ps.iaGenCount)||0,d.usados||0),videoFreeDisponible:((ps&&ps.videoFreeDisponible)||!d.videoRegaloUsado)};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaRef:n.iaRef,iaPagadas:n.iaPagadas,iaGenCount:n.iaGenCount,videoFreeDisponible:n.videoFreeDisponible}:e));return n;});
+        // El servidor GANA: referencia, pagadas y usadas salen de él. Antes se
+        // hacía Math.max con lo del celular, así que un contador viejo del
+        // teléfono le ganaba al de verdad y la pantalla mentía.
+        setPapaSesion(ps=>{const n={...ps,iaRef:d.ref,iaPagadas:(d.total||0),iaGenCount:(d.usados||0),videoFreeDisponible:!d.videoRegaloUsado};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaRef:n.iaRef,iaPagadas:n.iaPagadas,iaGenCount:n.iaGenCount,videoFreeDisponible:n.videoFreeDisponible}:e));return n;});
       }catch(e){}
     })();
     return()=>{vivo=false;};
