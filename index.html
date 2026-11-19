@@ -15969,6 +15969,7 @@ function IAUploadSection({
   personajeNombre = '',
   restantesIA,
   diag = '',
+  onSubirPropia,
   onVerTarjeta,
   onBorrar,
   videoUrl = '',
@@ -16043,6 +16044,19 @@ function IAUploadSection({
   const [catTem, setCatTem] = useState('TODOS');
   const [zoom, setZoom] = useState(null); // imagen ampliada (se abre al tocar)
   const [aviso, setAviso] = useState(tipo === 'imagen' && (resultados || []).length === 0); // pop-up informativo solo al entrar sin imágenes
+  // 📤 SUBIR UNA IMAGEN YA HECHA (Lili 19/11/2026: "tendría que poder subir yo la
+  // foto del niño con el personaje y a ese hacerle video"). Entra a la galería
+  // como una más: se puede elegir para la tarjeta y sirve de base para el video.
+  // NO gasta ninguna imagen del pack, porque no la generó la IA: es de ella.
+  const propiaRef = useRef();
+  function onPickPropia(e) {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    resizeImg(f, 1024, data => {
+      if (onSubirPropia) onSubirPropia(data);
+    });
+    e.target.value = '';
+  }
   const [fabClosed, setFabClosed] = useState(false); // botón flotante de video cerrado
   const listo = fotoNino && personaje;
   // Personajes disponibles para el papá: los del Catálogo IA (si hay), si no todos
@@ -16554,7 +16568,39 @@ function IAUploadSection({
       color: listo ? 'white' : '#94a3b8',
       cursor: listo ? 'pointer' : 'not-allowed'
     }
-  }, !listo ? !fotoNino && !personaje ? '⬆️ Subí la foto del niño/a y elegí un personaje' : !fotoNino ? '⬆️ Subí la foto del niño/a' : '👉 Elegí un personaje del catálogo' : tipo === 'imagen' ? restantesIA > 0 ? '✨ Generar mis ' + restantesIA + ' imágenes' : '💳 Pagar pack de 6 y generar' : '💳 Pagar y Generar con IA')), resultados.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, !listo ? !fotoNino && !personaje ? '⬆️ Subí la foto del niño/a y elegí un personaje' : !fotoNino ? '⬆️ Subí la foto del niño/a' : '👉 Elegí un personaje del catálogo' : tipo === 'imagen' ? restantesIA > 0 ? '✨ Generar mis ' + restantesIA + ' imágenes' : '💳 Pagar pack de 6 y generar' : '💳 Pagar y Generar con IA')), tipo === 'imagen' && onSubirPropia && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    ref: propiaRef,
+    type: "file",
+    accept: "image/*",
+    style: {
+      display: 'none'
+    },
+    onChange: onPickPropia
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => propiaRef.current && propiaRef.current.click(),
+    style: {
+      ...S.btn,
+      width: '100%',
+      background: '#f8fafc',
+      color: '#334155',
+      border: '1px dashed #94a3b8',
+      fontSize: 13,
+      fontWeight: 900,
+      padding: '12px'
+    }
+  }, "📤 Subir mi propia imagen (ya hecha)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: '#94a3b8',
+      marginTop: 4,
+      textAlign: 'center',
+      lineHeight: 1.4
+    }
+  }, "Si ya tenés la foto del nene/a con el personaje, subila acá: entra a la galería, la podés poner en la tarjeta y hacerle el video. ", /*#__PURE__*/React.createElement("b", null, "No gasta ninguna imagen de tu pack."))), resultados.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "fade-in"
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -21496,6 +21542,34 @@ function PapaCreador({
     personajeNombre: (tematicas.find(t => t.img === form.personajeIA) || {}).nombre || '',
     restantesIA: restantesIA,
     diag: imgDiag,
+    onSubirPropia: data => {
+      if (!data) return;
+      const merged = [data, ...(form.iaImagenes || [])];
+      setForm(f => ({
+        ...f,
+        iaImagenes: merged,
+        iaImagenSel: 0,
+        usarFoto: false,
+        portadaSrc: data
+      }));
+      setPapaSesion(ps => {
+        const n = {
+          ...ps,
+          iaImagenes: merged,
+          iaImagenSel: 0,
+          portadaSrc: data
+        };
+        setEventos(evs => evs.map(e => e.id === n.id ? {
+          ...e,
+          iaImagenes: merged,
+          iaImagenSel: 0,
+          portadaSrc: data
+        } : e));
+        _guardarPapaYa(n);
+        return n;
+      });
+      setImgDiag('');
+    },
     onVerTarjeta: () => verTarjeta({
       seccion: 'tarjeta',
       modo: 'ia-imagen',
@@ -21529,12 +21603,13 @@ function PapaCreador({
     },
     onPedir: () => setPedirOpen(true),
     onGenerarVideo: () => {
-      if (!form.personajeIA) {
-        alert('Primero elegí el personaje.');
+      /* Con una imagen YA elegida (generada o subida por ella) el video sale de esa imagen: no hace falta el personaje del catálogo. */const _base = (form.iaImagenes || [])[form.iaImagenSel != null ? form.iaImagenSel : 0] || form.portadaSrc;
+      if (!_base && !form.personajeIA) {
+        alert('Primero elegí el personaje, o subí tu propia imagen.');
         return;
       }
       genVideoPagadoRef.current = true;
-      setVideoStartImg((form.iaImagenes || [])[form.iaImagenSel != null ? form.iaImagenSel : 0] || form.portadaSrc);
+      setVideoStartImg(_base);
       setGenActivo('video');
     }
   }))), seccion === 'confirmaciones' && /*#__PURE__*/React.createElement("div", {

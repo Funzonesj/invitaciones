@@ -4008,7 +4008,7 @@ function PrecioConPromo({precio,antes,fontSize,color,prefijo,align}){
     </span>
   );
 }
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,diag='',onVerTarjeta,onBorrar,videoUrl='',usarVideo=true,setUsarVideo,onGenerarVideo,videoFreeOk=false,iaVideos=[],onUsarVideo,onPedir,onVolverPanel,packIA=6,precioAntes=0}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,diag='',onSubirPropia,onVerTarjeta,onBorrar,videoUrl='',usarVideo=true,setUsarVideo,onGenerarVideo,videoFreeOk=false,iaVideos=[],onUsarVideo,onPedir,onVolverPanel,packIA=6,precioAntes=0}){
   const fotoRef=useRef();
   const persRef=useRef();
   function guardarFoto(src){
@@ -4043,6 +4043,12 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
   const [catTem,setCatTem]=useState('TODOS');
   const [zoom,setZoom]=useState(null); // imagen ampliada (se abre al tocar)
   const [aviso,setAviso]=useState(tipo==='imagen'&&(resultados||[]).length===0); // pop-up informativo solo al entrar sin imágenes
+  // 📤 SUBIR UNA IMAGEN YA HECHA (Lili 19/11/2026: "tendría que poder subir yo la
+  // foto del niño con el personaje y a ese hacerle video"). Entra a la galería
+  // como una más: se puede elegir para la tarjeta y sirve de base para el video.
+  // NO gasta ninguna imagen del pack, porque no la generó la IA: es de ella.
+  const propiaRef=useRef();
+  function onPickPropia(e){const f=e.target.files&&e.target.files[0];if(!f)return;resizeImg(f,1024,data=>{if(onSubirPropia)onSubirPropia(data);});e.target.value='';}
   const [fabClosed,setFabClosed]=useState(false); // botón flotante de video cerrado
   const listo=fotoNino&&personaje;
   // Personajes disponibles para el papá: los del Catálogo IA (si hay), si no todos
@@ -4207,6 +4213,15 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
               :'💳 Pagar y Generar con IA')}
         </button>
       </div>
+
+      {/* 📤 Subir una imagen YA HECHA, propia. No gasta nada del pack. */}
+      {tipo==='imagen'&&onSubirPropia&&(
+        <div style={{marginBottom:14}}>
+          <input ref={propiaRef} type="file" accept="image/*" style={{display:'none'}} onChange={onPickPropia}/>
+          <button onClick={()=>propiaRef.current&&propiaRef.current.click()} style={{...S.btn,width:'100%',background:'#f8fafc',color:'#334155',border:'1px dashed #94a3b8',fontSize:13,fontWeight:900,padding:'12px'}}>📤 Subir mi propia imagen (ya hecha)</button>
+          <div style={{fontSize:10.5,color:'#94a3b8',marginTop:4,textAlign:'center',lineHeight:1.4}}>Si ya tenés la foto del nene/a con el personaje, subila acá: entra a la galería, la podés poner en la tarjeta y hacerle el video. <b>No gasta ninguna imagen de tu pack.</b></div>
+        </div>
+      )}
 
       {/* Resultados: galería de imágenes generadas (se acumulan abajo) */}
       {resultados.length>0&&(
@@ -5657,7 +5672,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" packIA={PACK_IA} precio={iaConfig.precioImagen} precioAntes={iaConfig.precioImagenAntes} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));_guardarPapaYa(n);return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} diag={imgDiag} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v,usarVideo:true}:e));_guardarPapaYa(n);return n;});}} onVolverPanel={()=>{guardarYVolver();setModoPortada('tematica');}} onPedir={()=>setPedirOpen(true)} onGenerarVideo={()=>{if(!form.personajeIA){alert('Primero elegí el personaje.');return;}genVideoPagadoRef.current=true;setVideoStartImg((form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc);setGenActivo('video');}}/>
+              <IAUploadSection tipo="imagen" packIA={PACK_IA} precio={iaConfig.precioImagen} precioAntes={iaConfig.precioImagenAntes} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));_guardarPapaYa(n);return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} diag={imgDiag} onSubirPropia={(data)=>{if(!data)return;const merged=[data,...(form.iaImagenes||[])];setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:data}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:data};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:data}:e));_guardarPapaYa(n);return n;});setImgDiag('');}} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v,usarVideo:true}:e));_guardarPapaYa(n);return n;});}} onVolverPanel={()=>{guardarYVolver();setModoPortada('tematica');}} onPedir={()=>setPedirOpen(true)} onGenerarVideo={()=>{/* Con una imagen YA elegida (generada o subida por ella) el video sale de esa imagen: no hace falta el personaje del catálogo. */const _base=(form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc;if(!_base&&!form.personajeIA){alert('Primero elegí el personaje, o subí tu propia imagen.');return;}genVideoPagadoRef.current=true;setVideoStartImg(_base);setGenActivo('video');}}/>
             )}
           </div>
         </div>
