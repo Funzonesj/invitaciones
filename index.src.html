@@ -4100,7 +4100,7 @@ function PrecioConPromo({precio,antes,fontSize,color,prefijo,align}){
     </span>
   );
 }
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,diag='',onSubirPropia,onVerTarjeta,onBorrar,videoUrl='',usarVideo=true,setUsarVideo,onGenerarVideo,videoFreeOk=false,iaVideos=[],onUsarVideo,onPedir,onVolverPanel,packIA=6,precioAntes=0}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,diag='',onSubirPropia,onVerTarjeta,onBorrar,videoUrl='',usarVideo=true,setUsarVideo,onGenerarVideo,videoFreeOk=false,iaVideos=[],onUsarVideo,onBorrarVideo,onPedir,onVolverPanel,packIA=6,precioAntes=0}){
   const fotoRef=useRef();
   const persRef=useRef();
   function guardarFoto(src){
@@ -4326,7 +4326,11 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
             <div style={{marginBottom:14,background:'#faf5ff',border:'1px solid #e9d5ff',borderRadius:14,padding:12}}>
               <div style={{fontWeight:900,fontSize:13,color:'#6b21a8',marginBottom:8,textAlign:'center'}}>🎬 {(((iaVideos&&iaVideos.length)||1)>1)?'Tus videos — elegí cuál usar':'Tu video del personaje'}</div>
               {(((iaVideos&&iaVideos.length)?iaVideos:[videoUrl]).filter(Boolean)).map((v,i)=>{const sel=(v===videoUrl);return(
-                <div key={i} style={{marginBottom:10,border:sel?'3px solid #7c3aed':'2px solid #e2e8f0',borderRadius:12,overflow:'hidden'}}>
+                <div key={v} style={{position:'relative',marginBottom:10,border:sel?'3px solid #7c3aed':'2px solid #e2e8f0',borderRadius:12,overflow:'hidden'}}>
+                  {/* 🗑 Borrar este video (Lili 19/11/2026: "dejame el tachito para yo borrar"). */}
+                  {onBorrarVideo&&(
+                    <button onClick={e=>{e.stopPropagation();if(window.confirm('¿Borrar este video? No se puede deshacer.'))onBorrarVideo(v);}} title="Borrar este video" style={{position:'absolute',top:8,left:8,background:'rgba(220,38,38,.92)',color:'white',border:'none',borderRadius:'50%',width:30,height:30,fontSize:15,cursor:'pointer',zIndex:3,boxShadow:'0 2px 6px rgba(0,0,0,.35)'}}>🗑</button>
+                  )}
                   <video src={v} controls playsInline style={{width:'100%',background:'#000',maxHeight:'55vh',display:'block'}}></video>
                   <div onClick={()=>onUsarVideo&&onUsarVideo(v)} style={{padding:'6px',textAlign:'center',fontSize:11,fontWeight:800,background:sel?'#7c3aed':'#f8fafc',color:sel?'white':'#64748b',cursor:'pointer'}}>{sel?'✓ Este va en la tarjeta':'👆 Tocá para elegir este'}</div>
                   <button onClick={()=>guardarFoto(v)} style={{...S.btn,width:'100%',background:'#e2e8f0',color:'#334155',padding:'8px',fontSize:12,fontWeight:800,borderRadius:0}}>⬇️ Descargar este video</button>
@@ -5214,6 +5218,26 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
     setForm(f=>({...f,iaImagenes:arr,iaImagenSel:sel,portadaSrc:src}));
     setPapaSesion(ps=>{const n={...ps,iaImagenes:arr,iaImagenSel:sel,portadaSrc:src};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:arr,iaImagenSel:sel,portadaSrc:src}:e));return n;});
   }
+  // 🗑 BORRAR UN VIDEO de la galería (Lili 19/11/2026: "dejame el tachito para yo
+  // borrar"). Si se borra el que estaba puesto en la tarjeta, queda el primero de
+  // los que sobran; si no sobra ninguno, la tarjeta vuelve a mostrar la foto.
+  function borrarIaVideo(v){
+    const prev=((papaSesion&&papaSesion.iaVideos&&papaSesion.iaVideos.length)
+      ? papaSesion.iaVideos
+      : ((papaSesion&&papaSesion.videoUrl)?[papaSesion.videoUrl]:[]));
+    const arr=prev.filter(x=>x&&x!==v);
+    const eraElPuesto=((papaSesion&&papaSesion.videoUrl)===v);
+    const sel=eraElPuesto?(arr[0]||''):((papaSesion&&papaSesion.videoUrl)||'');
+    if(eraElPuesto&&!arr.length){ try{ setVideoUrl(''); }catch(e){} }
+    setPapaSesion(ps=>{
+      const uv=sel?(ps.usarVideo!==false):false;
+      const n={...ps,iaVideos:arr,videoUrl:sel,usarVideo:uv};
+      setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaVideos:arr,videoUrl:sel,usarVideo:uv}:e));
+      _guardarPapaYa(n);
+      return n;
+    });
+    flashOk('🗑 Video borrado');
+  }
   function tarjetaImagen(accion){
     const W=540,H=960;
     const meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -5770,7 +5794,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" packIA={PACK_IA} precio={iaConfig.precioImagen} precioAntes={iaConfig.precioImagenAntes} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));_guardarPapaYa(n);return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} diag={imgDiag} onSubirPropia={(data)=>{if(!data)return;const merged=[data,...(form.iaImagenes||[])];setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:data}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:data};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:data}:e));_guardarPapaYa(n);return n;});setImgDiag('');}} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v,usarVideo:true}:e));_guardarPapaYa(n);return n;});}} onVolverPanel={()=>{guardarYVolver();setModoPortada('tematica');}} onPedir={()=>setPedirOpen(true)} onGenerarVideo={()=>{/* Con una imagen YA elegida (generada o subida por ella) el video sale de esa imagen: no hace falta el personaje del catálogo. */const _base=(form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc;if(!_base&&!form.personajeIA){alert('Primero elegí el personaje, o subí tu propia imagen.');return;}genVideoPagadoRef.current=true;setVideoStartImg(_base);setGenActivo('video');}}/>
+              <IAUploadSection tipo="imagen" packIA={PACK_IA} precio={iaConfig.precioImagen} precioAntes={iaConfig.precioImagenAntes} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));_guardarPapaYa(n);return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} diag={imgDiag} onSubirPropia={(data)=>{if(!data)return;const merged=[data,...(form.iaImagenes||[])];setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:data}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:data};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:data}:e));_guardarPapaYa(n);return n;});setImgDiag('');}} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v,usarVideo:true}:e));_guardarPapaYa(n);return n;});}} onBorrarVideo={borrarIaVideo} onVolverPanel={()=>{guardarYVolver();setModoPortada('tematica');}} onPedir={()=>setPedirOpen(true)} onGenerarVideo={()=>{/* Con una imagen YA elegida (generada o subida por ella) el video sale de esa imagen: no hace falta el personaje del catálogo. */const _base=(form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc;if(!_base&&!form.personajeIA){alert('Primero elegí el personaje, o subí tu propia imagen.');return;}genVideoPagadoRef.current=true;setVideoStartImg(_base);setGenActivo('video');}}/>
             )}
           </div>
         </div>

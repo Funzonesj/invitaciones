@@ -16104,6 +16104,7 @@ function IAUploadSection({
   videoFreeOk = false,
   iaVideos = [],
   onUsarVideo,
+  onBorrarVideo,
   onPedir,
   onVolverPanel,
   packIA = 6,
@@ -16767,14 +16768,36 @@ function IAUploadSection({
   }, "🎬 ", (iaVideos && iaVideos.length || 1) > 1 ? 'Tus videos — elegí cuál usar' : 'Tu video del personaje'), (iaVideos && iaVideos.length ? iaVideos : [videoUrl]).filter(Boolean).map((v, i) => {
     const sel = v === videoUrl;
     return /*#__PURE__*/React.createElement("div", {
-      key: i,
+      key: v,
       style: {
+        position: 'relative',
         marginBottom: 10,
         border: sel ? '3px solid #7c3aed' : '2px solid #e2e8f0',
         borderRadius: 12,
         overflow: 'hidden'
       }
-    }, /*#__PURE__*/React.createElement("video", {
+    }, onBorrarVideo && /*#__PURE__*/React.createElement("button", {
+      onClick: e => {
+        e.stopPropagation();
+        if (window.confirm('¿Borrar este video? No se puede deshacer.')) onBorrarVideo(v);
+      },
+      title: "Borrar este video",
+      style: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        background: 'rgba(220,38,38,.92)',
+        color: 'white',
+        border: 'none',
+        borderRadius: '50%',
+        width: 30,
+        height: 30,
+        fontSize: 15,
+        cursor: 'pointer',
+        zIndex: 3,
+        boxShadow: '0 2px 6px rgba(0,0,0,.35)'
+      }
+    }, "🗑"), /*#__PURE__*/React.createElement("video", {
       src: v,
       controls: true,
       playsInline: true,
@@ -19364,6 +19387,38 @@ function PapaCreador({
       return n;
     });
   }
+  // 🗑 BORRAR UN VIDEO de la galería (Lili 19/11/2026: "dejame el tachito para yo
+  // borrar"). Si se borra el que estaba puesto en la tarjeta, queda el primero de
+  // los que sobran; si no sobra ninguno, la tarjeta vuelve a mostrar la foto.
+  function borrarIaVideo(v) {
+    const prev = papaSesion && papaSesion.iaVideos && papaSesion.iaVideos.length ? papaSesion.iaVideos : papaSesion && papaSesion.videoUrl ? [papaSesion.videoUrl] : [];
+    const arr = prev.filter(x => x && x !== v);
+    const eraElPuesto = (papaSesion && papaSesion.videoUrl) === v;
+    const sel = eraElPuesto ? arr[0] || '' : papaSesion && papaSesion.videoUrl || '';
+    if (eraElPuesto && !arr.length) {
+      try {
+        setVideoUrl('');
+      } catch (e) {}
+    }
+    setPapaSesion(ps => {
+      const uv = sel ? ps.usarVideo !== false : false;
+      const n = {
+        ...ps,
+        iaVideos: arr,
+        videoUrl: sel,
+        usarVideo: uv
+      };
+      setEventos(evs => evs.map(e => e.id === n.id ? {
+        ...e,
+        iaVideos: arr,
+        videoUrl: sel,
+        usarVideo: uv
+      } : e));
+      _guardarPapaYa(n);
+      return n;
+    });
+    flashOk('🗑 Video borrado');
+  }
   function tarjetaImagen(accion) {
     const W = 540,
       H = 960;
@@ -21730,6 +21785,7 @@ function PapaCreador({
         return n;
       });
     },
+    onBorrarVideo: borrarIaVideo,
     onVolverPanel: () => {
       guardarYVolver();
       setModoPortada('tematica');
