@@ -17352,6 +17352,21 @@ function GeneradorIA({
   const [mini, setMini] = useState(false); // minimizado: seguir usando la app mientras genera
   const totalGen = tipo === 'imagen' ? Math.max(1, Math.min(cantidad || 6, 6)) : 2;
 
+  // 🛡️ EL FILTRO DE CONTENIDO DE LA IA (Lili, 19/11/2026 — la mamá de Felicitas).
+  // El motor que respeta la cara del nene (Nano-Banana, de Google) MUCHAS veces se
+  // niega a juntar la foto de un chico de verdad con un personaje: contesta
+  // "content checker" y no genera nada. Probado: el personaje solo pasa, la foto
+  // sola pasa, LAS DOS JUNTAS las rechaza (STICH 5: 4 de 4; STICH 1: 3 de 4).
+  // Y es caprichoso: rechaza una y a la siguiente deja pasar.
+  // Por eso: se reintenta, y si el filtro no afloja se usa el motor de respaldo,
+  // que no tiene ese filtro (sale cuadrada y la cara queda PARECIDA, no igual,
+  // pero el papá se lleva la imagen que pagó en vez de un cartel de error).
+  // Los intentos rechazados vuelven en ~1 segundo y NO cobran ni cupo ni crédito:
+  // el servidor descuenta el cupo solo cuando la imagen sale de verdad.
+  const MODERADO = /content_policy|model_moderated|content checker/i;
+  const MODELO_RESPALDO = 'fal-ai/flux-pro/kontext/max/multi';
+  const INTENTOS = 3;
+
   // Animación de progreso (sube hasta 90% mientras espera la respuesta real)
   useEffect(() => {
     if (paso !== 'generando') return;
@@ -17411,37 +17426,77 @@ function GeneradorIA({
           // que ni la mamá ni nosotros sabíamos qué había pasado. Se guarda el
           // primer error real para mostrarlo abajo.
           let motivoFalla = '';
-          // Generar todas en paralelo, tolerando fallos individuales
-          const calls = lista.map(it => fetch('/api/generar-catalogo', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            // evId+referencia: el servidor comprueba el pago antes de gastar crédito
-            body: JSON.stringify({
-              prompt: it.p,
-              images: [fotoNino, personaje],
-              model: it.m,
-              aspect_ratio: '9:16',
-              evId: evId,
-              ref: refUsar
-            })
-          }).then(async r => {
-            const d = await r.json().catch(() => ({}));
-            if (!r.ok && d && d.error && !motivoFalla) motivoFalla = String(d.error);
-            if (!cancel) {
-              setHechas(h => h + 1);
-              if (r.ok && d.url) setImgsLive(prev => [...prev, d.url]);
+          // Pide UNA imagen al servidor. Devuelve siempre {ok,url,error}.
+          const pedirUna = async (model, texto) => {
+            try {
+              const r = await fetch('/api/generar-catalogo', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                // evId+referencia: el servidor comprueba el pago antes de gastar crédito
+                body: JSON.stringify({
+                  prompt: texto,
+                  images: [fotoNino, personaje],
+                  model: model,
+                  aspect_ratio: '9:16',
+                  evId: evId,
+                  ref: refUsar
+                })
+              });
+              const d = await r.json().catch(() => ({}));
+              if (r.ok && d.url) return {
+                ok: true,
+                url: d.url,
+                error: ''
+              };
+              return {
+                ok: false,
+                url: '',
+                error: String(d && d.error || 'error ' + r.status)
+              };
+            } catch (e) {
+              return {
+                ok: false,
+                url: '',
+                error: String(e && e.message || 'sin conexión')
+              };
             }
-            return r.ok && d.url ? d.url : null;
-          }).catch(() => {
+          };
+          // Una imagen: se insiste con el motor bueno y, si el filtro no afloja, respaldo.
+          const generarUna = async it => {
+            const listo = u => {
+              if (!cancel) {
+                setHechas(h => h + 1);
+                setImgsLive(prev => [...prev, u]);
+              }
+              return u;
+            };
+            let ultimo = '';
+            for (let i = 0; i < INTENTOS && !cancel; i++) {
+              const d = await pedirUna(it.m, it.p);
+              if (d.ok) return listo(d.url);
+              ultimo = d.error;
+              if (!MODERADO.test(ultimo)) break; // falla por otra cosa (saldo, red): no insistir al pedo
+            }
+            if (!cancel && MODERADO.test(ultimo)) {
+              const d = await pedirUna(MODELO_RESPALDO, it.p);
+              if (d.ok) return listo(d.url);
+              ultimo = d.error || ultimo;
+            }
+            if (ultimo && !motivoFalla) motivoFalla = ultimo;
             if (!cancel) setHechas(h => h + 1);
             return null;
-          }));
-          const settled = await Promise.all(calls);
+          };
+          const settled = await Promise.all(lista.map(generarUna));
           if (cancel) return;
           const urls = settled.filter(Boolean);
-          if (!urls.length) throw new Error(motivoFalla ? 'No se pudo generar ninguna imagen: ' + motivoFalla : 'No se pudo generar ninguna imagen. Probá de nuevo.');
+          if (!urls.length) {
+            // En CASTELLANO y diciendo qué hacer: antes salía el texto crudo del
+            // filtro, en inglés, y ni la mamá ni nosotros sabíamos qué tocar.
+            const motivoLindo = MODERADO.test(motivoFalla) ? 'la IA no deja usar esta combinación de fotos. Probá eligiendo OTRO personaje, o subiendo otra foto del nene/a.' : motivoFalla;
+            throw new Error(motivoFalla ? 'No se pudo generar ninguna imagen: ' + motivoLindo : 'No se pudo generar ninguna imagen. Probá de nuevo.');
+          }
           // Listo: enviamos las imágenes directo a la galería (sin pantalla intermedia)
           setProgreso(100);
           onResultado(urls);
@@ -17454,24 +17509,61 @@ function GeneradorIA({
             if (!fotoNino || !personaje) throw new Error('Subí la foto del niño/a y elegí el personaje.');
             // 1) Imagen base del video: el PERSONAJE mira a la cámara (va a hablar); el niño/a lo mira a ÉL (de costado, boca cerrada) para que el lip-sync no le mueva la boca al niño.
             const baseImgPrompt = (repl(promptComposite) || '') + ' Usá las DOS imágenes adjuntas: conservá EXACTAMENTE la cara y el parecido del niño/a de la PRIMERA imagen (no la cambies). El PERSONAJE ' + persNom + ' de la SEGUNDA imagen está de CUERPO ENTERO, de FRENTE MIRANDO A LA CÁMARA (es el que va a hablar). El niño/a está al lado, de cuerpo entero, MIRANDO AL PERSONAJE (vista de 3/4 o perfil, la cara del niño NO mira a la cámara), con una sonrisa de BOCA CERRADA. Ambos en el mundo/escenario del personaje; UNA SOLA escena cohesiva y realista, misma iluminación; imagen vertical 9:16; sin texto ni letras.';
-            const ir = await fetch('/api/generar-catalogo', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                prompt: baseImgPrompt,
-                images: [fotoNino, personaje],
-                model: 'fal-ai/nano-banana/edit',
-                aspect_ratio: '9:16',
-                evId: evId,
-                paraVideo: true
-              })
-            });
-            const idata = await ir.json().catch(() => ({}));
-            if (!ir.ok || !idata.url) throw new Error(idata && idata.error || 'No se pudo crear la imagen base del video.');
+            // Mismo filtro de contenido que en las imágenes: se insiste y, si no
+            // afloja, se usa el motor de respaldo. Si no, el video de regalo no sale.
+            const pedirBase = async model => {
+              try {
+                const r = await fetch('/api/generar-catalogo', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    prompt: baseImgPrompt,
+                    images: [fotoNino, personaje],
+                    model: model,
+                    aspect_ratio: '9:16',
+                    evId: evId,
+                    paraVideo: true
+                  })
+                });
+                const d = await r.json().catch(() => ({}));
+                if (r.ok && d.url) return {
+                  ok: true,
+                  url: d.url,
+                  error: ''
+                };
+                return {
+                  ok: false,
+                  url: '',
+                  error: String(d && d.error || 'error ' + r.status)
+                };
+              } catch (e) {
+                return {
+                  ok: false,
+                  url: '',
+                  error: String(e && e.message || 'sin conexión')
+                };
+              }
+            };
+            let base = '',
+              ultB = '';
+            for (let i = 0; i < INTENTOS && !cancel; i++) {
+              const d = await pedirBase('fal-ai/nano-banana/edit');
+              if (d.ok) {
+                base = d.url;
+                break;
+              }
+              ultB = d.error;
+              if (!MODERADO.test(ultB)) break;
+            }
+            if (!base && !cancel && MODERADO.test(ultB)) {
+              const d = await pedirBase(MODELO_RESPALDO);
+              if (d.ok) base = d.url;else ultB = d.error || ultB;
+            }
+            if (!base) throw new Error(MODERADO.test(ultB) ? 'No se pudo crear la imagen base del video: la IA no deja usar esta combinación de fotos. Probá con otro personaje.' : ultB || 'No se pudo crear la imagen base del video.');
             if (cancel) return;
-            baseImg = idata.url;
+            baseImg = base;
           }
           setProgreso(15);
           // Imagen ELEGIDA por el papá (nene + personaje). El video se hace CON esa foto.
