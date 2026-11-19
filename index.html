@@ -6079,11 +6079,17 @@ function AdminTematicas({
   const [msg, setMsg] = useState('');
   const [editCat, setEditCat] = useState(null); // id de la imagen a la que se le editan categorías
   const [filtCat, setFiltCat] = useState('RECIENTES'); // filtro de la grilla
+  const [busqTem, setBusqTem] = useState(''); // buscador por nombre de personaje
   const fRef = useRef();
   // Lista a mostrar: más nuevas primero. "RECIENTES" = 10, una por personaje.
   const _bn = n => String(n || '').replace(/\s*\d+$/, '').trim();
+  const _q = busqTem.trim().toLowerCase();
   let listaMostrar = ordenarRecientes(tematicas);
-  if (filtCat === 'RECIENTES') {
+  // 🔍 BUSCADOR. Con 359 imágenes, encontrar una a ojo era imposible (Lili 19/11/2026).
+  // Con algo escrito se busca en TODO el catálogo: se saltea el recorte de
+  // "Recientes" (que muestra 10) porque si no, buscar no encontraba casi nada.
+  if (_q) listaMostrar = listaMostrar.filter(t => String(t.nombre || '').toLowerCase().includes(_q));
+  if (!_q && filtCat === 'RECIENTES') {
     const seen = new Set();
     const out = [];
     for (const t of listaMostrar) {
@@ -6095,7 +6101,7 @@ function AdminTematicas({
       if (out.length >= 10) break;
     }
     listaMostrar = out;
-  } else if (filtCat !== 'TODOS') {
+  } else if (filtCat !== 'TODOS' && filtCat !== 'RECIENTES') {
     listaMostrar = listaMostrar.filter(t => (t.cats || []).includes(filtCat));
   }
 
@@ -6491,7 +6497,42 @@ function AdminTematicas({
   }, "📂 Todas"), CATS.filter(c => c !== 'TODOS').map(c => /*#__PURE__*/React.createElement("option", {
     key: c,
     value: c
-  }, c))), /*#__PURE__*/React.createElement("span", {
+  }, c))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'relative',
+      flex: '1 1 200px',
+      minWidth: 160
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    value: busqTem,
+    onChange: e => setBusqTem(e.target.value),
+    placeholder: "🔍 Buscar personaje por nombre...",
+    style: {
+      ...S.input,
+      width: '100%',
+      marginBottom: 0,
+      fontSize: 12,
+      padding: '7px 28px 7px 10px'
+    }
+  }), busqTem && /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setBusqTem(''),
+    title: "Borrar la búsqueda",
+    style: {
+      position: 'absolute',
+      right: 6,
+      top: '50%',
+      transform: 'translateY(-50%)',
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      color: '#94a3b8',
+      fontSize: 14,
+      fontWeight: 900,
+      lineHeight: 1,
+      padding: 2
+    }
+  }, "✕")), /*#__PURE__*/React.createElement("span", {
     style: {
       fontSize: 11,
       color: '#94a3b8'
