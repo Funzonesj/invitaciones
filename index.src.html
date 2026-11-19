@@ -4008,7 +4008,7 @@ function PrecioConPromo({precio,antes,fontSize,color,prefijo,align}){
     </span>
   );
 }
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,onVerTarjeta,onBorrar,videoUrl='',usarVideo=true,setUsarVideo,onGenerarVideo,videoFreeOk=false,iaVideos=[],onUsarVideo,onPedir,onVolverPanel,packIA=6,precioAntes=0}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,diag='',onVerTarjeta,onBorrar,videoUrl='',usarVideo=true,setUsarVideo,onGenerarVideo,videoFreeOk=false,iaVideos=[],onUsarVideo,onPedir,onVolverPanel,packIA=6,precioAntes=0}){
   const fotoRef=useRef();
   const persRef=useRef();
   function guardarFoto(src){
@@ -4174,6 +4174,11 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
       )}
       {/* Precio y botón generar (siempre visible: para generar más del pack o pagar otro pack) */}
       <div style={{marginBottom:14}}>
+        {/* 📣 Cuántas salieron y por qué no salieron las otras. Antes, si salían
+            2 de 6, la pantalla no decía NADA y no había forma de saber si era el
+            filtro de contenido, el proveedor frenándonos o un error de red
+            (Lili 19/11/2026: "de 6 me salió una sola"). */}
+        {diag&&<div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:12,padding:'10px 12px',marginBottom:12,textAlign:'center',fontSize:12,fontWeight:700,color:'#9a3412',lineHeight:1.45}}>{diag}</div>}
         {tipo==='imagen'&&typeof restantesIA==='number'&&restantesIA>0?(
           <div style={{background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:12,padding:12,marginBottom:12,textAlign:'center',fontSize:13,fontWeight:800,color:'#16a34a'}}>✨ Te quedan {restantesIA} imágenes de tu pack</div>
         ):(
@@ -4511,16 +4516,29 @@ function GeneradorIA({tipo,nombre,tematica,prompt,prompt2,promptComposite,frase,
           const settled=await Promise.all(lista.map(generarUna));
           if(cancel)return;
           const urls=settled.filter(Boolean);
+          // En CASTELLANO y diciendo qué hacer: antes salía el texto crudo del
+          // filtro, en inglés, y ni la mamá ni nosotros sabíamos qué tocar.
+          const _decir=(m)=>{
+            const t=String(m||'');
+            if(MODERADO.test(t)) return 'la IA no deja usar esta combinación de fotos. Probá eligiendo OTRO personaje, o subiendo otra foto del nene/a.';
+            if(/429|rate.?limit|too many|concurren/i.test(t)) return 'el proveedor nos frenó por pedirle muchas juntas. Esperá un minuto y dale generar de nuevo.';
+            if(/saldo|balance|exhausted|quota|402/i.test(t)) return 'se quedó sin crédito la cuenta de IA. Avisale al salón.';
+            if(/pack-agotado|Ya usaste todas/i.test(t)) return 'se terminaron las imágenes de tu pack.';
+            if(/abonar|sin-pago/i.test(t)) return 'el pago todavía no figura. Recargá la página y probá de nuevo.';
+            return t;
+          };
           if(!urls.length){
-            // En CASTELLANO y diciendo qué hacer: antes salía el texto crudo del
-            // filtro, en inglés, y ni la mamá ni nosotros sabíamos qué tocar.
-            const motivoLindo=MODERADO.test(motivoFalla)
-              ? 'la IA no deja usar esta combinación de fotos. Probá eligiendo OTRO personaje, o subiendo otra foto del nene/a.'
-              : motivoFalla;
-            throw new Error(motivoFalla?('No se pudo generar ninguna imagen: '+motivoLindo):'No se pudo generar ninguna imagen. Probá de nuevo.');
+            throw new Error(motivoFalla?('No se pudo generar ninguna imagen: '+_decir(motivoFalla)):'No se pudo generar ninguna imagen. Probá de nuevo.');
           }
+          // 📣 Salieron algunas pero no todas: la pantalla lo DICE y dice por qué.
+          // Antes, si salían 2 de 6, no avisaba nada y no había manera de saber si
+          // era el filtro, el proveedor frenándonos o la red (Lili 19/11/2026).
+          const _faltan=lista.length-urls.length;
+          const _diag=_faltan>0
+            ? ('Salieron '+urls.length+' de '+lista.length+'. Las otras '+_faltan+' no: '+(motivoFalla?_decir(motivoFalla):'no contestó el generador.')+' No se te descontó ninguna imagen por las que no salieron.')
+            : '';
           // Listo: enviamos las imágenes directo a la galería (sin pantalla intermedia)
-          setProgreso(100);onResultado(urls);
+          setProgreso(100);onResultado(urls,_diag);
         } else {
           // Video con IA (Kling v3 Pro). Si viene startImage, animamos ESA imagen; si no, primero armamos la base.
           const persNom=personajeNombre||tematica||'el personaje';
@@ -4736,6 +4754,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   function setUsarVideo(v){setPapaSesion(ps=>{const n={...ps,usarVideo:v};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,usarVideo:v}:e));return n;});}
   const [videoInfo,setVideoInfo]=useState(null); // imagen pendiente de confirmar antes de generar el video
   const [videoDiag,setVideoDiag]=useState(''); // nota de diagnóstico (si la voz de EL no se aplicó)
+  const [imgDiag,setImgDiag]=useState(''); // cuántas imágenes salieron y por qué no salieron las otras
   const [videoUrl,setVideoUrl]=useState('');
   const [videoPaga,setVideoPaga]=useState(false);
   const _VIDEO_GRATIS=false; // (histórico) "video incluido para TODOS". Hoy no se usa: el video es el regalo del pack.
@@ -4774,6 +4793,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   // cuenta de los cupos: lo de acá arriba es solo para mostrar en pantalla.
   const pagoRef=(papaSesion&&papaSesion.iaRef)||'';
   function pedirGenerar(tipo){
+    setImgDiag(''); // se arranca de nuevo: borro el aviso de la tanda anterior
     if(restantesIA>0&&pagoRef) setGenActivo(tipo);   // ya pagó este pack → genera
     else { persistirFormPago(); setPagoActivo(tipo); }  // necesita pagar → guardo elecciones por si se recarga al volver de MP
   }
@@ -5637,7 +5657,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" packIA={PACK_IA} precio={iaConfig.precioImagen} precioAntes={iaConfig.precioImagenAntes} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));_guardarPapaYa(n);return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v,usarVideo:true}:e));_guardarPapaYa(n);return n;});}} onVolverPanel={()=>{guardarYVolver();setModoPortada('tematica');}} onPedir={()=>setPedirOpen(true)} onGenerarVideo={()=>{if(!form.personajeIA){alert('Primero elegí el personaje.');return;}genVideoPagadoRef.current=true;setVideoStartImg((form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc);setGenActivo('video');}}/>
+              <IAUploadSection tipo="imagen" packIA={PACK_IA} precio={iaConfig.precioImagen} precioAntes={iaConfig.precioImagenAntes} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));_guardarPapaYa(n);return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} diag={imgDiag} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v,usarVideo:true}:e));_guardarPapaYa(n);return n;});}} onVolverPanel={()=>{guardarYVolver();setModoPortada('tematica');}} onPedir={()=>setPedirOpen(true)} onGenerarVideo={()=>{if(!form.personajeIA){alert('Primero elegí el personaje.');return;}genVideoPagadoRef.current=true;setVideoStartImg((form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc);setGenActivo('video');}}/>
             )}
           </div>
         </div>
@@ -6248,7 +6268,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
 
       {/* Modales */}
       {pagoActivo&&<PagoMP tipo={pagoActivo} precio={pagoActivo==='imagen'?iaConfig.precioImagen:iaConfig.precioVideo} precioAntes={pagoActivo==='imagen'?iaConfig.precioImagenAntes:0} nombre={form.nombre} tematica={temA.nombre} modo={pagoActivo==='imagen'?'imagen':'video-genpay'} eventId={papaSesion.id} onPagado={()=>{if(pagoActivo==='imagen'){setPapaSesion(ps=>{const n={...ps,iaPagadas:((ps&&ps.iaPagadas)||0)+PACK_IA,videoFreeDisponible:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaPagadas:n.iaPagadas,videoFreeDisponible:true}:e));return n;});}setGenActivo(pagoActivo);setPagoActivo(null);}} onCancelar={()=>setPagoActivo(null)}/>}
-      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.vozNombre||suc.nombre} startImage={genActivo==='video'?videoStartImg:null} evId={papaSesion.id} pagoRef={pagoRef} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));_guardarPapaYa(n);return n;});/* Las imágenes ya están listas: cerramos el generador y volvemos a la galería (el video se ofrece como cartel debajo, al elegir la imagen) */setGenActivo(null);}else{const vu=imgs[0]||'';genVideoPagadoRef.current=false;setVideoStartImg(null);setVideoDiag(diag||'');setPapaSesion(ps=>{const prevV=((ps&&ps.iaVideos&&ps.iaVideos.length)?ps.iaVideos:((ps&&ps.videoUrl)?[ps.videoUrl]:[]));const vids=[vu,...prevV.filter(x=>x&&x!==vu)].filter(Boolean);const n={...ps,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true}:e));_guardarPapaYa(n);return n;});setGenActivo(null);}}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
+      {genActivo&&<GeneradorIA tipo={genActivo} nombre={form.nombre} tematica={temA.nombre} edad={form.edad} prompt={genActivo==='imagen'?iaConfig.promptImagen:PROMPT_VIDEO_DEF} prompt2={genActivo==='imagen'?iaConfig.promptImagen2:''} promptComposite={iaConfig.promptImagen} frase={iaConfig.fraseVideo||FRASE_VIDEO_DEF} modelA={iaConfig.modelImagen||'fal-ai/nano-banana/edit'} modelB={iaConfig.modelImagen2||'fal-ai/nano-banana/edit'} cantidad={genActivo==='imagen'?(restantesIA>0?restantesIA:PACK_IA):2} fotoNino={form.fotoNinoIA} personaje={form.personajeIA} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||temA.nombre} genero={(tematicas.find(t=>t.img===form.personajeIA)||{}).genero||''} salon={suc.vozNombre||suc.nombre} startImage={genActivo==='video'?videoStartImg:null} evId={papaSesion.id} pagoRef={pagoRef} onResultado={(imgs,diag)=>{if(genActivo==='imagen'){setImgDiag(diag||'');const prev=form.iaImagenes||[];const merged=[...imgs,...prev];const nuevoSrc=imgs[0]||form.portadaSrc;setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:nuevoSrc}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,fotoNinoIA:form.fotoNinoIA,personajeIA:form.personajeIA,iaGenCount:((ps&&ps.iaGenCount)||0)+imgs.length};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:nuevoSrc,iaGenCount:n.iaGenCount}:e));_guardarPapaYa(n);return n;});/* Las imágenes ya están listas: cerramos el generador y volvemos a la galería (el video se ofrece como cartel debajo, al elegir la imagen) */setGenActivo(null);}else{const vu=imgs[0]||'';genVideoPagadoRef.current=false;setVideoStartImg(null);setVideoDiag(diag||'');setPapaSesion(ps=>{const prevV=((ps&&ps.iaVideos&&ps.iaVideos.length)?ps.iaVideos:((ps&&ps.videoUrl)?[ps.videoUrl]:[]));const vids=[vu,...prevV.filter(x=>x&&x!==vu)].filter(Boolean);const n={...ps,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,iaVideos:vids,videoFreeDisponible:false,videoPagado:true,usarVideo:true}:e));_guardarPapaYa(n);return n;});setGenActivo(null);}}} onCerrar={()=>{setGenActivo(null);setVideoStartImg(null);}}/>}
 
       {/* Cartel "¡Te regalamos un video!" — aparece RECIÉN cuando ya se generaron las imágenes */}
       {regaloVideo&&(

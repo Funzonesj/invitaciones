@@ -15968,6 +15968,7 @@ function IAUploadSection({
   edad = '',
   personajeNombre = '',
   restantesIA,
+  diag = '',
   onVerTarjeta,
   onBorrar,
   videoUrl = '',
@@ -16485,7 +16486,20 @@ function IAUploadSection({
     style: {
       marginBottom: 14
     }
-  }, tipo === 'imagen' && typeof restantesIA === 'number' && restantesIA > 0 ? /*#__PURE__*/React.createElement("div", {
+  }, diag && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#fff7ed',
+      border: '1px solid #fed7aa',
+      borderRadius: 12,
+      padding: '10px 12px',
+      marginBottom: 12,
+      textAlign: 'center',
+      fontSize: 12,
+      fontWeight: 700,
+      color: '#9a3412',
+      lineHeight: 1.45
+    }
+  }, diag), tipo === 'imagen' && typeof restantesIA === 'number' && restantesIA > 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
       background: '#f0fdf4',
       border: '1px solid #bbf7d0',
@@ -17506,15 +17520,28 @@ function GeneradorIA({
           const settled = await Promise.all(lista.map(generarUna));
           if (cancel) return;
           const urls = settled.filter(Boolean);
+          // En CASTELLANO y diciendo qué hacer: antes salía el texto crudo del
+          // filtro, en inglés, y ni la mamá ni nosotros sabíamos qué tocar.
+          const _decir = m => {
+            const t = String(m || '');
+            if (MODERADO.test(t)) return 'la IA no deja usar esta combinación de fotos. Probá eligiendo OTRO personaje, o subiendo otra foto del nene/a.';
+            if (/429|rate.?limit|too many|concurren/i.test(t)) return 'el proveedor nos frenó por pedirle muchas juntas. Esperá un minuto y dale generar de nuevo.';
+            if (/saldo|balance|exhausted|quota|402/i.test(t)) return 'se quedó sin crédito la cuenta de IA. Avisale al salón.';
+            if (/pack-agotado|Ya usaste todas/i.test(t)) return 'se terminaron las imágenes de tu pack.';
+            if (/abonar|sin-pago/i.test(t)) return 'el pago todavía no figura. Recargá la página y probá de nuevo.';
+            return t;
+          };
           if (!urls.length) {
-            // En CASTELLANO y diciendo qué hacer: antes salía el texto crudo del
-            // filtro, en inglés, y ni la mamá ni nosotros sabíamos qué tocar.
-            const motivoLindo = MODERADO.test(motivoFalla) ? 'la IA no deja usar esta combinación de fotos. Probá eligiendo OTRO personaje, o subiendo otra foto del nene/a.' : motivoFalla;
-            throw new Error(motivoFalla ? 'No se pudo generar ninguna imagen: ' + motivoLindo : 'No se pudo generar ninguna imagen. Probá de nuevo.');
+            throw new Error(motivoFalla ? 'No se pudo generar ninguna imagen: ' + _decir(motivoFalla) : 'No se pudo generar ninguna imagen. Probá de nuevo.');
           }
+          // 📣 Salieron algunas pero no todas: la pantalla lo DICE y dice por qué.
+          // Antes, si salían 2 de 6, no avisaba nada y no había manera de saber si
+          // era el filtro, el proveedor frenándonos o la red (Lili 19/11/2026).
+          const _faltan = lista.length - urls.length;
+          const _diag = _faltan > 0 ? 'Salieron ' + urls.length + ' de ' + lista.length + '. Las otras ' + _faltan + ' no: ' + (motivoFalla ? _decir(motivoFalla) : 'no contestó el generador.') + ' No se te descontó ninguna imagen por las que no salieron.' : '';
           // Listo: enviamos las imágenes directo a la galería (sin pantalla intermedia)
           setProgreso(100);
-          onResultado(urls);
+          onResultado(urls, _diag);
         } else {
           // Video con IA (Kling v3 Pro). Si viene startImage, animamos ESA imagen; si no, primero armamos la base.
           const persNom = personajeNombre || tematica || 'el personaje';
@@ -18280,6 +18307,7 @@ function PapaCreador({
   }
   const [videoInfo, setVideoInfo] = useState(null); // imagen pendiente de confirmar antes de generar el video
   const [videoDiag, setVideoDiag] = useState(''); // nota de diagnóstico (si la voz de EL no se aplicó)
+  const [imgDiag, setImgDiag] = useState(''); // cuántas imágenes salieron y por qué no salieron las otras
   const [videoUrl, setVideoUrl] = useState('');
   const [videoPaga, setVideoPaga] = useState(false);
   const _VIDEO_GRATIS = false; // (histórico) "video incluido para TODOS". Hoy no se usa: el video es el regalo del pack.
@@ -18345,6 +18373,7 @@ function PapaCreador({
   // cuenta de los cupos: lo de acá arriba es solo para mostrar en pantalla.
   const pagoRef = papaSesion && papaSesion.iaRef || '';
   function pedirGenerar(tipo) {
+    setImgDiag(''); // se arranca de nuevo: borro el aviso de la tanda anterior
     if (restantesIA > 0 && pagoRef) setGenActivo(tipo); // ya pagó este pack → genera
     else {
       persistirFormPago();
@@ -21466,6 +21495,7 @@ function PapaCreador({
     edad: form.edad,
     personajeNombre: (tematicas.find(t => t.img === form.personajeIA) || {}).nombre || '',
     restantesIA: restantesIA,
+    diag: imgDiag,
     onVerTarjeta: () => verTarjeta({
       seccion: 'tarjeta',
       modo: 'ia-imagen',
@@ -23876,6 +23906,7 @@ function PapaCreador({
     pagoRef: pagoRef,
     onResultado: (imgs, diag) => {
       if (genActivo === 'imagen') {
+        setImgDiag(diag || '');
         const prev = form.iaImagenes || [];
         const merged = [...imgs, ...prev];
         const nuevoSrc = imgs[0] || form.portadaSrc;
