@@ -41,8 +41,19 @@ export default async function middleware(req) {
     const ev = await sbEvento(evId);
     if (!ev) return;
 
-    // Imagen: la portada elegida (personaje/foto/IA). Si no hay, la de la temática.
+    // Imagen: EL MISMO ORDEN QUE LA TARJETA (ver `portadaDe` en index.src.html):
+    // la portada elegida → la PREDETERMINADA del tipo de festejo → la de la temática.
+    // Faltaba la del tipo, así que en una escuela —que no tiene portada propia—
+    // la vista previa de WhatsApp mostraba la torta de cumpleaños de la temática
+    // y recién al abrir aparecía la de fin de curso (Lili 20/11/2026).
     let img = ev.portadaSrc || '';
+    if (!img && ev.tipo) {
+      try {
+        const ia = await sbEvento('__config_ia__');
+        const t = ((ia && ia.tiposEvento) || []).find((x) => x && x.nombre === ev.tipo);
+        if (t && t.imagen) img = t.imagen;
+      } catch (e) {}
+    }
     if (!img && ev.temId) {
       try {
         const tem = await sbEvento('__config_tematicas__');

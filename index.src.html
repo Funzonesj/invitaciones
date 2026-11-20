@@ -4100,7 +4100,7 @@ function PrecioConPromo({precio,antes,fontSize,color,prefijo,align}){
     </span>
   );
 }
-function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,diag='',onSubirPropia,onVerTarjeta,onBorrar,videoUrl='',usarVideo=true,setUsarVideo,onGenerarVideo,videoFreeOk=false,iaVideos=[],onUsarVideo,onBorrarVideo,onPedir,onVolverPanel,packIA=6,precioAntes=0}){
+function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selIdx,fotoNino,setFotoNino,personaje,setPersonaje,tematicas=[],nombre='',edad='',personajeNombre='',restantesIA,diag='',onSubirPropia,onSubirVideoPropio,onVerTarjeta,onBorrar,videoUrl='',usarVideo=true,setUsarVideo,onGenerarVideo,videoFreeOk=false,iaVideos=[],onUsarVideo,onBorrarVideo,onPedir,onVolverPanel,packIA=6,precioAntes=0}){
   const fotoRef=useRef();
   const persRef=useRef();
   function guardarFoto(src){
@@ -4141,6 +4141,19 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
   // NO gasta ninguna imagen del pack, porque no la generó la IA: es de ella.
   const propiaRef=useRef();
   function onPickPropia(e){const f=e.target.files&&e.target.files[0];if(!f)return;resizeImg(f,1024,data=>{if(onSubirPropia)onSubirPropia(data);});e.target.value='';}
+  // 📹 EL VIDEO YA HECHO, subido por ella (Lili 20/11/2026: "necesito poder ahí
+  // subir el video directamente y que se use como tarjeta también"). Igual que la
+  // imagen propia: entra a la galería de videos, se puede elegir para la tarjeta
+  // y NO gasta el video de regalo, porque no lo generó la IA.
+  const propioVidRef=useRef();
+  const [subiendoVid,setSubiendoVid]=useState(false);
+  function onPickVideoPropio(e){
+    const f=e.target.files&&e.target.files[0]; e.target.value='';
+    if(!f||!onSubirVideoPropio) return;
+    if(f.size>120*1024*1024){ alert('Ese video pesa demasiado (más de 120 MB). Probá con uno más corto.'); return; }
+    setSubiendoVid(true);
+    Promise.resolve(onSubirVideoPropio(f)).catch(()=>{}).then(()=>setSubiendoVid(false));
+  }
   const [fabClosed,setFabClosed]=useState(false); // botón flotante de video cerrado
   const listo=fotoNino&&personaje;
   // Personajes disponibles para el papá: los del Catálogo IA (si hay), si no todos
@@ -4312,6 +4325,14 @@ function IAUploadSection({tipo,precio,resultados,onPagar,onDescartar,onUsar,selI
           <input ref={propiaRef} type="file" accept="image/*" style={{display:'none'}} onChange={onPickPropia}/>
           <button onClick={()=>propiaRef.current&&propiaRef.current.click()} style={{...S.btn,width:'100%',background:'#f8fafc',color:'#334155',border:'1px dashed #94a3b8',fontSize:13,fontWeight:900,padding:'12px'}}>📤 Subir mi propia imagen (ya hecha)</button>
           <div style={{fontSize:10.5,color:'#94a3b8',marginTop:4,textAlign:'center',lineHeight:1.4}}>Si ya tenés la foto del nene/a con el personaje, subila acá: entra a la galería, la podés poner en la tarjeta y hacerle el video. <b>No gasta ninguna imagen de tu pack.</b></div>
+        </div>
+      )}
+
+      {tipo==='imagen'&&onSubirVideoPropio&&(
+        <div style={{marginBottom:14}}>
+          <input ref={propioVidRef} type="file" accept="video/*" style={{display:'none'}} onChange={onPickVideoPropio}/>
+          <button onClick={()=>!subiendoVid&&propioVidRef.current&&propioVidRef.current.click()} disabled={subiendoVid} style={{...S.btn,width:'100%',background:subiendoVid?'#ede9fe':'#f8fafc',color:'#334155',border:'1px dashed #94a3b8',fontSize:13,fontWeight:900,padding:'12px',cursor:subiendoVid?'default':'pointer'}}>{subiendoVid?'⏳ Subiendo tu video…':'📹 Subir mi propio video (ya hecho)'}</button>
+          <div style={{fontSize:10.5,color:'#94a3b8',marginTop:4,textAlign:'center',lineHeight:1.4}}>{subiendoVid?'Puede tardar un rato si el video es largo. No cierres esta pantalla.':<span>Si ya tenés el video hecho, subilo acá: entra a tus videos y lo podés poner en la tarjeta. <b>No gasta el video de tu pack.</b></span>}</div>
         </div>
       )}
 
@@ -5221,6 +5242,30 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
   // 🗑 BORRAR UN VIDEO de la galería (Lili 19/11/2026: "dejame el tachito para yo
   // borrar"). Si se borra el que estaba puesto en la tarjeta, queda el primero de
   // los que sobran; si no sobra ninguno, la tarjeta vuelve a mostrar la foto.
+  // 📹 SUBIR UN VIDEO YA HECHO y que se pueda poner en la tarjeta. Va DIRECTO al
+  // depósito (subir-init → PUT), sin pasar por el servidor, así no hay límite de
+  // tamaño. Entra a la galería como uno más y queda elegido (Lili 20/11/2026).
+  async function subirVideoPropio(file){
+    try{
+      const ct=file.type||'video/mp4';
+      const ext=(String(file.name||'').split('.').pop()||'mp4').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5)||'mp4';
+      const r=await fetch('/api/subir-init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:ct,ext})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.upload_url||!d.file_url){ alert('No se pudo preparar la subida del video. Probá de nuevo.'); return; }
+      const up=await fetch(d.upload_url,{method:'PUT',headers:{'Content-Type':ct},body:file});
+      if(!up.ok){ alert('No se pudo subir el video. Probá de nuevo, o con uno más corto.'); return; }
+      const vu=d.file_url;
+      setPapaSesion(ps=>{
+        const prevV=((ps&&ps.iaVideos&&ps.iaVideos.length)?ps.iaVideos:((ps&&ps.videoUrl)?[ps.videoUrl]:[]));
+        const vids=[vu,...prevV.filter(x=>x&&x!==vu)].filter(Boolean);
+        const n={...ps,videoUrl:vu,iaVideos:vids,usarVideo:true};
+        setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:vu,iaVideos:vids,usarVideo:true}:e));
+        _guardarPapaYa(n);
+        return n;
+      });
+      flashOk('✓ ¡Video subido y puesto en la tarjeta!');
+    }catch(e){ alert('No se pudo subir el video: '+((e&&e.message)||e)); }
+  }
   function borrarIaVideo(v){
     const prev=((papaSesion&&papaSesion.iaVideos&&papaSesion.iaVideos.length)
       ? papaSesion.iaVideos
@@ -5794,7 +5839,7 @@ function PapaCreador({setVista,papaSesion,setPapaSesion,eventos,setEventos,temat
               </div>
             )}
             {modoPortada==='ia-imagen'&&(
-              <IAUploadSection tipo="imagen" packIA={PACK_IA} precio={iaConfig.precioImagen} precioAntes={iaConfig.precioImagenAntes} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));_guardarPapaYa(n);return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} diag={imgDiag} onSubirPropia={(data)=>{if(!data)return;const merged=[data,...(form.iaImagenes||[])];setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:data}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:data};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:data}:e));_guardarPapaYa(n);return n;});setImgDiag('');}} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v,usarVideo:true}:e));_guardarPapaYa(n);return n;});}} onBorrarVideo={borrarIaVideo} onVolverPanel={()=>{guardarYVolver();setModoPortada('tematica');}} onPedir={()=>setPedirOpen(true)} onGenerarVideo={()=>{/* Con una imagen YA elegida (generada o subida por ella) el video sale de esa imagen: no hace falta el personaje del catálogo. */const _base=(form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc;if(!_base&&!form.personajeIA){alert('Primero elegí el personaje, o subí tu propia imagen.');return;}genVideoPagadoRef.current=true;setVideoStartImg(_base);setGenActivo('video');}}/>
+              <IAUploadSection tipo="imagen" packIA={PACK_IA} precio={iaConfig.precioImagen} precioAntes={iaConfig.precioImagenAntes} resultados={form.iaImagenes||[]} onPagar={()=>pedirGenerar('imagen')} onDescartar={()=>{setForm(f=>({...f,iaImagenes:[],iaImagenSel:null,usarFoto:false,portadaSrc:''}));setPapaSesion(ps=>{const n={...ps,iaImagenes:[],iaImagenSel:null,portadaSrc:''};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:[],iaImagenSel:null,portadaSrc:''}:e));_guardarPapaYa(n);return n;});}} onUsar={idx=>setForm(f=>({...f,iaImagenSel:idx,usarFoto:false,portadaSrc:(f.iaImagenes||[])[idx]||''}))} selIdx={form.iaImagenSel} fotoNino={form.fotoNinoIA||''} setFotoNino={v=>setForm(f=>({...f,fotoNinoIA:v}))} personaje={form.personajeIA||''} setPersonaje={v=>setForm(f=>({...f,personajeIA:v}))} tematicas={tematicas} nombre={form.nombre} edad={form.edad} personajeNombre={(tematicas.find(t=>t.img===form.personajeIA)||{}).nombre||''} restantesIA={restantesIA} diag={imgDiag} onSubirPropia={(data)=>{if(!data)return;const merged=[data,...(form.iaImagenes||[])];setForm(f=>({...f,iaImagenes:merged,iaImagenSel:0,usarFoto:false,portadaSrc:data}));setPapaSesion(ps=>{const n={...ps,iaImagenes:merged,iaImagenSel:0,portadaSrc:data};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,iaImagenes:merged,iaImagenSel:0,portadaSrc:data}:e));_guardarPapaYa(n);return n;});setImgDiag('');}} onVerTarjeta={()=>verTarjeta({seccion:'tarjeta',modo:'ia-imagen',visto:true})} onBorrar={borrarIaImg} videoUrl={videoGuardado} usarVideo={usarVideo} setUsarVideo={setUsarVideo} videoFreeOk={videoFreeDisponible} iaVideos={(papaSesion&&papaSesion.iaVideos)||[]} onUsarVideo={(v)=>{setPapaSesion(ps=>{const n={...ps,videoUrl:v,usarVideo:true};setEventos(evs=>evs.map(e=>e.id===n.id?{...e,videoUrl:v,usarVideo:true}:e));_guardarPapaYa(n);return n;});}} onBorrarVideo={borrarIaVideo} onSubirVideoPropio={subirVideoPropio} onVolverPanel={()=>{guardarYVolver();setModoPortada('tematica');}} onPedir={()=>setPedirOpen(true)} onGenerarVideo={()=>{/* Con una imagen YA elegida (generada o subida por ella) el video sale de esa imagen: no hace falta el personaje del catálogo. */const _base=(form.iaImagenes||[])[form.iaImagenSel!=null?form.iaImagenSel:0]||form.portadaSrc;if(!_base&&!form.personajeIA){alert('Primero elegí el personaje, o subí tu propia imagen.');return;}genVideoPagadoRef.current=true;setVideoStartImg(_base);setGenActivo('video');}}/>
             )}
           </div>
         </div>

@@ -16095,6 +16095,7 @@ function IAUploadSection({
   restantesIA,
   diag = '',
   onSubirPropia,
+  onSubirVideoPropio,
   onVerTarjeta,
   onBorrar,
   videoUrl = '',
@@ -16182,6 +16183,23 @@ function IAUploadSection({
       if (onSubirPropia) onSubirPropia(data);
     });
     e.target.value = '';
+  }
+  // 📹 EL VIDEO YA HECHO, subido por ella (Lili 20/11/2026: "necesito poder ahí
+  // subir el video directamente y que se use como tarjeta también"). Igual que la
+  // imagen propia: entra a la galería de videos, se puede elegir para la tarjeta
+  // y NO gasta el video de regalo, porque no lo generó la IA.
+  const propioVidRef = useRef();
+  const [subiendoVid, setSubiendoVid] = useState(false);
+  function onPickVideoPropio(e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f || !onSubirVideoPropio) return;
+    if (f.size > 120 * 1024 * 1024) {
+      alert('Ese video pesa demasiado (más de 120 MB). Probá con uno más corto.');
+      return;
+    }
+    setSubiendoVid(true);
+    Promise.resolve(onSubirVideoPropio(f)).catch(() => {}).then(() => setSubiendoVid(false));
   }
   const [fabClosed, setFabClosed] = useState(false); // botón flotante de video cerrado
   const listo = fotoNino && personaje;
@@ -16726,7 +16744,41 @@ function IAUploadSection({
       textAlign: 'center',
       lineHeight: 1.4
     }
-  }, "Si ya tenés la foto del nene/a con el personaje, subila acá: entra a la galería, la podés poner en la tarjeta y hacerle el video. ", /*#__PURE__*/React.createElement("b", null, "No gasta ninguna imagen de tu pack."))), resultados.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Si ya tenés la foto del nene/a con el personaje, subila acá: entra a la galería, la podés poner en la tarjeta y hacerle el video. ", /*#__PURE__*/React.createElement("b", null, "No gasta ninguna imagen de tu pack."))), tipo === 'imagen' && onSubirVideoPropio && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    ref: propioVidRef,
+    type: "file",
+    accept: "video/*",
+    style: {
+      display: 'none'
+    },
+    onChange: onPickVideoPropio
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: () => !subiendoVid && propioVidRef.current && propioVidRef.current.click(),
+    disabled: subiendoVid,
+    style: {
+      ...S.btn,
+      width: '100%',
+      background: subiendoVid ? '#ede9fe' : '#f8fafc',
+      color: '#334155',
+      border: '1px dashed #94a3b8',
+      fontSize: 13,
+      fontWeight: 900,
+      padding: '12px',
+      cursor: subiendoVid ? 'default' : 'pointer'
+    }
+  }, subiendoVid ? '⏳ Subiendo tu video…' : '📹 Subir mi propio video (ya hecho)'), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10.5,
+      color: '#94a3b8',
+      marginTop: 4,
+      textAlign: 'center',
+      lineHeight: 1.4
+    }
+  }, subiendoVid ? 'Puede tardar un rato si el video es largo. No cierres esta pantalla.' : /*#__PURE__*/React.createElement("span", null, "Si ya tenés el video hecho, subilo acá: entra a tus videos y lo podés poner en la tarjeta. ", /*#__PURE__*/React.createElement("b", null, "No gasta el video de tu pack.")))), resultados.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "fade-in"
   }, /*#__PURE__*/React.createElement("div", {
     style: {
@@ -19390,6 +19442,63 @@ function PapaCreador({
   // 🗑 BORRAR UN VIDEO de la galería (Lili 19/11/2026: "dejame el tachito para yo
   // borrar"). Si se borra el que estaba puesto en la tarjeta, queda el primero de
   // los que sobran; si no sobra ninguno, la tarjeta vuelve a mostrar la foto.
+  // 📹 SUBIR UN VIDEO YA HECHO y que se pueda poner en la tarjeta. Va DIRECTO al
+  // depósito (subir-init → PUT), sin pasar por el servidor, así no hay límite de
+  // tamaño. Entra a la galería como uno más y queda elegido (Lili 20/11/2026).
+  async function subirVideoPropio(file) {
+    try {
+      const ct = file.type || 'video/mp4';
+      const ext = (String(file.name || '').split('.').pop() || 'mp4').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'mp4';
+      const r = await fetch('/api/subir-init', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content_type: ct,
+          ext
+        })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.upload_url || !d.file_url) {
+        alert('No se pudo preparar la subida del video. Probá de nuevo.');
+        return;
+      }
+      const up = await fetch(d.upload_url, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': ct
+        },
+        body: file
+      });
+      if (!up.ok) {
+        alert('No se pudo subir el video. Probá de nuevo, o con uno más corto.');
+        return;
+      }
+      const vu = d.file_url;
+      setPapaSesion(ps => {
+        const prevV = ps && ps.iaVideos && ps.iaVideos.length ? ps.iaVideos : ps && ps.videoUrl ? [ps.videoUrl] : [];
+        const vids = [vu, ...prevV.filter(x => x && x !== vu)].filter(Boolean);
+        const n = {
+          ...ps,
+          videoUrl: vu,
+          iaVideos: vids,
+          usarVideo: true
+        };
+        setEventos(evs => evs.map(e => e.id === n.id ? {
+          ...e,
+          videoUrl: vu,
+          iaVideos: vids,
+          usarVideo: true
+        } : e));
+        _guardarPapaYa(n);
+        return n;
+      });
+      flashOk('✓ ¡Video subido y puesto en la tarjeta!');
+    } catch (e) {
+      alert('No se pudo subir el video: ' + (e && e.message || e));
+    }
+  }
   function borrarIaVideo(v) {
     const prev = papaSesion && papaSesion.iaVideos && papaSesion.iaVideos.length ? papaSesion.iaVideos : papaSesion && papaSesion.videoUrl ? [papaSesion.videoUrl] : [];
     const arr = prev.filter(x => x && x !== v);
@@ -21786,6 +21895,7 @@ function PapaCreador({
       });
     },
     onBorrarVideo: borrarIaVideo,
+    onSubirVideoPropio: subirVideoPropio,
     onVolverPanel: () => {
       guardarYVolver();
       setModoPortada('tematica');
