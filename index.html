@@ -9345,6 +9345,15 @@ function AdminConfig({
       [k]: v
     }));
   }
+  function setClub(k, v) {
+    setCfg(c => ({
+      ...c,
+      club: {
+        ...(c.club || {}),
+        [k]: v
+      }
+    }));
+  }
   function guardar() {
     setIaConfig(cfg);
     setMsg('✓ Configuración guardada');
@@ -9501,7 +9510,139 @@ function AdminConfig({
       fontSize: 13,
       fontWeight: 800
     }
-  }, "▲ Servidor / publicar (Vercel)"))), /*#__PURE__*/React.createElement("button", {
+  }, "▲ Servidor / publicar (Vercel)"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      ...S.card,
+      marginBottom: 14,
+      borderLeft: '4px solid #9333ea'
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    style: {
+      fontWeight: 900,
+      fontSize: 14,
+      marginBottom: 4
+    }
+  }, "🎨 Fun Zone Club"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 11,
+      color: '#64748b',
+      marginBottom: 12
+    }
+  }, "Aparece como un botón en ", /*#__PURE__*/React.createElement("b", null, "las invitaciones de los dos salones"), ". Subí el ", /*#__PURE__*/React.createElement("b", null, "folleto"), " de la comunidad y pegá el ", /*#__PURE__*/React.createElement("b", null, "link del grupo de WhatsApp"), ". Al tocarlo, el papá ve el folleto y un botón para unirse al grupo."), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 12,
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: !!(cfg.club && cfg.club.activo),
+    onChange: e => setClub('activo', e.target.checked)
+  }), "Mostrar el botón de Fun Zone Club en las invitaciones"), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'block',
+      marginBottom: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: S.label
+  }, "Link del grupo de WhatsApp"), /*#__PURE__*/React.createElement("input", {
+    value: cfg.club && cfg.club.link || '',
+    onChange: e => setClub('link', e.target.value),
+    style: S.input,
+    placeholder: "https://chat.whatsapp.com/..."
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      marginBottom: 10,
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    style: {
+      ...S.btn,
+      background: '#9333ea',
+      color: 'white',
+      padding: '9px 14px',
+      fontSize: 12,
+      cursor: 'pointer'
+    }
+  }, "🖼️ ", cfg.club && cfg.club.folletoUrl ? 'Cambiar folleto' : 'Subir folleto', /*#__PURE__*/React.createElement("input", {
+    type: "file",
+    accept: "image/*",
+    style: {
+      display: 'none'
+    },
+    onChange: async e => {
+      const f = e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      try {
+        setMsg('Subiendo folleto…');
+        const ext = (String(f.name).split('.').pop() || 'jpg').toLowerCase();
+        const ct = f.type || 'image/jpeg';
+        const r = await fetch('/api/subir-init', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            content_type: ct,
+            ext
+          })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d.upload_url || !d.file_url) {
+          alert(d && d.error || 'No se pudo iniciar la subida.');
+          setMsg('');
+          return;
+        }
+        const up = await fetch(d.upload_url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': ct
+          },
+          body: f
+        });
+        if (!up.ok) {
+          alert('No se pudo subir el folleto.');
+          setMsg('');
+          return;
+        }
+        setClub('folletoUrl', d.file_url);
+        setClub('activo', true);
+        setMsg('✓ Folleto subido — tocá "Guardar configuración" abajo');
+        setTimeout(() => setMsg(''), 3500);
+      } catch (err) {
+        alert('No se pudo subir el folleto.');
+        setMsg('');
+      }
+    }
+  })), cfg.club && cfg.club.folletoUrl && /*#__PURE__*/React.createElement("a", {
+    href: cfg.club.folletoUrl,
+    target: "_blank",
+    rel: "noopener",
+    style: {
+      fontSize: 11,
+      color: '#9333ea',
+      fontWeight: 700,
+      textDecoration: 'none'
+    }
+  }, "✓ Ver folleto")), cfg.club && cfg.club.folletoUrl && /*#__PURE__*/React.createElement("img", {
+    src: cfg.club.folletoUrl,
+    alt: "folleto Fun Zone Club",
+    style: {
+      width: '100%',
+      maxWidth: 220,
+      borderRadius: 12,
+      display: 'block',
+      border: '1px solid #e9d5ff'
+    }
+  })), /*#__PURE__*/React.createElement("button", {
     onClick: guardar,
     style: {
       ...S.btn,
@@ -26814,6 +26955,8 @@ function InvWeb({
   const [vidPlay, setVidPlay] = useState(true); // el video arranca SOLO al abrir la invitación (mudo; se toca para escuchar)
   const [vidPausado, setVidPausado] = useState(false); // el invitado pausó el video manualmente
   const [vidReady, setVidReady] = useState(false); // el video ya mostró su primer cuadro (para tapar el negro con la foto)
+  const [clubOpen, setClubOpen] = useState(false); // 🎨 Fun Zone Club: abre el folleto de la comunidad
+  const _club = iaConfig && iaConfig.club || {}; // folleto + link del grupo (se cargan en 🛠️ Configuración)
   // Música de fondo: por TIPO de evento (escuela/cumple/…), o la del personaje, o
   // una genérica que rota. En una ESCUELA manda la música del tipo (para que suene
   // distinto al cumple); en un cumple manda la del personaje si tiene. En video suena bajita.
@@ -27939,7 +28082,159 @@ function InvWeb({
       color: '#1e293b',
       textAlign: 'center'
     }
-  }, "360"))), suc.tel && /*#__PURE__*/React.createElement("div", {
+  }, "360"))), _club.activo && _club.folletoUrl && /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '0 16px 12px'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setClubOpen(true),
+    style: {
+      width: '100%',
+      border: 'none',
+      borderRadius: 18,
+      padding: '14px 16px',
+      background: 'linear-gradient(135deg,#6d28d9,#9333ea)',
+      boxShadow: '0 8px 22px rgba(109,40,217,.38)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 13,
+      cursor: 'pointer',
+      textAlign: 'left'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      width: 46,
+      height: 46,
+      borderRadius: 12,
+      background: '#1a1030',
+      border: '1.5px solid #3b2a63',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      lineHeight: .92,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#ffd400',
+      fontWeight: 900,
+      fontSize: 8
+    }
+  }, "FUN"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#ffd400',
+      fontWeight: 900,
+      fontSize: 11
+    }
+  }, "ZONE"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#c4b5fd',
+      fontWeight: 900,
+      fontSize: 6.5,
+      letterSpacing: 2
+    }
+  }, "CLUB")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      flex: 1,
+      color: '#fff'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'block',
+      fontSize: 16,
+      fontWeight: 900
+    }
+  }, "Fun Zone Club ✨"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      display: 'block',
+      fontSize: 11.5,
+      opacity: .93,
+      fontWeight: 600,
+      marginTop: 2
+    }
+  }, "Unite a la comunidad y enterate primero de todo")), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: '#fff',
+      fontSize: 22,
+      opacity: .9
+    }
+  }, "›"))), clubOpen && /*#__PURE__*/React.createElement("div", {
+    onClick: () => setClubOpen(false),
+    style: {
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(15,10,30,.93)',
+      zIndex: 9999,
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      position: 'sticky',
+      top: 0,
+      display: 'flex',
+      justifyContent: 'flex-end',
+      padding: 10
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setClubOpen(false),
+    "aria-label": "Cerrar",
+    style: {
+      background: 'rgba(255,255,255,.18)',
+      border: 'none',
+      color: '#fff',
+      width: 38,
+      height: 38,
+      borderRadius: '50%',
+      fontSize: 19,
+      cursor: 'pointer',
+      fontWeight: 700
+    }
+  }, "✕")), /*#__PURE__*/React.createElement("div", {
+    onClick: e => e.stopPropagation(),
+    style: {
+      maxWidth: 440,
+      margin: '0 auto',
+      padding: '0 14px 34px'
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: _club.folletoUrl,
+    alt: "Fun Zone Club",
+    style: {
+      width: '100%',
+      borderRadius: 18,
+      display: 'block',
+      boxShadow: '0 10px 30px rgba(0,0,0,.45)'
+    }
+  }), _club.link && /*#__PURE__*/React.createElement("a", {
+    href: _club.link,
+    target: "_blank",
+    rel: "noopener",
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 9,
+      background: '#25d366',
+      color: '#fff',
+      borderRadius: 16,
+      padding: '16px',
+      fontSize: 16,
+      fontWeight: 900,
+      textDecoration: 'none',
+      marginTop: 16,
+      boxShadow: '0 8px 20px rgba(37,211,102,.4)'
+    }
+  }, "💬 Unirme al grupo de WhatsApp"), /*#__PURE__*/React.createElement("p", {
+    style: {
+      fontSize: 11.5,
+      color: '#d8c7ff',
+      textAlign: 'center',
+      marginTop: 12,
+      lineHeight: 1.55
+    }
+  }, "Escaneá el QR del folleto o tocá el botón para entrar al grupo de ", /*#__PURE__*/React.createElement("b", null, "Fun Zone Club"), "."))), suc.tel && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '0 16px 16px'
     }
