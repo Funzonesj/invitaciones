@@ -9354,10 +9354,23 @@ function AdminConfig({
       }
     }));
   }
-  function guardar() {
+  async function guardar() {
     setIaConfig(cfg);
-    setMsg('✓ Configuración guardada');
-    setTimeout(() => setMsg(''), 2500);
+    try {
+      if (await gwPing()) {
+        await gwCall('upsertConfig', {
+          id: '__config_ia__',
+          data: cfg
+        });
+      } else {
+        throw new Error('sin conexión con el servidor');
+      }
+      setMsg('✓ Configuración guardada');
+      setTimeout(() => setMsg(''), 2500);
+      alert('✓ Configuración guardada.' + (cfg.club && cfg.club.activo && cfg.club.folletoUrl ? '\n\nEl botón de Fun Zone Club ya les aparece a los papás en las invitaciones.' : ''));
+    } catch (e) {
+      alert('⚠️ No se pudo guardar: ' + (e && e.message || 'error') + '.\nRevisá internet y probá de nuevo.');
+    }
   }
   const anios = [];
   for (let y = 2025; y <= 2030; y++) anios.push(y);
@@ -9615,8 +9628,9 @@ function AdminConfig({
         }
         setClub('folletoUrl', d.file_url);
         setClub('activo', true);
-        setMsg('✓ Folleto subido — tocá "Guardar configuración" abajo');
+        setMsg('✓ Folleto subido');
         setTimeout(() => setMsg(''), 3500);
+        alert('✓ Folleto subido.\n\nAhora pegá el link del grupo (si falta) y tocá "✓ Guardar configuración" abajo.');
       } catch (err) {
         alert('No se pudo subir el folleto.');
         setMsg('');

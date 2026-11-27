@@ -2690,7 +2690,17 @@ function AdminConfig({setVista,iaConfig,setIaConfig}){
   const [msg,setMsg]=useState('');
   function set(k,v){setCfg(c=>({...c,[k]:v}));}
   function setClub(k,v){setCfg(c=>({...c,club:{...(c.club||{}),[k]:v}}));}
-  function guardar(){setIaConfig(cfg);setMsg('✓ Configuración guardada');setTimeout(()=>setMsg(''),2500);}
+  async function guardar(){
+    setIaConfig(cfg);
+    try{
+      if(await gwPing()){ await gwCall('upsertConfig',{id:'__config_ia__',data:cfg}); }
+      else { throw new Error('sin conexión con el servidor'); }
+      setMsg('✓ Configuración guardada'); setTimeout(()=>setMsg(''),2500);
+      alert('✓ Configuración guardada.'+((cfg.club&&cfg.club.activo&&cfg.club.folletoUrl)?'\n\nEl botón de Fun Zone Club ya les aparece a los papás en las invitaciones.':''));
+    }catch(e){
+      alert('⚠️ No se pudo guardar: '+((e&&e.message)||'error')+'.\nRevisá internet y probá de nuevo.');
+    }
+  }
   const anios=[];for(let y=2025;y<=2030;y++)anios.push(y);
   return(
     <div className="fade-in" style={{maxWidth:700,margin:'0 auto',padding:'20px 16px'}}>
@@ -2736,7 +2746,7 @@ function AdminConfig({setVista,iaConfig,setIaConfig}){
         </label>
         <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:10,flexWrap:'wrap'}}>
           <label style={{...S.btn,background:'#9333ea',color:'white',padding:'9px 14px',fontSize:12,cursor:'pointer'}}>🖼️ {(cfg.club&&cfg.club.folletoUrl)?'Cambiar folleto':'Subir folleto'}
-            <input type="file" accept="image/*" style={{display:'none'}} onChange={async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{setMsg('Subiendo folleto…');const ext=(String(f.name).split('.').pop()||'jpg').toLowerCase();const ct=f.type||'image/jpeg';const r=await fetch('/api/subir-init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:ct,ext})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.upload_url||!d.file_url){alert((d&&d.error)||'No se pudo iniciar la subida.');setMsg('');return;}const up=await fetch(d.upload_url,{method:'PUT',headers:{'Content-Type':ct},body:f});if(!up.ok){alert('No se pudo subir el folleto.');setMsg('');return;}setClub('folletoUrl',d.file_url);setClub('activo',true);setMsg('✓ Folleto subido — tocá "Guardar configuración" abajo');setTimeout(()=>setMsg(''),3500);}catch(err){alert('No se pudo subir el folleto.');setMsg('');}}}/></label>
+            <input type="file" accept="image/*" style={{display:'none'}} onChange={async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{setMsg('Subiendo folleto…');const ext=(String(f.name).split('.').pop()||'jpg').toLowerCase();const ct=f.type||'image/jpeg';const r=await fetch('/api/subir-init',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:ct,ext})});const d=await r.json().catch(()=>({}));if(!r.ok||!d.upload_url||!d.file_url){alert((d&&d.error)||'No se pudo iniciar la subida.');setMsg('');return;}const up=await fetch(d.upload_url,{method:'PUT',headers:{'Content-Type':ct},body:f});if(!up.ok){alert('No se pudo subir el folleto.');setMsg('');return;}setClub('folletoUrl',d.file_url);setClub('activo',true);setMsg('✓ Folleto subido');setTimeout(()=>setMsg(''),3500);alert('✓ Folleto subido.\n\nAhora pegá el link del grupo (si falta) y tocá "✓ Guardar configuración" abajo.');}catch(err){alert('No se pudo subir el folleto.');setMsg('');}}}/></label>
           {(cfg.club&&cfg.club.folletoUrl)&&<a href={cfg.club.folletoUrl} target="_blank" rel="noopener" style={{fontSize:11,color:'#9333ea',fontWeight:700,textDecoration:'none'}}>✓ Ver folleto</a>}
         </div>
         {(cfg.club&&cfg.club.folletoUrl)&&<img src={cfg.club.folletoUrl} alt="folleto Fun Zone Club" style={{width:'100%',maxWidth:220,borderRadius:12,display:'block',border:'1px solid #e9d5ff'}}/>}
